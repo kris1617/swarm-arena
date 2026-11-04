@@ -1,3 +1,5 @@
+See @AGENTS.md for repo-level engineering conventions (build/test commands, project structure, coding style) — this file covers the 10xDevs AI-toolkit skill chain instead.
+
 <!-- BEGIN @przeprogramowani/10x-cli -->
 
 ## 10xDevs AI Toolkit — Module 1, Lesson 1
