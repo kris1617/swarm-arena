@@ -7,7 +7,6 @@ swarm-arena is a Next.js 16 app on the T3 stack (tRPC, Drizzle ORM over SQLite v
 - New environment variables must be added to the schema in @src/env.js and documented in @.env.example — the T3 env validator throws at startup otherwise.
 - Routers under `src/server/api/routers/` are not auto-discovered; register each one manually in @src/server/api/root.ts.
 - `npm run check` / `check:write` (Biome) skip `CLAUDE.md`, `AGENTS.md`, `context/`, `skills-lock.json`, `.10x-cli.json`, and `.agents/` — see @biome.jsonc. Don't expect those paths to pass or be reformatted by Biome.
-- This directory is not a git repository; don't assume `git log` or CI history exists when reasoning about conventions.
 - See @CLAUDE.md for the 10xDevs AI-toolkit skill chain (`/10x-init` → `/10x-shape` → `/10x-prd`) and its rule that skills must never write to `context/archive/`.
 
 ## Project Structure
