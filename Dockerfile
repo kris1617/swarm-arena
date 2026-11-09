@@ -11,6 +11,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=1
+ENV DATABASE_URL="file:./build-placeholder.sqlite"
 RUN npm run build
 
 FROM node:22-alpine AS runner
