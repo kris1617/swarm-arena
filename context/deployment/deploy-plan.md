@@ -8,7 +8,7 @@ Self-hosted VPS (`szef@217.154.238.241`, Ubuntu 26.04), overriding the researche
 
 ## What's deployed
 
-- **Reverse proxy**: Caddy 2 (alpine image), ports 80/443, config at repo root `Caddyfile`. No TLS yet (no domain pointed at the VPS).
+- **Reverse proxy**: Caddy 2 (alpine image), ports 80/443, config at repo root `Caddyfile`. Serves `swarmarena.hopto.org` with automatic Let's Encrypt TLS (added 2026-11-09); HTTP redirects to HTTPS automatically.
 - **App**: Next.js 16 (T3 stack) built via multi-stage `Dockerfile`, `output: "standalone"`, running as non-root user `nextjs` (uid 1001), bound to `127.0.0.1:3000` only (Caddy is the sole public entrypoint).
 - **Database**: SQLite via libsql, file at `/opt/swarm-arena/data/db.sqlite` on the host, bind-mounted into the container at `/data`. Schema pushed via `drizzle-kit push` (run once via a throwaway `node:22-alpine` container against the production file).
 - **Firewall**: `ufw` active, allowing only 22 (SSH), 80 (HTTP), 443 (HTTPS, unused today).
@@ -28,9 +28,10 @@ No auth (NextAuth) secrets exist yet — `src/env.js` doesn't define any, and no
 ## Verification performed
 
 - `http://217.154.238.241` returns HTTP 200 from outside the VPS.
+- `https://swarmarena.hopto.org` returns HTTP 200 with a valid Let's Encrypt cert; plain `http://swarmarena.hopto.org` redirects to HTTPS.
 - SQLite data confirmed to survive a `docker compose restart app` (bind-mount persistence check).
 - A real push to `master` was confirmed to trigger the GitHub Actions workflow, which rebuilt and recreated the `app` container automatically, with the app staying healthy (HTTP 200) afterward.
 
 ## Known gaps (see risk register in `infrastructure.md` for full detail)
 
-No backups, no automated rollback script, no TLS/domain, no monitoring/alerting, and the always-on WebSocket simulation loop that originally justified a persistent-container deployment doesn't exist in code yet — this deployment validates the pipeline and platform choice, not that specific future feature.
+No backups, no automated rollback script, no monitoring/alerting, and the always-on WebSocket simulation loop that originally justified a persistent-container deployment doesn't exist in code yet — this deployment validates the pipeline and platform choice, not that specific future feature. The domain is dynamic DNS (`hopto.org`), not an owned domain — see risk register in `infrastructure.md`.

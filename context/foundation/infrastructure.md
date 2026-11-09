@@ -31,6 +31,7 @@ The researched platform shortlist (Railway recommended, Render runner-up, Fly.io
 
 ## Operational Story
 
+- **Domain/TLS**: `swarmarena.hopto.org` (dynamic DNS) points at the VPS. Caddy auto-provisions and renews a Let's Encrypt certificate for it and redirects plain HTTP to HTTPS automatically — confirmed working 2026-11-09.
 - **Preview deploys**: none configured. There is no per-PR preview environment on this setup — every push to `master` deploys straight to the one production instance. If preview environments matter later, the straightforward path is a second `docker-compose.staging.yml` + a second Caddy site block, not a platform feature.
 - **Secrets**: the GitHub Actions deploy-trigger private key lives only in the repo's `DEPLOY_SSH_KEY` Actions secret; the VPS's own read-only GitHub deploy key lives only in `~/.ssh/github_deploy_key` on the VPS, never in the repo. `DATABASE_URL` is set directly in `docker-compose.yml` (not secret — it's just a local file path) since it's the only variable in `src/env.js`'s current schema. When NextAuth is actually implemented, its secrets must be added to `src/env.js` first (per `AGENTS.md`'s hard rule), then provisioned via a VPS-local `.env` file read by `docker-compose.yml`'s `env_file:` directive — not committed to the repo.
 - **Rollback**: `ssh szef@217.154.238.241`, then `cd /opt/swarm-arena && git checkout <previous-sha> && docker compose up -d --build`. No automated rollback command exists yet; this is a manual, few-minutes operation. The SQLite file does not roll back with the code — a bad migration needs its own recovery path (no backup mechanism configured yet, see risk register).
@@ -44,10 +45,10 @@ The researched platform shortlist (Railway recommended, Render runner-up, Fly.io
 | No backup mechanism for the SQLite file — a single bind-mounted file on a single VPS disk is a single point of failure | Research finding | M | H | Add a simple cron job (e.g. nightly `sqlite3 .backup` to a separate path, or rsync off-box) before real user data accumulates |
 | No automated rollback — reverting a bad deploy is a manual multi-command SSH operation under time pressure | Research finding | M | M | Script a `rollback.sh` on the VPS now (mirrors `deploy.sh` but checks out a given SHA) so recovery isn't improvised later |
 | No firewall-level protection beyond `ufw`'s three allowed ports — no fail2ban, no rate limiting on SSH | Unknown unknowns | L | M | Consider `fail2ban` for SSH brute-force protection once this is more than a personal MVP; low priority at current scale |
-| No TLS yet — the app is served over plain HTTP on the bare IP | Devil's advocate | H | L | Acceptable for MVP/personal testing; add a domain + update the `Caddyfile` to enable Caddy's automatic HTTPS the moment real users are expected |
 | Single VPS, single point of failure for both app and data — no redundancy, no horizontal scaling path without real work | Devil's advocate | L | M | Acceptable at the PRD's stated scale (single user, low QPS); revisit only if that changes materially |
 | The two deploy-related SSH keys (GitHub Actions trigger key, VPS's read-only repo-pull key) both live outside this repo's version control, with no documented rotation procedure | Unknown unknowns | L | M | Document a rotation runbook (generate new key, update GitHub secret/deploy-key, remove old one) before either key is ever suspected compromised |
 | The WebSocket-based simulation loop that justified a persistent-container deployment in the first place doesn't exist in code yet — this deployment validates the pipeline, not the feature | Research finding | M | M | Load-test the actual WebSocket/SSE feature through Caddy once it's implemented; don't assume today's HTTP-only verification covers it |
+| `swarmarena.hopto.org` is a dynamic DNS hostname, not an owned domain — if the VPS's IP changes (e.g. provider reassigns it) or the DDNS client stops updating, the domain silently stops resolving correctly and Caddy's cert renewal would start failing | Research finding | L | M | Confirm whether the VPS has a static IP from its provider; if not, verify the DDNS update client is actually running on the VPS itself, not just set once manually |
 
 ## Getting Started (what's already done)
 
@@ -67,5 +68,4 @@ The VPS is live and deployed — these are the steps already executed, documente
 The following were not evaluated or built in this deployment:
 - CI/CD beyond the single deploy-on-push workflow (no test/lint gate before deploy yet)
 - Production-scale architecture (multi-region, HA, DR, load balancing)
-- TLS/HTTPS (no domain pointed at the VPS yet)
 - Backups and monitoring (flagged in the risk register, not yet implemented)
