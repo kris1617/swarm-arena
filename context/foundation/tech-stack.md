@@ -5,7 +5,7 @@ project_name: swarm-arena
 hints:
   language_family: js
   team_size: solo
-  deployment_target: fly
+  deployment_target: self-hosted-vps
   ci_provider: github-actions
   ci_default_flow: auto-deploy-on-merge
   bootstrapper_confidence: verified
@@ -40,3 +40,12 @@ hold. CI runs on GitHub Actions with auto-deploy on merge, matching a solo after
 Payments and AI/LLM features are out of scope per the PRD; background-job infrastructure (queues/
 cron) was not flagged as needed since the simulation tick runs as part of the long-lived server
 process itself rather than a scheduled job.
+
+**2026-11-09 update**: the deployment target was changed from the researched platform shortlist
+(see `context/foundation/archive/2026-11-09-infrastructure.md` for that research — Railway was
+recommended, Render runner-up) to a **self-hosted VPS already owned by the developer**, running
+Docker + Caddy. The persistent-container requirement that ruled out serverless platforms still
+holds and is satisfied the same way; `auto-deploy-on-merge` is now implemented directly via a
+GitHub Actions workflow that triggers a restricted-SSH-key deploy script on the VPS, rather than
+a PaaS's native git integration. See `context/foundation/infrastructure.md` for the current,
+authoritative deployment decision.
