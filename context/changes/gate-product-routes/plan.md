@@ -289,14 +289,14 @@ The production DB at `swarmarena.hopto.org` currently has no users. Phase 2's mi
 
 #### Automated
 
-- [x] 4.1 npm run typecheck passes
-- [x] 4.2 npm run check passes
-- [x] 4.3 npm run build succeeds
+- [x] 4.1 npm run typecheck passes — 03f9466
+- [x] 4.2 npm run check passes — 03f9466
+- [x] 4.3 npm run build succeeds — 03f9466
 
 #### Manual
 
-- [x] 4.4 Unauthenticated request to / redirects to /login
-- [x] 4.5 Middleware runs under Node.js runtime and reads a database session with no Edge DB error
-- [x] 4.6 GitHub account in ADMIN_EMAILS gets role: admin
+- [x] 4.4 Unauthenticated request to / redirects to /login — 03f9466
+- [x] 4.5 Middleware runs under Node.js runtime and reads a database session with no Edge DB error — 03f9466
+- [x] 4.6 GitHub account in ADMIN_EMAILS gets role: admin — 03f9466
 - [ ] 4.7 GitHub account not in ADMIN_EMAILS gets role: member
-- [x] 4.8 Sign-out returns to /login and gate re-applies
+- [x] 4.8 Sign-out returns to /login and gate re-applies — 03f9466
