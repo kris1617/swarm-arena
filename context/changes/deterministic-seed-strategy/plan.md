@@ -124,7 +124,7 @@ Not applicable — no existing data or behavior to migrate; this is a new, previ
 
 #### Automated
 
-- [x] 1.1 npm run typecheck passes
-- [x] 1.2 npm run check passes
-- [x] 1.3 npm test passes, including the two new RNG cases
-- [x] 1.4 npm run build succeeds
+- [x] 1.1 npm run typecheck passes — 62594dd
+- [x] 1.2 npm run check passes — 62594dd
+- [x] 1.3 npm test passes, including the two new RNG cases — 62594dd
+- [x] 1.4 npm run build succeeds — 62594dd
