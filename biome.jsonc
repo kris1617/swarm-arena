@@ -9,7 +9,8 @@
 			"!AGENTS.md",
 			"!skills-lock.json",
 			"!.10x-cli.json",
-			"!.agents/**"
+			"!.agents/**",
+			"!.claude"
 		]
 	},
 	"vcs": {
