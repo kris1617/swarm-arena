@@ -10,7 +10,8 @@
 			"!skills-lock.json",
 			"!.10x-cli.json",
 			"!.agents/**",
-			"!.claude"
+			"!.claude",
+			"!drizzle"
 		]
 	},
 	"vcs": {

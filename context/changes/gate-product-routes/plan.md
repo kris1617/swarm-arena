@@ -261,21 +261,21 @@ The production DB at `swarmarena.hopto.org` currently has no users. Phase 2's mi
 
 #### Automated
 
-- [x] 1.1 npm run typecheck passes
-- [x] 1.2 npm run check passes
-- [x] 1.3 npm run build succeeds with populated .env
+- [x] 1.1 npm run typecheck passes — da1a2b2
+- [x] 1.2 npm run check passes — da1a2b2
+- [x] 1.3 npm run build succeeds with populated .env — da1a2b2
 
 ### Phase 2: Auth data model
 
 #### Automated
 
-- [ ] 2.1 npm run db:generate produces a clean migration
-- [ ] 2.2 npm run db:push (or db:migrate) applies cleanly
-- [ ] 2.3 npm run typecheck passes
+- [x] 2.1 npm run db:generate produces a clean migration
+- [x] 2.2 npm run db:push (or db:migrate) applies cleanly
+- [x] 2.3 npm run typecheck passes
 
 #### Manual
 
-- [ ] 2.4 drizzle-kit studio shows the 4 new tables and users.role defaulting to member
+- [x] 2.4 drizzle-kit studio shows the 4 new tables and users.role defaulting to member
 
 ### Phase 3: NextAuth configuration and tRPC procedures
 

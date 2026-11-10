@@ -2,7 +2,7 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, sqliteTableCreator } from "drizzle-orm/sqlite-core";
+import { index, primaryKey, sqliteTableCreator } from "drizzle-orm/sqlite-core";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -26,4 +26,65 @@ export const posts = createTable(
 		updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
 	}),
 	(t) => [index("name_idx").on(t.name)],
+);
+
+/**
+ * NextAuth / Auth.js Drizzle adapter tables (SQLite contract), plus a `role`
+ * column on `users` for app-level authorization.
+ *
+ * @see https://authjs.dev/reference/adapter/drizzle
+ */
+export const users = createTable("user", (d) => ({
+	id: d
+		.text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: d.text("name"),
+	email: d.text("email").unique(),
+	emailVerified: d.integer("emailVerified", { mode: "timestamp_ms" }),
+	image: d.text("image"),
+	role: d
+		.text("role", { enum: ["member", "admin"] })
+		.notNull()
+		.default("member"),
+}));
+
+export const accounts = createTable(
+	"account",
+	(d) => ({
+		userId: d
+			.text("userId")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		type: d.text("type").notNull(),
+		provider: d.text("provider").notNull(),
+		providerAccountId: d.text("providerAccountId").notNull(),
+		refresh_token: d.text("refresh_token"),
+		access_token: d.text("access_token"),
+		expires_at: d.integer("expires_at"),
+		token_type: d.text("token_type"),
+		scope: d.text("scope"),
+		id_token: d.text("id_token"),
+		session_state: d.text("session_state"),
+	}),
+	(t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })],
+);
+
+export const sessions = createTable("session", (d) => ({
+	sessionToken: d.text("sessionToken").primaryKey(),
+	userId: d
+		.text("userId")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	expires: d.integer("expires", { mode: "timestamp_ms" }).notNull(),
+}));
+
+export const verificationTokens = createTable(
+	"verificationToken",
+	(d) => ({
+		identifier: d.text("identifier").notNull(),
+		token: d.text("token").notNull(),
+		expires: d.integer("expires", { mode: "timestamp_ms" }).notNull(),
+	}),
+	(t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
