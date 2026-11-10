@@ -6,9 +6,26 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// .claude/skills/** ships its own node:test-style *.test.mjs files (run by the
+		// 10x-cli toolkit itself, not this app) — exclude them, same category as the
+		// context/, CLAUDE.md, .claude excludes already in biome.jsonc.
+		exclude: ["**/node_modules/**", ".claude/**"],
 		env: {
 			DATABASE_URL: "file:./db.sqlite",
 			NODE_ENV: "test",
+			AUTH_SECRET: "test-secret",
+			AUTH_GITHUB_ID: "test-github-id",
+			AUTH_GITHUB_SECRET: "test-github-secret",
+		},
+		server: {
+			// next-auth's lib/env.js does `import { NextRequest } from "next/server"`
+			// with no extension; Next ships no package.json "exports" map, so letting
+			// Node's native ESM resolver load next-auth (as an externalized dep) can't
+			// find it. Force it through Vite's own resolver instead, which resolves
+			// extensionless subpaths the way Next's own bundler does.
+			deps: {
+				inline: [/next-auth/, /@auth\/.*/],
+			},
 		},
 	},
 });

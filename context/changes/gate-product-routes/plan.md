@@ -269,21 +269,21 @@ The production DB at `swarmarena.hopto.org` currently has no users. Phase 2's mi
 
 #### Automated
 
-- [x] 2.1 npm run db:generate produces a clean migration
-- [x] 2.2 npm run db:push (or db:migrate) applies cleanly
-- [x] 2.3 npm run typecheck passes
+- [x] 2.1 npm run db:generate produces a clean migration — f691d1b
+- [x] 2.2 npm run db:push (or db:migrate) applies cleanly — f691d1b
+- [x] 2.3 npm run typecheck passes — f691d1b
 
 #### Manual
 
-- [x] 2.4 drizzle-kit studio shows the 4 new tables and users.role defaulting to member
+- [x] 2.4 drizzle-kit studio shows the 4 new tables and users.role defaulting to member — f691d1b
 
 ### Phase 3: NextAuth configuration and tRPC procedures
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck passes with non-nullable ctx.session.user narrowing
-- [ ] 3.2 npm run check passes
-- [ ] 3.3 npm run build succeeds
+- [x] 3.1 npm run typecheck passes with non-nullable ctx.session.user narrowing
+- [x] 3.2 npm run check passes
+- [x] 3.3 npm run build succeeds
 
 ### Phase 4: Route gating and minimal sign-in UI
 
