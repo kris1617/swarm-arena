@@ -281,22 +281,22 @@ The production DB at `swarmarena.hopto.org` currently has no users. Phase 2's mi
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes with non-nullable ctx.session.user narrowing
-- [x] 3.2 npm run check passes
-- [x] 3.3 npm run build succeeds
+- [x] 3.1 npm run typecheck passes with non-nullable ctx.session.user narrowing — 860af59
+- [x] 3.2 npm run check passes — 860af59
+- [x] 3.3 npm run build succeeds — 860af59
 
 ### Phase 4: Route gating and minimal sign-in UI
 
 #### Automated
 
-- [ ] 4.1 npm run typecheck passes
-- [ ] 4.2 npm run check passes
-- [ ] 4.3 npm run build succeeds
+- [x] 4.1 npm run typecheck passes
+- [x] 4.2 npm run check passes
+- [x] 4.3 npm run build succeeds
 
 #### Manual
 
-- [ ] 4.4 Unauthenticated request to / redirects to /login
-- [ ] 4.5 Middleware runs under Node.js runtime and reads a database session with no Edge DB error
-- [ ] 4.6 GitHub account in ADMIN_EMAILS gets role: admin
+- [x] 4.4 Unauthenticated request to / redirects to /login
+- [x] 4.5 Middleware runs under Node.js runtime and reads a database session with no Edge DB error
+- [x] 4.6 GitHub account in ADMIN_EMAILS gets role: admin
 - [ ] 4.7 GitHub account not in ADMIN_EMAILS gets role: member
-- [ ] 4.8 Sign-out returns to /login and gate re-applies
+- [x] 4.8 Sign-out returns to /login and gate re-applies

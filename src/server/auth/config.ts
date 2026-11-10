@@ -58,6 +58,9 @@ export const authConfig: NextAuthConfig = {
 			clientSecret: env.AUTH_GITHUB_SECRET,
 		}),
 	],
+	pages: {
+		signIn: "/login",
+	},
 	events: {
 		// Fires once, when the adapter first persists a new user row —
 		// never on subsequent sign-ins or session reads. This is where we
@@ -83,5 +86,10 @@ export const authConfig: NextAuthConfig = {
 				role: (user as typeof users.$inferSelect).role,
 			},
 		}),
+		// Without this, next-auth's bare `auth` middleware defaults
+		// `authorized = true` for every request — it only attaches session
+		// info, it does not gate anything on its own. This is what actually
+		// enforces the redirect-to-/login behavior the middleware exists for.
+		authorized: ({ auth }) => !!auth?.user,
 	},
 };

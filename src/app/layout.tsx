@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
+import { auth, signOut } from "~/server/auth";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -16,13 +17,33 @@ const geist = Geist({
 	variable: "--font-geist-sans",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
+	const session = await auth();
+
 	return (
 		<html className={`${geist.variable}`} lang="en">
 			<body>
-				<TRPCReactProvider>{children}</TRPCReactProvider>
+				<TRPCReactProvider>
+					{session?.user ? (
+						<form
+							action={async () => {
+								"use server";
+								await signOut({ redirectTo: "/login" });
+							}}
+							className="flex justify-end bg-[#2e026d] p-4"
+						>
+							<button
+								className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white no-underline transition hover:bg-white/20"
+								type="submit"
+							>
+								Sign out
+							</button>
+						</form>
+					) : null}
+					{children}
+				</TRPCReactProvider>
 			</body>
 		</html>
 	);
