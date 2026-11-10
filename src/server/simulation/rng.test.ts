@@ -22,4 +22,9 @@ describe("createRng", () => {
 
 		expect(sequenceA).not.toEqual(sequenceB);
 	});
+
+	it("rejects a non-integer seed", () => {
+		expect(() => createRng(Number.NaN)).toThrow(RangeError);
+		expect(() => createRng(1.5)).toThrow(RangeError);
+	});
 });

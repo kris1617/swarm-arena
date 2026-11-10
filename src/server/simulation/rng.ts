@@ -1,7 +1,15 @@
-// mulberry32 — public-domain, widely-used deterministic 32-bit PRNG.
-// Chosen over a library dependency so the output sequence for a given
-// seed can never change out from under us via an upstream version bump.
+/**
+ * Seeded, deterministic PRNG (mulberry32 — public domain), returning
+ * floats in [0, 1), the same shape as `Math.random()`.
+ *
+ * Implemented in-house rather than via a library dependency so the
+ * output sequence for a given seed can never change out from under us
+ * via an upstream version bump.
+ */
 export function createRng(seed: number): () => number {
+	if (!Number.isInteger(seed)) {
+		throw new RangeError(`createRng seed must be an integer, got ${seed}`);
+	}
 	let state = seed;
 	return function next() {
 		state |= 0;
