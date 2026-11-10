@@ -3,7 +3,7 @@ project: swarm-arena
 version: 1
 status: draft
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-10
 prd_version: 1
 main_goal: quality
 top_blocker: decisions
@@ -41,7 +41,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 
 | ID   | Change ID                     | Outcome (user can …)                                                              | Prerequisites | PRD refs                                              | Status   |
 | ---- | ------------------------------ | ----------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------ | -------- |
-| F-01 | gate-product-routes            | (foundation) Logged-in access with admin/member roles gates the app                | —              | FR-001, Access Control                                | ready    |
+| F-01 | gate-product-routes            | (foundation) Logged-in access with admin/member roles gates the app                | —              | FR-001, Access Control                                | done |
 | F-02 | deterministic-seed-strategy    | (foundation) One seeded-PRNG approach is chosen and wired as the simulation's randomness source | —              | NFR: deterministic scoring                             | ready    |
 | S-01 | basic-flocking-loop             | User starts a simulation with basic flocking, watches it run and stop, gets a survival-based score | F-01, F-02     | FR-001, FR-002 (partial), FR-003, FR-004 (partial), FR-010 (partial), FR-018, US-01 (partial) | proposed |
 | S-02 | predator-prey-dynamics          | User sees predators hunt flocks, with protected flocks immune to attack, and hunger/death affecting population | S-01           | FR-005 (partial), FR-008, FR-009                       | proposed |
@@ -81,7 +81,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Auth is completely absent from the baseline today — building any user-specific flow (including the north star) on top of an unauthenticated app would mean retrofitting session handling into every route later; doing it first is cheaper than doing it twice.
-- **Status:** ready
+- **Status:** done
 
 ### F-02: Choose a deterministic seeded-PRNG strategy
 
@@ -187,3 +187,5 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Milestone History
 
 ## Done
+
+- **F-01: (foundation) Logged-in access with admin/member roles gates the app** — Archived 2026-11-10 → `context/archive/2026-11-10-gate-product-routes/`. Lesson: —.
