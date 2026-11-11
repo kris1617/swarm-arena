@@ -299,21 +299,21 @@ None — no schema changes in this slice.
 
 #### Automated
 
-- [x] 1.1 addSlot rejects a 5th slot once 4 exist — 1b68769
-- [x] 1.2 addSlot makes the newly added slot active — 1b68769
-- [x] 1.3 setActive changes only activeRunId — 1b68769
-- [x] 1.4 markStopped sets status/score, no-op if already stopped — 1b68769
-- [x] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one — 1b68769
-- [x] 1.6 removeSlot reassigns activeRunId when the active slot is removed — 1b68769
-- [x] 1.7 npm run typecheck passes — 1b68769
-- [x] 1.8 npm run check passes — 1b68769
+- [x] 1.1 addSlot rejects a 5th slot once 4 exist — 145db9e
+- [x] 1.2 addSlot makes the newly added slot active — 145db9e
+- [x] 1.3 setActive changes only activeRunId — 145db9e
+- [x] 1.4 markStopped sets status/score, no-op if already stopped — 145db9e
+- [x] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one — 145db9e
+- [x] 1.6 removeSlot reassigns activeRunId when the active slot is removed — 145db9e
+- [x] 1.7 npm run typecheck passes — 145db9e
+- [x] 1.8 npm run check passes — 145db9e
 
 ### Phase 2: Shared step-loop runner
 
 #### Automated
 
-- [x] 2.1 npm run typecheck passes — f6e5c1d
-- [x] 2.2 npm run check passes — f6e5c1d
+- [x] 2.1 npm run typecheck passes — 145db9e
+- [x] 2.2 npm run check passes — 145db9e
 
 #### Manual
 
@@ -324,9 +324,9 @@ None — no schema changes in this slice.
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes — c5d851c
-- [x] 3.2 npm run check passes — c5d851c
-- [x] 3.3 npx vitest run (full suite) passes — c5d851c
+- [x] 3.1 npm run typecheck passes — 145db9e
+- [x] 3.2 npm run check passes — 145db9e
+- [x] 3.3 npx vitest run (full suite) passes — 145db9e
 
 #### Manual
 

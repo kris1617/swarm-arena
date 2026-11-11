@@ -1,10 +1,10 @@
 ---
 change_id: parallel-sim-switching
 title: Parallel simulation switching
-status: impl_reviewed
+status: archived
 created: 2026-11-11
 updated: 2026-11-11
-archived_at: null
+archived_at: 2026-11-11T18:48:52Z
 ---
 
 ## Notes
