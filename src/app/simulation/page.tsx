@@ -134,7 +134,7 @@ export default function SimulationPage() {
 						/>
 					</label>
 					<Button
-						className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 						disabled={startRun.isPending}
 						type="submit"
 					>

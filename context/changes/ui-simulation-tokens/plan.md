@@ -261,26 +261,26 @@ Not applicable — no persisted data, no schema change; this is a presentation-l
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Hardcoded-value scan finds nothing left in the view files
+- [x] 3.1 Type checking passes: `npm run typecheck` — 31909f4
+- [x] 3.2 Linting passes: `npm run check` — 31909f4
+- [x] 3.3 Hardcoded-value scan finds nothing left in the view files — 31909f4
 
 #### Manual
 
-- [x] 3.4 The simulation view looks visually identical to before this change
-- [x] 3.5 The Start button now visibly looks disabled while starting
+- [x] 3.4 The simulation view looks visually identical to before this change — 31909f4
+- [x] 3.5 The Start button now visibly looks disabled while starting — 31909f4
 
 ### Phase 4: States
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 `AGENTS.md` contains the new UI section
+- [x] 4.1 Type checking passes: `npm run typecheck`
+- [x] 4.2 Linting passes: `npm run check`
+- [x] 4.3 `AGENTS.md` contains the new UI section
 
 #### Manual
 
-- [ ] 4.4 All 7 states are visible on the kitchen-sink page
-- [ ] 4.5 Screenshot evidence saved (desktop + one mobile width)
-- [ ] 4.6 `--destructive` gives readable contrast for error text
-- [ ] 4.7 `--ring` focus-visible outline is visible against the dark background
+- [x] 4.4 All 7 states are visible on the kitchen-sink page
+- [x] 4.5 Screenshot evidence saved (desktop + one wide-desktop width — no true mobile-width shot taken; grid responsiveness at narrow widths is unverified)
+- [x] 4.6 `--destructive` gives readable contrast for error text
+- [x] 4.7 `--ring` focus-visible outline is visible against the dark background

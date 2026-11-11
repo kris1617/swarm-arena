@@ -203,7 +203,7 @@ export function SimulationCanvas({
 			/>
 			{status === "running" ? (
 				<Button
-					className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
+					className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 					onClick={handleManualStop}
 					type="button"
 				>
@@ -221,7 +221,7 @@ export function SimulationCanvas({
 									: null}
 					</p>
 					<Button
-						className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 						onClick={onFinished}
 						type="button"
 					>
