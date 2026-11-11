@@ -58,12 +58,15 @@ export function setActive(state: RunSlotsState, runId: number): RunSlotsState {
 
 /**
  * Flips the matching slot's `status` to `"stopped"` and sets its `score`.
- * No-op if `runId` isn't present or the slot is already `"stopped"`.
+ * `score` is `undefined` when the run was force-finished after its stop
+ * mutation errored (see `MultiSimulationStage`'s `onError` path) — the slot
+ * still reaches a dismissable terminal state even though no real score was
+ * recorded. No-op if `runId` isn't present or the slot is already `"stopped"`.
  */
 export function markStopped(
 	state: RunSlotsState,
 	runId: number,
-	score: number,
+	score: number | undefined,
 ): RunSlotsState {
 	const target = state.slots.find((slot) => slot.runId === runId);
 	if (!target || target.status === "stopped") {

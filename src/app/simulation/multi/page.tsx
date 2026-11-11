@@ -57,7 +57,7 @@ export default function MultiSimulationPage() {
 
 	const atCap = runSlotsState.slots.length >= MAX_PARALLEL_RUNS;
 
-	function handleFinished(runId: number, score: number) {
+	function handleFinished(runId: number, score?: number) {
 		setRunSlotsState((state) => markStopped(state, runId, score));
 	}
 
@@ -174,8 +174,10 @@ export default function MultiSimulationPage() {
 							<span>
 								Run {index + 1} —{" "}
 								{slot.status === "running" ? "Running" : "Stopped"}
-								{slot.status === "stopped" && slot.score !== undefined
-									? ` — Score: ${slot.score.toFixed(2)}`
+								{slot.status === "stopped"
+									? slot.score !== undefined
+										? ` — Score: ${slot.score.toFixed(2)}`
+										: " — Score unavailable (stop failed)"
 									: null}
 							</span>
 							<span className="flex gap-2">

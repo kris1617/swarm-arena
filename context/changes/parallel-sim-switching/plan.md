@@ -160,7 +160,9 @@ that satisfies the PRD's "switching doesn't slow the others" guardrail.
 **Contract**: A component accepting `slots: RunSlot[]`, `activeRunId: number | null`, and
 callbacks `onFinished(runId, score)` (called once per slot when its `maxDurationSeconds`
 elapses or its population is wiped out — same two stop conditions `simulation-canvas.tsx`
-already uses) and `onStopRequested` wiring for a manual Stop action on the active slot. Holds
+already uses). Manual-stop for the active slot is self-contained — an internal ref checked
+once per tick plus its own Stop `Button` — rather than an `onStopRequested` callback prop, since
+the stage component already owns all the per-slot state the stop action needs. Holds
 a `Map<runId, { boids: BoidState[]; cohesionSamples: number[]; elapsedSeconds: number }>` in a
 ref, seeded via `createInitialPopulation(boidCount, createRng(seed), maxLifespan)` per slot
 when it first appears in `slots`. One `requestAnimationFrame` loop: each frame, for every

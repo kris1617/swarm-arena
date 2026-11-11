@@ -77,7 +77,13 @@ Phase 1 beyond the plan's 6 named invariants.
   - Confidence: MEDIUM — untested how often this path would realistically trigger.
   - Blind spot: Haven't verified server-side behavior if `stop` is retried after a prior
     partial failure.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A. Added `onError` to `stopSlot`'s `mutate` call, force-finishing
+  the slot with `onFinishedRef.current(slot.runId, undefined)` and clearing
+  `manualStopPendingRunId`. Widened `markStopped`'s `score` param and `onFinished`'s type to
+  `number | undefined` to carry the "stopped but no real score" case through; the switcher
+  list now shows "Score unavailable (stop failed)" for that state. No new automated test was
+  added for this specific error path (would require mocking a tRPC mutation failure) —
+  verified by typecheck/lint/full-suite passing; accepted as a manual-verification item.
 
 ### F2 — The 4-run cap is enforced only client-side, not on the server
 
@@ -108,7 +114,15 @@ Phase 1 beyond the plan's 6 named invariants.
     multi-tab user — low real-world risk for a single-user app, but a conscious gap.
   - Confidence: HIGH — this is a straightforward risk-acceptance call, not a technical unknown.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A, after confirming with the user that this necessarily edits
+  `src/server/api/routers/simulation.ts` — the one file S-02 (`predator-prey-dynamics`) is
+  concurrently editing on its own branch, breaking this change's file-independence from S-02.
+  User chose to proceed, accepting a manual 3-way merge of that file when both PRs land (S-02's
+  predator params + FR-018 refine, plus this change's running-count check). Added a `count()`
+  query in `simulationRouter.start` over `simulationRuns` where `userId` matches and
+  `status = "running"`, rejecting with `BAD_REQUEST` at `MAX_PARALLEL_RUNS` (imported from
+  `run-slots.ts`, not re-declared). No new automated test added (no router test file existed
+  for this router in this worktree before this fix); verified by typecheck/lint/full-suite.
 
 ### F3 — Phase 2's planned `onStopRequested` prop wasn't built; Stop is self-contained instead
 
@@ -125,7 +139,7 @@ Phase 1 beyond the plan's 6 named invariants.
 - **Fix**: Update `plan.md`'s Phase 2 Contract text to describe the actual built architecture
   (self-contained Stop button, no `onStopRequested` prop) rather than leaving the plan
   describing a shape that was never built.
-- **Decision**: PENDING
+- **Decision**: FIXED — plan.md's Phase 2 Contract text updated.
 
 ### F4 — Ref mirroring happens in the render body, not an effect
 
@@ -138,4 +152,4 @@ Phase 1 beyond the plan's 6 named invariants.
   inside a `useEffect`. Works correctly today (synchronous, idempotent under Strict Mode
   double-render) but is a render-phase side effect, non-idiomatic React.
 - **Fix**: Move the three assignments into a `useEffect(() => { ... }, [slots, activeRunId, onFinished])`.
-- **Decision**: PENDING
+- **Decision**: FIXED — moved into a `useEffect`.

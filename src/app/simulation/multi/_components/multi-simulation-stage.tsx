@@ -45,7 +45,9 @@ type RunState = {
 export type MultiSimulationStageProps = {
 	slots: RunSlot[];
 	activeRunId: number | null;
-	onFinished: (runId: number, score: number) => void;
+	// `score` is `undefined` when the slot was force-finished after its stop
+	// mutation errored — see `stopSlot`'s `onError` below.
+	onFinished: (runId: number, score?: number) => void;
 };
 
 function drawBoids(ctx: CanvasRenderingContext2D, boids: BoidState[]) {
@@ -100,9 +102,11 @@ export function MultiSimulationStage({
 		number | null
 	>(null);
 
-	slotsRef.current = slots;
-	activeRunIdRef.current = activeRunId;
-	onFinishedRef.current = onFinished;
+	useEffect(() => {
+		slotsRef.current = slots;
+		activeRunIdRef.current = activeRunId;
+		onFinishedRef.current = onFinished;
+	}, [slots, activeRunId, onFinished]);
 
 	const stopRun = api.simulation.stop.useMutation();
 
@@ -135,6 +139,18 @@ export function MultiSimulationStage({
 							current === slot.runId ? null : current,
 						);
 						onFinishedRef.current(slot.runId, data.score);
+					},
+					// Without this, a network/server error leaves the slot
+					// permanently "running" (stepping already stopped via
+					// finishedRunIdsRef above, but status/UI never reflects
+					// it) — undismissable and stuck on "Stopping..." forever.
+					// Force-finish with no score instead, matching the
+					// single-run page's unconditional terminal-state guarantee.
+					onError: () => {
+						setManualStopPendingRunId((current) =>
+							current === slot.runId ? null : current,
+						);
+						onFinishedRef.current(slot.runId, undefined);
 					},
 				},
 			);
