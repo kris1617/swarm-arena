@@ -155,7 +155,7 @@ the alive-boid count exceeds the protection threshold.
 **Contract**: Export two pure functions (no module-level mutable state — callers thread the
 values through, matching this file's existing pure-function style):
 
-- `applyHunger(boids: BoidState[], foodStock: number, dtSeconds: number): { boids: BoidState[]; foodStock: number }`.
+- `applyHunger(boids: BoidState[], foodStock: number, dtSeconds: number, foodRegenRate: number): { boids: BoidState[]; foodStock: number }`.
   New constants `FOOD_CONSUMPTION_PER_BOID = 0.5` (stock units/boid/second) and
   `FOOD_REGEN_RATE` is a caller-supplied parameter (not a constant — it's one of the new
   persisted run parameters from Phase 2), `HUNGER_EXTRA_DECAY_RATE = 1` (extra lifespan

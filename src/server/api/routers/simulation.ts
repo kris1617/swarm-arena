@@ -12,14 +12,14 @@ export const simulationRouter = createTRPCRouter({
 			z
 				.object({
 					boidCount: z.number().int().positive().max(500),
-					separationWeight: z.number(),
-					alignmentWeight: z.number(),
-					cohesionWeight: z.number(),
+					separationWeight: z.number().finite(),
+					alignmentWeight: z.number().finite(),
+					cohesionWeight: z.number().finite(),
 					maxDurationSeconds: z.number().int().positive(),
 					predatorCount: z.number().int().nonnegative().max(500),
-					protectionThreshold: z.number().int().nonnegative(),
-					foodStockInitial: z.number().positive(),
-					foodRegenRate: z.number().nonnegative(),
+					protectionThreshold: z.number().int().nonnegative().max(500),
+					foodStockInitial: z.number().finite().positive(),
+					foodRegenRate: z.number().finite().nonnegative(),
 				})
 				.refine((input) => input.boidCount + input.predatorCount <= 500, {
 					message: "boidCount + predatorCount must not exceed 500",

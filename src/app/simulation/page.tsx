@@ -40,10 +40,9 @@ export default function SimulationPage() {
 			setActiveRun({
 				runId: data.runId,
 				seed: data.seed,
-				// Use the clamped boidCount/predatorCount actually sent to (and
-				// stored by) the server, not the raw form state, so the
-				// client-side simulation never runs with a count the FR-018
-				// guardrail didn't permit.
+				// Use the clamped/validated values actually sent to (and stored
+				// by) the server, not the raw form state, so the client-side
+				// simulation never runs with a value the server didn't accept.
 				boidCount: variables.boidCount,
 				weights: {
 					separation: separationWeight,
@@ -52,9 +51,9 @@ export default function SimulationPage() {
 				},
 				maxDurationSeconds,
 				predatorCount: variables.predatorCount,
-				protectionThreshold,
-				foodStockInitial,
-				foodRegenRate,
+				protectionThreshold: variables.protectionThreshold,
+				foodStockInitial: variables.foodStockInitial,
+				foodRegenRate: variables.foodRegenRate,
 			});
 		},
 	});
@@ -97,9 +96,12 @@ export default function SimulationPage() {
 								Math.max(0, Math.round(predatorCount)),
 								MAX_BOID_COUNT,
 							),
-							protectionThreshold: Math.max(0, Math.round(protectionThreshold)),
-							foodStockInitial,
-							foodRegenRate,
+							protectionThreshold: Math.min(
+								Math.max(0, Math.round(protectionThreshold)),
+								MAX_BOID_COUNT,
+							),
+							foodStockInitial: Math.max(0.1, foodStockInitial),
+							foodRegenRate: Math.max(0, foodRegenRate),
 						});
 					}}
 				>
@@ -172,10 +174,11 @@ export default function SimulationPage() {
 						/>
 					</label>
 					<label className="flex flex-col gap-1" htmlFor="protection-threshold">
-						Protection threshold
+						Protection threshold (0-{MAX_BOID_COUNT})
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="protection-threshold"
+							max={MAX_BOID_COUNT}
 							min={0}
 							onChange={(e) => setProtectionThreshold(Number(e.target.value))}
 							type="number"

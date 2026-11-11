@@ -68,7 +68,13 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   - Confidence: MEDIUM — unverified whether `drizzle-kit generate` cleanly diffs against an
     already-pushed state without re-applying anything.
   - Blind spot: Haven't tested the generate-after-push flow in this repo.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix B — generated `drizzle/0001_tough_ma_gnuci.sql` with
+  `drizzle-kit generate`. Since `simulation_run` itself was never captured by a prior
+  migration (it was created via `db:push` in S-01), the generated migration captures the
+  full current table (16 columns) rather than an incremental ALTER — this is expected given
+  the table's history, not a sign anything went wrong. The local dev `db.sqlite` is untouched
+  (it already has the table from `db:push`); this migration exists for any future environment
+  that bootstraps from `db:migrate` against an empty database.
 
 ### F2 — New food fields skip the form's clamp-before-submit convention
 
@@ -84,7 +90,7 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   everywhere else.
 - **Fix**: Clamp `foodStockInitial` to `Math.max(0.1, foodStockInitial)` and `foodRegenRate` to
   `Math.max(0, foodRegenRate)` before `.mutate`, matching the existing fields' style.
-- **Decision**: PENDING
+- **Decision**: FIXED — applied the clamp at page.tsx's submit handler.
 
 ### F3 — `onSuccess` reads 3 of the 4 new fields from closure state, not the validated payload
 
@@ -101,7 +107,7 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   extended to 3 more fields.
 - **Fix**: Read `protectionThreshold`/`foodStockInitial`/`foodRegenRate` from `variables` in
   `onSuccess`, matching `boidCount`'s pattern.
-- **Decision**: PENDING
+- **Decision**: FIXED — all 3 fields now read from `variables` in `onSuccess`.
 
 ### F4 — `protectionThreshold` has no upper bound
 
@@ -114,7 +120,9 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   `boids.length <= protectionThreshold`, no crash for arbitrarily large values — but it's the
   one new numeric field with no ceiling at all.
 - **Fix**: None needed — harmless by construction; a cap would be cosmetic.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `.max(500)` to `protectionThreshold` for consistency with
+  `boidCount`/`predatorCount`, and matched it client-side in `page.tsx` (label, `max`
+  attribute, and submit clamp).
 
 ### F5 — New and existing numeric fields accept `Infinity`
 
@@ -129,7 +137,9 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   Low likelihood, not a regression this change introduced.
 - **Fix**: Add `.finite()` to the numeric weight/food fields if hardening against direct API
   callers (not just the UI) is a goal — applies equally to the 3 pre-existing weight fields.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `.finite()` to all 5 numeric fields (`separationWeight`,
+  `alignmentWeight`, `cohesionWeight`, `foodStockInitial`, `foodRegenRate`), not just the 2
+  this change introduced, since the gap applied identically to the pre-existing fields.
 
 ### F6 — Plan's own Phase 1 Contract text is internally inconsistent about `applyHunger`'s signature
 
@@ -146,4 +156,4 @@ particles, no predator hunger/cooldown, no per-boid local-neighborhood threshold
   documentation fix so a future reader of the plan isn't confused.
 - **Fix**: Update plan.md:158 to state the 4-arg signature explicitly, matching what Phase 3
   already specifies.
-- **Decision**: PENDING
+- **Decision**: FIXED — plan.md's Phase 1 Contract text now states the 4-arg signature.
