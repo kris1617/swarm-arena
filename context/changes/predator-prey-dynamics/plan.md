@@ -433,9 +433,9 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npm run check passes
-- [x] 3.3 npx vitest run (full suite) passes
+- [x] 3.1 npm run typecheck passes — 5e0a9d8
+- [x] 3.2 npm run check passes — 5e0a9d8
+- [x] 3.3 npx vitest run (full suite) passes — 5e0a9d8
 
 #### Manual
 
