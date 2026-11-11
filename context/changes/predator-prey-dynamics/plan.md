@@ -412,22 +412,22 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold
-- [x] 1.2 Protection-threshold invariant: does get attacked above threshold
-- [x] 1.3 Flee steering moves a boid away from a nearby predator
-- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED
-- [x] 1.5 Hunger applies extra decay only when foodStock goes negative
-- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests
-- [x] 1.7 npm run typecheck passes
-- [x] 1.8 npm run check passes
+- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold — 0cafe2f
+- [x] 1.2 Protection-threshold invariant: does get attacked above threshold — 0cafe2f
+- [x] 1.3 Flee steering moves a boid away from a nearby predator — 0cafe2f
+- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED — 0cafe2f
+- [x] 1.5 Hunger applies extra decay only when foodStock goes negative — 0cafe2f
+- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests — 0cafe2f
+- [x] 1.7 npm run typecheck passes — 0cafe2f
+- [x] 1.8 npm run check passes — 0cafe2f
 
 ### Phase 2: Persistence & API — predator/food parameters
 
 #### Automated
 
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npm run check passes
-- [ ] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation
+- [x] 2.1 npm run typecheck passes
+- [x] 2.2 npm run check passes
+- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation
 
 ### Phase 3: Rendering & UI — predator visuals and form fields
 

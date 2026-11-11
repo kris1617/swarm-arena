@@ -74,6 +74,16 @@ export default function SimulationPage() {
 							alignmentWeight,
 							cohesionWeight,
 							maxDurationSeconds,
+							// ADAPT (Phase 2): start's input schema now requires these
+							// four predator/food parameters (Phase 2 scope), but their
+							// form fields and state are Phase 3 scope. Temporary
+							// no-predator defaults keep this call compiling and
+							// preserve the exact S-01 happy path (predatorCount 0)
+							// until Phase 3 wires real fields/state in their place.
+							predatorCount: 0,
+							protectionThreshold: 0,
+							foodStockInitial: 100,
+							foodRegenRate: 1,
 						});
 					}}
 				>
