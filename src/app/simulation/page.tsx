@@ -17,6 +17,10 @@ type ActiveRun = {
 	boidCount: number;
 	weights: { separation: number; alignment: number; cohesion: number };
 	maxDurationSeconds: number;
+	predatorCount: number;
+	protectionThreshold: number;
+	foodStockInitial: number;
+	foodRegenRate: number;
 };
 
 export default function SimulationPage() {
@@ -25,6 +29,10 @@ export default function SimulationPage() {
 	const [alignmentWeight, setAlignmentWeight] = useState(1);
 	const [cohesionWeight, setCohesionWeight] = useState(1);
 	const [maxDurationSeconds, setMaxDurationSeconds] = useState(30);
+	const [predatorCount, setPredatorCount] = useState(5);
+	const [protectionThreshold, setProtectionThreshold] = useState(10);
+	const [foodStockInitial, setFoodStockInitial] = useState(100);
+	const [foodRegenRate, setFoodRegenRate] = useState(10);
 	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
 
 	const startRun = api.simulation.start.useMutation({
@@ -32,9 +40,10 @@ export default function SimulationPage() {
 			setActiveRun({
 				runId: data.runId,
 				seed: data.seed,
-				// Use the clamped boidCount actually sent to (and stored by) the
-				// server, not the raw form state, so the client-side simulation
-				// never runs with a count the FR-018 guardrail didn't permit.
+				// Use the clamped boidCount/predatorCount actually sent to (and
+				// stored by) the server, not the raw form state, so the
+				// client-side simulation never runs with a count the FR-018
+				// guardrail didn't permit.
 				boidCount: variables.boidCount,
 				weights: {
 					separation: separationWeight,
@@ -42,6 +51,10 @@ export default function SimulationPage() {
 					cohesion: cohesionWeight,
 				},
 				maxDurationSeconds,
+				predatorCount: variables.predatorCount,
+				protectionThreshold,
+				foodStockInitial,
+				foodRegenRate,
 			});
 		},
 	});
@@ -53,9 +66,13 @@ export default function SimulationPage() {
 			{activeRun ? (
 				<SimulationCanvas
 					boidCount={activeRun.boidCount}
+					foodRegenRate={activeRun.foodRegenRate}
+					foodStockInitial={activeRun.foodStockInitial}
 					key={activeRun.runId}
 					maxDurationSeconds={activeRun.maxDurationSeconds}
 					onFinished={() => setActiveRun(null)}
+					predatorCount={activeRun.predatorCount}
+					protectionThreshold={activeRun.protectionThreshold}
 					runId={activeRun.runId}
 					seed={activeRun.seed}
 					weights={activeRun.weights}
@@ -74,16 +91,15 @@ export default function SimulationPage() {
 							alignmentWeight,
 							cohesionWeight,
 							maxDurationSeconds,
-							// ADAPT (Phase 2): start's input schema now requires these
-							// four predator/food parameters (Phase 2 scope), but their
-							// form fields and state are Phase 3 scope. Temporary
-							// no-predator defaults keep this call compiling and
-							// preserve the exact S-01 happy path (predatorCount 0)
-							// until Phase 3 wires real fields/state in their place.
-							predatorCount: 0,
-							protectionThreshold: 0,
-							foodStockInitial: 100,
-							foodRegenRate: 1,
+							// Clamped against the same 500 ceiling used server-side for
+							// the combined FR-018 boid+predator object-count cap.
+							predatorCount: Math.min(
+								Math.max(0, Math.round(predatorCount)),
+								MAX_BOID_COUNT,
+							),
+							protectionThreshold: Math.max(0, Math.round(protectionThreshold)),
+							foodStockInitial,
+							foodRegenRate,
 						});
 					}}
 				>
@@ -141,6 +157,53 @@ export default function SimulationPage() {
 							onChange={(e) => setMaxDurationSeconds(Number(e.target.value))}
 							type="number"
 							value={maxDurationSeconds}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="predator-count">
+						Predator count (0-{MAX_BOID_COUNT})
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="predator-count"
+							max={MAX_BOID_COUNT}
+							min={0}
+							onChange={(e) => setPredatorCount(Number(e.target.value))}
+							type="number"
+							value={predatorCount}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="protection-threshold">
+						Protection threshold
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="protection-threshold"
+							min={0}
+							onChange={(e) => setProtectionThreshold(Number(e.target.value))}
+							type="number"
+							value={protectionThreshold}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="food-stock-initial">
+						Initial food stock
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="food-stock-initial"
+							min={0}
+							onChange={(e) => setFoodStockInitial(Number(e.target.value))}
+							step="0.1"
+							type="number"
+							value={foodStockInitial}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="food-regen-rate">
+						Food regen rate
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="food-regen-rate"
+							min={0}
+							onChange={(e) => setFoodRegenRate(Number(e.target.value))}
+							step="0.1"
+							type="number"
+							value={foodRegenRate}
 						/>
 					</label>
 					<Button

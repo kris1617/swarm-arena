@@ -425,17 +425,17 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [x] 2.1 npm run typecheck passes
-- [x] 2.2 npm run check passes
-- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation
+- [x] 2.1 npm run typecheck passes — de94ca4
+- [x] 2.2 npm run check passes — de94ca4
+- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation — de94ca4
 
 ### Phase 3: Rendering & UI — predator visuals and form fields
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npm run check passes
-- [ ] 3.3 npx vitest run (full suite) passes
+- [x] 3.1 npm run typecheck passes
+- [x] 3.2 npm run check passes
+- [x] 3.3 npx vitest run (full suite) passes
 
 #### Manual
 
