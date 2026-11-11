@@ -238,28 +238,28 @@ Not applicable — `simulation_run` is a new table with no prior data to migrate
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Schema migration applies cleanly: `npm run db:push`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 362d37a
+- [x] 2.2 Linting passes: `npm run check` — 362d37a
+- [x] 2.3 Schema migration applies cleanly: `npm run db:push` — 362d37a
 
 #### Manual
 
-- [x] 2.4 `simulation.start` with a logged-in session returns `runId`/`seed` and inserts a visible row
-- [x] 2.5 `simulation.stop` updates the row to `stopped` with a non-null `score`
-- [x] 2.6 Calling either procedure without a session throws `UNAUTHORIZED`
-- [x] 2.7 Calling `simulation.stop` on another user's run throws `FORBIDDEN`
+- [x] 2.4 `simulation.start` with a logged-in session returns `runId`/`seed` and inserts a visible row — 362d37a
+- [x] 2.5 `simulation.stop` updates the row to `stopped` with a non-null `score` — 362d37a
+- [x] 2.6 Calling either procedure without a session throws `UNAUTHORIZED` — 362d37a
+- [x] 2.7 Calling `simulation.stop` on another user's run throws `FORBIDDEN` — 362d37a
 
 ### Phase 3: UI — setup screen + canvas render loop
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
 
 #### Manual
 
-- [ ] 3.3 Boids visibly flock as a cohesive group on starting a run
-- [ ] 3.4 Population visibly shrinks over a run as placeholder lifespan counts down
-- [ ] 3.5 Stopping a run shows a numeric score and halts the canvas loop
-- [ ] 3.6 A run at the clamped max boid count does not visibly freeze
-- [ ] 3.7 Logged-out access to `/simulation` and direct `start`/`stop` calls are both rejected
+- [x] 3.3 Boids visibly flock as a cohesive group on starting a run
+- [x] 3.4 Population visibly shrinks over a run as placeholder lifespan counts down
+- [x] 3.5 Stopping a run shows a numeric score and halts the canvas loop
+- [x] 3.6 A run at the clamped max boid count does not visibly freeze
+- [x] 3.7 Logged-out access to `/simulation` and direct `start`/`stop` calls are both rejected
