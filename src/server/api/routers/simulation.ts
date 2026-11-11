@@ -1,10 +1,14 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { simulationRuns } from "~/server/db/schema";
 import { computeScore } from "~/server/simulation/boids";
+// S-05 (parallel-sim-switching): the client-side run-slot manager already
+// caps a single browser session at MAX_PARALLEL_RUNS, but that's UI-only —
+// a second tab or a direct API call would bypass it without this check.
+import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 
 export const simulationRouter = createTRPCRouter({
 	start: protectedProcedure
@@ -30,6 +34,23 @@ export const simulationRouter = createTRPCRouter({
 			const userId = ctx.session.user.id;
 			if (!userId) {
 				throw new TRPCError({ code: "UNAUTHORIZED" });
+			}
+
+			const [runningCountRow] = await ctx.db
+				.select({ runningCount: count() })
+				.from(simulationRuns)
+				.where(
+					and(
+						eq(simulationRuns.userId, userId),
+						eq(simulationRuns.status, "running"),
+					),
+				);
+			const runningCount = runningCountRow?.runningCount ?? 0;
+			if (runningCount >= MAX_PARALLEL_RUNS) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
+				});
 			}
 
 			const seed = Date.now() ^ Math.floor(Math.random() * 2 ** 31);

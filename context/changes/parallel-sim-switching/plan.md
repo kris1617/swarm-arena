@@ -160,7 +160,9 @@ that satisfies the PRD's "switching doesn't slow the others" guardrail.
 **Contract**: A component accepting `slots: RunSlot[]`, `activeRunId: number | null`, and
 callbacks `onFinished(runId, score)` (called once per slot when its `maxDurationSeconds`
 elapses or its population is wiped out — same two stop conditions `simulation-canvas.tsx`
-already uses) and `onStopRequested` wiring for a manual Stop action on the active slot. Holds
+already uses). Manual-stop for the active slot is self-contained — an internal ref checked
+once per tick plus its own Stop `Button` — rather than an `onStopRequested` callback prop, since
+the stage component already owns all the per-slot state the stop action needs. Holds
 a `Map<runId, { boids: BoidState[]; cohesionSamples: number[]; elapsedSeconds: number }>` in a
 ref, seeded via `createInitialPopulation(boidCount, createRng(seed), maxLifespan)` per slot
 when it first appears in `slots`. One `requestAnimationFrame` loop: each frame, for every
@@ -297,38 +299,38 @@ None — no schema changes in this slice.
 
 #### Automated
 
-- [ ] 1.1 addSlot rejects a 5th slot once 4 exist
-- [ ] 1.2 addSlot makes the newly added slot active
-- [ ] 1.3 setActive changes only activeRunId
-- [ ] 1.4 markStopped sets status/score, no-op if already stopped
-- [ ] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one
-- [ ] 1.6 removeSlot reassigns activeRunId when the active slot is removed
-- [ ] 1.7 npm run typecheck passes
-- [ ] 1.8 npm run check passes
+- [x] 1.1 addSlot rejects a 5th slot once 4 exist — 1b68769
+- [x] 1.2 addSlot makes the newly added slot active — 1b68769
+- [x] 1.3 setActive changes only activeRunId — 1b68769
+- [x] 1.4 markStopped sets status/score, no-op if already stopped — 1b68769
+- [x] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one — 1b68769
+- [x] 1.6 removeSlot reassigns activeRunId when the active slot is removed — 1b68769
+- [x] 1.7 npm run typecheck passes — 1b68769
+- [x] 1.8 npm run check passes — 1b68769
 
 ### Phase 2: Shared step-loop runner
 
 #### Automated
 
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npm run check passes
+- [x] 2.1 npm run typecheck passes — f6e5c1d
+- [x] 2.2 npm run check passes — f6e5c1d
 
 #### Manual
 
-- [ ] 2.3 Background run's elapsed time keeps advancing while another is viewed
-- [ ] 2.4 Switching active run redraws immediately with no restart/reset
+- [x] 2.3 Background run's elapsed time keeps advancing while another is viewed
+- [x] 2.4 Switching active run redraws immediately with no restart/reset
 
 ### Phase 3: Route & UI
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npm run check passes
-- [ ] 3.3 npx vitest run (full suite) passes
+- [x] 3.1 npm run typecheck passes — c5d851c
+- [x] 3.2 npm run check passes — c5d851c
+- [x] 3.3 npx vitest run (full suite) passes — c5d851c
 
 #### Manual
 
-- [ ] 3.4 4 runs with distinct parameters stay independent across switches
-- [ ] 3.5 5th start attempt is blocked at the cap
-- [ ] 3.6 Stopped run's score persists until dismissed; dismiss frees the slot
-- [ ] 3.7 /simulation (existing single-run page) shows no regression
+- [x] 3.4 4 runs with distinct parameters stay independent across switches
+- [x] 3.5 5th start attempt is blocked at the cap
+- [x] 3.6 Stopped run's score persists until dismissed; dismiss frees the slot
+- [x] 3.7 /simulation (existing single-run page) shows no regression
