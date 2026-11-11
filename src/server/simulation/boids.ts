@@ -115,12 +115,12 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 			const ny = dist > 0 ? dy / dist : 0;
 			const nz = dist > 0 ? dz / dist : 0;
 			const overlap = MIN_SEPARATION_DISTANCE - dist;
-			a.x -= (nx * overlap) / 2;
-			a.y -= (ny * overlap) / 2;
-			a.z -= (nz * overlap) / 2;
-			b.x += (nx * overlap) / 2;
-			b.y += (ny * overlap) / 2;
-			b.z += (nz * overlap) / 2;
+			a.x = wrap(a.x - (nx * overlap) / 2, INITIAL_AREA_SIZE);
+			a.y = wrap(a.y - (ny * overlap) / 2, INITIAL_AREA_SIZE);
+			a.z = wrap(a.z - (nz * overlap) / 2, Z_DEPTH_RANGE);
+			b.x = wrap(b.x + (nx * overlap) / 2, INITIAL_AREA_SIZE);
+			b.y = wrap(b.y + (ny * overlap) / 2, INITIAL_AREA_SIZE);
+			b.z = wrap(b.z + (nz * overlap) / 2, Z_DEPTH_RANGE);
 		}
 	}
 	return resolved;
@@ -284,7 +284,16 @@ function circularMean(values: number[], range: number): number {
 		sumSin += Math.sin(theta);
 		sumCos += Math.cos(theta);
 	}
-	const meanTheta = Math.atan2(sumSin / values.length, sumCos / values.length);
+	const avgSin = sumSin / values.length;
+	const avgCos = sumCos / values.length;
+	// Both land near 0 when values are symmetrically split around the torus
+	// (e.g. a dispersed flock in two equal clusters half the range apart) —
+	// without this guard, atan2 would return an angle dominated by
+	// floating-point residue rather than a clean, deterministic tie-break.
+	if (Math.hypot(avgSin, avgCos) < 1e-9) {
+		return 0;
+	}
+	const meanTheta = Math.atan2(avgSin, avgCos);
 	return wrap((meanTheta / (2 * Math.PI)) * range, range);
 }
 

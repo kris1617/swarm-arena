@@ -172,7 +172,6 @@ export function SimulationCanvas({
 		};
 		// Props are fixed for the lifetime of a run (the page remounts this
 		// component with a new `key` per runId), so this effect runs once.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [runId]);
 
 	function handleManualStop() {

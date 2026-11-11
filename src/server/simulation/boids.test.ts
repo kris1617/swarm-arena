@@ -287,6 +287,32 @@ describe("stepBoids", () => {
 		}
 	}, 15000);
 
+	it("converges to a stable flock when initially spread along z only (z-isolated)", () => {
+		// All boids share the same x/y and differ only in z, with zero
+		// initial velocity — isolates z-axis flocking dynamics specifically
+		// (neighbor-sensing, separation, alignment, cohesion must all pull
+		// correctly through z alone at the start), the way the existing
+		// multi-seed test exercises x/y/z together but not z in isolation.
+		let boids: BoidState[] = Array.from({ length: 20 }, (_, i) => ({
+			x: 100,
+			y: 100,
+			z: i * 10,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+		}));
+
+		for (let i = 0; i < 1000; i++) {
+			boids = stepBoids(boids, WEIGHTS, 0.016);
+		}
+
+		// This exact symmetric spacing settles into a stable equilibrium at
+		// cohesion 0.5 (verified) rather than drifting toward it — 0.4 gives
+		// headroom against that exact value instead of asserting equality.
+		expect(computeCohesion(boids)).toBeGreaterThan(0.4);
+	});
+
 	it("does not collapse a flock to a single point over many steps (regression)", () => {
 		// Verified repro: with unnormalized cohesion/alignment (the bug this
 		// guards against), this exact seed/count/dt/duration collapses to
