@@ -322,9 +322,9 @@ None — no schema changes in this slice.
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npm run check passes
-- [x] 3.3 npx vitest run (full suite) passes
+- [x] 3.1 npm run typecheck passes — c5d851c
+- [x] 3.2 npm run check passes — c5d851c
+- [x] 3.3 npx vitest run (full suite) passes — c5d851c
 
 #### Manual
 
