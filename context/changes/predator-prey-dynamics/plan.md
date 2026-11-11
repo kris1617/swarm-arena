@@ -412,14 +412,14 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [ ] 1.1 Protection-threshold invariant: never attacked at/below threshold
-- [ ] 1.2 Protection-threshold invariant: does get attacked above threshold
-- [ ] 1.3 Flee steering moves a boid away from a nearby predator
-- [ ] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED
-- [ ] 1.5 Hunger applies extra decay only when foodStock goes negative
-- [ ] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests
-- [ ] 1.7 npm run typecheck passes
-- [ ] 1.8 npm run check passes
+- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold
+- [x] 1.2 Protection-threshold invariant: does get attacked above threshold
+- [x] 1.3 Flee steering moves a boid away from a nearby predator
+- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED
+- [x] 1.5 Hunger applies extra decay only when foodStock goes negative
+- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests
+- [x] 1.7 npm run typecheck passes
+- [x] 1.8 npm run check passes
 
 ### Phase 2: Persistence & API — predator/food parameters
 

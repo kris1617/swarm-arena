@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	applyHunger,
+	applyPredation,
 	type BoidState,
 	computeCohesion,
 	computeScore,
 	createInitialPopulation,
+	type PredatorState,
 	stepBoids,
+	stepPredators,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 
@@ -383,6 +387,162 @@ describe("computeCohesion", () => {
 		];
 
 		expect(computeCohesion(spread)).toBeLessThan(computeCohesion(tight));
+	});
+});
+
+describe("predator-prey dynamics", () => {
+	it("stepBoids with no predators arg behaves identically to the pre-change call", () => {
+		// Confirms the default-empty-array backward-compat claim: omitting the
+		// new `predators` parameter must be bit-for-bit identical to passing
+		// an explicit empty array.
+		const population = createInitialPopulation(10, createRng(1), 100);
+
+		const withoutArg = stepBoids(population, WEIGHTS, 0.1);
+		const withEmptyArray = stepBoids(population, WEIGHTS, 0.1, []);
+
+		expect(withoutArg).toEqual(withEmptyArray);
+	});
+
+	it("flee steering moves a boid measurably away from a nearby predator", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		const boid: BoidState = {
+			x: 100,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const predator: PredatorState = {
+			x: 95,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const distanceBefore = Math.hypot(
+			boid.x - predator.x,
+			boid.y - predator.y,
+			boid.z - predator.z,
+		);
+
+		const [stepped] = stepBoids([boid], weights, 0.1, [predator]);
+
+		const distanceAfter = Math.hypot(
+			(stepped as BoidState).x - predator.x,
+			(stepped as BoidState).y - predator.y,
+			(stepped as BoidState).z - predator.z,
+		);
+		expect(distanceAfter).toBeGreaterThan(distanceBefore);
+	});
+
+	it("stepPredators clamps predator speed into PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED regardless of starting speed", () => {
+		const boid: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const slow: PredatorState = {
+			x: 10,
+			y: 0,
+			z: 0,
+			vx: 0.01,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const fast: PredatorState = {
+			x: 10,
+			y: 0,
+			z: 0,
+			vx: 1000,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+
+		const [steppedSlow] = stepPredators([slow], [boid], 0.1);
+		const [steppedFast] = stepPredators([fast], [boid], 0.1);
+
+		const slowSpeed = Math.hypot(
+			(steppedSlow as PredatorState).vx,
+			(steppedSlow as PredatorState).vy,
+			(steppedSlow as PredatorState).vz,
+		);
+		const fastSpeed = Math.hypot(
+			(steppedFast as PredatorState).vx,
+			(steppedFast as PredatorState).vy,
+			(steppedFast as PredatorState).vz,
+		);
+		expect(slowSpeed).toBeGreaterThanOrEqual(20 - 1e-9);
+		expect(slowSpeed).toBeLessThanOrEqual(55 + 1e-9);
+		expect(fastSpeed).toBeGreaterThanOrEqual(20 - 1e-9);
+		expect(fastSpeed).toBeLessThanOrEqual(55 + 1e-9);
+	});
+
+	it("applyHunger applies extra decay only when foodStock goes negative", () => {
+		const boids: BoidState[] = [
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 },
+		];
+
+		const starved = applyHunger(boids, -5, 1, 0);
+		const fed = applyHunger(boids, 1000, 1, 0);
+
+		expect(starved.foodStock).toBeLessThan(0);
+		expect(starved.boids[0]?.lifespan).toBeLessThan(10);
+		expect(fed.foodStock).toBeGreaterThanOrEqual(0);
+		expect(fed.boids[0]?.lifespan).toBe(10);
+	});
+
+	it("protection threshold: a flock at or below the threshold is never attacked", () => {
+		// Long lifespans isolate predation from natural death — any boid loss
+		// here can only be attributable to applyPredation.
+		let boids: BoidState[] = Array.from({ length: 5 }, (_, i) => ({
+			x: i,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 10_000,
+		}));
+		const predators: PredatorState[] = [
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10_000 },
+		];
+		const protectionThreshold = 5;
+
+		for (let i = 0; i < 10; i++) {
+			boids = applyPredation(boids, predators, protectionThreshold);
+		}
+
+		expect(boids).toHaveLength(5);
+	});
+
+	it("protection threshold: a flock above the threshold does get attacked", () => {
+		let boids: BoidState[] = Array.from({ length: 5 }, (_, i) => ({
+			x: i,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 10_000,
+		}));
+		const predators: PredatorState[] = [
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10_000 },
+		];
+		const protectionThreshold = 0;
+
+		boids = applyPredation(boids, predators, protectionThreshold);
+
+		expect(boids.length).toBeLessThan(5);
 	});
 });
 
