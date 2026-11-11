@@ -317,8 +317,8 @@ None — no schema changes in this slice.
 
 #### Manual
 
-- [ ] 2.3 Background run's elapsed time keeps advancing while another is viewed
-- [ ] 2.4 Switching active run redraws immediately with no restart/reset
+- [x] 2.3 Background run's elapsed time keeps advancing while another is viewed
+- [x] 2.4 Switching active run redraws immediately with no restart/reset
 
 ### Phase 3: Route & UI
 
@@ -330,7 +330,7 @@ None — no schema changes in this slice.
 
 #### Manual
 
-- [ ] 3.4 4 runs with distinct parameters stay independent across switches
-- [ ] 3.5 5th start attempt is blocked at the cap
-- [ ] 3.6 Stopped run's score persists until dismissed; dismiss frees the slot
-- [ ] 3.7 /simulation (existing single-run page) shows no regression
+- [x] 3.4 4 runs with distinct parameters stay independent across switches
+- [x] 3.5 5th start attempt is blocked at the cap
+- [x] 3.6 Stopped run's score persists until dismissed; dismiss frees the slot
+- [x] 3.7 /simulation (existing single-run page) shows no regression
