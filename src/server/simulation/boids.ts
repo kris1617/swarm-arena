@@ -14,6 +14,19 @@ export type FlockWeights = {
 	cohesion: number;
 };
 
+// Same shape as BoidState — predators carry no hunger field of their own
+// (hunger is a global food-stock mechanic that only ever acts on boids this
+// slice; predators die only from natural lifespan expiry).
+export type PredatorState = {
+	x: number;
+	y: number;
+	z: number;
+	vx: number;
+	vy: number;
+	vz: number;
+	lifespan: number;
+};
+
 // Side length of the square area initial positions are spread over.
 const INITIAL_AREA_SIZE = 200;
 // Depth of the volume initial z positions are spread over. Sized comparably
@@ -45,6 +58,31 @@ const MAX_SPEED = 40;
 // so a boid cruising at MIN_SPEED-MAX_SPEED can actually be redirected within
 // a few ticks instead of the steering nudge being negligible next to speed.
 const STEERING_FORCE_SCALE = 120;
+// Predator cruise-speed bounds — deliberately faster than boids' MIN_SPEED/
+// MAX_SPEED (15-40) so a predator can actually close the gap on a fleeing
+// boid instead of hunting being invisible.
+const PREDATOR_MIN_SPEED = 20;
+const PREDATOR_MAX_SPEED = 55;
+// Distance at which a predator captures the nearest boid in applyPredation.
+// Sized just above MIN_SEPARATION_DISTANCE (so capture needs real contact,
+// not just proximity) and well below SEPARATION_RADIUS.
+const CAPTURE_RADIUS = 6;
+// Distance at which a boid starts fleeing the nearest predator in stepBoids.
+// Sized between SEPARATION_RADIUS and NEIGHBOR_RADIUS so flee steering kicks
+// in before a predator is close enough to threaten capture, but isn't
+// triggered by every distant predator in the simulation.
+const PREDATOR_DETECTION_RADIUS = 50;
+// Fixed engine constant (not a user-tunable FlockWeights field, same class
+// as STEERING_FORCE_SCALE) — weights flee steering strongly enough to
+// override normal flocking so a nearby predator visibly scatters a flock.
+const FLEE_WEIGHT = 2;
+// Food-stock units consumed per boid per second of simulated time.
+const FOOD_CONSUMPTION_PER_BOID = 0.5;
+// Extra lifespan decay (units/second) applied to every boid, layered on top
+// of stepBoids' unconditional per-tick decay, only while food stock is
+// negative — FR-008 treats hunger as an accelerant on the existing death
+// mechanism, never a separate, independent death check.
+const HUNGER_EXTRA_DECAY_RATE = 1;
 
 // Wraps a coordinate into [0, range) — toroidal boundaries, so a boid that
 // exits one edge re-enters from the opposite one instead of drifting off
@@ -76,6 +114,22 @@ export function createInitialPopulation(
 	rng: () => number,
 	maxLifespan: number,
 ): BoidState[] {
+	return Array.from({ length: count }, () => ({
+		x: rng() * INITIAL_AREA_SIZE,
+		y: rng() * INITIAL_AREA_SIZE,
+		z: rng() * Z_DEPTH_RANGE,
+		vx: (rng() - 0.5) * INITIAL_SPEED,
+		vy: (rng() - 0.5) * INITIAL_SPEED,
+		vz: (rng() - 0.5) * INITIAL_SPEED,
+		lifespan: maxLifespan,
+	}));
+}
+
+export function createInitialPredators(
+	count: number,
+	rng: () => number,
+	maxLifespan: number,
+): PredatorState[] {
 	return Array.from({ length: count }, () => ({
 		x: rng() * INITIAL_AREA_SIZE,
 		y: rng() * INITIAL_AREA_SIZE,
@@ -130,6 +184,7 @@ export function stepBoids(
 	boids: BoidState[],
 	weights: FlockWeights,
 	dtSeconds: number,
+	predators: PredatorState[] = [],
 ): BoidState[] {
 	const stepped = boids.map((boid) => {
 		// Single O(n) pass per boid instead of two separate `.filter()` calls
@@ -225,25 +280,61 @@ export function stepBoids(
 			}
 		}
 
+		// Flee steering: a unit vector pointing away from the nearest predator
+		// within PREDATOR_DETECTION_RADIUS, weighted by the fixed FLEE_WEIGHT
+		// constant so it can override normal flocking. No predators in range
+		// (including the default empty `predators` array) leaves this at zero,
+		// making behavior bit-for-bit identical to the pre-predator engine.
+		let fleeX = 0;
+		let fleeY = 0;
+		let fleeZ = 0;
+		let nearestPredatorDist = Infinity;
+		let nearestPredatorDx = 0;
+		let nearestPredatorDy = 0;
+		let nearestPredatorDz = 0;
+		for (const predator of predators) {
+			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dist = Math.hypot(dx, dy, dz);
+			if (dist <= PREDATOR_DETECTION_RADIUS && dist < nearestPredatorDist) {
+				nearestPredatorDist = dist;
+				nearestPredatorDx = dx;
+				nearestPredatorDy = dy;
+				nearestPredatorDz = dz;
+			}
+		}
+		if (
+			nearestPredatorDist <= PREDATOR_DETECTION_RADIUS &&
+			nearestPredatorDist > 0
+		) {
+			fleeX = nearestPredatorDx / nearestPredatorDist;
+			fleeY = nearestPredatorDy / nearestPredatorDist;
+			fleeZ = nearestPredatorDz / nearestPredatorDist;
+		}
+
 		const steeredVx =
 			boid.vx +
 			(separationX * weights.separation +
 				alignmentX * weights.alignment +
-				cohesionX * weights.cohesion) *
+				cohesionX * weights.cohesion +
+				fleeX * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 		const steeredVy =
 			boid.vy +
 			(separationY * weights.separation +
 				alignmentY * weights.alignment +
-				cohesionY * weights.cohesion) *
+				cohesionY * weights.cohesion +
+				fleeY * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 		const steeredVz =
 			boid.vz +
 			(separationZ * weights.separation +
 				alignmentZ * weights.alignment +
-				cohesionZ * weights.cohesion) *
+				cohesionZ * weights.cohesion +
+				fleeZ * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 
@@ -268,6 +359,141 @@ export function stepBoids(
 	});
 
 	return resolveOverlaps(stepped).filter((boid) => boid.lifespan > 0);
+}
+
+// Each predator pursues its nearest living boid in a straight line (no
+// separation/alignment/cohesion among predators — out of scope this slice),
+// cruising within its own (faster) speed bounds and wrapping toroidally.
+export function stepPredators(
+	predators: PredatorState[],
+	boids: BoidState[],
+	dtSeconds: number,
+): PredatorState[] {
+	const stepped = predators.map((predator) => {
+		// A predator with no boids left to target holds its current heading
+		// unsteered (steerX/Y/Z stay 0) rather than erroring.
+		let steerX = 0;
+		let steerY = 0;
+		let steerZ = 0;
+		let nearestDist = Infinity;
+		let nearestDx = 0;
+		let nearestDy = 0;
+		let nearestDz = 0;
+		for (const boid of boids) {
+			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dist = Math.hypot(dx, dy, dz);
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestDx = dx;
+				nearestDy = dy;
+				nearestDz = dz;
+			}
+		}
+		if (nearestDist > 0 && nearestDist !== Infinity) {
+			steerX = nearestDx / nearestDist;
+			steerY = nearestDy / nearestDist;
+			steerZ = nearestDz / nearestDist;
+		}
+
+		const steeredVx = predator.vx + steerX * STEERING_FORCE_SCALE * dtSeconds;
+		const steeredVy = predator.vy + steerY * STEERING_FORCE_SCALE * dtSeconds;
+		const steeredVz = predator.vz + steerZ * STEERING_FORCE_SCALE * dtSeconds;
+
+		const speed = Math.hypot(steeredVx, steeredVy, steeredVz);
+		const clampedSpeed = Math.min(
+			Math.max(speed, PREDATOR_MIN_SPEED),
+			PREDATOR_MAX_SPEED,
+		);
+		const vx = speed > 0 ? (steeredVx / speed) * clampedSpeed : clampedSpeed;
+		const vy = speed > 0 ? (steeredVy / speed) * clampedSpeed : 0;
+		const vz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
+
+		return {
+			x: wrap(predator.x + vx * dtSeconds, INITIAL_AREA_SIZE),
+			y: wrap(predator.y + vy * dtSeconds, INITIAL_AREA_SIZE),
+			z: wrap(predator.z + vz * dtSeconds, Z_DEPTH_RANGE),
+			vx,
+			vy,
+			vz,
+			lifespan: predator.lifespan - dtSeconds,
+		};
+	});
+
+	return stepped.filter((predator) => predator.lifespan > 0);
+}
+
+// Maintains the single global food-stock number across ticks: depletes with
+// population size, regenerates by the caller-supplied rate (one of the
+// run's persisted parameters, not an engine constant), and — only when the
+// resulting stock goes negative — applies an *extra* lifespan decay on top
+// of stepBoids' unconditional per-tick decay. This is deliberately one
+// death mechanism with an accelerant, not two independent ones (FR-008).
+export function applyHunger(
+	boids: BoidState[],
+	foodStock: number,
+	dtSeconds: number,
+	foodRegenRate: number,
+): { boids: BoidState[]; foodStock: number } {
+	const depleted =
+		foodStock - boids.length * FOOD_CONSUMPTION_PER_BOID * dtSeconds;
+	const nextFoodStock = depleted + foodRegenRate * dtSeconds;
+
+	if (nextFoodStock >= 0) {
+		return { boids, foodStock: nextFoodStock };
+	}
+
+	const hungryBoids = boids
+		.map((boid) => ({
+			...boid,
+			lifespan: boid.lifespan - HUNGER_EXTRA_DECAY_RATE * dtSeconds,
+		}))
+		.filter((boid) => boid.lifespan > 0);
+
+	return { boids: hungryBoids, foodStock: nextFoodStock };
+}
+
+// The PRD's named US-01 acceptance criterion: a flock at or below the
+// protection threshold is never attacked. Above the threshold, each
+// predator captures its nearest boid within CAPTURE_RADIUS (instant kill,
+// no cooldown/energy transfer this slice); a boid already captured by an
+// earlier predator in the same tick cannot be captured again.
+export function applyPredation(
+	boids: BoidState[],
+	predators: PredatorState[],
+	protectionThreshold: number,
+): BoidState[] {
+	if (boids.length <= protectionThreshold) {
+		return boids;
+	}
+
+	const captured = new Set<BoidState>();
+	for (const predator of predators) {
+		let nearest: BoidState | null = null;
+		let nearestDist = Infinity;
+		for (const boid of boids) {
+			if (captured.has(boid)) {
+				continue;
+			}
+			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dist = Math.hypot(dx, dy, dz);
+			if (dist <= CAPTURE_RADIUS && dist < nearestDist) {
+				nearestDist = dist;
+				nearest = boid;
+			}
+		}
+		if (nearest) {
+			captured.add(nearest);
+		}
+	}
+
+	if (captured.size === 0) {
+		return boids;
+	}
+	return boids.filter((boid) => !captured.has(boid));
 }
 
 // Circular mean: the correct way to average coordinates on a torus. A plain

@@ -11,3 +11,8 @@
 // rather than merging the two.
 export const CANVAS_BACKGROUND = "#1e293b";
 export const BOID_FILL_COLOR = "#38bdf8";
+// Warm tone (red/orange family) contrasting with the cool blue BOID_FILL_COLOR
+// against CANVAS_BACKGROUND — a "predator = danger" visual convention, paired
+// with a distinct shape (not color alone) for robustness, including for
+// colorblind users.
+export const PREDATOR_FILL_COLOR = "#f97316";

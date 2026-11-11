@@ -9,13 +9,22 @@ import { computeScore } from "~/server/simulation/boids";
 export const simulationRouter = createTRPCRouter({
 	start: protectedProcedure
 		.input(
-			z.object({
-				boidCount: z.number().int().positive().max(500),
-				separationWeight: z.number(),
-				alignmentWeight: z.number(),
-				cohesionWeight: z.number(),
-				maxDurationSeconds: z.number().int().positive(),
-			}),
+			z
+				.object({
+					boidCount: z.number().int().positive().max(500),
+					separationWeight: z.number().finite(),
+					alignmentWeight: z.number().finite(),
+					cohesionWeight: z.number().finite(),
+					maxDurationSeconds: z.number().int().positive(),
+					predatorCount: z.number().int().nonnegative().max(500),
+					protectionThreshold: z.number().int().nonnegative().max(500),
+					foodStockInitial: z.number().finite().positive(),
+					foodRegenRate: z.number().finite().nonnegative(),
+				})
+				.refine((input) => input.boidCount + input.predatorCount <= 500, {
+					message: "boidCount + predatorCount must not exceed 500",
+					path: ["predatorCount"],
+				}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
@@ -35,6 +44,10 @@ export const simulationRouter = createTRPCRouter({
 					alignmentWeight: input.alignmentWeight,
 					cohesionWeight: input.cohesionWeight,
 					maxDurationSeconds: input.maxDurationSeconds,
+					predatorCount: input.predatorCount,
+					protectionThreshold: input.protectionThreshold,
+					foodStockInitial: input.foodStockInitial,
+					foodRegenRate: input.foodRegenRate,
 					status: "running",
 				})
 				.returning({ id: simulationRuns.id });
