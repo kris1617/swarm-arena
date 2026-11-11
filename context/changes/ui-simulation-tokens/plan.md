@@ -274,13 +274,13 @@ Not applicable — no persisted data, no schema change; this is a presentation-l
 
 #### Automated
 
-- [x] 4.1 Type checking passes: `npm run typecheck`
-- [x] 4.2 Linting passes: `npm run check`
-- [x] 4.3 `AGENTS.md` contains the new UI section
+- [x] 4.1 Type checking passes: `npm run typecheck` — 9ef07a3
+- [x] 4.2 Linting passes: `npm run check` — 9ef07a3
+- [x] 4.3 `AGENTS.md` contains the new UI section — 9ef07a3
 
 #### Manual
 
-- [x] 4.4 All 7 states are visible on the kitchen-sink page
-- [x] 4.5 Screenshot evidence saved (desktop + one wide-desktop width — no true mobile-width shot taken; grid responsiveness at narrow widths is unverified)
-- [x] 4.6 `--destructive` gives readable contrast for error text
-- [x] 4.7 `--ring` focus-visible outline is visible against the dark background
+- [x] 4.4 All 7 states are visible on the kitchen-sink page — 9ef07a3
+- [x] 4.5 Screenshot evidence saved (desktop + one wide-desktop width — no true mobile-width shot taken; grid responsiveness at narrow widths is unverified) — 9ef07a3
+- [x] 4.6 `--destructive` gives readable contrast for error text — 9ef07a3
+- [x] 4.7 `--ring` focus-visible outline is visible against the dark background — 9ef07a3
