@@ -246,16 +246,16 @@ Not applicable — no persisted data, no schema change; this is a presentation-l
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `components.json` and `src/components/ui/button.tsx`, `src/components/ui/input.tsx` exist
+- [x] 1.1 Type checking passes: `npm run typecheck` — 2f246d4
+- [x] 1.2 Linting passes: `npm run check` — 2f246d4
+- [x] 1.3 `components.json` and `src/components/ui/button.tsx`, `src/components/ui/input.tsx` exist — 2f246d4
 
 ### Phase 2: Token values
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
 
 ### Phase 3: One view
 
