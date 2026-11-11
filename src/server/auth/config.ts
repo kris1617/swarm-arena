@@ -28,7 +28,8 @@ declare module "next-auth" {
 }
 
 const adminEmails = new Set(
-	env.ADMIN_EMAILS.split(",")
+	(env.ADMIN_EMAILS ?? "")
+		.split(",")
 		.map((email) => email.trim().toLowerCase())
 		.filter((email) => email.length > 0),
 );
