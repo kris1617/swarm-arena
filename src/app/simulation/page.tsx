@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 
 // FR-018 object-count guardrail for this slice (S-01): a hardcoded client
@@ -45,7 +47,7 @@ export default function SimulationPage() {
 	});
 
 	return (
-		<main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b from-[#2e026d] to-[#15162c] p-8 text-white">
+		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Flocking Simulation</h1>
 
 			{activeRun ? (
@@ -75,10 +77,11 @@ export default function SimulationPage() {
 						});
 					}}
 				>
-					<label className="flex flex-col gap-1">
+					<label className="flex flex-col gap-1" htmlFor="boid-count">
 						Boid count (1-{MAX_BOID_COUNT})
-						<input
-							className="rounded-full bg-white/10 px-4 py-2 text-white"
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="boid-count"
 							max={MAX_BOID_COUNT}
 							min={1}
 							onChange={(e) => setBoidCount(Number(e.target.value))}
@@ -86,55 +89,59 @@ export default function SimulationPage() {
 							value={boidCount}
 						/>
 					</label>
-					<label className="flex flex-col gap-1">
+					<label className="flex flex-col gap-1" htmlFor="separation-weight">
 						Separation weight
-						<input
-							className="rounded-full bg-white/10 px-4 py-2 text-white"
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="separation-weight"
 							onChange={(e) => setSeparationWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
 							value={separationWeight}
 						/>
 					</label>
-					<label className="flex flex-col gap-1">
+					<label className="flex flex-col gap-1" htmlFor="alignment-weight">
 						Alignment weight
-						<input
-							className="rounded-full bg-white/10 px-4 py-2 text-white"
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="alignment-weight"
 							onChange={(e) => setAlignmentWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
 							value={alignmentWeight}
 						/>
 					</label>
-					<label className="flex flex-col gap-1">
+					<label className="flex flex-col gap-1" htmlFor="cohesion-weight">
 						Cohesion weight
-						<input
-							className="rounded-full bg-white/10 px-4 py-2 text-white"
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="cohesion-weight"
 							onChange={(e) => setCohesionWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
 							value={cohesionWeight}
 						/>
 					</label>
-					<label className="flex flex-col gap-1">
+					<label className="flex flex-col gap-1" htmlFor="max-duration-seconds">
 						Max duration (seconds)
-						<input
-							className="rounded-full bg-white/10 px-4 py-2 text-white"
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="max-duration-seconds"
 							min={1}
 							onChange={(e) => setMaxDurationSeconds(Number(e.target.value))}
 							type="number"
 							value={maxDurationSeconds}
 						/>
 					</label>
-					<button
-						className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
 						disabled={startRun.isPending}
 						type="submit"
 					>
 						{startRun.isPending ? "Starting..." : "Start"}
-					</button>
+					</Button>
 					{startRun.error ? (
-						<p className="text-red-300">{startRun.error.message}</p>
+						<p className="text-destructive">{startRun.error.message}</p>
 					) : null}
 				</form>
 			)}

@@ -254,21 +254,21 @@ Not applicable — no persisted data, no schema change; this is a presentation-l
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 5d18501
+- [x] 2.2 Linting passes: `npm run check` — 5d18501
 
 ### Phase 3: One view
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Hardcoded-value scan finds nothing left in the view files
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Hardcoded-value scan finds nothing left in the view files
 
 #### Manual
 
-- [ ] 3.4 The simulation view looks visually identical to before this change
-- [ ] 3.5 The Start button now visibly looks disabled while starting
+- [x] 3.4 The simulation view looks visually identical to before this change
+- [x] 3.5 The Start button now visibly looks disabled while starting
 
 ### Phase 4: States
 

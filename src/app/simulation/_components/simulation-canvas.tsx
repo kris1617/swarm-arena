@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "~/components/ui/button";
 import {
 	type BoidState,
 	computeCohesion,
@@ -10,6 +11,7 @@ import {
 	stepBoids,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
+import { BOID_FILL_COLOR, CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
 const CANVAS_WIDTH = 600;
@@ -49,9 +51,9 @@ type SimulationCanvasProps = {
 
 function drawBoids(ctx: CanvasRenderingContext2D, boids: BoidState[]) {
 	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-	ctx.fillStyle = "#1e293b";
+	ctx.fillStyle = CANVAS_BACKGROUND;
 	ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-	ctx.fillStyle = "#38bdf8";
+	ctx.fillStyle = BOID_FILL_COLOR;
 	// Draw farthest-first so nearer boids (drawn later) paint over farther
 	// ones at overlapping screen positions instead of the reverse.
 	const sortedBoids = [...boids].sort((a, b) => b.z - a.z);
@@ -194,19 +196,19 @@ export function SimulationCanvas({
 	return (
 		<div className="flex flex-col items-center gap-4">
 			<canvas
-				className="rounded-lg border border-white/20"
+				className="border-border/20 rounded-lg border"
 				height={CANVAS_HEIGHT}
 				ref={canvasRef}
 				width={CANVAS_WIDTH}
 			/>
 			{status === "running" ? (
-				<button
-					className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
+				<Button
+					className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
 					onClick={handleManualStop}
 					type="button"
 				>
 					Stop
-				</button>
+				</Button>
 			) : (
 				<div className="flex flex-col items-center gap-2">
 					<p className="text-lg">
@@ -218,13 +220,13 @@ export function SimulationCanvas({
 									? `Failed to score run: ${stopRun.error.message}`
 									: null}
 					</p>
-					<button
-						className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/20 h-auto rounded-full px-10 py-3 font-semibold"
 						onClick={onFinished}
 						type="button"
 					>
 						Start New Run
-					</button>
+					</Button>
 				</div>
 			)}
 		</div>
