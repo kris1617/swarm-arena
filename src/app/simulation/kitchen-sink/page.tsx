@@ -57,8 +57,11 @@ export default function KitchenSinkPage() {
 
 				<section className="flex flex-col gap-2">
 					<h2 className="text-sm font-semibold">Input: focused</h2>
+					{/* No autoFocus — it would steal initial page focus from a
+					    keyboard/AT user landing here. Click or tab into this field
+					    during the screenshot step, same as the hover state above. */}
 					<Input
-						autoFocus
+						aria-label="Input: focused"
 						className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 						defaultValue={30}
 						id="kitchen-sink-focused"
@@ -69,6 +72,7 @@ export default function KitchenSinkPage() {
 				<section className="flex flex-col gap-2">
 					<h2 className="text-sm font-semibold">Input: empty</h2>
 					<Input
+						aria-label="Input: empty"
 						className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 						id="kitchen-sink-empty"
 						placeholder="Boid count (1-500)"
@@ -80,6 +84,7 @@ export default function KitchenSinkPage() {
 					<h2 className="text-sm font-semibold">Input: error</h2>
 					<Input
 						aria-invalid
+						aria-label="Input: error"
 						className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 						defaultValue={-1}
 						id="kitchen-sink-error"
