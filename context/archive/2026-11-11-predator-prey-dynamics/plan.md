@@ -412,30 +412,30 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold — 0cafe2f
-- [x] 1.2 Protection-threshold invariant: does get attacked above threshold — 0cafe2f
-- [x] 1.3 Flee steering moves a boid away from a nearby predator — 0cafe2f
-- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED — 0cafe2f
-- [x] 1.5 Hunger applies extra decay only when foodStock goes negative — 0cafe2f
-- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests — 0cafe2f
-- [x] 1.7 npm run typecheck passes — 0cafe2f
-- [x] 1.8 npm run check passes — 0cafe2f
+- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold — 210dcf7
+- [x] 1.2 Protection-threshold invariant: does get attacked above threshold — 210dcf7
+- [x] 1.3 Flee steering moves a boid away from a nearby predator — 210dcf7
+- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED — 210dcf7
+- [x] 1.5 Hunger applies extra decay only when foodStock goes negative — 210dcf7
+- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests — 210dcf7
+- [x] 1.7 npm run typecheck passes — 210dcf7
+- [x] 1.8 npm run check passes — 210dcf7
 
 ### Phase 2: Persistence & API — predator/food parameters
 
 #### Automated
 
-- [x] 2.1 npm run typecheck passes — de94ca4
-- [x] 2.2 npm run check passes — de94ca4
-- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation — de94ca4
+- [x] 2.1 npm run typecheck passes — 210dcf7
+- [x] 2.2 npm run check passes — 210dcf7
+- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation — 210dcf7
 
 ### Phase 3: Rendering & UI — predator visuals and form fields
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes — 5e0a9d8
-- [x] 3.2 npm run check passes — 5e0a9d8
-- [x] 3.3 npx vitest run (full suite) passes — 5e0a9d8
+- [x] 3.1 npm run typecheck passes — 210dcf7
+- [x] 3.2 npm run check passes — 210dcf7
+- [x] 3.3 npx vitest run (full suite) passes — 210dcf7
 
 #### Manual
 

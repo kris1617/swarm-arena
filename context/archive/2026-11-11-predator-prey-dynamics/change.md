@@ -1,10 +1,10 @@
 ---
 change_id: predator-prey-dynamics
 title: Predator-prey dynamics
-status: impl_reviewed
+status: archived
 created: 2026-11-11
 updated: 2026-11-11
-archived_at: null
+archived_at: 2026-11-11T18:46:56Z
 ---
 
 ## Notes
