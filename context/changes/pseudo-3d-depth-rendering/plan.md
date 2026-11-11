@@ -189,13 +189,13 @@ Not applicable — no schema or persisted-data change; `z`/`vz` are new in-memor
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.1 Type checking passes: `npm run typecheck` — c185b53
+- [x] 2.2 Linting passes: `npm run check` — c185b53
 
 #### Manual
 
-- [x] 2.3 Boids visibly vary in size during a run (nearer bigger, farther smaller)
-- [x] 2.4 A boid moving from far to near visibly grows; near to far visibly shrinks
-- [x] 2.5 Nearer boids visually occlude farther ones at overlapping screen positions
-- [x] 2.6 The flock still visibly flocks in 3D (no collapse, no dispersal)
-- [x] 2.7 A run at the clamped max boid count (500) does not visibly freeze
+- [x] 2.3 Boids visibly vary in size during a run (nearer bigger, farther smaller) — c185b53
+- [x] 2.4 A boid moving from far to near visibly grows; near to far visibly shrinks — c185b53
+- [x] 2.5 Nearer boids visually occlude farther ones at overlapping screen positions — c185b53
+- [x] 2.6 The flock still visibly flocks in 3D (no collapse, no dispersal) — c185b53
+- [x] 2.7 A run at the clamped max boid count (500) does not visibly freeze — c185b53
