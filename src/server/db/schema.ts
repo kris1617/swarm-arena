@@ -101,6 +101,10 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	alignmentWeight: d.real().notNull(),
 	cohesionWeight: d.real().notNull(),
 	maxDurationSeconds: d.integer().notNull(),
+	predatorCount: d.integer().notNull(),
+	protectionThreshold: d.integer().notNull(),
+	foodStockInitial: d.real().notNull(),
+	foodRegenRate: d.real().notNull(),
 	status: d
 		.text({ enum: ["running", "stopped"] })
 		.notNull()

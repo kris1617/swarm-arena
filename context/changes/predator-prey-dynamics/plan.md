@@ -155,7 +155,7 @@ the alive-boid count exceeds the protection threshold.
 **Contract**: Export two pure functions (no module-level mutable state — callers thread the
 values through, matching this file's existing pure-function style):
 
-- `applyHunger(boids: BoidState[], foodStock: number, dtSeconds: number): { boids: BoidState[]; foodStock: number }`.
+- `applyHunger(boids: BoidState[], foodStock: number, dtSeconds: number, foodRegenRate: number): { boids: BoidState[]; foodStock: number }`.
   New constants `FOOD_CONSUMPTION_PER_BOID = 0.5` (stock units/boid/second) and
   `FOOD_REGEN_RATE` is a caller-supplied parameter (not a constant — it's one of the new
   persisted run parameters from Phase 2), `HUNGER_EXTRA_DECAY_RATE = 1` (extra lifespan
@@ -412,33 +412,33 @@ applies the new not-null columns directly.
 
 #### Automated
 
-- [ ] 1.1 Protection-threshold invariant: never attacked at/below threshold
-- [ ] 1.2 Protection-threshold invariant: does get attacked above threshold
-- [ ] 1.3 Flee steering moves a boid away from a nearby predator
-- [ ] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED
-- [ ] 1.5 Hunger applies extra decay only when foodStock goes negative
-- [ ] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests
-- [ ] 1.7 npm run typecheck passes
-- [ ] 1.8 npm run check passes
+- [x] 1.1 Protection-threshold invariant: never attacked at/below threshold — 0cafe2f
+- [x] 1.2 Protection-threshold invariant: does get attacked above threshold — 0cafe2f
+- [x] 1.3 Flee steering moves a boid away from a nearby predator — 0cafe2f
+- [x] 1.4 Predator speed clamps into PREDATOR_MIN_SPEED/MAX_SPEED — 0cafe2f
+- [x] 1.5 Hunger applies extra decay only when foodStock goes negative — 0cafe2f
+- [x] 1.6 stepBoids with no predators arg is behavior-identical to pre-change tests — 0cafe2f
+- [x] 1.7 npm run typecheck passes — 0cafe2f
+- [x] 1.8 npm run check passes — 0cafe2f
 
 ### Phase 2: Persistence & API — predator/food parameters
 
 #### Automated
 
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npm run check passes
-- [ ] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation
+- [x] 2.1 npm run typecheck passes — de94ca4
+- [x] 2.2 npm run check passes — de94ca4
+- [x] 2.3 boidCount + predatorCount > 500 is rejected by start's input validation — de94ca4
 
 ### Phase 3: Rendering & UI — predator visuals and form fields
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npm run check passes
-- [ ] 3.3 npx vitest run (full suite) passes
+- [x] 3.1 npm run typecheck passes — 5e0a9d8
+- [x] 3.2 npm run check passes — 5e0a9d8
+- [x] 3.3 npx vitest run (full suite) passes — 5e0a9d8
 
 #### Manual
 
-- [ ] 3.4 Predators hunt, boids flee, threshold holds (no captures at/below it)
-- [ ] 3.5 Predators do capture boids when population is above threshold
-- [ ] 3.6 S-01 happy path (predator count 0) shows no regression
+- [x] 3.4 Predators hunt, boids flee, threshold holds (no captures at/below it)
+- [x] 3.5 Predators do capture boids when population is above threshold
+- [x] 3.6 S-01 happy path (predator count 0) shows no regression

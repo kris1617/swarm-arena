@@ -92,6 +92,15 @@ export default function MultiSimulationPage() {
 							alignmentWeight,
 							cohesionWeight,
 							maxDurationSeconds,
+							// This route deliberately has no predator/food UI (S-05's
+							// scope is S-01's parameter set only — see plan.md "What
+							// We're NOT Doing"); these are the "no predators" values
+							// so every run here behaves exactly like the pre-S-02
+							// single-flock simulation.
+							predatorCount: 0,
+							protectionThreshold: 0,
+							foodStockInitial: 100,
+							foodRegenRate: 10,
 						});
 					}}
 				>
