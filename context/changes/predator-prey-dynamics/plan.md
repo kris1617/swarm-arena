@@ -439,6 +439,6 @@ applies the new not-null columns directly.
 
 #### Manual
 
-- [ ] 3.4 Predators hunt, boids flee, threshold holds (no captures at/below it)
-- [ ] 3.5 Predators do capture boids when population is above threshold
-- [ ] 3.6 S-01 happy path (predator count 0) shows no regression
+- [x] 3.4 Predators hunt, boids flee, threshold holds (no captures at/below it)
+- [x] 3.5 Predators do capture boids when population is above threshold
+- [x] 3.6 S-01 happy path (predator count 0) shows no regression
