@@ -1,7 +1,7 @@
 ---
 change_id: basic-flocking-loop
 title: Basic flocking loop (configure, run, stop, score)
-status: implementing
+status: implemented
 created: 2026-11-11
 updated: 2026-11-11
 archived_at: null
