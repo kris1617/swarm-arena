@@ -23,7 +23,7 @@ Self-hosted VPS (`szef@217.154.238.241`, Ubuntu 26.04), overriding the researche
 | `swarm-arena-vps-readonly` deploy key | GitHub repo deploy keys (public half); private half on VPS at `~/.ssh/github_deploy_key` | Read-only `git clone`/`pull` of this one repo |
 | `DATABASE_URL` | `docker-compose.yml`, plain (not secret) | `file:/data/db.sqlite` inside the `app` container |
 
-No auth (NextAuth) secrets exist yet — `src/env.js` doesn't define any, and none should be added until the feature is actually implemented (per `AGENTS.md`'s env-var hard rule).
+**Known gap (2026-11-11):** F-01 (auth) shipped 2026-11-10 and made `AUTH_SECRET`/`AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` required in `src/env.js`, but this doc and `docker-compose.yml`'s `environment:` block were never updated to match — the VPS never received these secrets. The Docker *build* stage sets `SKIP_ENV_VALIDATION=1` so it doesn't catch this, but the running container does not skip validation and crashes at startup without them, producing a 500 on every request. `docker-compose.yml` now references `${AUTH_SECRET}`/`${AUTH_GITHUB_ID}`/`${AUTH_GITHUB_SECRET}`/`${ADMIN_EMAILS}` (resolved from an untracked `/opt/swarm-arena/.env` on the VPS, which Compose reads automatically) — but that `.env` file still needs to be created on the VPS with real values (a production-specific GitHub OAuth app, since OAuth Apps only support one callback URL each) before the next deploy will actually come up healthy.
 
 ## Verification performed
 
