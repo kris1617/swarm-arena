@@ -297,14 +297,14 @@ None — no schema changes in this slice.
 
 #### Automated
 
-- [ ] 1.1 addSlot rejects a 5th slot once 4 exist
-- [ ] 1.2 addSlot makes the newly added slot active
-- [ ] 1.3 setActive changes only activeRunId
-- [ ] 1.4 markStopped sets status/score, no-op if already stopped
-- [ ] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one
-- [ ] 1.6 removeSlot reassigns activeRunId when the active slot is removed
-- [ ] 1.7 npm run typecheck passes
-- [ ] 1.8 npm run check passes
+- [x] 1.1 addSlot rejects a 5th slot once 4 exist
+- [x] 1.2 addSlot makes the newly added slot active
+- [x] 1.3 setActive changes only activeRunId
+- [x] 1.4 markStopped sets status/score, no-op if already stopped
+- [x] 1.5 removeSlot no-ops on a running slot, succeeds on a stopped one
+- [x] 1.6 removeSlot reassigns activeRunId when the active slot is removed
+- [x] 1.7 npm run typecheck passes
+- [x] 1.8 npm run check passes
 
 ### Phase 2: Shared step-loop runner
 

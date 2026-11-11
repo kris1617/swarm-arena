@@ -1,7 +1,7 @@
 ---
 change_id: parallel-sim-switching
 title: Parallel simulation switching
-status: planned
+status: implementing
 created: 2026-11-11
 updated: 2026-11-11
 archived_at: null
