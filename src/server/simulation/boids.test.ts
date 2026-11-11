@@ -31,7 +31,15 @@ describe("stepBoids", () => {
 	});
 
 	it("decrements lifespan by exactly dtSeconds per step", () => {
-		const boid: BoidState = { x: 0, y: 0, vx: 0, vy: 0, lifespan: 1 };
+		const boid: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1,
+		};
 
 		const [stepped] = stepBoids([boid], WEIGHTS, 0.25);
 
@@ -39,7 +47,15 @@ describe("stepBoids", () => {
 	});
 
 	it("removes a boid once its lifespan reaches zero or below", () => {
-		const boid: BoidState = { x: 0, y: 0, vx: 0, vy: 0, lifespan: 0.1 };
+		const boid: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 0.1,
+		};
 
 		const result = stepBoids([boid], WEIGHTS, 0.25);
 
@@ -48,8 +64,24 @@ describe("stepBoids", () => {
 
 	it("separation increases the distance between two close boids", () => {
 		const weights = { separation: 1, alignment: 0, cohesion: 0 };
-		const a: BoidState = { x: 0, y: 0, vx: 0, vy: 0, lifespan: 100 };
-		const b: BoidState = { x: 5, y: 0, vx: 0, vy: 0, lifespan: 100 };
+		const a: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const b: BoidState = {
+			x: 5,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
 		const before = 5;
 
 		const [steppedA, steppedB] = stepBoids([a, b], weights, 0.1);
@@ -57,6 +89,39 @@ describe("stepBoids", () => {
 		const after = Math.hypot(
 			(steppedB as BoidState).x - (steppedA as BoidState).x,
 			(steppedB as BoidState).y - (steppedA as BoidState).y,
+			(steppedB as BoidState).z - (steppedA as BoidState).z,
+		);
+		expect(after).toBeGreaterThan(before);
+	});
+
+	it("separation increases the 3D distance between two close boids offset along z", () => {
+		const weights = { separation: 1, alignment: 0, cohesion: 0 };
+		const a: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const b: BoidState = {
+			x: 0,
+			y: 0,
+			z: 5,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const before = 5;
+
+		const [steppedA, steppedB] = stepBoids([a, b], weights, 0.1);
+
+		const after = Math.hypot(
+			(steppedB as BoidState).x - (steppedA as BoidState).x,
+			(steppedB as BoidState).y - (steppedA as BoidState).y,
+			(steppedB as BoidState).z - (steppedA as BoidState).z,
 		);
 		expect(after).toBeGreaterThan(before);
 	});
@@ -68,22 +133,60 @@ describe("stepBoids", () => {
 		// apart to at least the minimum every single step.
 		const weights = { separation: 0, alignment: 0, cohesion: 1 };
 		let boids: BoidState[] = [
-			{ x: 0, y: 0, vx: 0, vy: 0, lifespan: 100 },
-			{ x: 0, y: 0, vx: 0, vy: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
 		];
 
 		for (let i = 0; i < 10; i++) {
 			boids = stepBoids(boids, weights, 0.1);
 			const [a, b] = boids as [BoidState, BoidState];
-			const dist = Math.hypot(a.x - b.x, a.y - b.y);
+			const dist = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+			expect(dist).toBeGreaterThanOrEqual(4 - 1e-9);
+		}
+	});
+
+	it("never lets two boids end a step closer than the hard minimum 3D distance", () => {
+		// Offset purely along z (not coincident) and closer than the hard
+		// floor, pulled together by cohesion only — exercises the real
+		// `nz = dz / dist` branch of resolveOverlaps, not its degenerate
+		// same-point fallback. A bug that excluded z from the hard floor (or
+		// pushed along x/y only) would be invisible to the x/y-only variant
+		// above but caught here: without the fix this asserts against, both
+		// boids collapse to z-distance 0 once cohesion pulls them together.
+		const weights = { separation: 0, alignment: 0, cohesion: 1 };
+		let boids: BoidState[] = [
+			{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: 2, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+		];
+
+		for (let i = 0; i < 10; i++) {
+			boids = stepBoids(boids, weights, 0.1);
+			const [a, b] = boids as [BoidState, BoidState];
+			const dist = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 			expect(dist).toBeGreaterThanOrEqual(4 - 1e-9);
 		}
 	});
 
 	it("clamps speed into the cruise range after steering, regardless of starting speed", () => {
 		const weights = { separation: 0, alignment: 0, cohesion: 0 };
-		const slow: BoidState = { x: 0, y: 0, vx: 0.01, vy: 0, lifespan: 100 };
-		const fast: BoidState = { x: 0, y: 0, vx: 1000, vy: 0, lifespan: 100 };
+		const slow: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0.01,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const fast: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 1000,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
 
 		const [steppedSlow] = stepBoids([slow], weights, 0.1);
 		const [steppedFast] = stepBoids([fast], weights, 0.1);
@@ -91,10 +194,52 @@ describe("stepBoids", () => {
 		const slowSpeed = Math.hypot(
 			(steppedSlow as BoidState).vx,
 			(steppedSlow as BoidState).vy,
+			(steppedSlow as BoidState).vz,
 		);
 		const fastSpeed = Math.hypot(
 			(steppedFast as BoidState).vx,
 			(steppedFast as BoidState).vy,
+			(steppedFast as BoidState).vz,
+		);
+		expect(slowSpeed).toBeGreaterThanOrEqual(15 - 1e-9);
+		expect(slowSpeed).toBeLessThanOrEqual(40 + 1e-9);
+		expect(fastSpeed).toBeLessThanOrEqual(40 + 1e-9);
+		expect(fastSpeed).toBeGreaterThanOrEqual(15 - 1e-9);
+	});
+
+	it("clamps 3D speed into the cruise range after steering, with a nonzero starting vz", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		const slow: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0.01,
+			vy: 0,
+			vz: 0.01,
+			lifespan: 100,
+		};
+		const fast: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 700,
+			vy: 0,
+			vz: 700,
+			lifespan: 100,
+		};
+
+		const [steppedSlow] = stepBoids([slow], weights, 0.1);
+		const [steppedFast] = stepBoids([fast], weights, 0.1);
+
+		const slowSpeed = Math.hypot(
+			(steppedSlow as BoidState).vx,
+			(steppedSlow as BoidState).vy,
+			(steppedSlow as BoidState).vz,
+		);
+		const fastSpeed = Math.hypot(
+			(steppedFast as BoidState).vx,
+			(steppedFast as BoidState).vy,
+			(steppedFast as BoidState).vz,
 		);
 		expect(slowSpeed).toBeGreaterThanOrEqual(15 - 1e-9);
 		expect(slowSpeed).toBeLessThanOrEqual(40 + 1e-9);
@@ -139,8 +284,10 @@ describe("computeCohesion", () => {
 		const boids: BoidState[] = Array.from({ length: 5 }, () => ({
 			x: 10,
 			y: 10,
+			z: 10,
 			vx: 0,
 			vy: 0,
+			vz: 0,
 			lifespan: 100,
 		}));
 
@@ -151,15 +298,37 @@ describe("computeCohesion", () => {
 		const tight: BoidState[] = Array.from({ length: 5 }, () => ({
 			x: 0,
 			y: 0,
+			z: 0,
 			vx: 0,
 			vy: 0,
+			vz: 0,
 			lifespan: 100,
 		}));
 		const spread: BoidState[] = [
-			{ x: -500, y: 0, vx: 0, vy: 0, lifespan: 100 },
-			{ x: 500, y: 0, vx: 0, vy: 0, lifespan: 100 },
-			{ x: 0, y: -500, vx: 0, vy: 0, lifespan: 100 },
-			{ x: 0, y: 500, vx: 0, vy: 0, lifespan: 100 },
+			{ x: -500, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 500, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: -500, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 500, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+		];
+
+		expect(computeCohesion(spread)).toBeLessThan(computeCohesion(tight));
+	});
+
+	it("returns a lower value when boids are spread out along z", () => {
+		const tight: BoidState[] = Array.from({ length: 5 }, () => ({
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		}));
+		const spread: BoidState[] = [
+			{ x: 0, y: 0, z: -500, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: 500, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: -250, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			{ x: 0, y: 0, z: 250, vx: 0, vy: 0, vz: 0, lifespan: 100 },
 		];
 
 		expect(computeCohesion(spread)).toBeLessThan(computeCohesion(tight));
