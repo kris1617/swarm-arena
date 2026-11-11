@@ -46,11 +46,29 @@ const MAX_SPEED = 40;
 // a few ticks instead of the steering nudge being negligible next to speed.
 const STEERING_FORCE_SCALE = 120;
 
-function distance(
-	a: { x: number; y: number; z: number },
-	b: { x: number; y: number; z: number },
-) {
-	return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+// Wraps a coordinate into [0, range) — toroidal boundaries, so a boid that
+// exits one edge re-enters from the opposite one instead of drifting off
+// into open space indefinitely.
+function wrap(value: number, range: number): number {
+	const wrapped = value % range;
+	return wrapped < 0 ? wrapped + range : wrapped;
+}
+
+// Minimum-image convention: the shortest signed delta between two wrapped
+// coordinates, considering that going "the other way" around the torus may
+// be shorter than the raw difference. Without this, a boid that just wrapped
+// across the seam appears ~`range` units away to its actual (still adjacent)
+// neighbors, repeatedly disrupting separation/alignment/cohesion every time
+// any boid crosses an edge over a long run.
+function wrappedDelta(delta: number, range: number): number {
+	const halfRange = range / 2;
+	if (delta > halfRange) {
+		return delta - range;
+	}
+	if (delta < -halfRange) {
+		return delta + range;
+	}
+	return delta;
 }
 
 export function createInitialPopulation(
@@ -83,9 +101,9 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 			if (!a || !b) {
 				continue;
 			}
-			const dx = b.x - a.x;
-			const dy = b.y - a.y;
-			const dz = b.z - a.z;
+			const dx = wrappedDelta(b.x - a.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(b.y - a.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(b.z - a.z, Z_DEPTH_RANGE);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist >= MIN_SEPARATION_DISTANCE) {
 				continue;
@@ -126,17 +144,21 @@ export function stepBoids(
 		let sumVx = 0;
 		let sumVy = 0;
 		let sumVz = 0;
-		let sumX = 0;
-		let sumY = 0;
-		let sumZ = 0;
+		// Accumulated as wrapped *offsets from this boid* (not raw positions)
+		// so averaging them is correct even when neighbors straddle a wrap
+		// seam — averaging raw positions would be wrong on a torus the same
+		// way averaging angles 359° and 1° as raw numbers gives 180°, not 0°.
+		let sumDX = 0;
+		let sumDY = 0;
+		let sumDZ = 0;
 
 		for (const other of boids) {
 			if (other === boid) {
 				continue;
 			}
-			const dx = boid.x - other.x;
-			const dy = boid.y - other.y;
-			const dz = boid.z - other.z;
+			const dx = wrappedDelta(boid.x - other.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(boid.y - other.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(boid.z - other.z, Z_DEPTH_RANGE);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist > NEIGHBOR_RADIUS) {
 				continue;
@@ -146,9 +168,9 @@ export function stepBoids(
 			sumVx += other.vx;
 			sumVy += other.vy;
 			sumVz += other.vz;
-			sumX += other.x;
-			sumY += other.y;
-			sumZ += other.z;
+			sumDX += -dx;
+			sumDY += -dy;
+			sumDZ += -dz;
 
 			if (dist <= SEPARATION_RADIUS && dist > 0) {
 				sepSumX += dx / dist;
@@ -172,9 +194,11 @@ export function stepBoids(
 			const avgVx = sumVx / neighborCount;
 			const avgVy = sumVy / neighborCount;
 			const avgVz = sumVz / neighborCount;
-			const avgX = sumX / neighborCount;
-			const avgY = sumY / neighborCount;
-			const avgZ = sumZ / neighborCount;
+			// Already offsets-from-boid (see sumDX/DY/DZ above), so this is
+			// directly the raw cohesion vector — no further subtraction.
+			const avgDX = sumDX / neighborCount;
+			const avgDY = sumDY / neighborCount;
+			const avgDZ = sumDZ / neighborCount;
 			// Normalized to unit vectors, same as separation above, so no
 			// steering force's magnitude scales with raw distance/speed —
 			// otherwise cohesion (unbounded with distance) structurally
@@ -190,9 +214,9 @@ export function stepBoids(
 				alignmentZ = rawAlignZ / alignMag;
 			}
 
-			const rawCohX = avgX - boid.x;
-			const rawCohY = avgY - boid.y;
-			const rawCohZ = avgZ - boid.z;
+			const rawCohX = avgDX;
+			const rawCohY = avgDY;
+			const rawCohZ = avgDZ;
 			const cohMag = Math.hypot(rawCohX, rawCohY, rawCohZ);
 			if (cohMag > 0) {
 				cohesionX = rawCohX / cohMag;
@@ -233,9 +257,9 @@ export function stepBoids(
 		const vz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
 
 		return {
-			x: boid.x + vx * dtSeconds,
-			y: boid.y + vy * dtSeconds,
-			z: boid.z + vz * dtSeconds,
+			x: wrap(boid.x + vx * dtSeconds, INITIAL_AREA_SIZE),
+			y: wrap(boid.y + vy * dtSeconds, INITIAL_AREA_SIZE),
+			z: wrap(boid.z + vz * dtSeconds, Z_DEPTH_RANGE),
 			vx,
 			vy,
 			vz,
@@ -246,20 +270,48 @@ export function stepBoids(
 	return resolveOverlaps(stepped).filter((boid) => boid.lifespan > 0);
 }
 
+// Circular mean: the correct way to average coordinates on a torus. A plain
+// arithmetic mean breaks the moment a flock straddles the wrap seam — e.g.
+// averaging 199 and 1 (two units apart through the seam) as raw numbers
+// gives 100, nowhere near either boid. Mapping each value onto a circle
+// (angle = value/range * 2π) and averaging there, then mapping back, gives
+// the geometrically correct "middle" regardless of where the seam falls.
+function circularMean(values: number[], range: number): number {
+	let sumSin = 0;
+	let sumCos = 0;
+	for (const value of values) {
+		const theta = (value / range) * 2 * Math.PI;
+		sumSin += Math.sin(theta);
+		sumCos += Math.cos(theta);
+	}
+	const meanTheta = Math.atan2(sumSin / values.length, sumCos / values.length);
+	return wrap((meanTheta / (2 * Math.PI)) * range, range);
+}
+
 export function computeCohesion(boids: BoidState[]): number {
 	if (boids.length === 0) {
 		return 1;
 	}
 
-	const centroidX = boids.reduce((sum, boid) => sum + boid.x, 0) / boids.length;
-	const centroidY = boids.reduce((sum, boid) => sum + boid.y, 0) / boids.length;
-	const centroidZ = boids.reduce((sum, boid) => sum + boid.z, 0) / boids.length;
+	const centroidX = circularMean(
+		boids.map((boid) => boid.x),
+		INITIAL_AREA_SIZE,
+	);
+	const centroidY = circularMean(
+		boids.map((boid) => boid.y),
+		INITIAL_AREA_SIZE,
+	);
+	const centroidZ = circularMean(
+		boids.map((boid) => boid.z),
+		Z_DEPTH_RANGE,
+	);
 	const averageDistance =
-		boids.reduce(
-			(sum, boid) =>
-				sum + distance(boid, { x: centroidX, y: centroidY, z: centroidZ }),
-			0,
-		) / boids.length;
+		boids.reduce((sum, boid) => {
+			const dx = wrappedDelta(boid.x - centroidX, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(boid.y - centroidY, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(boid.z - centroidZ, Z_DEPTH_RANGE);
+			return sum + Math.hypot(dx, dy, dz);
+		}, 0) / boids.length;
 
 	const cohesion = 1 - averageDistance / COHESION_REFERENCE_RADIUS;
 	return Math.max(0, Math.min(1, cohesion));

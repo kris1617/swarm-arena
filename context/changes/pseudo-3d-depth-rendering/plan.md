@@ -181,21 +181,21 @@ Not applicable — no schema or persisted-data change; `z`/`vz` are new in-memor
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Unit tests pass: `npx vitest run src/server/simulation/boids.test.ts`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 2f3375a
+- [x] 1.2 Linting passes: `npm run check` — 2f3375a
+- [x] 1.3 Unit tests pass: `npx vitest run src/server/simulation/boids.test.ts` — 2f3375a
 
 ### Phase 2: Depth-scaled rendering
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
 
 #### Manual
 
-- [ ] 2.3 Boids visibly vary in size during a run (nearer bigger, farther smaller)
-- [ ] 2.4 A boid moving from far to near visibly grows; near to far visibly shrinks
-- [ ] 2.5 Nearer boids visually occlude farther ones at overlapping screen positions
-- [ ] 2.6 The flock still visibly flocks in 3D (no collapse, no dispersal)
-- [ ] 2.7 A run at the clamped max boid count (500) does not visibly freeze
+- [x] 2.3 Boids visibly vary in size during a run (nearer bigger, farther smaller)
+- [x] 2.4 A boid moving from far to near visibly grows; near to far visibly shrinks
+- [x] 2.5 Nearer boids visually occlude farther ones at overlapping screen positions
+- [x] 2.6 The flock still visibly flocks in 3D (no collapse, no dispersal)
+- [x] 2.7 A run at the clamped max boid count (500) does not visibly freeze

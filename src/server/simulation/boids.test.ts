@@ -62,6 +62,31 @@ describe("stepBoids", () => {
 		expect(result).toHaveLength(0);
 	});
 
+	it("wraps x/y/z toroidally instead of letting a boid drift off indefinitely", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		// Positioned just inside each boundary, moving straight outward — one
+		// tick should push each coordinate past 200 (x/y) or 200 (z) and wrap
+		// it back into [0, 200) rather than leaving it negative or >=200.
+		const boid: BoidState = {
+			x: 199,
+			y: 199,
+			z: 199,
+			vx: 40,
+			vy: 40,
+			vz: 40,
+			lifespan: 100,
+		};
+
+		const [stepped] = stepBoids([boid], weights, 0.1);
+
+		expect((stepped as BoidState).x).toBeGreaterThanOrEqual(0);
+		expect((stepped as BoidState).x).toBeLessThan(200);
+		expect((stepped as BoidState).y).toBeGreaterThanOrEqual(0);
+		expect((stepped as BoidState).y).toBeLessThan(200);
+		expect((stepped as BoidState).z).toBeGreaterThanOrEqual(0);
+		expect((stepped as BoidState).z).toBeLessThan(200);
+	});
+
 	it("separation increases the distance between two close boids", () => {
 		const weights = { separation: 1, alignment: 0, cohesion: 0 };
 		const a: BoidState = {

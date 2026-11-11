@@ -16,8 +16,8 @@ const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 400;
 // createInitialPopulation spreads boids over a 0-200 square; scale that up
 // and center it so the initial frame isn't tiny in a 600x400 canvas. Boids
-// drift outside this range over time since Phase 1's math has no
-// wraparound — expected, not something this phase fixes.
+// stay within that range indefinitely — stepBoids wraps x/y/z toroidally,
+// so they re-enter from the opposite edge instead of drifting off-canvas.
 const RENDER_SCALE = 2;
 const RENDER_OFFSET_X = (CANVAS_WIDTH - 200 * RENDER_SCALE) / 2;
 const RENDER_OFFSET_Y = (CANVAS_HEIGHT - 200 * RENDER_SCALE) / 2;
@@ -25,6 +25,15 @@ const RENDER_OFFSET_Y = (CANVAS_HEIGHT - 200 * RENDER_SCALE) / 2;
 // drawn pointing along each boid's current heading for a bird/fish-like look.
 const BOID_LENGTH = 6;
 const BOID_WIDTH = 4;
+// Depth at which a boid renders at its base size (scale 1); centered on
+// boids.ts's Z_DEPTH_RANGE (200) so the inverse-linear falloff below spans
+// the typical z range instead of saturating at one end of it.
+const REFERENCE_DEPTH = 100;
+// Clamp bounds on the depth-derived scale factor — the inverse-linear
+// formula grows unbounded as z approaches 0, so this keeps very close boids
+// from ballooning and very far ones from shrinking to nothing.
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 2.0;
 // Clamp a single frame's dt so a backgrounded/stalled tab can't apply one
 // huge physics step when it resumes.
 const MAX_DT_SECONDS = 0.1;
@@ -43,21 +52,30 @@ function drawBoids(ctx: CanvasRenderingContext2D, boids: BoidState[]) {
 	ctx.fillStyle = "#1e293b";
 	ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 	ctx.fillStyle = "#38bdf8";
-	for (const boid of boids) {
+	// Draw farthest-first so nearer boids (drawn later) paint over farther
+	// ones at overlapping screen positions instead of the reverse.
+	const sortedBoids = [...boids].sort((a, b) => b.z - a.z);
+	for (const boid of sortedBoids) {
 		const x = boid.x * RENDER_SCALE + RENDER_OFFSET_X;
 		const y = boid.y * RENDER_SCALE + RENDER_OFFSET_Y;
 		// Heading from current velocity; a boid with zero velocity (e.g. the
 		// very first frame) points along +x as a stable default.
 		const speed = Math.hypot(boid.vx, boid.vy);
 		const heading = speed > 0 ? Math.atan2(boid.vy, boid.vx) : 0;
+		// Closer boids (smaller z) render bigger; clamped so the inverse-
+		// linear falloff can't blow up as z approaches 0 or vanish at range.
+		const scale = Math.min(
+			MAX_SCALE,
+			Math.max(MIN_SCALE, REFERENCE_DEPTH / (REFERENCE_DEPTH + boid.z)),
+		);
 
 		ctx.save();
 		ctx.translate(x, y);
 		ctx.rotate(heading);
 		ctx.beginPath();
-		ctx.moveTo(BOID_LENGTH, 0);
-		ctx.lineTo(-BOID_LENGTH, BOID_WIDTH);
-		ctx.lineTo(-BOID_LENGTH, -BOID_WIDTH);
+		ctx.moveTo(BOID_LENGTH * scale, 0);
+		ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
+		ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);
 		ctx.closePath();
 		ctx.fill();
 		ctx.restore();
