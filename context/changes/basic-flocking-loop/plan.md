@@ -230,24 +230,24 @@ Not applicable — `simulation_run` is a new table with no prior data to migrate
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 Unit tests pass: `npx vitest run src/server/simulation/boids.test.ts`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 200fd51
+- [x] 1.2 Linting passes: `npm run check` — 200fd51
+- [x] 1.3 Unit tests pass: `npx vitest run src/server/simulation/boids.test.ts` — 200fd51
 
 ### Phase 2: Persistence + tRPC router
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Schema migration applies cleanly: `npm run db:push`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Schema migration applies cleanly: `npm run db:push`
 
 #### Manual
 
-- [ ] 2.4 `simulation.start` with a logged-in session returns `runId`/`seed` and inserts a visible row
-- [ ] 2.5 `simulation.stop` updates the row to `stopped` with a non-null `score`
-- [ ] 2.6 Calling either procedure without a session throws `UNAUTHORIZED`
-- [ ] 2.7 Calling `simulation.stop` on another user's run throws `FORBIDDEN`
+- [x] 2.4 `simulation.start` with a logged-in session returns `runId`/`seed` and inserts a visible row
+- [x] 2.5 `simulation.stop` updates the row to `stopped` with a non-null `score`
+- [x] 2.6 Calling either procedure without a session throws `UNAUTHORIZED`
+- [x] 2.7 Calling `simulation.stop` on another user's run throws `FORBIDDEN`
 
 ### Phase 3: UI — setup screen + canvas render loop
 

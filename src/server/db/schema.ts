@@ -88,3 +88,27 @@ export const verificationTokens = createTable(
 	}),
 	(t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
+
+export const simulationRuns = createTable("simulation_run", (d) => ({
+	id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
+	userId: d
+		.text("userId")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	seed: d.integer().notNull(),
+	boidCount: d.integer().notNull(),
+	separationWeight: d.real().notNull(),
+	alignmentWeight: d.real().notNull(),
+	cohesionWeight: d.real().notNull(),
+	maxDurationSeconds: d.integer().notNull(),
+	status: d
+		.text({ enum: ["running", "stopped"] })
+		.notNull()
+		.default("running"),
+	score: d.real(),
+	startedAt: d
+		.integer({ mode: "timestamp" })
+		.default(sql`(unixepoch())`)
+		.notNull(),
+	stoppedAt: d.integer({ mode: "timestamp" }),
+}));
