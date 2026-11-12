@@ -17,9 +17,18 @@ jobs:
       # SKIP_ENV_VALIDATION mirrors the Dockerfile's build stage (see
       # context/deployment/deploy-plan.md) — this build is only here to
       # generate .next/types for typecheck; it never runs with real secrets.
+      # next build executes server code during static page-data collection
+      # (e.g. /_not-found), which touches the db client singleton at module
+      # load — so DATABASE_URL etc. must resolve even though validation is
+      # skipped. Values mirror vitest.config.ts's own test env, which exists
+      # for the same self-contained-build reason.
       - name: Build (type generation)
         env:
           SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
         run: npm run build
       - run: npm run typecheck
       - run: npm run check
