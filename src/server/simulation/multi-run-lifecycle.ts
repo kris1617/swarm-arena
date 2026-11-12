@@ -51,7 +51,7 @@ export function computeMultiRunTick(
 	);
 
 	const liveRunIds = new Set(slots.map((slot) => slot.runId));
-	let nextRunStates: Record<number, RunState> = {};
+	const nextRunStates: Record<number, RunState> = {};
 	for (const [runIdKey, runState] of Object.entries(state.runStates)) {
 		const runId = Number(runIdKey);
 		// Drop entries for slots removed from `slots` (dismissed) so the
@@ -94,7 +94,7 @@ export function computeMultiRunTick(
 			],
 			elapsedSeconds: runState.elapsedSeconds + dtSeconds,
 		};
-		nextRunStates = { ...nextRunStates, [slot.runId]: nextRunState };
+		nextRunStates[slot.runId] = nextRunState;
 
 		if (
 			nextRunState.elapsedSeconds >= slot.maxDurationSeconds ||
