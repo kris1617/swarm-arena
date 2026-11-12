@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import type { BoidState } from "~/server/simulation/boids";
 import {
-	type BoidState,
-	computeCohesion,
-	createInitialPopulation,
-	stepBoids,
-} from "~/server/simulation/boids";
-import { createRng } from "~/server/simulation/rng";
+	computeMultiRunTick,
+	type RunState,
+} from "~/server/simulation/multi-run-lifecycle";
 import type { RunSlot } from "~/server/simulation/run-slots";
 import { BOID_FILL_COLOR, CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
@@ -32,15 +30,6 @@ const BOID_WIDTH = 4;
 const REFERENCE_DEPTH = 100;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.0;
-// Clamp a single frame's dt so a backgrounded/stalled tab can't apply one
-// huge physics step when it resumes.
-const MAX_DT_SECONDS = 0.1;
-
-type RunState = {
-	boids: BoidState[];
-	cohesionSamples: number[];
-	elapsedSeconds: number;
-};
 
 export type MultiSimulationStageProps = {
 	slots: RunSlot[];
@@ -87,7 +76,7 @@ export function MultiSimulationStage({
 	onFinished,
 }: MultiSimulationStageProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const runStatesRef = useRef<Map<number, RunState>>(new Map());
+	const runStatesRef = useRef<Record<number, RunState>>({});
 	const rafIdRef = useRef<number>(0);
 	const lastTimestampRef = useRef<number | null>(null);
 	const slotsRef = useRef<RunSlot[]>(slots);
@@ -118,7 +107,6 @@ export function MultiSimulationStage({
 			return;
 		}
 		const ctx: CanvasRenderingContext2D = maybeCtx;
-		const runStates = runStatesRef.current;
 
 		function stopSlot(slot: RunSlot, runState: RunState) {
 			if (finishedRunIdsRef.current.has(slot.runId)) {
@@ -157,71 +145,30 @@ export function MultiSimulationStage({
 		}
 
 		function tick(timestamp: number) {
-			if (lastTimestampRef.current === null) {
-				lastTimestampRef.current = timestamp;
-			}
-			const dtSeconds = Math.min(
-				(timestamp - lastTimestampRef.current) / 1000,
-				MAX_DT_SECONDS,
+			const result = computeMultiRunTick(
+				{
+					runStates: runStatesRef.current,
+					lastTimestamp: lastTimestampRef.current,
+				},
+				timestamp,
+				slotsRef.current,
+				activeRunIdRef.current,
+				manualStopRequestRef.current,
 			);
-			lastTimestampRef.current = timestamp;
 
-			const currentSlots = slotsRef.current;
-			const liveRunIds = new Set(currentSlots.map((slot) => slot.runId));
-			// Drop entries for slots removed from `slots` (dismissed) so the
-			// map doesn't grow unboundedly across a long session.
-			for (const runId of runStates.keys()) {
-				if (!liveRunIds.has(runId)) {
-					runStates.delete(runId);
-				}
-			}
+			runStatesRef.current = result.runStates;
+			lastTimestampRef.current = result.lastTimestamp;
+			manualStopRequestRef.current = result.nextManualStopRequestId;
 
-			for (const slot of currentSlots) {
-				if (slot.status !== "running") {
-					continue;
-				}
-
-				let runState = runStates.get(slot.runId);
-				if (!runState) {
-					// Generous relative to maxDurationSeconds so natural
-					// lifespan decay doesn't cut the run shorter than the
-					// duration the member chose.
-					const maxLifespan = Math.max(60, slot.maxDurationSeconds);
-					runState = {
-						boids: createInitialPopulation(
-							slot.boidCount,
-							createRng(slot.seed),
-							maxLifespan,
-						),
-						cohesionSamples: [],
-						elapsedSeconds: 0,
-					};
-					runStates.set(slot.runId, runState);
-				}
-
-				const nextBoids = stepBoids(runState.boids, slot.weights, dtSeconds);
-				runState.boids = nextBoids;
-				runState.cohesionSamples.push(computeCohesion(nextBoids));
-				runState.elapsedSeconds += dtSeconds;
-
-				if (
-					runState.elapsedSeconds >= slot.maxDurationSeconds ||
-					nextBoids.length === 0 ||
-					manualStopRequestRef.current === slot.runId
-				) {
-					manualStopRequestRef.current = null;
+			for (const slot of result.slotsToStop) {
+				const runState = result.runStates[slot.runId];
+				if (runState) {
 					stopSlot(slot, runState);
 				}
 			}
 
-			const activeSlot = currentSlots.find(
-				(slot) => slot.runId === activeRunIdRef.current,
-			);
-			const activeRunState = activeSlot
-				? runStates.get(activeSlot.runId)
-				: undefined;
-			if (activeRunState) {
-				drawBoids(ctx, activeRunState.boids);
+			if (result.activeDrawBoids) {
+				drawBoids(ctx, result.activeDrawBoids);
 			} else {
 				ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 				ctx.fillStyle = CANVAS_BACKGROUND;
