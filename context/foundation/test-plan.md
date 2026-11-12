@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 4 planned)
+> Last updated: 2026-11-12 (Phase 4 complete)
 
 ## 1. Strategy
 
@@ -66,7 +66,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 1 | Composed-pipeline correctness & determinism | Prove the fixed tick order and full-pipeline determinism hold, not just each step function in isolation | #1, #2 | unit + integration | complete | `context/changes/testing-composed-pipeline-correctness/` |
 | 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | complete | `context/changes/testing-render-loop-lifecycle/` |
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | complete | `context/changes/testing-simulation-ownership/` |
-| 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | planned | `context/changes/testing-render-perf-budget/` |
+| 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | complete | `context/changes/testing-render-perf-budget/` |
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | not started | — |
 
 **Status vocabulary** (fixed — parser literals):
