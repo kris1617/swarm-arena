@@ -496,6 +496,54 @@ export function applyPredation(
 	return boids.filter((boid) => !captured.has(boid));
 }
 
+// Composes the single-run pipeline's documented fixed per-tick order into one
+// DOM-free, directly-testable entry point: stepBoids (flee steering reads
+// this tick's predators) -> stepPredators -> applyHunger -> applyPredation.
+// Predation must run after both populations have moved this tick, using
+// current-tick positions; hunger runs before predation so a boid that
+// starved this tick is already removed and can't also be "captured"
+// redundantly by the same tick's predation pass. Mirrors
+// simulation-canvas.tsx's inline tick sequence exactly so callers can switch
+// to this function without changing behavior.
+export function runTick(
+	state: { boids: BoidState[]; predators: PredatorState[]; foodStock: number },
+	params: {
+		weights: FlockWeights;
+		dtSeconds: number;
+		foodRegenRate: number;
+		protectionThreshold: number;
+	},
+): { boids: BoidState[]; predators: PredatorState[]; foodStock: number } {
+	const steeredBoids = stepBoids(
+		state.boids,
+		params.weights,
+		params.dtSeconds,
+		state.predators,
+	);
+	const steeredPredators = stepPredators(
+		state.predators,
+		steeredBoids,
+		params.dtSeconds,
+	);
+	const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
+		steeredBoids,
+		state.foodStock,
+		params.dtSeconds,
+		params.foodRegenRate,
+	);
+	const nextBoids = applyPredation(
+		fedBoids,
+		steeredPredators,
+		params.protectionThreshold,
+	);
+
+	return {
+		boids: nextBoids,
+		predators: steeredPredators,
+		foodStock: nextFoodStock,
+	};
+}
+
 // Circular mean: the correct way to average coordinates on a torus. A plain
 // arithmetic mean breaks the moment a flock straddles the wrap seam — e.g.
 // averaging 199 and 1 (two units apart through the seam) as raw numbers

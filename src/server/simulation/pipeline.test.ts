@@ -1,0 +1,244 @@
+import { describe, expect, it } from "vitest";
+
+import {
+	applyHunger,
+	applyPredation,
+	type BoidState,
+	createInitialPopulation,
+	createInitialPredators,
+	type PredatorState,
+	runTick,
+} from "~/server/simulation/boids";
+import { createRng } from "~/server/simulation/rng";
+
+const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
+const PARAMS = {
+	weights: WEIGHTS,
+	dtSeconds: 0.1,
+	foodRegenRate: 5,
+	protectionThreshold: 0,
+};
+
+describe("runTick", () => {
+	it("is deterministic end-to-end across the full composed pipeline, not just the RNG primitive", () => {
+		// Two independently-constructed but identical initial states (same
+		// seed-derived boid/predator arrays, same params) — the oracle is
+		// "two runs from identical input produce identical output", the same
+		// run-twice-compare pattern already used in boids.test.ts/rng.test.ts,
+		// not a hand-computed expected value.
+		function buildState() {
+			return {
+				boids: createInitialPopulation(10, createRng(1), 100),
+				predators: createInitialPredators(3, createRng(2), 100),
+				foodStock: 20,
+			};
+		}
+
+		function runTicks(initial: ReturnType<typeof buildState>) {
+			let state = initial;
+			for (let i = 0; i < 20; i++) {
+				state = runTick(state, PARAMS);
+			}
+			return state;
+		}
+
+		const a = runTicks(buildState());
+		const b = runTicks(buildState());
+
+		expect(a).toEqual(b);
+	});
+});
+
+describe("applyPredation tie-break contract", () => {
+	it("captures the first boid in the input array when two boids are equidistant from a predator", () => {
+		// Predator at the origin; both boids sit exactly CAPTURE_RADIUS-3 away
+		// (well within CAPTURE_RADIUS=6) at the same distance from it. The
+		// documented scan rule is a strict `<` on distance, so the
+		// first-encountered boid at the minimum distance wins the tie — this
+		// fixture is constructed to exercise that exact rule, not copied from
+		// running the function first.
+		const first: BoidState = {
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const second: BoidState = {
+			x: 0,
+			y: 3,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const predator: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+
+		const result = applyPredation([first, second], [predator], 0);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toBe(second);
+	});
+});
+
+describe("applyPredation contested capture", () => {
+	it("removes exactly one boid when two predators are both in range of the one shared target", () => {
+		// The shared boid is the only target in CAPTURE_RADIUS range for
+		// either predator; a bystander boid sits far away from both. This
+		// locks in the `captured` Set's single-claim invariant: with two
+		// predators contesting one target, exactly one boid is removed — not
+		// zero, not two, and no error.
+		const target: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const bystander: BoidState = {
+			x: 100,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const predatorA: PredatorState = {
+			x: 2,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+		const predatorB: PredatorState = {
+			x: 0,
+			y: 2,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		};
+
+		const result = applyPredation(
+			[target, bystander],
+			[predatorA, predatorB],
+			0,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toBe(bystander);
+	});
+});
+
+describe("hunger-before-predation order is load-bearing", () => {
+	it("produces a measurably different outcome depending on which step runs first", () => {
+		// `target` is constructed to reach lifespan exactly 0 from
+		// applyHunger's extra decay this tick (HUNGER_EXTRA_DECAY_RATE=1,
+		// dtSeconds=1, starting lifespan=1) while also sitting within
+		// CAPTURE_RADIUS of `predator` (distance 3 <= 6), which is above the
+		// protection threshold. `bystander` is far from the predator and has
+		// a long lifespan, so it survives either order and only dilutes the
+		// flock size past the protection threshold.
+		const buildTarget = (): BoidState => ({
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1,
+		});
+		const buildBystander = (): BoidState => ({
+			x: 100,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+		});
+		const predator: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+		};
+		const foodStock = -10;
+		const dtSeconds = 1;
+		const foodRegenRate = 0;
+		const protectionThreshold = 1;
+
+		// Documented order: applyHunger then applyPredation.
+		const hungerFirst = applyHunger(
+			[buildTarget(), buildBystander()],
+			foodStock,
+			dtSeconds,
+			foodRegenRate,
+		);
+		// The target is already gone right after the hunger step — its
+		// lifespan hit exactly 0 here, before predation ever ran. This is
+		// starvation, not predation.
+		expect(hungerFirst.boids).toHaveLength(1);
+		expect(hungerFirst.boids[0]?.x).toBe(100);
+
+		const afterDocumentedOrder = applyPredation(
+			hungerFirst.boids,
+			[predator],
+			protectionThreshold,
+		);
+		expect(afterDocumentedOrder).toHaveLength(1);
+		expect(afterDocumentedOrder[0]?.x).toBe(100);
+
+		// Swapped order: applyPredation then applyHunger, on a fresh copy of
+		// the same input.
+		const predationFirst = applyPredation(
+			[buildTarget(), buildBystander()],
+			[predator],
+			protectionThreshold,
+		);
+		// The target's lifespan was still 1 (> 0) going into this call, so
+		// its removal here can only be the CAPTURE_RADIUS proximity check —
+		// it is captured, not starved.
+		expect(predationFirst).toHaveLength(1);
+		expect(predationFirst[0]?.x).toBe(100);
+
+		const afterSwappedOrder = applyHunger(
+			predationFirst,
+			foodStock,
+			dtSeconds,
+			foodRegenRate,
+		);
+		expect(afterSwappedOrder.boids).toHaveLength(1);
+		expect(afterSwappedOrder.boids[0]?.x).toBe(100);
+
+		// The order genuinely changes more than just which function removed
+		// the target: foodStock after the documented order reflects hunger
+		// depleting against a flock of 2 (target still present), while the
+		// swapped order's hunger step depletes against a flock of 1 (target
+		// already captured) — a measurably different result for the same
+		// input.
+		expect(hungerFirst.foodStock).not.toBe(afterSwappedOrder.foodStock);
+		expect(hungerFirst.foodStock).toBe(-11);
+		expect(afterSwappedOrder.foodStock).toBe(-10.5);
+	});
+});
