@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 4 complete)
+> Last updated: 2026-11-12 (Phase 5 complete — rollout finished)
 
 ## 1. Strategy
 
@@ -67,7 +67,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | complete | `context/changes/testing-render-loop-lifecycle/` |
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | complete | `context/changes/testing-simulation-ownership/` |
 | 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | complete | `context/changes/testing-render-perf-budget/` |
-| 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | not started | — |
+| 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | complete | `context/changes/ci-quality-gates/` |
 
 **Status vocabulary** (fixed — parser literals):
 
@@ -110,14 +110,14 @@ phase lands; before that, the gate is `planned`.
 
 | Gate | Where | Required? | Catches |
 |---|---|---|---|
-| lint + typecheck | local only today | required after §3 Phase 5 | syntactic / type drift |
-| unit + integration | local only today | required after §3 Phase 5 | logic regressions |
+| lint + typecheck | `.github/workflows/deploy.yml` `test` job, required via `needs: test` on `deploy` | required | syntactic / type drift |
+| unit + integration | `.github/workflows/deploy.yml` `test` job, required via `needs: test` on `deploy` | required | logic regressions |
 | e2e on critical flows | not wired, not planned | — | not applicable — no e2e tool justified by current risks (see §4) |
 | post-edit hook | not wired, not planned | — | not applicable — no rollout phase proposes one |
 | visual diff (deterministic) | not wired, not planned | — | not applicable — risk #3/#4 are addressed structurally, not visually |
 | pre-prod smoke | not wired, not planned | optional | environment-specific failures; the VPS deploy (`.github/workflows/deploy.yml`) has no gate at all today |
 
-Today, `.github/workflows/deploy.yml` auto-deploys on every push to `master` with **zero** lint/typecheck/test gating — Phase 5 exists specifically to close that gap.
+`.github/workflows/deploy.yml` now gates `deploy` behind a `test` job (build, typecheck, check, migrate, test) via `needs: test` — closing the gap Phase 5 was opened to fix.
 
 ## 6. Cookbook Patterns
 
@@ -254,6 +254,19 @@ the relevant rollout phase ships; before that, the sub-section reads
 ### 6.5 Per-rollout-phase notes
 
 (Filled in after each phase lands with anything surprising it taught.)
+
+**Phase 5 (quality-gates wiring):** `next build` executes server code during
+static page-data collection (e.g. `/_not-found`), which eagerly constructs the
+app's db client singleton via `env.DATABASE_URL` at module load.
+`SKIP_ENV_VALIDATION` only bypasses the T3 env Zod check — it does not supply
+a value — so a CI build step needs real (dummy) values for `DATABASE_URL` and
+every other required `env.js` field, not just the skip flag. Separately, a
+fresh CI checkout's SQLite file has no schema, so any test touching a real DB
+row needs a migrate step (`npm run db:migrate`, same dummy env) before
+`npm test`. Both gaps were invisible locally (dev always has a real `.env`
+and an already-migrated `db.sqlite`) and only surfaced on the first two real
+CI runs — exactly the category of gap this plan's own "Open Risks" flagged
+in advance as unprovable without a real Actions run.
 
 ## 7. What We Deliberately Don't Test
 

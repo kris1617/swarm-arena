@@ -1,7 +1,7 @@
 ---
 change_id: ci-quality-gates
 title: Gate auto-deploy behind lint, typecheck, and test (test-plan Phase 5)
-status: implemented
+status: impl_reviewed
 created: 2026-11-12
 updated: 2026-11-12
 archived_at: null
