@@ -1,7 +1,7 @@
 ---
 change_id: test-plan-refresh-2026-11-12
 title: Refresh test-plan.md — surface the untested depth-rendering formula
-status: implementing
+status: implemented
 created: 2026-11-12
 updated: 2026-11-12
 archived_at: null

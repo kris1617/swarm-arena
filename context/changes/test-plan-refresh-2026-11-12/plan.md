@@ -257,11 +257,11 @@ None — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New test file passes: `npx vitest run src/app/simulation/_components/depth-render.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 24800cd
+- [x] 1.2 Linting passes: `npm run check` — 24800cd
+- [x] 1.3 New test file passes: `npx vitest run src/app/simulation/_components/depth-render.test.ts` — 24800cd
+- [x] 1.4 Full suite still passes: `npm test` — 24800cd
 
 #### Manual
 
-- [x] 1.5 Visual spot-check: depth effect and occlusion unchanged after the extraction
+- [x] 1.5 Visual spot-check: depth effect and occlusion unchanged after the extraction — 24800cd
