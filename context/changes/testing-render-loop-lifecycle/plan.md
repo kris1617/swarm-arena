@@ -279,11 +279,11 @@ None — no schema or data changes; test code, two new DOM-free lifecycle module
 
 #### Automated
 
-- [x] 4.1 Type checking passes: `npm run typecheck`
-- [x] 4.2 Linting passes: `npm run check`
-- [x] 4.3 New test passes: `npx vitest run src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`
-- [x] 4.4 Full suite passes with no regression: `npx vitest run`
+- [x] 4.1 Type checking passes: `npm run typecheck` — c642d72
+- [x] 4.2 Linting passes: `npm run check` — c642d72
+- [x] 4.3 New test passes: `npx vitest run src/app/simulation/multi/_components/multi-simulation-stage.test.tsx` — c642d72
+- [x] 4.4 Full suite passes with no regression: `npx vitest run` — c642d72
 
 #### Manual
 
-- [x] 4.5 Single-run and multi-run simulations both behave identically to before this phase's refactors, including correct redraw-on-switch for multi-run
+- [x] 4.5 Single-run and multi-run simulations both behave identically to before this phase's refactors, including correct redraw-on-switch for multi-run — c642d72

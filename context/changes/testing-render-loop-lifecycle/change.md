@@ -1,7 +1,7 @@
 ---
 change_id: testing-render-loop-lifecycle
 title: Test canvas render-loop lifecycle without a browser (test-plan Phase 2)
-status: implementing
+status: implemented
 created: 2026-11-12
 updated: 2026-11-12
 archived_at: null
