@@ -251,19 +251,19 @@ component.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New tests pass: `npx vitest run src/server/simulation/pipeline.test.ts`
-- [x] 1.4 Full suite passes with no regression: `npx vitest run`
+- [x] 1.1 Type checking passes: `npm run typecheck` — a72258a
+- [x] 1.2 Linting passes: `npm run check` — a72258a
+- [x] 1.3 New tests pass: `npx vitest run src/server/simulation/pipeline.test.ts` — a72258a
+- [x] 1.4 Full suite passes with no regression: `npx vitest run` — a72258a
 
 ### Phase 2: Wire simulation-canvas.tsx to runTick and update the cookbook
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite passes with no regression: `npx vitest run`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite passes with no regression: `npx vitest run`
 
 #### Manual
 
-- [ ] 2.4 Starting a run at /simulation behaves identically to before the refactor (flocking, hunting, hunger/predation, score on stop)
+- [x] 2.4 Starting a run at /simulation behaves identically to before the refactor (flocking, hunting, hunger/predation, score on stop)

@@ -4,16 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
-	applyHunger,
-	applyPredation,
 	type BoidState,
 	computeCohesion,
 	createInitialPopulation,
 	createInitialPredators,
 	type FlockWeights,
 	type PredatorState,
-	stepBoids,
-	stepPredators,
+	runTick,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import {
@@ -208,34 +205,21 @@ export function SimulationCanvas({
 			);
 			lastTimestampRef.current = timestamp;
 
-			// Fixed per-tick ordering (see boids.ts plan's "Critical
-			// Implementation Details"): stepBoids (flee steering reads this
-			// tick's predators) -> stepPredators -> applyHunger -> applyPredation.
-			// Predation must run after both populations have moved this tick,
-			// using current-tick positions; hunger runs before predation so a
-			// boid that starved this tick is already removed and can't also be
-			// "captured" redundantly by the same tick's predation pass.
-			const steeredBoids = stepBoids(
-				boidsRef.current,
-				weights,
-				dtSeconds,
-				predatorsRef.current,
-			);
-			const steeredPredators = stepPredators(
-				predatorsRef.current,
-				steeredBoids,
-				dtSeconds,
-			);
-			const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
-				steeredBoids,
-				foodStockRef.current,
-				dtSeconds,
-				foodRegenRate,
-			);
-			const nextBoids = applyPredation(
-				fedBoids,
-				steeredPredators,
-				protectionThreshold,
+			// Composed pipeline (see boids.ts's runTick doc comment for the
+			// fixed order and why it's load-bearing): stepBoids -> stepPredators
+			// -> applyHunger -> applyPredation, as one tested entry point so this
+			// loop can't drift from the order pipeline.test.ts verifies.
+			const {
+				boids: nextBoids,
+				predators: steeredPredators,
+				foodStock: nextFoodStock,
+			} = runTick(
+				{
+					boids: boidsRef.current,
+					predators: predatorsRef.current,
+					foodStock: foodStockRef.current,
+				},
+				{ weights, dtSeconds, foodRegenRate, protectionThreshold },
 			);
 
 			boidsRef.current = nextBoids;
