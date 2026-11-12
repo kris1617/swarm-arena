@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 3 complete)
+> Last updated: 2026-11-12 (Phase 4 planned)
 
 ## 1. Strategy
 
@@ -51,7 +51,7 @@ research's job, see §1 principle #3).
 |------|-----------------------------|----------------|--------------------------------------|-----------------------|-----------------------|
 | #1 | The documented tick order produces a specific, reproducible outcome for a fixed seed+params, and swapping the order of any two steps measurably changes that outcome — the order itself is asserted, not just each function in isolation | Assuming the existing per-function unit tests already cover this — they test each step independently, never the composed pipeline's order | The exact call site that composes the four step functions per tick. Research (`research.md`, 2026-11-12) confirmed this composition is single-sourced, not duplicated: it lives only in the single-run tick loop; the multi-run tick loop runs a boids-only subset with no predator/hunger/predation calls at all, by design | unit/integration, against the composed tick function | An assertion copied from the pipeline's current output (oracle problem) instead of one derived from the documented invariant — would re-bless a wrong order if copied from current behavior |
 | #2 | Running the same seed+params twice through the full composed pipeline for N ticks yields identical derived state (population, positions, score), not just identical RNG draws | Assuming determinism is inherited for free from the RNG primitive being deterministic — array iteration order, tie-breaking in nearest-neighbor lookups, or sort stability can introduce non-determinism unrelated to the RNG | Every place the pipeline iterates over boid/predator collections, and whether any iteration order depends on insertion/mutation order rather than a stable, seed-derived order | unit/integration, against the composed tick function (can share a fixture with #1) | Asserting two runs produce "similar" scores instead of exactly identical — a near-miss here is still a real break of the guardrail |
-| #3 | The composed step pipeline's per-tick cost stays within a defined budget at the FR-018 max object count, verified structurally (e.g. bounded pairwise-comparison count) rather than by wall-clock timing | Assuming the existing 500-object cap already guarantees smooth rendering because it was chosen as a guardrail — the cap bounds the input, it does not prove the loop stays within budget | The tick loop's actual per-frame cost profile: where time is spent across step functions vs. the draw routine | unit/perf-budget test on the pure step functions, not e2e/visual | Asserting on wall-clock time in CI (flaky) instead of an algorithmic/structural bound or a generously-headroomed budget |
+| #3 | The composed step pipeline's per-tick cost stays within a defined budget at the FR-018 max object count, verified structurally rather than by wall-clock timing | Assuming the existing 500-object cap already guarantees smooth rendering because it was chosen as a guardrail — the cap bounds the input, it does not prove the loop stays within budget. Also assuming "bounded pairwise-comparison count" means an exact magic-number assertion — research (`research.md`, 2026-11-12) found this would itself be an oracle-problem violation (the expected count can only be derived by reading all ~11 distance-math call sites in `boids.ts`, not from the product requirement) | The tick loop's actual per-frame cost profile (confirmed: `O(B²)`-dominated via `resolveOverlaps`/`stepBoids`'s neighbor scan, `B`=boid count, bounded by FR-018's server-enforced cap) — where time is spent across step functions vs. the draw routine | a scaling-shape test on `runTick` (e.g. assert operation count grows within a quadratic-shaped band between two boid-count samples), not an exact-count assertion, not e2e/visual | Asserting on wall-clock time in CI (flaky); asserting an exact operation-count total (oracle-problem violation — the number comes from reading the implementation, not the requirement) instead of a scaling-shape band derived from "must not be worse than quadratic" |
 | #4 | The composed loop's lifecycle behaviors (stop-on-duration, stop-on-population-wipe, correct redraw on active-run switch, no double-step) hold, verified without a real browser frame | Assuming unit tests on the pure step functions implicitly cover the loop that calls them — the loop itself is an untested integration point, duplicated across two files that can drift independently | Whether the loop's state-transition logic can be exercised without a real `requestAnimationFrame`/canvas context, or needs a lightweight test double. Research (`research.md`, 2026-11-12) confirmed both loops have a separable, pure lifecycle-decision core (dt computation, stop-condition boolean, active-slot selection) already callable with zero DOM | unit test against an extracted, DOM-free lifecycle function (mirroring Phase 1's `runTick` extraction) — confirmed cheaper than mocking RAF/canvas, since jsdom/happy-dom/testing-library/canvas-mock are absent from this project even transitively and mocking would require adding them | An e2e/Playwright test asserting pixel output when the actual risk is lifecycle/state-transition logic, not visuals; also avoid adding DOM-mocking dependencies when extraction gives the same signal for zero new dependencies |
 | #5 | Calling `simulation.stop` for a run owned by a different user throws `FORBIDDEN`, and an unauthenticated call throws `UNAUTHORIZED` — as a regression test, not a one-time manual check | Assuming the manual verification done at implementation time (basic-flocking-loop Progress 2.6/2.7) stays true forever — nothing re-runs that check on future refactors of `trpc.ts` or `simulation.ts`. Also assuming a purely fabricated session with no real DB rows is enough to reach the ownership check — research (`research.md`, 2026-11-12) confirmed `@libsql/client` enforces foreign keys by default, so the `FORBIDDEN` case needs a real `users` row (owner) and a real `simulationRuns` row before `stop`'s resolver ever runs; only the `UNAUTHORIZED` case needs no DB setup | Where the ownership check currently lives (confirmed: resolver body, `simulation.ts:100-102`, not middleware), and how to fabricate two distinct user sessions against the test db given the FK constraint above | integration test via `createCaller` (already the pattern in `simulation.test.ts`) with two fabricated sessions, plus real DB fixture rows for the FORBIDDEN case | Asserting only that *some* error is thrown (vacuous pass) instead of the specific `FORBIDDEN`/`UNAUTHORIZED` code — `simulation.test.ts`'s own existing comment already warns against this exact mistake |
 
@@ -66,7 +66,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 1 | Composed-pipeline correctness & determinism | Prove the fixed tick order and full-pipeline determinism hold, not just each step function in isolation | #1, #2 | unit + integration | complete | `context/changes/testing-composed-pipeline-correctness/` |
 | 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | complete | `context/changes/testing-render-loop-lifecycle/` |
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | complete | `context/changes/testing-simulation-ownership/` |
-| 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | not started | — |
+| 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | planned | `context/changes/testing-render-perf-budget/` |
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | not started | — |
 
 **Status vocabulary** (fixed — parser literals):
@@ -216,9 +216,40 @@ the relevant rollout phase ships; before that, the sub-section reads
   session` tests for the other two legs of this pattern).
 - Run command: `npx vitest run src/server/api/routers/simulation.test.ts`.
 
-### 6.4 Adding a perf-budget test for simulation step functions
+### 6.4 Adding a scaling-shape perf-budget test
 
-- TBD — see §3 Phase 4 (structural cost-bound pattern, not wall-clock timing).
+- Location: `src/server/simulation/pipeline-perf.test.ts`.
+- Pattern: wrap `vi.spyOn` (no `mockImplementation` — the real computation
+  still runs, so the spy only counts calls and never changes which
+  conditional branches get taken) around a primitive that every O(n^2)
+  distance scan in the pipeline funnels through (here, `Math.hypot`, used by
+  `stepBoids`'s neighbor scan, `resolveOverlaps`, `stepPredators`'s
+  nearest-boid scan, and `applyPredation`'s nearest-boid scan). Build two
+  input samples at a known scale factor (e.g. 40 boids/10 predators vs. 160
+  boids/40 predators — same ratio, 4x scale), run the composed pipeline
+  once per sample, and assert the resulting call-count ratio falls inside a
+  band derived from the expected Big-O shape for that scale factor (4x
+  input -> 16x calls under quadratic) — never an exact call count. An exact
+  count is an oracle-problem violation: the number comes from reading the
+  implementation, not from the product requirement, and would need updating
+  every time an unrelated internal refactor changed how many times the
+  primitive is called without changing the actual cost shape.
+- Known fuzz sources that widen the band past the naive quadratic
+  prediction: `applyPredation`'s capture-dependent skip (a predator stops
+  scanning once every reachable boid is captured), and `stepBoids`'s
+  conditional `alignMag`/`cohMag` terms (only computed when
+  `neighborCount > 0`). Set the band wide enough to absorb these but not so
+  wide it would admit a cubic regression (a 4x scale predicts ~64x under
+  cubic, vs. ~16x under quadratic) — a 10-22 band worked for the boid/
+  predator counts above, with a measured ratio of ~15.8.
+  Use generous `foodStock`/`foodRegenRate` values (e.g. 1000/10) so
+  `applyHunger`'s negative-stock branch never fires mid-test — it would
+  remove boids and shrink a sample's population independently of the fixed
+  scale factor, skewing the ratio.
+- Reference test: `runTick scaling-shape perf budget > grows Math.hypot
+  call count quadratically, not cubically or unboundedly, as boid/predator
+  count scales 4x at a fixed 4:1 ratio` (see `pipeline-perf.test.ts`).
+- Run command: `npx vitest run src/server/simulation/pipeline-perf.test.ts`.
 
 ### 6.5 Per-rollout-phase notes
 
