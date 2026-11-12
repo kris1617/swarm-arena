@@ -5,7 +5,28 @@ on:
     branches: [master]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      # SKIP_ENV_VALIDATION mirrors the Dockerfile's build stage (see
+      # context/deployment/deploy-plan.md) — this build is only here to
+      # generate .next/types for typecheck; it never runs with real secrets.
+      - name: Build (type generation)
+        env:
+          SKIP_ENV_VALIDATION: "1"
+        run: npm run build
+      - run: npm run typecheck
+      - run: npm run check
+      - run: npm test
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Trigger deploy over SSH
