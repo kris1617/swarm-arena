@@ -260,10 +260,10 @@ component.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite passes with no regression: `npx vitest run`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 69cad73
+- [x] 2.2 Linting passes: `npm run check` — 69cad73
+- [x] 2.3 Full suite passes with no regression: `npx vitest run` — 69cad73
 
 #### Manual
 
-- [x] 2.4 Starting a run at /simulation behaves identically to before the refactor (flocking, hunting, hunger/predation, score on stop)
+- [x] 2.4 Starting a run at /simulation behaves identically to before the refactor (flocking, hunting, hunger/predation, score on stop) — 69cad73
