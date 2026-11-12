@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# PostToolUse (Write|Edit): lint the file the agent just edited, via Biome.
+# Exit 2 + stderr is the only combination Claude Code sees.
+export NO_COLOR=1 FORCE_COLOR=0
+command -v jq >/dev/null || { echo "Hook lint-edited-file.sh needs jq: install it or port the hook to Node." >&2; exit 2; }
+
+INPUT=$(cat)
+FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+[ -n "$FILE" ] || exit 0
+case "$FILE" in /*) ;; *) FILE="${CWD:-$PWD}/$FILE" ;; esac
+
+# Files Biome's linter covers in this repo (biome.jsonc: js/ts/json/css families).
+case "$FILE" in
+  *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.jsonc|*.css) ;;
+  *) exit 0 ;;
+esac
+[ -f "$FILE" ] || exit 0
+
+# Checkout of the edited file, not $CLAUDE_PROJECT_DIR (after EnterWorktree, or for a
+# sibling worktree, that variable names another checkout). Files of other repositories
+# (~/.claude, other projects) are skipped; any worktree of this repository is checked.
+ROOT=$(git -C "$(dirname "$FILE")" rev-parse --show-toplevel 2>/dev/null) || exit 0
+REPO=$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+SESSION_REPO=$(git -C "${CWD:-$PWD}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+[ -n "$REPO" ] && [ "$REPO" = "$SESSION_REPO" ] || exit 0
+cd "$ROOT" || exit 0
+
+# Register the checkout so the Stop hook sweeps it too, even when it is not the session cwd.
+SID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null | tr -cd 'A-Za-z0-9_-')
+if [ -n "$SID" ] && mkdir -p "${TMPDIR:-/tmp}/claude-hooks"; then
+  printf '%s\n' "$ROOT" >>"${TMPDIR:-/tmp}/claude-hooks/$SID.roots"
+fi
+
+REL=${FILE#"$ROOT"/}
+
+# --no-install: a missing Biome install fails here (exit 2) instead of passing silently.
+# No --write: report only, let the agent fix — rewriting the file the agent just edited
+# can make its next Edit fail with "file modified since read".
+# --no-errors-on-unmatched: a file Biome's own config excludes (biome.jsonc's `!context`,
+# `!.claude`, etc.) must report "nothing to check" here, not a false block.
+if ! OUTPUT=$(npx --no-install biome check --no-errors-on-unmatched "$REL" 2>&1); then
+  echo "Biome reported errors in $REL:" >&2
+  echo "$OUTPUT" >&2
+  exit 2
+fi
+exit 0
