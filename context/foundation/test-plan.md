@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 1 complete)
+> Last updated: 2026-11-12 (Phase 2 planned)
 
 ## 1. Strategy
 
@@ -52,7 +52,7 @@ research's job, see §1 principle #3).
 | #1 | The documented tick order produces a specific, reproducible outcome for a fixed seed+params, and swapping the order of any two steps measurably changes that outcome — the order itself is asserted, not just each function in isolation | Assuming the existing per-function unit tests already cover this — they test each step independently, never the composed pipeline's order | The exact call site that composes the four step functions per tick. Research (`research.md`, 2026-11-12) confirmed this composition is single-sourced, not duplicated: it lives only in the single-run tick loop; the multi-run tick loop runs a boids-only subset with no predator/hunger/predation calls at all, by design | unit/integration, against the composed tick function | An assertion copied from the pipeline's current output (oracle problem) instead of one derived from the documented invariant — would re-bless a wrong order if copied from current behavior |
 | #2 | Running the same seed+params twice through the full composed pipeline for N ticks yields identical derived state (population, positions, score), not just identical RNG draws | Assuming determinism is inherited for free from the RNG primitive being deterministic — array iteration order, tie-breaking in nearest-neighbor lookups, or sort stability can introduce non-determinism unrelated to the RNG | Every place the pipeline iterates over boid/predator collections, and whether any iteration order depends on insertion/mutation order rather than a stable, seed-derived order | unit/integration, against the composed tick function (can share a fixture with #1) | Asserting two runs produce "similar" scores instead of exactly identical — a near-miss here is still a real break of the guardrail |
 | #3 | The composed step pipeline's per-tick cost stays within a defined budget at the FR-018 max object count, verified structurally (e.g. bounded pairwise-comparison count) rather than by wall-clock timing | Assuming the existing 500-object cap already guarantees smooth rendering because it was chosen as a guardrail — the cap bounds the input, it does not prove the loop stays within budget | The tick loop's actual per-frame cost profile: where time is spent across step functions vs. the draw routine | unit/perf-budget test on the pure step functions, not e2e/visual | Asserting on wall-clock time in CI (flaky) instead of an algorithmic/structural bound or a generously-headroomed budget |
-| #4 | The composed loop's lifecycle behaviors (stop-on-duration, stop-on-population-wipe, correct redraw on active-run switch, no double-step) hold, verified without a real browser frame | Assuming unit tests on the pure step functions implicitly cover the loop that calls them — the loop itself is an untested integration point, duplicated across two files that can drift independently | Whether the loop's state-transition logic can be exercised without a real `requestAnimationFrame`/canvas context, or needs a lightweight test double | integration test with a mocked RAF/canvas, not e2e/Playwright | An e2e/Playwright test asserting pixel output when the actual risk is lifecycle/state-transition logic, not visuals |
+| #4 | The composed loop's lifecycle behaviors (stop-on-duration, stop-on-population-wipe, correct redraw on active-run switch, no double-step) hold, verified without a real browser frame | Assuming unit tests on the pure step functions implicitly cover the loop that calls them — the loop itself is an untested integration point, duplicated across two files that can drift independently | Whether the loop's state-transition logic can be exercised without a real `requestAnimationFrame`/canvas context, or needs a lightweight test double. Research (`research.md`, 2026-11-12) confirmed both loops have a separable, pure lifecycle-decision core (dt computation, stop-condition boolean, active-slot selection) already callable with zero DOM | unit test against an extracted, DOM-free lifecycle function (mirroring Phase 1's `runTick` extraction) — confirmed cheaper than mocking RAF/canvas, since jsdom/happy-dom/testing-library/canvas-mock are absent from this project even transitively and mocking would require adding them | An e2e/Playwright test asserting pixel output when the actual risk is lifecycle/state-transition logic, not visuals; also avoid adding DOM-mocking dependencies when extraction gives the same signal for zero new dependencies |
 | #5 | Calling `simulation.stop` for a run owned by a different user throws `FORBIDDEN`, and an unauthenticated call throws `UNAUTHORIZED` — as a regression test, not a one-time manual check | Assuming the manual verification done at implementation time (basic-flocking-loop Progress 2.6/2.7) stays true forever — nothing re-runs that check on future refactors of `trpc.ts` or `simulation.ts` | Where the ownership check currently lives (procedure middleware vs. resolver body), and how to fabricate two distinct user sessions against the test db | integration test via `createCaller` (already the pattern in `simulation.test.ts`) with two fabricated sessions | Asserting only that *some* error is thrown (vacuous pass) instead of the specific `FORBIDDEN`/`UNAUTHORIZED` code — `simulation.test.ts`'s own existing comment already warns against this exact mistake |
 
 ## 3. Phased Rollout
@@ -64,7 +64,7 @@ orchestrator updates Status as artifacts appear on disk.
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
 | 1 | Composed-pipeline correctness & determinism | Prove the fixed tick order and full-pipeline determinism hold, not just each step function in isolation | #1, #2 | unit + integration | complete | `context/changes/testing-composed-pipeline-correctness/` |
-| 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | not started | — |
+| 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | planned | `context/changes/testing-render-loop-lifecycle/` |
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | not started | — |
 | 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | not started | — |
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | not started | — |
@@ -141,9 +141,50 @@ the relevant rollout phase ships; before that, the sub-section reads
 - Reference test: `runTick > is deterministic end-to-end across the full composed pipeline, not just the RNG primitive` (see `pipeline.test.ts`; also see `hunger-before-predation order is load-bearing` for the swapped-order contrast pattern).
 - Run command: `npx vitest run src/server/simulation/pipeline.test.ts`.
 
-### 6.2 Adding an integration test for the render-loop lifecycle
+### 6.2 Adding an integration test for a render-loop lifecycle
 
-- TBD — see §3 Phase 2 (mocked-RAF/canvas pattern for `simulation-canvas.tsx` / `multi-simulation-stage.tsx`).
+- Location: two layers, not one.
+  - Pure lifecycle core: `src/server/simulation/<name>-lifecycle.ts`, with a
+    co-located `<name>-lifecycle.test.ts` right beside it (e.g.
+    `single-run-lifecycle.ts` / `single-run-lifecycle.test.ts`,
+    `multi-run-lifecycle.ts`).
+  - Shell-wiring smoke test: `src/app/<component-path>.test.tsx`, co-located
+    with the component it exercises (e.g.
+    `src/app/simulation/_components/simulation-canvas.test.tsx`,
+    `src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`).
+- Pattern: extract the loop's state-in/state-out decision core first — a
+  plain function taking prior state + the new timestamp/props and returning
+  next state, DOM-free and requiring zero new dependencies (mirrors Phase
+  1's `runTick` extraction). Unit-test that core directly with plain
+  Vitest. Only then add a second, minimal smoke test for the thin RAF-
+  scheduling shell that calls it — never for visual/pixel output, which
+  this layer does not cover and is not meant to. The shell test needs a DOM
+  (this project had none; `happy-dom` was added as a new dependency
+  specifically for this), and mocks: `// @vitest-environment happy-dom`
+  docblock, `vi.mock("~/trpc/react", ...)` for the component's
+  `api.simulation.stop.useMutation()` call, a stubbed
+  `HTMLCanvasElement.prototype.getContext`, and stubbed
+  `requestAnimationFrame`/`cancelAnimationFrame` via `vi.stubGlobal` that
+  capture the scheduled callback instead of actually scheduling it, so the
+  test can advance ticks manually. Mount with `createRoot` + `act` from
+  `"react"`, using the simplest valid props (e.g. an empty `slots` array for
+  the multi-run component — no running slot needed to exercise the
+  scheduling guarantee itself), and assert the exactly-once-then-exactly-
+  twice RAF call-count sequence (mount schedules one frame; processing one
+  tick schedules exactly one more — not more, which would mean a
+  double-step).
+- Reach for the happy-dom shell layer only when the risk is specifically
+  the RAF-scheduling/lifecycle wiring itself (stop conditions, double-step,
+  redraw-on-switch) — if the risk is purely the decision logic (dt
+  computation, stop-condition booleans), the pure-core unit test alone is
+  cheaper and sufficient.
+- Reference tests: `src/server/simulation/single-run-lifecycle.test.ts`
+  (pure core), `src/app/simulation/_components/simulation-canvas.test.tsx`
+  (shell smoke test, Phase 2), `src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`
+  (shell smoke test, Phase 4).
+- Run commands: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`,
+  `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`,
+  `npx vitest run src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`.
 
 ### 6.3 Adding an authorization/ownership regression test
 

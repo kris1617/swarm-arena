@@ -270,20 +270,20 @@ None — no schema or data changes; test code, two new DOM-free lifecycle module
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 New tests pass: `npx vitest run src/server/simulation/multi-run-lifecycle.test.ts`
-- [x] 3.4 Full suite passes with no regression: `npx vitest run`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 8f4acb8
+- [x] 3.2 Linting passes: `npm run check` — 8f4acb8
+- [x] 3.3 New tests pass: `npx vitest run src/server/simulation/multi-run-lifecycle.test.ts` — 8f4acb8
+- [x] 3.4 Full suite passes with no regression: `npx vitest run` — 8f4acb8
 
 ### Phase 4: Shell-wiring smoke test for multi-simulation-stage.tsx and cookbook update
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 New test passes: `npx vitest run src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`
-- [ ] 4.4 Full suite passes with no regression: `npx vitest run`
+- [x] 4.1 Type checking passes: `npm run typecheck`
+- [x] 4.2 Linting passes: `npm run check`
+- [x] 4.3 New test passes: `npx vitest run src/app/simulation/multi/_components/multi-simulation-stage.test.tsx`
+- [x] 4.4 Full suite passes with no regression: `npx vitest run`
 
 #### Manual
 
-- [ ] 4.5 Single-run and multi-run simulations both behave identically to before this phase's refactors, including correct redraw-on-switch for multi-run
+- [x] 4.5 Single-run and multi-run simulations both behave identically to before this phase's refactors, including correct redraw-on-switch for multi-run
