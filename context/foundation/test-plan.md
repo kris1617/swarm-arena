@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 1 planned)
+> Last updated: 2026-11-12 (Phase 1 complete)
 
 ## 1. Strategy
 
@@ -63,7 +63,7 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Composed-pipeline correctness & determinism | Prove the fixed tick order and full-pipeline determinism hold, not just each step function in isolation | #1, #2 | unit + integration | planned | `context/changes/testing-composed-pipeline-correctness/` |
+| 1 | Composed-pipeline correctness & determinism | Prove the fixed tick order and full-pipeline determinism hold, not just each step function in isolation | #1, #2 | unit + integration | complete | `context/changes/testing-composed-pipeline-correctness/` |
 | 2 | Render-loop lifecycle safety net | Catch lifecycle regressions (stop conditions, double-step, redraw-on-switch) in both loop implementations without a browser | #4 | integration | not started | — |
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | not started | — |
 | 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | not started | — |
