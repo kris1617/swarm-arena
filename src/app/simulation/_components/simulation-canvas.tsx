@@ -68,6 +68,23 @@ type DrawEntity = {
 	kind: "boid" | "predator";
 };
 
+// Closer entities (smaller z) render bigger; clamped so the inverse-linear
+// falloff can't blow up as z approaches 0 or vanish at range. Pure and
+// DOM-free so it's directly unit-testable without a canvas context.
+export function computeDepthScale(z: number): number {
+	return Math.min(
+		MAX_SCALE,
+		Math.max(MIN_SCALE, REFERENCE_DEPTH / (REFERENCE_DEPTH + z)),
+	);
+}
+
+// Draw farthest-first so nearer entities (drawn later) paint over farther
+// ones at overlapping screen positions instead of the reverse. Pure
+// comparator, directly unit-testable without a canvas context.
+export function compareByDepth(a: { z: number }, b: { z: number }): number {
+	return b.z - a.z;
+}
+
 function drawScene(
 	ctx: CanvasRenderingContext2D,
 	boids: BoidState[],
@@ -86,9 +103,7 @@ function drawScene(
 			}),
 		),
 	];
-	// Draw farthest-first so nearer entities (drawn later) paint over farther
-	// ones at overlapping screen positions instead of the reverse.
-	const sorted = entities.sort((a, b) => b.z - a.z);
+	const sorted = entities.sort(compareByDepth);
 	for (const entity of sorted) {
 		const x = entity.x * RENDER_SCALE + RENDER_OFFSET_X;
 		const y = entity.y * RENDER_SCALE + RENDER_OFFSET_Y;
@@ -96,12 +111,7 @@ function drawScene(
 		// frame) points along +x as a stable default.
 		const speed = Math.hypot(entity.vx, entity.vy);
 		const heading = speed > 0 ? Math.atan2(entity.vy, entity.vx) : 0;
-		// Closer entities (smaller z) render bigger; clamped so the inverse-
-		// linear falloff can't blow up as z approaches 0 or vanish at range.
-		const scale = Math.min(
-			MAX_SCALE,
-			Math.max(MIN_SCALE, REFERENCE_DEPTH / (REFERENCE_DEPTH + entity.z)),
-		);
+		const scale = computeDepthScale(entity.z);
 
 		ctx.save();
 		ctx.translate(x, y);

@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-12 (Phase 5 complete — rollout finished)
+> Last updated: 2026-11-12 (Phase 6 added via --refresh and complete — depth-rendering formula coverage)
 
 ## 1. Strategy
 
@@ -44,6 +44,7 @@ research's job, see §1 principle #3).
 | 3 | A simulation at or near the configured max object count (FR-018) visibly freezes or drops below a usable frame rate, breaking the "stays usable" guardrail — nothing automated checks the per-tick cost budget today | High | Medium | interview Q1; PRD Non-Functional Requirements ("rendering stays usable... no freezing"); hot-spot dir `src/app/simulation/_components` (6 commits/30d) |
 | 4 | The canvas tick-loop/render wiring (stop-on-duration, stop-on-population-wipe, redraw-on-active-run-switch, no double-stepping) regresses — this logic is duplicated across the single-run and multi-run components with zero automated tests in `src/app/` | Medium | High | interview Q3; hot-spot dir `src/app/simulation/_components`; `archive/2026-11-11-parallel-sim-switching/plan.md` (explicit "duplicated, not shared" decision between the two loop implementations) |
 | 5 | A user can affect another user's simulation run (e.g. stop it) by supplying its `runId` — the ownership check exists but was verified once, manually, and the one automated router test covers only input validation, not cross-user access | Medium | Medium | PRD Access Control section; `archive/2026-11-10-gate-product-routes/plan.md` Progress items 2.6/2.7 (manual-only verification); hot-spot dir `src/server/api/routers` (7 commits/30d) |
+| 6 | A careless future edit to the depth-to-scale formula or draw-order comparator (swapped clamp direction, flipped sort, swapped `MIN_SCALE`/`MAX_SCALE`) silently inverts near/far rendering, caught only by eyeballing the canvas | Medium | Low | `--refresh` discovery that `pseudo-3d-depth-rendering` shipped `impl_reviewed` but was never archived, so the original test-plan scan missed it; `pseudo-3d-depth-rendering/plan.md` Phase 2 success criteria (manual-only, no automated assertion on the formula) |
 
 ### Risk Response Guidance
 
@@ -54,6 +55,7 @@ research's job, see §1 principle #3).
 | #3 | The composed step pipeline's per-tick cost stays within a defined budget at the FR-018 max object count, verified structurally rather than by wall-clock timing | Assuming the existing 500-object cap already guarantees smooth rendering because it was chosen as a guardrail — the cap bounds the input, it does not prove the loop stays within budget. Also assuming "bounded pairwise-comparison count" means an exact magic-number assertion — research (`research.md`, 2026-11-12) found this would itself be an oracle-problem violation (the expected count can only be derived by reading all ~11 distance-math call sites in `boids.ts`, not from the product requirement) | The tick loop's actual per-frame cost profile (confirmed: `O(B²)`-dominated via `resolveOverlaps`/`stepBoids`'s neighbor scan, `B`=boid count, bounded by FR-018's server-enforced cap) — where time is spent across step functions vs. the draw routine | a scaling-shape test on `runTick` (e.g. assert operation count grows within a quadratic-shaped band between two boid-count samples), not an exact-count assertion, not e2e/visual | Asserting on wall-clock time in CI (flaky); asserting an exact operation-count total (oracle-problem violation — the number comes from reading the implementation, not the requirement) instead of a scaling-shape band derived from "must not be worse than quadratic" |
 | #4 | The composed loop's lifecycle behaviors (stop-on-duration, stop-on-population-wipe, correct redraw on active-run switch, no double-step) hold, verified without a real browser frame | Assuming unit tests on the pure step functions implicitly cover the loop that calls them — the loop itself is an untested integration point, duplicated across two files that can drift independently | Whether the loop's state-transition logic can be exercised without a real `requestAnimationFrame`/canvas context, or needs a lightweight test double. Research (`research.md`, 2026-11-12) confirmed both loops have a separable, pure lifecycle-decision core (dt computation, stop-condition boolean, active-slot selection) already callable with zero DOM | unit test against an extracted, DOM-free lifecycle function (mirroring Phase 1's `runTick` extraction) — confirmed cheaper than mocking RAF/canvas, since jsdom/happy-dom/testing-library/canvas-mock are absent from this project even transitively and mocking would require adding them | An e2e/Playwright test asserting pixel output when the actual risk is lifecycle/state-transition logic, not visuals; also avoid adding DOM-mocking dependencies when extraction gives the same signal for zero new dependencies |
 | #5 | Calling `simulation.stop` for a run owned by a different user throws `FORBIDDEN`, and an unauthenticated call throws `UNAUTHORIZED` — as a regression test, not a one-time manual check | Assuming the manual verification done at implementation time (basic-flocking-loop Progress 2.6/2.7) stays true forever — nothing re-runs that check on future refactors of `trpc.ts` or `simulation.ts`. Also assuming a purely fabricated session with no real DB rows is enough to reach the ownership check — research (`research.md`, 2026-11-12) confirmed `@libsql/client` enforces foreign keys by default, so the `FORBIDDEN` case needs a real `users` row (owner) and a real `simulationRuns` row before `stop`'s resolver ever runs; only the `UNAUTHORIZED` case needs no DB setup | Where the ownership check currently lives (confirmed: resolver body, `simulation.ts:100-102`, not middleware), and how to fabricate two distinct user sessions against the test db given the FK constraint above | integration test via `createCaller` (already the pattern in `simulation.test.ts`) with two fabricated sessions, plus real DB fixture rows for the FORBIDDEN case | Asserting only that *some* error is thrown (vacuous pass) instead of the specific `FORBIDDEN`/`UNAUTHORIZED` code — `simulation.test.ts`'s own existing comment already warns against this exact mistake |
+| #6 | The depth-scale/draw-order contract (near=bigger/far=smaller within `[0.3, 2.0]`; farthest-first draw order) holds under future edits, asserted against the documented contract, not a value mirror | Assuming the division-blow-up scenario near `z → -REFERENCE_DEPTH` needs testing — research (`test-plan-refresh-2026-11-12/research.md`, 2026-11-12) confirmed `z` is domain-bounded to `[0, 200)` via `boids.ts`'s `wrap()`, making that scenario unreachable; testing it would be speculative | None further — fully grounded in `test-plan-refresh-2026-11-12/research.md` | unit test on extracted pure functions (`computeDepthScale`, `compareByDepth`), mirroring the `runTick`/lifecycle extraction pattern | Asserting an exact scale value computed the same way the implementation computes it (oracle problem) instead of deriving from the documented clamp bounds and near/far direction |
 
 ## 3. Phased Rollout
 
@@ -68,6 +70,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 3 | Authorization regression coverage | Lock in the cross-user ownership boundary on `simulation.stop` that today is only manually verified | #5 | integration | complete | `context/changes/testing-simulation-ownership/` |
 | 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | complete | `context/changes/testing-render-perf-budget/` |
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | complete | `context/changes/ci-quality-gates/` |
+| 6 | Depth-rendering formula coverage | Prove the depth-scale/draw-order contract holds under future edits, not just at ship time | #6 | unit | complete | `context/changes/test-plan-refresh-2026-11-12/` |
 
 **Status vocabulary** (fixed — parser literals):
 
@@ -267,6 +270,38 @@ row needs a migrate step (`npm run db:migrate`, same dummy env) before
 and an already-migrated `db.sqlite`) and only surfaced on the first two real
 CI runs — exactly the category of gap this plan's own "Open Risks" flagged
 in advance as unprovable without a real Actions run.
+
+**Phase 6 (depth-rendering formula coverage, via `--refresh`):** a shipped,
+`impl_reviewed` change that is never archived stays invisible to
+`/10x-test-plan`'s discovery, which only scans `context/archive/` — it took a
+`--refresh` to surface `pseudo-3d-depth-rendering`'s untested formula.
+`/10x-tdd` was tried on this phase and correctly redirected to
+`/10x-implement` via its own eligibility gate: the formula and sort already
+executed in production (just not as named functions), so there was no
+"before the code exists" state for a red test to lead. Retrofitting coverage
+onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
+`/10x-tdd`'s — true test-first only applies to genuinely new behavior.
+
+### 6.6 Adding a unit test for a canvas-adjacent pure calculation
+
+- Location: co-located with the component, `.test.ts` not `.test.tsx` when
+  the test exercises only extracted pure functions with zero React/DOM
+  involvement (e.g. `src/app/simulation/_components/depth-render.test.ts`
+  beside `simulation-canvas.tsx`).
+- Pattern: when a calculation (a formula, a comparator, a derived value) is
+  inlined inside a function that also makes `ctx.*`/DOM calls, extract it
+  into a named, exported, pure function first — mirrors the `runTick`/
+  lifecycle-core extraction pattern (§6.1, §6.2). Then assert against the
+  calculation's *documented* contract (clamp bounds, direction, a defined
+  reference point), never against a value computed the same way the
+  implementation computes it (oracle problem). For a clamp, assert the
+  clamp is actually doing something — pick inputs that would exceed the
+  bound *without* the clamp, not just inputs that happen to land in range.
+- Reference test: `computeDepthScale` / `compareByDepth` in
+  `depth-render.test.ts` — clamp-bound tests use inputs (`z = -99`,
+  `z = 100_000`) chosen specifically to exceed the documented bounds absent
+  the clamp, not arbitrary values.
+- Run command: `npx vitest run src/app/simulation/_components/depth-render.test.ts`.
 
 ## 7. What We Deliberately Don't Test
 
