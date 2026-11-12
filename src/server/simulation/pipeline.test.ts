@@ -242,3 +242,80 @@ describe("hunger-before-predation order is load-bearing", () => {
 		expect(afterSwappedOrder.foodStock).toBe(-10.5);
 	});
 });
+
+describe("runTick itself honors the hunger-before-predation order", () => {
+	it("starves the target via runTick's own internal composition, not via a hand-rolled call sequence", () => {
+		// The test above proves the *principle* that order matters by calling
+		// applyHunger/applyPredation directly in each order — it never calls
+		// runTick itself, so a future edit that swaps the two calls *inside*
+		// runTick's own body would pass every other test in this file
+		// undetected (the determinism test only checks runTick agrees with
+		// itself, regardless of its internal order). This test closes that
+		// gap: it drives the same starvation-vs-capture race through runTick,
+		// with an oracle derived independently from the documented order and
+		// the engine's own constants (FOOD_CONSUMPTION_PER_BOID=0.5,
+		// HUNGER_EXTRA_DECAY_RATE=1), not copied from running runTick first.
+		//
+		// `dtSeconds` is tiny (0.01) so stepBoids'/stepPredators' movement
+		// this tick stays small relative to CAPTURE_RADIUS (6) and the
+		// target's starting distance from the predator (3) — the capture
+		// condition survives the one tick of movement runTick applies before
+		// hunger/predation ever run. Zero FlockWeights isolate steering to
+		// only the fixed-constant flee force, keeping the movement math
+		// tractable by hand.
+		const target: BoidState = {
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			// Reaches exactly 0 after stepBoids' unconditional per-tick decay
+			// (dtSeconds=0.01) plus applyHunger's extra decay
+			// (HUNGER_EXTRA_DECAY_RATE=1 * dtSeconds=0.01) — starvation, iff
+			// hunger runs before predation can act on the still-alive target.
+			lifespan: 0.02,
+		};
+		const bystander: BoidState = {
+			x: 100,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+		};
+		const predator: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+		};
+
+		const result = runTick(
+			{ boids: [target, bystander], predators: [predator], foodStock: -1 },
+			{
+				weights: { separation: 0, alignment: 0, cohesion: 0 },
+				dtSeconds: 0.01,
+				foodRegenRate: 0,
+				// 2 boids > threshold, so predation is reachable this tick if
+				// the target is still alive when applyPredation runs.
+				protectionThreshold: 1,
+			},
+		);
+
+		// Under the documented order, hunger removes the target before
+		// predation ever sees it — only the bystander (lifespan ~999.98)
+		// survives. If runTick's internal order were ever swapped, predation
+		// would capture the target while its lifespan was still > 0, and
+		// foodStock below would reflect hunger depleting against 1 boid
+		// instead of 2 (-1.005 instead of -1.01) — this assertion would fail
+		// either way.
+		expect(result.boids).toHaveLength(1);
+		expect(result.boids[0]?.lifespan).toBeCloseTo(999.98, 2);
+		expect(result.foodStock).toBeCloseTo(-1.01, 5);
+	});
+});
