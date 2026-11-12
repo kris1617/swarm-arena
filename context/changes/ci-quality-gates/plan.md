@@ -115,4 +115,4 @@ None — no schema or data changes; this is CI configuration only. The existing 
 
 #### Manual
 
-- [ ] 1.6 After pushing to master, the test job succeeds and deploy correctly waits for it in the GitHub Actions UI
+- [x] 1.6 After pushing to master, the test job succeeds and deploy correctly waits for it in the GitHub Actions UI — commit 48a9e36, run https://github.com/kris1617/swarm-arena/actions/runs/43300550632 (`test` 1m7s, `deploy` waited and ran after)
