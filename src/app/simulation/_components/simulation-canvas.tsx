@@ -5,14 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
 	type BoidState,
-	computeCohesion,
 	createInitialPopulation,
 	createInitialPredators,
 	type FlockWeights,
 	type PredatorState,
-	runTick,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
+import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import {
 	BOID_FILL_COLOR,
 	CANVAS_BACKGROUND,
@@ -46,9 +45,6 @@ const REFERENCE_DEPTH = 100;
 // from ballooning and very far ones from shrinking to nothing.
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.0;
-// Clamp a single frame's dt so a backgrounded/stalled tab can't apply one
-// huge physics step when it resumes.
-const MAX_DT_SECONDS = 0.1;
 
 type SimulationCanvasProps = {
 	runId: number;
@@ -196,44 +192,32 @@ export function SimulationCanvas({
 		}
 
 		function tick(timestamp: number) {
-			if (lastTimestampRef.current === null) {
-				lastTimestampRef.current = timestamp;
-			}
-			const dtSeconds = Math.min(
-				(timestamp - lastTimestampRef.current) / 1000,
-				MAX_DT_SECONDS,
-			);
-			lastTimestampRef.current = timestamp;
-
-			// Composed pipeline (see boids.ts's runTick doc comment for the
-			// fixed order and why it's load-bearing): stepBoids -> stepPredators
-			// -> applyHunger -> applyPredation, as one tested entry point so this
-			// loop can't drift from the order pipeline.test.ts verifies.
-			const {
-				boids: nextBoids,
-				predators: steeredPredators,
-				foodStock: nextFoodStock,
-			} = runTick(
+			// Decision core (dt computation, composed runTick call, next-state
+			// derivation, stop-condition check) lives in computeSingleRunTick so
+			// it's directly unit-testable without the canvas/RAF/tRPC shell here.
+			const result = computeSingleRunTick(
 				{
 					boids: boidsRef.current,
 					predators: predatorsRef.current,
 					foodStock: foodStockRef.current,
+					cohesionSamples: cohesionSamplesRef.current,
+					elapsedSeconds: elapsedSecondsRef.current,
+					lastTimestamp: lastTimestampRef.current,
 				},
-				{ weights, dtSeconds, foodRegenRate, protectionThreshold },
+				timestamp,
+				{ weights, foodRegenRate, protectionThreshold, maxDurationSeconds },
 			);
 
-			boidsRef.current = nextBoids;
-			predatorsRef.current = steeredPredators;
-			foodStockRef.current = nextFoodStock;
-			cohesionSamplesRef.current.push(computeCohesion(nextBoids));
-			elapsedSecondsRef.current += dtSeconds;
+			boidsRef.current = result.boids;
+			predatorsRef.current = result.predators;
+			foodStockRef.current = result.foodStock;
+			cohesionSamplesRef.current = result.cohesionSamples;
+			elapsedSecondsRef.current = result.elapsedSeconds;
+			lastTimestampRef.current = result.lastTimestamp;
 
-			drawScene(ctx, nextBoids, steeredPredators);
+			drawScene(ctx, result.boids, result.predators);
 
-			if (
-				elapsedSecondsRef.current >= maxDurationSeconds ||
-				nextBoids.length === 0
-			) {
+			if (result.shouldStop) {
 				stop();
 				return;
 			}
