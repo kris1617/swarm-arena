@@ -32,6 +32,16 @@ jobs:
         run: npm run build
       - run: npm run typecheck
       - run: npm run check
+      # Tests run against file:./db.sqlite (same path vitest.config.ts's test
+      # env sets) but a fresh CI checkout has no schema in it — migrate first.
+      - name: Migrate test database
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+        run: npm run db:migrate
       - run: npm test
 
   deploy:
