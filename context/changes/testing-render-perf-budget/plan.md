@@ -107,7 +107,7 @@ None.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New test passes: `npx vitest run src/server/simulation/pipeline-perf.test.ts`
-- [x] 1.4 Full suite passes with no regression: `npx vitest run`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 96fe2e5
+- [x] 1.2 Linting passes: `npm run check` — 96fe2e5
+- [x] 1.3 New test passes: `npx vitest run src/server/simulation/pipeline-perf.test.ts` — 96fe2e5
+- [x] 1.4 Full suite passes with no regression: `npx vitest run` — 96fe2e5
