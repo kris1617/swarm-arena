@@ -252,19 +252,19 @@ None — no schema or data changes; test code, two new DOM-free lifecycle module
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [x] 1.4 Full suite passes with no regression: `npx vitest run`
+- [x] 1.1 Type checking passes: `npm run typecheck` — b773de5
+- [x] 1.2 Linting passes: `npm run check` — b773de5
+- [x] 1.3 New tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts` — b773de5
+- [x] 1.4 Full suite passes with no regression: `npx vitest run` — b773de5
 
 ### Phase 2: Shell-wiring smoke test for simulation-canvas.tsx
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 New test passes: `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [ ] 2.4 Full suite passes with no regression: `npx vitest run`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 New test passes: `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
+- [x] 2.4 Full suite passes with no regression: `npx vitest run`
 
 ### Phase 3: Extract multi-run lifecycle and wire multi-simulation-stage.tsx
 
