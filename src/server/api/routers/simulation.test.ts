@@ -169,7 +169,7 @@ describe("simulationRouter.stop authorization", () => {
 			cohesionSamples: [0.5],
 		});
 
-		expect(result).toHaveProperty("score");
+		expect(result).toMatchObject({ score: 0.5 });
 	});
 
 	it("rejects with UNAUTHORIZED when there is no session", async () => {
