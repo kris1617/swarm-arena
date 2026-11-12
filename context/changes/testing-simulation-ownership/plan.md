@@ -116,7 +116,7 @@ None — no schema changes; `db.sqlite` is gitignored/disposable local state, an
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite passes with no regression: `npx vitest run`
+- [x] 1.1 Type checking passes: `npm run typecheck` — acaa38b
+- [x] 1.2 Linting passes: `npm run check` — acaa38b
+- [x] 1.3 New tests pass: `npx vitest run src/server/api/routers/simulation.test.ts` — acaa38b
+- [x] 1.4 Full suite passes with no regression: `npx vitest run` — acaa38b
