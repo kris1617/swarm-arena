@@ -1,7 +1,7 @@
 ---
 change_id: testing-render-perf-budget
 title: Test structural perf budget for the composed simulation pipeline (test-plan Phase 4)
-status: implemented
+status: impl_reviewed
 created: 2026-11-12
 updated: 2026-11-12
 archived_at: null
