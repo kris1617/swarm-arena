@@ -96,6 +96,13 @@ export default function MultiSimulationPage() {
 
 	function handleDismiss(runId: number) {
 		setRunSlotsState((state) => removeSlot(state, runId));
+		// Mirrors removeSlot's own pruning of RunSlotsState — without this,
+		// populationCappedByRunId grows one entry per ever-seen runId for the
+		// lifetime of the page (impl-review F3).
+		setPopulationCappedByRunId((state) => {
+			const { [runId]: _removed, ...rest } = state;
+			return rest;
+		});
 	}
 
 	function handlePopulationCapped(runId: number, capped: boolean) {

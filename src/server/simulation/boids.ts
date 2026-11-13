@@ -785,6 +785,20 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 	let capped = false;
 
 	for (let i = 0; i < population.length; i++) {
+		// Once the cap is reached, no further pair this tick can produce an
+		// offspring (population.length/offspring.length/totalOtherPopulationCount
+		// only grow), so stop the whole O(n²) scan immediately instead of still
+		// running every remaining individual's inner mate-scan just to discard
+		// the result (impl-review F2 — bounded perf, no behavior change: a
+		// blocked pair's "mark both paired, no double-mating" bookkeeping is
+		// never read after this function returns, so skipping it is safe).
+		if (
+			population.length + offspring.length + params.totalOtherPopulationCount >=
+			params.populationCap
+		) {
+			capped = true;
+			break;
+		}
 		if (paired.has(i)) {
 			continue;
 		}
@@ -824,42 +838,34 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 				continue;
 			}
 
-			// Match found — pair both parents this tick (no double-mating)
-			// regardless of whether the cap below blocks the birth, then
-			// stop scanning for parentA (first-match, not best-match).
+			// Match found — pair both parents this tick (no double-mating),
+			// then stop scanning for parentA (first-match, not best-match).
+			// The cap is already enforced by the outer loop's early-exit guard
+			// above — if we reached here, we're still under cap.
 			paired.add(i);
 			paired.add(j);
 
-			if (
-				population.length +
-					offspring.length +
-					params.totalOtherPopulationCount >=
-				params.populationCap
-			) {
-				capped = true;
-			} else {
-				const genes = inheritGenes(
-					parentA.genes,
-					parentB.genes,
-					rng,
-					params.mutationChance,
-					params.mutationMagnitude,
-				);
-				offspring.push({
-					...parentA,
-					x: wrappedMidpoint(parentA.x, parentB.x, INITIAL_AREA_SIZE),
-					y: wrappedMidpoint(parentA.y, parentB.y, INITIAL_AREA_SIZE),
-					z: wrappedMidpoint(parentA.z, parentB.z, Z_DEPTH_RANGE),
-					vx: (rng() - 0.5) * INITIAL_SPEED,
-					vy: (rng() - 0.5) * INITIAL_SPEED,
-					vz: (rng() - 0.5) * INITIAL_SPEED,
-					lifespan: genes.maxLifespan,
-					genes,
-					energy: INITIAL_ENERGY,
-					age: 0,
-					gender: rng() < 0.5 ? "a" : "b",
-				});
-			}
+			const genes = inheritGenes(
+				parentA.genes,
+				parentB.genes,
+				rng,
+				params.mutationChance,
+				params.mutationMagnitude,
+			);
+			offspring.push({
+				...parentA,
+				x: wrappedMidpoint(parentA.x, parentB.x, INITIAL_AREA_SIZE),
+				y: wrappedMidpoint(parentA.y, parentB.y, INITIAL_AREA_SIZE),
+				z: wrappedMidpoint(parentA.z, parentB.z, Z_DEPTH_RANGE),
+				vx: (rng() - 0.5) * INITIAL_SPEED,
+				vy: (rng() - 0.5) * INITIAL_SPEED,
+				vz: (rng() - 0.5) * INITIAL_SPEED,
+				lifespan: genes.maxLifespan,
+				genes,
+				energy: INITIAL_ENERGY,
+				age: 0,
+				gender: rng() < 0.5 ? "a" : "b",
+			});
 			break;
 		}
 	}
