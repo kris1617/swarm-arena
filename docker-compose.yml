@@ -9,6 +9,10 @@ services:
       - AUTH_GITHUB_ID=${AUTH_GITHUB_ID}
       - AUTH_GITHUB_SECRET=${AUTH_GITHUB_SECRET}
       - ADMIN_EMAILS=${ADMIN_EMAILS}
+      # next-auth v5 rejects every session with "UntrustedHost" without this,
+      # since there's no AUTH_URL configured and the app sits behind Caddy's
+      # reverse proxy — see https://errors.authjs.dev#untrustedhost.
+      - AUTH_TRUST_HOST=${AUTH_TRUST_HOST}
     volumes:
       - /opt/swarm-arena/data:/data
     ports:
