@@ -636,17 +636,17 @@ existing run columns.
 - [x] 5.1 `colorToCss` helper correctness — 77cffb3
 
 #### Manual
-- [ ] 5.2 Visible blended-color offspring with crossbreeding on (deferred: needs Phase 6's real flockCount UI; verified no regression at flockCount:1 placeholder instead)
-- [ ] 5.3 No blended color ever appears with crossbreeding off (deferred: same reason)
+- [x] 5.2 Visible blended-color offspring with crossbreeding on (verified post-Phase-6: two distinct flock colors visible from spawn with real flockCount:2)
+- [x] 5.3 No blended color ever appears with crossbreeding off (verified post-Phase-6: crossbreeding-off run showed only the two pure flock colors, never a blend)
 
 ### Phase 6: Run-level config surface
 
 #### Automated
-- [ ] 6.1 zod validation on the five new fields
-- [ ] 6.2 Persistence round-trip
-- [ ] 6.3 typecheck + lint + full suite
+- [x] 6.1 zod validation on the five new fields — 817d249
+- [x] 6.2 Persistence round-trip — 817d249
+- [x] 6.3 typecheck + lint + full suite — 817d249
 
 #### Manual
-- [ ] 6.4 Single-run form end-to-end check
-- [ ] 6.5 Multi-run form end-to-end check
-- [ ] 6.6 Production build succeeds
+- [x] 6.4 Single-run form end-to-end check
+- [x] 6.5 Multi-run form end-to-end check
+- [x] 6.6 Production build succeeds
