@@ -550,21 +550,21 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [x] 5.1 npm run typecheck passes
-- [x] 5.2 npm run check passes
-- [x] 5.3 simulation-canvas.test.tsx passes (extended: forced tick throw stops the loop, renders error)
-- [x] 5.4 multi-simulation-stage.test.tsx passes (extended: forced tick throw stops the loop, renders error)
-- [x] 5.5 npm test passes
+- [x] 5.1 npm run typecheck passes — 9bf342e
+- [x] 5.2 npm run check passes — 9bf342e
+- [x] 5.3 simulation-canvas.test.tsx passes (extended: forced tick throw stops the loop, renders error) — 9bf342e
+- [x] 5.4 multi-simulation-stage.test.tsx passes (extended: forced tick throw stops the loop, renders error) — 9bf342e
+- [x] 5.5 npm test passes — 9bf342e
 
 #### Manual
 
-- [x] 5.6 Force a tick throw, confirm the canvas stops cleanly with a visible message
+- [x] 5.6 Force a tick throw, confirm the canvas stops cleanly with a visible message — 9bf342e
 
 ### Phase 6: TOCTOU race fixes
 
 #### Automated
 
-- [ ] 6.1 npm run typecheck passes
-- [ ] 6.2 npm run check passes
-- [ ] 6.3 simulation.test.ts passes (extended: stop race case, start race case, existing contrast case)
-- [ ] 6.4 npm test passes
+- [x] 6.1 npm run typecheck passes
+- [x] 6.2 npm run check passes
+- [x] 6.3 simulation.test.ts passes (extended: stop race case, start race case, existing contrast case)
+- [x] 6.4 npm test passes

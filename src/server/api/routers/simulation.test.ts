@@ -1,10 +1,11 @@
 import type { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
+import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 
 const VALID_START_INPUT = {
 	boidCount: 10,
@@ -188,5 +189,173 @@ describe("simulationRouter.stop authorization", () => {
 		).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
 		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects the losing caller of a stop race instead of silently overwriting the score", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		// Simulate a second stop call's write landing between this call's read
+		// (the early `run.status !== "running"` check, which still sees
+		// "running" when it runs) and this call's own write — a thin proxy
+		// over `db` whose `update` matches exactly the one call shape `stop`'s
+		// resolver uses, performing the sabotage write and *awaiting* it
+		// before letting the real update run. A true two-concurrent-callers
+		// race can't be reproduced deterministically in Vitest's
+		// single-threaded model; this reproduces the exact DB state the race
+		// would leave behind, at the exact point it would leave it, with no
+		// timing ambiguity (the sabotage is awaited, not fired-and-forgotten).
+		const sabotagingDb = new Proxy(db, {
+			get(target, prop, receiver) {
+				if (prop === "update") {
+					return (...updateArgs: Parameters<typeof db.update>) => ({
+						set: (...setArgs: unknown[]) => ({
+							where: (...whereArgs: unknown[]) => ({
+								returning: async (...returningArgs: unknown[]) => {
+									await db
+										.update(simulationRuns)
+										.set({
+											status: "stopped",
+											score: 0.1,
+											stoppedAt: new Date(),
+										})
+										.where(eq(simulationRuns.id, runId));
+									// biome-ignore lint/suspicious/noExplicitAny: re-threading a dynamically captured chain through the real builder's exact call shape.
+									return (target.update(...updateArgs) as any)
+										.set(...setArgs)
+										.where(...whereArgs)
+										.returning(...returningArgs);
+								},
+							}),
+						}),
+					});
+				}
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+
+		const caller = createCaller({
+			// biome-ignore lint/suspicious/noExplicitAny: proxy narrows `update`'s return shape to only what this one test calls.
+			db: sabotagingDb as any,
+			headers: new Headers(),
+			session: {
+				user: { id: ownerId, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.stop({
+				runId,
+				elapsedTicks: 1,
+				cohesionSamples: [0.5],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+			message: "Run already stopped",
+		} satisfies Partial<TRPCError>);
+
+		// The sabotage write's score (0.1) must survive untouched — proving
+		// the losing caller's update genuinely did not run, not just that it
+		// returned an error while still mutating the row.
+		const finalRun = await db.query.simulationRuns.findFirst({
+			where: (simulationRuns, { eq }) => eq(simulationRuns.id, runId),
+		});
+		expect(finalRun?.score).toBe(0.1);
+	});
+});
+
+describe("simulationRouter.start — parallel-run cap race", () => {
+	it("invalidates the losing caller's row instead of letting the cap be bypassed", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		async function runningCountFor(userId: string) {
+			const [row] = await db
+				.select({ runningCount: count() })
+				.from(simulationRuns)
+				.where(
+					and(
+						eq(simulationRuns.userId, userId),
+						eq(simulationRuns.status, "running"),
+					),
+				);
+			return row?.runningCount ?? 0;
+		}
+
+		// Pre-seed one under the cap, so `start`'s pre-insert check (which
+		// reads this same count) passes.
+		for (let i = 0; i < MAX_PARALLEL_RUNS - 1; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				status: "running",
+			});
+		}
+		expect(await runningCountFor(owner.id)).toBe(MAX_PARALLEL_RUNS - 1);
+
+		// Simulate a second concurrent `start` call's insert landing between
+		// this call's pre-insert count (already read as under-cap above) and
+		// its own post-insert re-check — a thin proxy over `db` whose
+		// `select` matches the resolver's exact call shape, counting calls
+		// and, on the second (the re-check), *awaiting* a sabotage insert
+		// before letting the real select run. Same rationale as the
+		// stop-race test above: reproduces the exact DB state a real race
+		// would leave, at the exact point it would leave it, with no timing
+		// ambiguity.
+		let selectCallCount = 0;
+		const sabotagingDb = new Proxy(db, {
+			get(target, prop, receiver) {
+				if (prop === "select") {
+					return (...selectArgs: unknown[]) => ({
+						from: (...fromArgs: unknown[]) => ({
+							where: async (...whereArgs: unknown[]) => {
+								selectCallCount++;
+								if (selectCallCount === 2) {
+									await db.insert(simulationRuns).values({
+										userId: owner.id,
+										seed: 999,
+										...VALID_START_INPUT,
+										status: "running",
+									});
+								}
+								// biome-ignore lint/suspicious/noExplicitAny: re-threading a dynamically captured chain through the real builder's exact call shape.
+								return (target as any)
+									.select(...selectArgs)
+									.from(...fromArgs)
+									.where(...whereArgs);
+							},
+						}),
+					});
+				}
+				return Reflect.get(target, prop, receiver);
+			},
+		});
+
+		const caller = createCaller({
+			// biome-ignore lint/suspicious/noExplicitAny: proxy narrows `select`'s return shape to only what this one test calls.
+			db: sabotagingDb as any,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.start(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		// Back down to exactly the cap: the sabotage row (inserted directly,
+		// not by `start`) stays running, but `start`'s own just-inserted row
+		// was invalidated — proving the re-check's invalidation actually ran,
+		// not just that an error was thrown while the bypass stood.
+		expect(await runningCountFor(owner.id)).toBe(MAX_PARALLEL_RUNS);
 	});
 });

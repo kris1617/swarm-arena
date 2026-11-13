@@ -77,6 +77,30 @@ export const simulationRouter = createTRPCRouter({
 				throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 			}
 
+			// Race-safety net: a concurrent `start` call can pass the count
+			// check above before either insert lands, breaching the cap. Catch
+			// it immediately after this insert and invalidate the row this call
+			// just created rather than trusting the pre-insert count alone.
+			const [recheckRow] = await ctx.db
+				.select({ runningCount: count() })
+				.from(simulationRuns)
+				.where(
+					and(
+						eq(simulationRuns.userId, userId),
+						eq(simulationRuns.status, "running"),
+					),
+				);
+			if ((recheckRow?.runningCount ?? 0) > MAX_PARALLEL_RUNS) {
+				await ctx.db
+					.update(simulationRuns)
+					.set({ status: "stopped" })
+					.where(eq(simulationRuns.id, run.id));
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
+				});
+			}
+
 			return { runId: run.id, seed };
 		}),
 
@@ -112,14 +136,31 @@ export const simulationRouter = createTRPCRouter({
 
 			const score = computeScore(input.cohesionSamples, clampedElapsedTicks);
 
-			await ctx.db
+			// Race-safety net: a second concurrent `stop` call for the same run
+			// can pass the read-time check above before either write lands. The
+			// status guard here makes that race fail loudly instead of silently
+			// overwriting whichever caller's write landed first.
+			const [stopped] = await ctx.db
 				.update(simulationRuns)
 				.set({
 					status: "stopped",
 					score,
 					stoppedAt: new Date(),
 				})
-				.where(eq(simulationRuns.id, input.runId));
+				.where(
+					and(
+						eq(simulationRuns.id, input.runId),
+						eq(simulationRuns.status, "running"),
+					),
+				)
+				.returning({ id: simulationRuns.id });
+
+			if (!stopped) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run already stopped",
+				});
+			}
 
 			return { score };
 		}),
