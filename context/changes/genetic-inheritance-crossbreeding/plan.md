@@ -38,6 +38,20 @@ each boid's steering weights are its own genes (inherited + mutated at birth),
 not a population-wide constant read every tick. This is the one change that
 touches `stepBoids`'s hot loop, not just bookkeeping — see Phase 1.
 
+**Mid-implementation addition (user, during Phase 1 execution)**: the user
+asked for "one simulation principles for every simulation I run" — multi-run
+must get predators, food/hunger, predation, and reproduction identically to
+single-run, not a boid-only subset. This **supersedes** the plan-review
+correction originally in Phase 2/3/4/5/6 (which had scoped multi-run as
+boid-only because `computeMultiRunTick` didn't call `runTick`). The fix is
+now architectural, not a bolt-on: `multi-run-lifecycle.ts`'s
+`computeMultiRunTick` is changed to call `runTick` per slot (the same
+composed pipeline `single-run-lifecycle.ts` already uses), instead of calling
+`stepBoids` directly. `RunSlot`/`multi/page.tsx` grow the same
+predator/food/genetics fields as the single-run form — this also means
+S-05's prior documented scope boundary ("no predator/food fields" at
+`multi/page.tsx:18-22`) is now out of date and gets corrected in Phase 6.
+
 ## Current state (from research.md — not re-derived here)
 
 - `BoidState`/`PredatorState` are purely kinematic (`x,y,z,vx,vy,vz,lifespan`) —
@@ -89,7 +103,9 @@ touches `stepBoids`'s hot loop, not just bookkeeping — see Phase 1.
   selection can wire it in without another migration.
 - **Extracting a shared form component** between `page.tsx` and
   `multi/page.tsx` — same established boundary as S-05's plan; each form gets
-  the new fields independently.
+  the full field set (predator/food fields now included, per the
+  mid-implementation addition above) independently, as plain duplicated code,
+  not a shared component.
 
 ---
 
@@ -232,34 +248,46 @@ mate selection, the crossbreeding gate, and symmetric predator reproduction.
   have access to the live `foodStock`; `foodStockInitial` is new).
 - Also bump `age` for every surviving individual by `dtSeconds` each tick.
 
-**Correction from plan review (F1)**: the bullets above describe the
-**single-run** path only (`runTick` in `boids.ts`, consumed by
-`single-run-lifecycle.ts`). `multi-run-lifecycle.ts`'s `computeMultiRunTick`
-does **not** call `runTick` — it calls `stepBoids` directly and has no
-predators, no `foodStock`, and no `applyHunger`/`applyPredation` step at all
-(confirmed: `RunSlot` has no `predatorCount`/`foodStockInitial` fields;
-`multi-simulation-stage.tsx`'s `drawBoids` only ever draws boids). Multi-run
-reproduction is therefore a **separate, boid-only** concern — see the
-`multi-run-lifecycle.ts` entry added to Phase 2's Changes Required below, not
-a "forward into runTick" as an earlier draft of this phase assumed.
+**Superseded plan-review correction, now reversed by the mid-implementation
+addition above**: an earlier draft of this phase (after the initial plan
+review) scoped multi-run as boid-only, since `computeMultiRunTick` called
+`stepBoids` directly rather than `runTick`. The user has since asked for
+predator/food/reproduction parity between single-run and multi-run, so this
+phase now **changes** `computeMultiRunTick` to call `runTick` instead of
+`stepBoids` — see the `multi-run-lifecycle.ts` entry below. This is a
+structural change to that file (its tick body, not just its types).
 
-#### `src/server/simulation/multi-run-lifecycle.ts` (boid-only reproduction, no `runTick`)
+#### `src/server/simulation/multi-run-lifecycle.ts` (adopt the shared `runTick` pipeline)
 
-- `RunState` gains an `rng: () => number` field (seeded once per slot,
-  persisted — see Phase 3) and an `energyThreshold`/`mutationChance`/
-  `mutationMagnitude`/`crossbreedingEnabled`/`flockCount`/`populationCap`
-  read from the slot's own config (added to `RunSlot` in Phase 6).
-- Inside `computeMultiRunTick`'s per-slot loop, immediately after the
-  existing `stepBoids(runState.boids, slot.weights, dtSeconds)` call, call
-  `reproducePopulation(nextBoids, runState.rng, { crossbreedingEnabled: ...,
-  energyThreshold: ..., mutationChance: ..., mutationMagnitude: ...,
-  populationCap: slot.populationCap ?? 500, totalOtherPopulationCount: 0 })`
-  — `totalOtherPopulationCount: 0` because multi-run has no predator
-  population to share the cap with.
-- Energy gain for multi-run boids always uses `foodAvailabilityRatio = 1`
-  (no `foodStock` concept exists in this lifecycle) — i.e. energy accrues
-  at the unscaled `ENERGY_GAIN_RATE` every tick, never food-scarcity-limited.
-- No predator reproduction call here — multi-run never has predators.
+- `RunState` type grows from `{ boids, cohesionSamples, elapsedSeconds }` to
+  `{ boids: BoidState[]; predators: PredatorState[]; foodStock: number; rng:
+  () => number; cohesionSamples: number[]; elapsedSeconds: number }` — the
+  same shape `single-run-lifecycle.ts`'s tick state already carries.
+- Where a slot's `RunState` is first seeded, also call `createInitialPredators`
+  (mirroring `createInitialPopulation`'s call already there), and initialize
+  `foodStock: slot.foodStockInitial` and `rng` (persisted — see Phase 3).
+- Inside `computeMultiRunTick`'s per-slot loop, **replace** the existing
+  `stepBoids(runState.boids, slot.weights, dtSeconds)` call with a `runTick`
+  call — the exact same function `single-run-lifecycle.ts` uses — passing
+  `{ boids: runState.boids, predators: runState.predators, foodStock:
+  runState.foodStock }` and the slot's own
+  `foodRegenRate`/`protectionThreshold`/`rng`/`crossbreedingEnabled`/
+  `energyThreshold`/`mutationChance`/`mutationMagnitude` (all added to
+  `RunSlot` in Phase 6). `runTick`'s internal pipeline (`stepBoids →
+  stepPredators → applyHunger → applyPredation → reproducePopulation(boids) →
+  reproducePopulation(predators)`) runs identically to the single-run path —
+  there is no separate multi-run reproduction implementation to maintain.
+- `slotsToStop`'s extinction check (`nextBoids.length === 0`) stays as-is;
+  `runTick`'s output shape slots directly into the existing `nextRunState`
+  construction with `predators`/`foodStock` added alongside `boids`.
+
+#### `src/server/simulation/run-slots.ts` (see also Phase 6)
+
+- `RunSlot` gains `predatorCount`, `protectionThreshold`, `foodStockInitial`,
+  `foodRegenRate` — the same four fields `page.tsx`'s `ActiveRun` already
+  carries — so multi-run slots can seed and tick predators/food identically
+  to single-run. (The five genetics fields from decision #10 are added here
+  too; see Phase 6's full field list.)
 
 ### Success Criteria
 
@@ -277,13 +305,13 @@ a "forward into runTick" as an earlier draft of this phase assumed.
 - [ ] At `populationCap`, an otherwise-eligible mated pair produces no
       offspring and `capped` is `true`
 - [ ] Predators reproduce under the identical helper (same test shape as
-      boids, confirming decision #5's symmetry) — single-run only, since
-      multi-run has no predators
+      boids, confirming decision #5's symmetry) — true for both single-run
+      and multi-run, since both now call the same `runTick`
 - [ ] `runTick` is deterministic for the same seed/rng stream across two
       independent calls with identical inputs
-- [ ] `computeMultiRunTick`'s direct `reproducePopulation` call (boid-only,
-      `foodAvailabilityRatio = 1`, no `runTick` involved) grows a slot's
-      population under the same eligibility/gate rules
+- [ ] `computeMultiRunTick`'s per-slot `runTick` call grows a slot's boid AND
+      predator population under the same eligibility/gate rules as
+      single-run (same test shapes, different entry point)
 - [ ] `npm run typecheck` / `npm run check` pass
 
 #### Manual
@@ -322,16 +350,13 @@ reachable and still fully deterministic per seed.
 
 #### `src/server/simulation/multi-run-lifecycle.ts`
 
-- `RunState` type: add an `rng: () => number` field (already named in Phase
-  2's multi-run entry above — this is where it's actually populated).
-- Where a slot's `RunState` is first seeded (currently an inline, throwaway
-  `createRng(slot.seed)` call), store that same rng instance on the new
-  `RunState.rng` field instead of discarding it.
-- `computeMultiRunTick`: pass `runState.rng` into the Phase 2
-  `reproducePopulation` call added directly after `stepBoids` in this file's
-  per-slot loop, so later ticks for that slot reuse the same persisted
-  stream, never a freshly re-seeded one. (Not forwarded to `runTick` —
-  this lifecycle never calls it; see Phase 2's correction.)
+- `RunState.rng` (added in Phase 2's restructuring) is populated once, at
+  first-seed time for each slot (currently an inline, throwaway
+  `createRng(slot.seed)` call) — store that same rng instance instead of
+  discarding it, exactly mirroring the single-run fix below.
+- `computeMultiRunTick`: pass `runState.rng` into the per-slot `runTick` call
+  (Phase 2) so later ticks for that slot reuse the same persisted stream,
+  never a freshly re-seeded one.
 
 ### Success Criteria
 
@@ -370,10 +395,10 @@ reproduction is actively being suppressed by the population cap.
 
 #### `src/server/simulation/multi-run-lifecycle.ts`
 
-- Same flag, sourced from the Phase 2 `reproducePopulation` call's `capped`
-  return value (boid-only here, no predator side to OR against), threaded
-  through `RunState`/`computeMultiRunTick`'s per-slot result so each slot
-  can independently report it.
+- Same flag, sourced from the per-slot `runTick` call's `populationCapped`
+  result (boid OR predator side, identical to single-run since both now
+  share `runTick`), threaded through `RunState`/`computeMultiRunTick`'s
+  per-slot result so each slot can independently report it.
 
 #### `src/app/simulation/_components/simulation-canvas.tsx`
 
@@ -425,10 +450,15 @@ fixed global constants — the visible payoff of genetic inheritance.
 
 #### `src/app/simulation/multi/_components/multi-simulation-stage.tsx`
 
-- Same treatment, reusing the same `colorToCss` helper (import from
-  `simulation-canvas.tsx` or extract to a small shared module if that import
-  direction is awkward — decide at implementation time based on which file
-  already imports from the other).
+- This file's current `drawBoids` only draws boids (multi-run had no
+  predators before the mid-implementation addition). Since `RunState` now
+  carries `predators` too (Phase 2), rename/extend this to draw both
+  populations the same way `simulation-canvas.tsx`'s `drawScene` already
+  does (boid triangle + predator diamond silhouette, depth-sorted), reusing
+  the same `colorToCss` helper (import from `simulation-canvas.tsx` or
+  extract to a small shared module if that import direction is awkward —
+  decide at implementation time based on which file already imports from
+  the other).
 
 #### `src/styles/theme-colors.ts`
 
@@ -493,25 +523,37 @@ existing run columns.
 
 #### `src/app/simulation/multi/page.tsx`
 
-- Same five fields (flockCount/crossbreeding apply to boids regardless of
-  this form's existing "no predators" scope — predator fields stay hardcoded
-  off per the file's documented S-05 boundary comment at lines 18-22, but
-  flock/crossbreeding/energy/mutation are boid-level, not predator-level, so
-  they're in scope here too). Thread into `startRun.mutate({...})` and into
-  `RunSlot`/`MultiSimulationStage` props.
+- Per the mid-implementation addition (both forms now carry identical
+  simulation capabilities), this form's hardcoded "no predators" start
+  params (`predatorCount: 0, protectionThreshold: 0, foodStockInitial: 100,
+  foodRegenRate: 10` and the comment block at lines 18-22/95-99 explaining
+  that boundary) are **removed**. Add the predator/food form fields
+  (`predatorCount`, `protectionThreshold`, `foodStockInitial`,
+  `foodRegenRate`) matching `page.tsx`'s existing fields exactly, plus the
+  five genetics fields from decision #10 (flock count, crossbreeding toggle,
+  energy threshold, mutation chance, mutation magnitude) — both forms end up
+  with the same 14-field set, as independently duplicated code (per "What
+  We're NOT Doing" — no shared form component). Thread all nine new values
+  into `startRun.mutate({...})` and into `RunSlot`/`MultiSimulationStage`
+  props.
 
 #### `src/server/simulation/run-slots.ts`
 
-- `RunSlot` type: add the five new fields so `multi/page.tsx`'s `addSlot`
-  call can carry them through to `MultiSimulationStage`.
+- `RunSlot` type: add `predatorCount`, `protectionThreshold`,
+  `foodStockInitial`, `foodRegenRate` (new, per the mid-implementation
+  addition) plus the five genetics fields from decision #10, so
+  `multi/page.tsx`'s `addSlot` call can carry all nine through to
+  `MultiSimulationStage` and `multi-run-lifecycle.ts`.
 
 #### `src/app/simulation/_components/simulation-canvas.tsx` / `multi/_components/multi-simulation-stage.tsx`
 
-- Accept the five new props. `simulation-canvas.tsx` forwards into
-  `computeSingleRunTick` → `runTick` params. `multi-simulation-stage.tsx`
-  forwards into `computeMultiRunTick`, which reads them directly for its
-  own `reproducePopulation` call (Phase 2) — not via `runTick`, which this
-  lifecycle never calls.
+- `simulation-canvas.tsx` accepts the five new genetics props and forwards
+  them into `computeSingleRunTick` → `runTick` params (unchanged from the
+  original Phase 6 scope). `multi-simulation-stage.tsx` now accepts all nine
+  new props (five genetics + predator/food) and forwards them into
+  `computeMultiRunTick`, which reads them for its own per-slot `runTick`
+  call (Phase 2's restructuring) — the same `runTick` entry point
+  `simulation-canvas.tsx` uses, not a separate code path.
 
 ### Success Criteria
 
@@ -530,7 +572,9 @@ existing run columns.
       and confirm the run starts and behaves consistently with that value
       (e.g. `crossbreedingEnabled: false` + 2 flocks → no blended-color
       offspring ever appears, confirmed visually per Phase 5's manual check)
-- [ ] Repeat the same check on the multi-run form
+- [ ] Repeat the same check on the multi-run form, confirming predators now
+      render and behave there too (capture, flee steering, predator
+      reproduction) — not just boids
 - [ ] `npm run build` succeeds (confirms the new DB columns/migration don't
       break the production build path)
 
@@ -559,9 +603,9 @@ existing run columns.
 - [ ] 2.2 Crossbreeding gate on/off behavior (the PRD guardrail)
 - [ ] 2.3 Energy/maturity eligibility gating
 - [ ] 2.4 Population-cap suppression + `capped` flag
-- [ ] 2.5 Predator reproduction symmetry (single-run only)
+- [ ] 2.5 Predator reproduction symmetry (single-run and multi-run)
 - [ ] 2.6 `runTick` determinism given rng stream
-- [ ] 2.7 Multi-run boid-only reproduction via direct `computeMultiRunTick` call (not `runTick`)
+- [ ] 2.7 `multi-run-lifecycle.ts` calls `runTick` per slot (replacing the raw `stepBoids` call) with full predator/food/reproduction parity
 - [ ] 2.8 typecheck + lint
 
 #### Manual

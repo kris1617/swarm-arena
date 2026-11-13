@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BoidState } from "~/server/simulation/boids";
+import type { BoidGenes, BoidState } from "~/server/simulation/boids";
 import {
 	computeSingleRunTick,
 	MAX_DT_SECONDS,
@@ -14,6 +14,18 @@ const PARAMS = {
 	maxDurationSeconds: 100,
 };
 
+const GENES: BoidGenes = {
+	color: { r: 0, g: 0, b: 0 },
+	flockId: 0,
+	separationWeight: WEIGHTS.separation,
+	alignmentWeight: WEIGHTS.alignment,
+	cohesionWeight: WEIGHTS.cohesion,
+	maxSpeed: 40,
+	minSpeed: 15,
+	maxLifespan: 100,
+	matePreference: 0,
+};
+
 function buildBoid(overrides: Partial<BoidState> = {}): BoidState {
 	return {
 		x: 0,
@@ -23,6 +35,10 @@ function buildBoid(overrides: Partial<BoidState> = {}): BoidState {
 		vy: 0,
 		vz: 0,
 		lifespan: 1000,
+		genes: GENES,
+		energy: 0,
+		age: 0,
+		gender: "a",
 		...overrides,
 	};
 }

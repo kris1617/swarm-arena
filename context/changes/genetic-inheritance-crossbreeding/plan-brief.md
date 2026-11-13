@@ -29,6 +29,10 @@ and predators, via one shared helper.
 
 FR-006 text itself ("the flock only defines the starting average values... from which individuals start") settles that `FlockWeights` becomes each individual's **starting genes**, not a population-wide constant `stepBoids` reads every tick. This is the one change touching the hot steering loop, not just bookkeeping.
 
+## Mid-implementation addition (user, during Phase 1)
+
+User asked for "one simulation principles for every simulation I run" — multi-run must get predators, food/hunger, predation, and reproduction identically to single-run, not a boid-only subset. This reverses an earlier plan-review correction that had scoped multi-run as boid-only (because `computeMultiRunTick` called `stepBoids` directly, not `runTick`). Fixed architecturally: `multi-run-lifecycle.ts` now calls `runTick` per slot — the same function `single-run-lifecycle.ts` uses — instead of maintaining a separate boid-only tick path. `RunSlot`/`multi/page.tsx` grow the same predator/food fields as the single-run form; both forms end up with the same 14-field set (still no shared form component). `multi-simulation-stage.tsx` gains predator rendering.
+
 ## Phases (6)
 
 1. Gene model + instance state (`boids.ts`) — genes/color/energy/age/gender fields; `stepBoids` reads per-boid genes; `inheritGenes` helper.

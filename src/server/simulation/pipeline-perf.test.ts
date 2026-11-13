@@ -23,8 +23,10 @@ const BASE_PARAMS = {
 
 function buildState(boidCount: number, predatorCount: number) {
 	return {
-		boids: createInitialPopulation(boidCount, createRng(1), 100),
-		predators: createInitialPredators(predatorCount, createRng(2), 100),
+		boids: createInitialPopulation(boidCount, createRng(1), 100, 1, [WEIGHTS]),
+		predators: createInitialPredators(predatorCount, createRng(2), 100, 1, [
+			WEIGHTS,
+		]),
 		foodStock: 1000,
 	};
 }

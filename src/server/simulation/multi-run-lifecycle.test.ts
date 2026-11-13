@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { BoidGenes, BoidState } from "~/server/simulation/boids";
 import {
 	computeMultiRunTick,
 	MAX_DT_SECONDS,
@@ -20,9 +21,32 @@ function makeSlot(overrides: Partial<RunSlot> = {}): RunSlot {
 	};
 }
 
+// Minimal placeholder genes for raw BoidState literals in this file — these
+// tests exercise computeMultiRunTick's own decision core (seeding, stopping,
+// draw-target selection), not steering, so the exact gene values don't
+// matter beyond satisfying the type.
+function makeBoid(
+	state: Pick<BoidState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
+): BoidState {
+	const genes: BoidGenes = {
+		color: { r: 0, g: 0, b: 0 },
+		flockId: 0,
+		separationWeight: WEIGHTS.separation,
+		alignmentWeight: WEIGHTS.alignment,
+		cohesionWeight: WEIGHTS.cohesion,
+		maxSpeed: 40,
+		minSpeed: 15,
+		maxLifespan: 100,
+		matePreference: 0,
+	};
+	return { ...state, genes, energy: 0, age: 0, gender: "a" };
+}
+
 function makeRunState(overrides: Partial<RunState> = {}): RunState {
 	return {
-		boids: [{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }],
+		boids: [
+			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+		],
 		cohesionSamples: [],
 		elapsedSeconds: 0,
 		...overrides,
@@ -80,7 +104,9 @@ describe("computeMultiRunTick", () => {
 		// leaving zero boids — the population-wipe stop condition.
 		const existing = {
 			1: makeRunState({
-				boids: [{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 0.001 }],
+				boids: [
+					makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 0.001 }),
+				],
 			}),
 		};
 
@@ -132,10 +158,14 @@ describe("computeMultiRunTick", () => {
 		const slotA = makeSlot({ runId: 1 });
 		const slotB = makeSlot({ runId: 2 });
 		const stateA = makeRunState({
-			boids: [{ x: 1, y: 1, z: 1, vx: 0, vy: 0, vz: 0, lifespan: 1000 }],
+			boids: [
+				makeBoid({ x: 1, y: 1, z: 1, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+			],
 		});
 		const stateB = makeRunState({
-			boids: [{ x: 2, y: 2, z: 2, vx: 0, vy: 0, vz: 0, lifespan: 1000 }],
+			boids: [
+				makeBoid({ x: 2, y: 2, z: 2, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+			],
 		});
 		const existing = { 1: stateA, 2: stateB };
 

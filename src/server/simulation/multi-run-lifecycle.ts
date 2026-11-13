@@ -75,17 +75,23 @@ export function computeMultiRunTick(
 			// doesn't cut the run shorter than the duration the member chose.
 			const maxLifespan = Math.max(60, slot.maxDurationSeconds);
 			runState = {
+				// TODO(phase 6): single-flock placeholder (flockCount: 1) until
+				// the multi-run form exposes real flock-count/weights config.
 				boids: createInitialPopulation(
 					slot.boidCount,
 					createRng(slot.seed),
 					maxLifespan,
+					1,
+					[slot.weights],
 				),
 				cohesionSamples: [],
 				elapsedSeconds: 0,
 			};
 		}
 
-		const nextBoids = stepBoids(runState.boids, slot.weights, dtSeconds);
+		// weights is no longer passed here — stepBoids now reads each boid's
+		// own genes (seeded from slot.weights above), not a shared argument.
+		const nextBoids = stepBoids(runState.boids, dtSeconds);
 		const nextRunState: RunState = {
 			boids: nextBoids,
 			cohesionSamples: [

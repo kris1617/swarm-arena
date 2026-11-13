@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	applyHunger,
 	applyPredation,
+	type BoidGenes,
 	type BoidState,
 	createInitialPopulation,
 	createInitialPredators,
@@ -19,6 +20,51 @@ const PARAMS = {
 	protectionThreshold: 0,
 };
 
+// Minimal placeholder genes for raw BoidState/PredatorState literals in this
+// file — these tests exercise applyHunger/applyPredation/runTick's own
+// composition, not steering, so the exact gene values don't matter beyond
+// satisfying the type.
+function makeGenes(overrides: Partial<BoidGenes> = {}): BoidGenes {
+	return {
+		color: { r: 0, g: 0, b: 0 },
+		flockId: 0,
+		separationWeight: WEIGHTS.separation,
+		alignmentWeight: WEIGHTS.alignment,
+		cohesionWeight: WEIGHTS.cohesion,
+		maxSpeed: 40,
+		minSpeed: 15,
+		maxLifespan: 100,
+		matePreference: 0,
+		...overrides,
+	};
+}
+
+function makeBoid(
+	state: Pick<BoidState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
+	genesOverrides: Partial<BoidGenes> = {},
+): BoidState {
+	return {
+		...state,
+		genes: makeGenes(genesOverrides),
+		energy: 0,
+		age: 0,
+		gender: "a",
+	};
+}
+
+function makePredator(
+	state: Pick<PredatorState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
+	genesOverrides: Partial<BoidGenes> = {},
+): PredatorState {
+	return {
+		...state,
+		genes: makeGenes(genesOverrides),
+		energy: 0,
+		age: 0,
+		gender: "a",
+	};
+}
+
 describe("runTick", () => {
 	it("is deterministic end-to-end across the full composed pipeline, not just the RNG primitive", () => {
 		// Two independently-constructed but identical initial states (same
@@ -28,8 +74,8 @@ describe("runTick", () => {
 		// not a hand-computed expected value.
 		function buildState() {
 			return {
-				boids: createInitialPopulation(10, createRng(1), 100),
-				predators: createInitialPredators(3, createRng(2), 100),
+				boids: createInitialPopulation(10, createRng(1), 100, 1, [WEIGHTS]),
+				predators: createInitialPredators(3, createRng(2), 100, 1, [WEIGHTS]),
 				foodStock: 20,
 			};
 		}
@@ -57,7 +103,7 @@ describe("applyPredation tie-break contract", () => {
 		// first-encountered boid at the minimum distance wins the tie — this
 		// fixture is constructed to exercise that exact rule, not copied from
 		// running the function first.
-		const first: BoidState = {
+		const first: BoidState = makeBoid({
 			x: 3,
 			y: 0,
 			z: 0,
@@ -65,8 +111,8 @@ describe("applyPredation tie-break contract", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
-		const second: BoidState = {
+		});
+		const second: BoidState = makeBoid({
 			x: 0,
 			y: 3,
 			z: 0,
@@ -74,8 +120,8 @@ describe("applyPredation tie-break contract", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
-		const predator: PredatorState = {
+		});
+		const predator: PredatorState = makePredator({
 			x: 0,
 			y: 0,
 			z: 0,
@@ -83,7 +129,7 @@ describe("applyPredation tie-break contract", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
+		});
 
 		const result = applyPredation([first, second], [predator], 0);
 
@@ -99,7 +145,7 @@ describe("applyPredation contested capture", () => {
 		// locks in the `captured` Set's single-claim invariant: with two
 		// predators contesting one target, exactly one boid is removed — not
 		// zero, not two, and no error.
-		const target: BoidState = {
+		const target: BoidState = makeBoid({
 			x: 0,
 			y: 0,
 			z: 0,
@@ -107,8 +153,8 @@ describe("applyPredation contested capture", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
-		const bystander: BoidState = {
+		});
+		const bystander: BoidState = makeBoid({
 			x: 100,
 			y: 100,
 			z: 100,
@@ -116,8 +162,8 @@ describe("applyPredation contested capture", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
-		const predatorA: PredatorState = {
+		});
+		const predatorA: PredatorState = makePredator({
 			x: 2,
 			y: 0,
 			z: 0,
@@ -125,8 +171,8 @@ describe("applyPredation contested capture", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
-		const predatorB: PredatorState = {
+		});
+		const predatorB: PredatorState = makePredator({
 			x: 0,
 			y: 2,
 			z: 0,
@@ -134,7 +180,7 @@ describe("applyPredation contested capture", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 100,
-		};
+		});
 
 		const result = applyPredation(
 			[target, bystander],
@@ -156,25 +202,27 @@ describe("hunger-before-predation order is load-bearing", () => {
 		// protection threshold. `bystander` is far from the predator and has
 		// a long lifespan, so it survives either order and only dilutes the
 		// flock size past the protection threshold.
-		const buildTarget = (): BoidState => ({
-			x: 3,
-			y: 0,
-			z: 0,
-			vx: 0,
-			vy: 0,
-			vz: 0,
-			lifespan: 1,
-		});
-		const buildBystander = (): BoidState => ({
-			x: 100,
-			y: 100,
-			z: 100,
-			vx: 0,
-			vy: 0,
-			vz: 0,
-			lifespan: 1000,
-		});
-		const predator: PredatorState = {
+		const buildTarget = (): BoidState =>
+			makeBoid({
+				x: 3,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 1,
+			});
+		const buildBystander = (): BoidState =>
+			makeBoid({
+				x: 100,
+				y: 100,
+				z: 100,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 1000,
+			});
+		const predator: PredatorState = makePredator({
 			x: 0,
 			y: 0,
 			z: 0,
@@ -182,7 +230,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 1000,
-		};
+		});
 		const foodStock = -10;
 		const dtSeconds = 1;
 		const foodRegenRate = 0;
@@ -263,29 +311,44 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 		// hunger/predation ever run. Zero FlockWeights isolate steering to
 		// only the fixed-constant flee force, keeping the movement math
 		// tractable by hand.
-		const target: BoidState = {
-			x: 3,
-			y: 0,
-			z: 0,
-			vx: 0,
-			vy: 0,
-			vz: 0,
-			// Reaches exactly 0 after stepBoids' unconditional per-tick decay
-			// (dtSeconds=0.01) plus applyHunger's extra decay
-			// (HUNGER_EXTRA_DECAY_RATE=1 * dtSeconds=0.01) — starvation, iff
-			// hunger runs before predation can act on the still-alive target.
-			lifespan: 0.02,
+		// Zero steering weights on both boids isolate movement to the fixed-
+		// constant flee force only (runTick's params.weights is no longer read
+		// by stepBoids — each boid's own genes drive steering now), keeping
+		// the movement math tractable by hand.
+		const zeroWeightGenes: Partial<BoidGenes> = {
+			separationWeight: 0,
+			alignmentWeight: 0,
+			cohesionWeight: 0,
 		};
-		const bystander: BoidState = {
-			x: 100,
-			y: 100,
-			z: 100,
-			vx: 0,
-			vy: 0,
-			vz: 0,
-			lifespan: 1000,
-		};
-		const predator: PredatorState = {
+		const target: BoidState = makeBoid(
+			{
+				x: 3,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				// Reaches exactly 0 after stepBoids' unconditional per-tick decay
+				// (dtSeconds=0.01) plus applyHunger's extra decay
+				// (HUNGER_EXTRA_DECAY_RATE=1 * dtSeconds=0.01) — starvation, iff
+				// hunger runs before predation can act on the still-alive target.
+				lifespan: 0.02,
+			},
+			zeroWeightGenes,
+		);
+		const bystander: BoidState = makeBoid(
+			{
+				x: 100,
+				y: 100,
+				z: 100,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 1000,
+			},
+			zeroWeightGenes,
+		);
+		const predator: PredatorState = makePredator({
 			x: 0,
 			y: 0,
 			z: 0,
@@ -293,7 +356,7 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 			vy: 0,
 			vz: 0,
 			lifespan: 1000,
-		};
+		});
 
 		const result = runTick(
 			{ boids: [target, bystander], predators: [predator], foodStock: -1 },

@@ -38,6 +38,15 @@
 - Phase 3: `RunState` (`multi-run-lifecycle.ts:16-20`) gains an `rng` field, consumed directly by the new reproduction call in `computeMultiRunTick` — not forwarded to a nonexistent `runTick` call.
 - Phase 4: multi-run's population cap is `populationCap` with no predator subtraction (boids-only).
 - **Decision**: FIXED (applied directly to plan.md — see edits below)
+- **Addendum (2026-11-13, during Phase 1 execution)**: the user then asked
+  for unified simulation principles across single-run and multi-run
+  (predators/food/reproduction in both, not boid-only). This **supersedes**
+  this fix — plan.md Phases 2/3/4/5/6 now have `multi-run-lifecycle.ts`
+  adopt `runTick` directly (the architectural fix this finding originally
+  argued against needing) rather than staying boid-only. The grounding
+  evidence above (multi-run's prior lack of `runTick`) is still accurate as
+  a description of the *pre-change* state; the fix direction changed per a
+  new, explicit user decision, not a review error.
 
 ## Notes on findings not raised
 

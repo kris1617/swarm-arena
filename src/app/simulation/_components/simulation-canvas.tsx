@@ -183,11 +183,17 @@ export function SimulationCanvas({
 		// doesn't cut the run shorter than the duration the member chose.
 		const maxLifespan = Math.max(60, maxDurationSeconds);
 		const rng = createRng(seed);
-		boidsRef.current = createInitialPopulation(boidCount, rng, maxLifespan);
+		// TODO(phase 6): single-flock placeholder (flockCount: 1) until the
+		// start form exposes real flock-count/weights config.
+		boidsRef.current = createInitialPopulation(boidCount, rng, maxLifespan, 1, [
+			weights,
+		]);
 		predatorsRef.current = createInitialPredators(
 			predatorCount,
 			rng,
 			maxLifespan,
+			1,
+			[weights],
 		);
 		foodStockRef.current = foodStockInitial;
 		drawScene(ctx, boidsRef.current, predatorsRef.current);

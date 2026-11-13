@@ -1,3 +1,31 @@
+import { BOID_FILL_COLOR, PREDATOR_FILL_COLOR } from "~/styles/theme-colors";
+
+export type FlockWeights = {
+	separation: number;
+	alignment: number;
+	cohesion: number;
+};
+
+// Per-individual heritable traits an individual is born with and may pass to
+// offspring (reproduction arrives in Phase 2 via `inheritGenes` below) — not
+// the transient per-tick state (position/velocity/lifespan) BoidState/
+// PredatorState also carry. `separationWeight`/`alignmentWeight`/
+// `cohesionWeight` replace the population-wide FlockWeights stepBoids used to
+// read, and `maxSpeed`/`minSpeed` replace the global MAX_SPEED/MIN_SPEED (or
+// PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED) constants — both are now sourced per
+// individual so siblings with different genes steer differently.
+export type BoidGenes = {
+	color: { r: number; g: number; b: number };
+	flockId: number;
+	separationWeight: number;
+	alignmentWeight: number;
+	cohesionWeight: number;
+	maxSpeed: number;
+	minSpeed: number;
+	maxLifespan: number;
+	matePreference: number;
+};
+
 export type BoidState = {
 	x: number;
 	y: number;
@@ -6,13 +34,17 @@ export type BoidState = {
 	vy: number;
 	vz: number;
 	lifespan: number;
+	genes: BoidGenes;
+	energy: number;
+	age: number;
+	gender: "a" | "b";
 };
 
-export type FlockWeights = {
-	separation: number;
-	alignment: number;
-	cohesion: number;
-};
+// Same shape as BoidGenes — predators inherit and mutate genes through the
+// identical `inheritGenes` helper (one shared reproduction rule for both
+// species per decision #5, not two parallel implementations), same rationale
+// as the BoidState/PredatorState shape-identity comment below.
+export type PredatorGenes = BoidGenes;
 
 // Same shape as BoidState — predators carry no hunger field of their own
 // (hunger is a global food-stock mechanic that only ever acts on boids this
@@ -25,6 +57,10 @@ export type PredatorState = {
 	vy: number;
 	vz: number;
 	lifespan: number;
+	genes: PredatorGenes;
+	energy: number;
+	age: number;
+	gender: "a" | "b";
 };
 
 // Side length of the square area initial positions are spread over.
@@ -83,6 +119,36 @@ const FOOD_CONSUMPTION_PER_BOID = 0.5;
 // negative — FR-008 treats hunger as an accelerant on the existing death
 // mechanism, never a separate, independent death check.
 const HUNGER_EXTRA_DECAY_RATE = 1;
+// Starting energy for a freshly spawned individual (initial population or,
+// from Phase 2 on, a newborn) — well under ENERGY_MAX so reproduction
+// eligibility (a future run-level energyThreshold param) isn't trivially
+// satisfied at spawn.
+const INITIAL_ENERGY = 20;
+// Ceiling on accumulated energy — see ENERGY_GAIN_RATE's comment for how this
+// and INITIAL_ENERGY bound the time needed to reach a mid-range
+// energyThreshold.
+// Exported ahead of Phase 2's `reproducePopulation`, which is the actual
+// consumer of this and the three constants below — kept as plain exports
+// rather than underscore-prefixed unused locals so the name Phase 2 imports
+// is already the name declared here.
+export const ENERGY_MAX = 100;
+// Energy gained per second of simulated time by a surviving individual
+// (Phase 2 wires the per-tick increment). Chosen so an individual starting at
+// INITIAL_ENERGY reaches ENERGY_MAX in (100-20)/10 = 8 seconds — comfortably
+// within MATURITY_AGE_SECONDS and a typical run's multi-ten-second duration,
+// so a reasonable mid-range energyThreshold (the future run-level param,
+// not yet wired) is reachable within a run without reproduction being either
+// instant or practically unreachable.
+export const ENERGY_GAIN_RATE = 10;
+// Tick-based maturity delay before an individual becomes reproduction-
+// eligible (Phase 2 reads this). Small relative to typical maxDurationSeconds
+// (tens of seconds or more) so reproduction is actually reachable within a
+// run, not just a theoretical gate.
+export const MATURITY_AGE_SECONDS = 5;
+// Distance within which two eligible individuals can mate (Phase 2). Sized
+// in the same ballpark as SEPARATION_RADIUS (25) / NEIGHBOR_RADIUS (70) so
+// mating range tracks the same "nearby" notion the rest of the engine uses.
+export const MATE_DISTANCE_RADIUS = 30;
 
 // Wraps a coordinate into [0, range) — toroidal boundaries, so a boid that
 // exits one edge re-enters from the opposite one instead of drifting off
@@ -109,36 +175,189 @@ function wrappedDelta(delta: number, range: number): number {
 	return delta;
 }
 
+// Converts a "#rrggbb" hex string into unit-interval [0,1] RGB.
+// BOID_FILL_COLOR/PREDATOR_FILL_COLOR (src/styles/theme-colors.ts) are plain
+// hex strings for canvas's ctx.fillStyle, while BoidGenes.color stays in
+// [0,1] like the rest of this module's normalized math, so flock 0 can seed
+// from them exactly.
+function hexToUnitColor(hex: string): { r: number; g: number; b: number } {
+	const value = hex.replace("#", "");
+	return {
+		r: Number.parseInt(value.slice(0, 2), 16) / 255,
+		g: Number.parseInt(value.slice(2, 4), 16) / 255,
+		b: Number.parseInt(value.slice(4, 6), 16) / 255,
+	};
+}
+
+// Standard HSL->RGB conversion, output in [0,1] to match hexToUnitColor.
+// Used to spread flocks 1..N-1 evenly around the color wheel so N flocks
+// stay visually distinguishable regardless of flockCount.
+function hslToUnitColor(
+	hueDegrees: number,
+	saturation: number,
+	lightness: number,
+): { r: number; g: number; b: number } {
+	const h = ((hueDegrees % 360) + 360) % 360;
+	const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
+	const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+	const m = lightness - c / 2;
+	let r = 0;
+	let g = 0;
+	let b = 0;
+	if (h < 60) {
+		r = c;
+		g = x;
+	} else if (h < 120) {
+		r = x;
+		g = c;
+	} else if (h < 180) {
+		g = c;
+		b = x;
+	} else if (h < 240) {
+		g = x;
+		b = c;
+	} else if (h < 300) {
+		r = x;
+		b = c;
+	} else {
+		r = c;
+		b = x;
+	}
+	return { r: r + m, g: g + m, b: b + m };
+}
+
+// Saturation/lightness held fixed across flocks 1..N-1 — hue is the only
+// thing that varies, so the even hue spread below is the sole distinguishing
+// factor between them.
+const FLOCK_COLOR_SATURATION = 0.7;
+const FLOCK_COLOR_LIGHTNESS = 0.55;
+
+// Flock 0 reuses `seedColorHex` (BOID_FILL_COLOR/PREDATOR_FILL_COLOR) for
+// continuity with the pre-genetics engine; flocks 1..N-1 get hues evenly
+// spread around the color wheel so any flockCount in [2,4] (decision #1)
+// stays visually distinguishable.
+function createFlockColors(
+	flockCount: number,
+	seedColorHex: string,
+): Array<{ r: number; g: number; b: number }> {
+	return Array.from({ length: flockCount }, (_, flockId) =>
+		flockId === 0
+			? hexToUnitColor(seedColorHex)
+			: hslToUnitColor(
+					(360 / flockCount) * flockId,
+					FLOCK_COLOR_SATURATION,
+					FLOCK_COLOR_LIGHTNESS,
+				),
+	);
+}
+
+// Splits `count` individuals evenly across `flockCount` flocks, remainder
+// going to the first N flocks (decision #1: flock membership fixed at spawn,
+// split evenly).
+function splitCountAcrossFlocks(count: number, flockCount: number): number[] {
+	const base = Math.floor(count / flockCount);
+	const remainder = count % flockCount;
+	return Array.from({ length: flockCount }, (_, flockId) =>
+		flockId < remainder ? base + 1 : base,
+	);
+}
+
+// Each boid's genes seed from its flock's FlockWeights exactly (FR-006: "the
+// flock defines only the average values individuals start from") — no
+// variance at gen 0; mutation only happens at birth via reproduction
+// (Phase 2's `inheritGenes`), never at initial seeding.
 export function createInitialPopulation(
 	count: number,
 	rng: () => number,
 	maxLifespan: number,
+	flockCount: number,
+	flockWeights: FlockWeights[],
 ): BoidState[] {
-	return Array.from({ length: count }, () => ({
-		x: rng() * INITIAL_AREA_SIZE,
-		y: rng() * INITIAL_AREA_SIZE,
-		z: rng() * Z_DEPTH_RANGE,
-		vx: (rng() - 0.5) * INITIAL_SPEED,
-		vy: (rng() - 0.5) * INITIAL_SPEED,
-		vz: (rng() - 0.5) * INITIAL_SPEED,
-		lifespan: maxLifespan,
-	}));
+	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
+	const colors = createFlockColors(flockCount, BOID_FILL_COLOR);
+	const boids: BoidState[] = [];
+	for (let flockId = 0; flockId < flockCount; flockId++) {
+		const weights = flockWeights[flockId];
+		const color = colors[flockId];
+		if (!weights || !color) {
+			continue;
+		}
+		const flockSize = countsPerFlock[flockId] ?? 0;
+		for (let i = 0; i < flockSize; i++) {
+			boids.push({
+				x: rng() * INITIAL_AREA_SIZE,
+				y: rng() * INITIAL_AREA_SIZE,
+				z: rng() * Z_DEPTH_RANGE,
+				vx: (rng() - 0.5) * INITIAL_SPEED,
+				vy: (rng() - 0.5) * INITIAL_SPEED,
+				vz: (rng() - 0.5) * INITIAL_SPEED,
+				lifespan: maxLifespan,
+				genes: {
+					color,
+					flockId,
+					separationWeight: weights.separation,
+					alignmentWeight: weights.alignment,
+					cohesionWeight: weights.cohesion,
+					maxSpeed: MAX_SPEED,
+					minSpeed: MIN_SPEED,
+					maxLifespan,
+					matePreference: rng(),
+				},
+				energy: INITIAL_ENERGY,
+				age: 0,
+				gender: rng() < 0.5 ? "a" : "b",
+			});
+		}
+	}
+	return boids;
 }
 
+// Symmetric with createInitialPopulation per decision #5 — predators get
+// flocks/genes/energy/age/gender too, no "simpler" predator path.
 export function createInitialPredators(
 	count: number,
 	rng: () => number,
 	maxLifespan: number,
+	flockCount: number,
+	flockWeights: FlockWeights[],
 ): PredatorState[] {
-	return Array.from({ length: count }, () => ({
-		x: rng() * INITIAL_AREA_SIZE,
-		y: rng() * INITIAL_AREA_SIZE,
-		z: rng() * Z_DEPTH_RANGE,
-		vx: (rng() - 0.5) * INITIAL_SPEED,
-		vy: (rng() - 0.5) * INITIAL_SPEED,
-		vz: (rng() - 0.5) * INITIAL_SPEED,
-		lifespan: maxLifespan,
-	}));
+	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
+	const colors = createFlockColors(flockCount, PREDATOR_FILL_COLOR);
+	const predators: PredatorState[] = [];
+	for (let flockId = 0; flockId < flockCount; flockId++) {
+		const weights = flockWeights[flockId];
+		const color = colors[flockId];
+		if (!weights || !color) {
+			continue;
+		}
+		const flockSize = countsPerFlock[flockId] ?? 0;
+		for (let i = 0; i < flockSize; i++) {
+			predators.push({
+				x: rng() * INITIAL_AREA_SIZE,
+				y: rng() * INITIAL_AREA_SIZE,
+				z: rng() * Z_DEPTH_RANGE,
+				vx: (rng() - 0.5) * INITIAL_SPEED,
+				vy: (rng() - 0.5) * INITIAL_SPEED,
+				vz: (rng() - 0.5) * INITIAL_SPEED,
+				lifespan: maxLifespan,
+				genes: {
+					color,
+					flockId,
+					separationWeight: weights.separation,
+					alignmentWeight: weights.alignment,
+					cohesionWeight: weights.cohesion,
+					maxSpeed: PREDATOR_MAX_SPEED,
+					minSpeed: PREDATOR_MIN_SPEED,
+					maxLifespan,
+					matePreference: rng(),
+				},
+				energy: INITIAL_ENERGY,
+				age: 0,
+				gender: rng() < 0.5 ? "a" : "b",
+			});
+		}
+	}
+	return predators;
 }
 
 // Direct positional correction, applied once after every boid has moved:
@@ -182,7 +401,6 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 
 export function stepBoids(
 	boids: BoidState[],
-	weights: FlockWeights,
 	dtSeconds: number,
 	predators: PredatorState[] = [],
 ): BoidState[] {
@@ -315,39 +533,47 @@ export function stepBoids(
 
 		const steeredVx =
 			boid.vx +
-			(separationX * weights.separation +
-				alignmentX * weights.alignment +
-				cohesionX * weights.cohesion +
+			(separationX * boid.genes.separationWeight +
+				alignmentX * boid.genes.alignmentWeight +
+				cohesionX * boid.genes.cohesionWeight +
 				fleeX * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 		const steeredVy =
 			boid.vy +
-			(separationY * weights.separation +
-				alignmentY * weights.alignment +
-				cohesionY * weights.cohesion +
+			(separationY * boid.genes.separationWeight +
+				alignmentY * boid.genes.alignmentWeight +
+				cohesionY * boid.genes.cohesionWeight +
 				fleeY * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 		const steeredVz =
 			boid.vz +
-			(separationZ * weights.separation +
-				alignmentZ * weights.alignment +
-				cohesionZ * weights.cohesion +
+			(separationZ * boid.genes.separationWeight +
+				alignmentZ * boid.genes.alignmentWeight +
+				cohesionZ * boid.genes.cohesionWeight +
 				fleeZ * FLEE_WEIGHT) *
 				STEERING_FORCE_SCALE *
 				dtSeconds;
 
 		// Steering only changes heading; speed is clamped to a cruise range
 		// every tick so boids keep moving regardless of how small or large
-		// the net steering force happened to be this frame.
+		// the net steering force happened to be this frame. The clamp bounds
+		// are now this boid's own genes.minSpeed/maxSpeed (seeded from the
+		// engine's MIN_SPEED/MAX_SPEED at spawn) rather than the global
+		// constants directly, so a mutated descendant can cruise outside the
+		// range its ancestors started in.
 		const speed = Math.hypot(steeredVx, steeredVy, steeredVz);
-		const clampedSpeed = Math.min(Math.max(speed, MIN_SPEED), MAX_SPEED);
+		const clampedSpeed = Math.min(
+			Math.max(speed, boid.genes.minSpeed),
+			boid.genes.maxSpeed,
+		);
 		const vx = speed > 0 ? (steeredVx / speed) * clampedSpeed : clampedSpeed;
 		const vy = speed > 0 ? (steeredVy / speed) * clampedSpeed : 0;
 		const vz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
 
 		return {
+			...boid,
 			x: wrap(boid.x + vx * dtSeconds, INITIAL_AREA_SIZE),
 			y: wrap(boid.y + vy * dtSeconds, INITIAL_AREA_SIZE),
 			z: wrap(boid.z + vz * dtSeconds, Z_DEPTH_RANGE),
@@ -411,6 +637,7 @@ export function stepPredators(
 		const vz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
 
 		return {
+			...predator,
 			x: wrap(predator.x + vx * dtSeconds, INITIAL_AREA_SIZE),
 			y: wrap(predator.y + vy * dtSeconds, INITIAL_AREA_SIZE),
 			z: wrap(predator.z + vz * dtSeconds, Z_DEPTH_RANGE),
@@ -422,6 +649,62 @@ export function stepPredators(
 	});
 
 	return stepped.filter((predator) => predator.lifespan > 0);
+}
+
+// Arithmetic-mean blend of two parents' genes, with an independent mutation
+// roll per numeric gene — the one helper Phase 2's `reproducePopulation` uses
+// for both boids and predators (decision #5: one shared reproduction rule,
+// not two parallel implementations). Pure and rng-driven so reproduction
+// stays deterministic given the same rng stream.
+export function inheritGenes(
+	parentA: BoidGenes,
+	parentB: BoidGenes,
+	rng: () => number,
+	mutationChance: number,
+	mutationMagnitude: number,
+): BoidGenes {
+	// Independent roll per gene, not one roll for the whole genome — mirrors
+	// real-world independent assortment, and keeps one gene mutating from
+	// statistically correlating with any other gene mutating this birth.
+	function blendNumber(a: number, b: number): number {
+		const mean = (a + b) / 2;
+		if (rng() < mutationChance) {
+			return mean * (1 + (rng() * 2 - 1) * mutationMagnitude);
+		}
+		return mean;
+	}
+
+	// Same blend-then-maybe-mutate rule as blendNumber, with the result
+	// clamped to [0,1] afterward — a channel's mean of two in-range parents
+	// is already in range, but the multiplicative jitter above can push it
+	// past either boundary.
+	function blendChannel(a: number, b: number): number {
+		return Math.min(1, Math.max(0, blendNumber(a, b)));
+	}
+
+	return {
+		color: {
+			r: blendChannel(parentA.color.r, parentB.color.r),
+			g: blendChannel(parentA.color.g, parentB.color.g),
+			b: blendChannel(parentA.color.b, parentB.color.b),
+		},
+		// Coin-flip, never blended — a crossbred offspring belongs to exactly
+		// one flock, the field Phase 2's crossbreeding gate reads.
+		flockId: rng() < 0.5 ? parentA.flockId : parentB.flockId,
+		separationWeight: blendNumber(
+			parentA.separationWeight,
+			parentB.separationWeight,
+		),
+		alignmentWeight: blendNumber(
+			parentA.alignmentWeight,
+			parentB.alignmentWeight,
+		),
+		cohesionWeight: blendNumber(parentA.cohesionWeight, parentB.cohesionWeight),
+		maxSpeed: blendNumber(parentA.maxSpeed, parentB.maxSpeed),
+		minSpeed: blendNumber(parentA.minSpeed, parentB.minSpeed),
+		maxLifespan: blendNumber(parentA.maxLifespan, parentB.maxLifespan),
+		matePreference: blendNumber(parentA.matePreference, parentB.matePreference),
+	};
 }
 
 // Maintains the single global food-stock number across ticks: depletes with
@@ -514,9 +797,12 @@ export function runTick(
 		protectionThreshold: number;
 	},
 ): { boids: BoidState[]; predators: PredatorState[]; foodStock: number } {
+	// params.weights is no longer read here — stepBoids now reads each boid's
+	// own genes (Phase 1 of the genetic-inheritance-crossbreeding plan).
+	// params/runTick's own signature isn't revised until that plan's Phase 2,
+	// so the field stays on the type for now even though this call drops it.
 	const steeredBoids = stepBoids(
 		state.boids,
-		params.weights,
 		params.dtSeconds,
 		state.predators,
 	);
