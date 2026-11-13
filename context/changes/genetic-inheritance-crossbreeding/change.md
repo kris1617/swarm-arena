@@ -1,7 +1,7 @@
 ---
 change_id: genetic-inheritance-crossbreeding
 title: Genetic inheritance and inter-flock crossbreeding
-status: preparing
+status: planned
 created: 2026-11-13
 updated: 2026-11-13
 archived_at: null
