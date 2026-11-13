@@ -9,6 +9,7 @@ tags: [research, codebase, simulation, boids, genetics, crossbreeding, flock]
 status: complete
 last_updated: 2026-11-13
 last_updated_by: Claude Sonnet 5
+last_updated_note: "Appended a second evidence source — the user's prior Lua/LÖVE2D boids implementation at /mnt/Kids/boids_final/game/ — as design guidance (not code to port). Resolves most Open Questions with a concrete prior pattern; Q2 (crossbreeding gate) is explicitly NOT answered by it — the Lua reference has no crossbreeding toggle at all, so that part remains new design for this project."
 ---
 
 # Research: S-03 genetic inheritance and inter-flock crossbreeding
@@ -246,54 +247,138 @@ inside one.
 None — this is the first research document for this change, and no other
 active `context/changes/**/research.md` touches genetics/flocks/crossbreeding.
 
+## Additional Evidence: Prior Lua Implementation (user-supplied, 2026-11-13)
+
+The user pointed to their own prior LÖVE2D/Lua boids simulation at
+`/mnt/Kids/boids_final/game/` as design guidance (explicitly *not* code to
+port — this project stays TypeScript, keeps the existing 10x-skillset
+pure-function/client-authoritative architecture). It already implements
+genetics, sexual reproduction, and two species (boid + predator), so it
+answers most of the open questions below with a concrete, battle-tested
+pattern — while also revealing that one PRD requirement (the crossbreeding
+toggle) has **no precedent there at all**.
+
+- **Gene representation** (`Boid.lua:79-102`, `config.lua:46-67`): a flat
+  table — `tribe`, `color` (RGB triple), `maxSpeed`/`minSpeed`/`maxForce`,
+  five squared-perception-radius genes (`sepPerceptionSq`,
+  `aliPerceptionSq`, `cohPerceptionSq`, `predPerceptionSq`,
+  `foodPerceptionSq`), `hardSepRadiusSq`, `safetyRadiusSq`, burst-speed
+  multipliers, `matePreference`, and five per-behavior force multipliers.
+  Non-inherited per-instance fields: `pos`/`vel`/`acc`, `energy`,
+  `gender` (randomized fresh at birth, **never inherited**).
+- **Reproduction trigger** (`Boid.lua:503-537`, `config.lua:9,14,37`): a
+  combination of (a) individual energy ≥ a threshold, (b) population cap
+  not yet hit, (c) a global resource-ratio floor (food/maxFood for boids;
+  opposite-population ratio for predators). Checked every tick, no
+  cooldown or probability roll for boids.
+- **Mate selection** (`Boid.lua:511-527`): sexual, two parents required,
+  opposite gender, within a mate-distance radius, **mutual color-distance
+  preference** (`matePreference`, itself an evolvable gene) — first
+  eligible match wins, no scoring. Predator uses the same gates plus a
+  cooldown timer and a maturity/age check, and *does* score candidates
+  (energy/color/distance weighted) rather than first-match
+  (`Predator.lua:148-217`).
+- **Inheritance rule** (`Boid.lua:19-75`): per numeric gene, arithmetic
+  mean of both parents, then a per-gene independent mutation roll (~10%
+  chance, ±20% multiplicative jitter). `color` is per-RGB-channel mean +
+  independent per-channel mutation, clamped to [0,1] — linear RGB, no HSL.
+  `tribe` is the one exception: a coin-flip pick of one parent's whole
+  value, never blended.
+- **Flock/species concept — and the crossbreeding gap**: three fixed
+  `tribe` templates exist, but **`tribe` never gates mating eligibility in
+  this implementation** — it only restricts flocking *forces*
+  (separation/alignment/cohesion computed only against same-tribe
+  neighbors, `Boid.lua:457`). Inter-tribe mating is implicitly always
+  allowed; nothing resembling a crossbreeding on/off switch exists anywhere
+  in `config.lua`/`constants.lua`. **This means the PRD's crossbreeding
+  toggle (FR-007) is new design work with no prior pattern to lean on** —
+  the Lua reference narrows Q1 (tribes-as-templates) but does not resolve
+  Q2 at all.
+- **Object-count cap**: enforced as an early-return guard right at the
+  reproduction call site each tick (`if population + pendingAdds >= cap
+  then return`) — not a separate pass.
+- **Predator reproduction**: shares Boid's exact inheritance function
+  (literal reuse), just with stricter gating (cooldown + maturity + scored
+  mate selection) — not simpler, not geneless.
+- **Notable absences in the Lua reference** (don't carry these over
+  unexamined): no lifespan/max-age gene or old-age death for either species
+  (death is starvation-only there, unlike this project's existing
+  placeholder lifespan-decay mechanic from S-01/S-02); no fitness or
+  genetic-diversity score anywhere; gender is never inherited.
+
 ## Open Questions
 
-These are genuine product/design decisions, not implementation details —
-none are answerable from the codebase, and `/10x-plan`'s interview should
-resolve them before writing phases:
+These are genuine product/design decisions, not implementation details.
+The Lua reference above gives a concrete candidate answer for most; `/10x-
+plan`'s interview should still confirm each explicitly with the user before
+writing phases, since "a prior project did X" is inspiration, not a
+requirement:
 
 1. **How many flocks does a run start with, and how is each one
    configured?** Neither the PRD, shape-notes, nor roadmap specifies a
    "number of flocks" parameter anywhere (confirmed by grep — see Code
-   References). FR-002's parameter list has no such field either. Candidate
-   readings: (a) a run starts with exactly 2 pre-configured flocks (each
-   with its own starting color/weights), making crossbreeding meaningful
-   from tick one; (b) a run starts with one homogeneous population, and
-   "flocks" are color-lineages that emerge from reproduction's blend/
-   mutation over generations, with the crossbreeding toggle then meaning
-   "can two boids from different emergent-color lineages mate." Both are
-   consistent with FR-006's wording ("stado = starting average value, not a
-   rigid label"); the PRD doesn't rule either out.
+   References), and FR-002's parameter list has no such field. **Lua
+   reference's candidate pattern**: a small fixed number (3) of
+   pre-configured "tribes," each a complete base-gene template (color +
+   behavior multipliers) chosen at design time, not a runtime parameter.
+   Still open: does this project want a fixed count, a configurable count,
+   or the alternative "one homogeneous population that diverges into
+   color-lineages over generations" reading floated in the original
+   research pass?
 2. **What does "flock membership" mean operationally for the
-   crossbreeding-disabled guardrail?** A persistent discrete `flockId` that
-   never changes across generations within one lineage (strict partition),
-   or a same-color-only mating rule with no explicit ID (lineage drifts but
-   is inferred from color proximity)? This decision shapes whether
-   `BoidState` needs a `flockId` field, a `color` field, or both.
-3. **What exactly triggers reproduction?** FR-005 says "when sufficient
-   food is available" but defines no threshold. Candidates: a fixed
-   `foodStock` threshold, a per-tick probability scaled by food surplus, a
-   cooldown-gated check, or something else. No existing code offers a
-   default to inherit from (see Detailed Findings — `applyHunger`'s only
-   branch gates decay, not growth).
+   crossbreeding-disabled guardrail?** **Not answered by the Lua
+   reference** — its `tribe` field never gates mating at all (see above),
+   so this project has no prior pattern to lean on for the one guardrail
+   the PRD explicitly calls out ("crossbreeding disabled must never produce
+   a blended-flock-color offspring"). This is the single most
+   load-bearing open decision for `/10x-plan`'s interview: a persistent
+   `flockId` that hard-blocks cross-flock mating when the toggle is off, a
+   color-distance preference gate (Lua's `matePreference` mechanic,
+   repurposed to actually block rather than just bias), or something else.
+3. **What exactly triggers reproduction?** **Lua reference's candidate
+   pattern**: individual energy/resource threshold + population-cap check +
+   a global resource-abundance-ratio floor, evaluated every tick with no
+   cooldown (boid) — still needs this project's own equivalent of "energy"
+   defined (today's `BoidState` has no energy field, only `lifespan`) or a
+   decision to key the threshold off `foodStock` directly instead.
 4. **How does two-parent mate selection work?** FR-006 confirms offspring
-   inherit from *both* parents (`context/foundation/prd.md:88`), which
-   requires pairing eligible individuals each tick — e.g. nearest eligible
-   neighbor, random pairing among eligible boids, or something else. Nothing
-   in the current neighbor-scan logic (`stepBoids`'s existing O(n) pass)
-   is reused for this today; it would need its own pass or extend the
-   existing one.
+   inherit from *both* parents (`context/foundation/prd.md:88`). **Lua
+   reference's candidate pattern**: proximity + opposite-gender + mutual
+   color-preference, first-eligible-match (boid) or best-scored-match
+   (predator) — a concrete, portable pairing algorithm, but needs a
+   decision on which variant (or a simpler single rule for both species) to
+   use here, and nothing in the current neighbor-scan logic
+   (`stepBoids`'s existing O(n) pass) is reused for this today.
 5. **Do predators reproduce with genes/color/crossbreeding too, or more
-   simply?** FR-005's Polish text explicitly includes predators
-   ("Boidy i predatory rozmnażają się" — both boids and predators
-   reproduce), and the archived S-02 plan confirms predator reproduction
-   was deferred here too (`predator-prey-dynamics/plan.md:68`). But FR-006/
-   FR-007's gene/color/crossbreeding language is phrased only in terms of
-   boids/flocks. Does predator reproduction need the same
-   gene-inheritance/color-blend machinery, or a simpler same-species-only
-   growth rule?
-6. **Runtime enforcement of FR-018's object-count cap during reproduction.**
-   `start` already caps `boidCount + predatorCount <= 500` at config time;
-   reproduction will need its own per-tick cap check (stop spawning once
-   the live total hits the limit) — a new enforcement point, not an
-   extension of the existing start-time `.refine()`.
+   simply?** **Lua reference's candidate pattern**: predators reproduce
+   with the *same* inheritance machinery as boids, just gated more strictly
+   (cooldown + maturity/age + scored mate selection vs. boid's first-match)
+   — not a simpler, geneless mechanic. This directly answers the PRD's
+   FR-005 predator-reproduction requirement in a way consistent with
+   FR-006's general inheritance rule; still a product decision to confirm
+   adopting this symmetry rather than a simpler predator-only rule.
+6. **Runtime enforcement of FR-018's object-count cap during
+   reproduction.** **Lua reference's candidate pattern**: an early-return
+   guard checked at the reproduction call site itself each tick, before
+   attempting to find a mate — simple and directly portable; low-risk to
+   just adopt.
+
+Additional questions raised by the Lua reference, not in the original pass:
+
+7. **Does this project want a "maturity"/age-based reproduction gate (like
+   Predator's `predMaturityAge`), or should every individual be eligible
+   once the energy/resource threshold is met (like Lua's Boid)?** Ties into
+   whether "age" becomes a new tracked field distinct from the existing
+   `lifespan` countdown.
+8. **Should "energy" become an explicit new field on `BoidState`/
+   `PredatorState` (as it is in the Lua reference, separate from
+   lifespan), or should reproduction eligibility key off the existing
+   `lifespan` and/or `foodStock` fields instead, avoiding a new per-entity
+   field?** The current codebase has no energy concept at all (only
+   lifespan countdown + a shared `foodStock` pool) — this is a real
+   architectural choice, not just a naming one.
+9. **Should `matePreference`-style evolvable choosiness be adopted, or is
+   a simpler fixed rule (e.g. always same-flock when crossbreeding is off,
+   always any-flock when on) enough for this project's scope?** The Lua
+   reference's mate preference is itself a mutating gene, which is an
+   elegant but non-trivial mechanic beyond the PRD's literal ask.
