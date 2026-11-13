@@ -1,10 +1,10 @@
 ---
 change_id: basic-flocking-loop
 title: Basic flocking loop (configure, run, stop, score)
-status: impl_reviewed
+status: archived
 created: 2026-11-11
 updated: 2026-11-13
-archived_at: null
+archived_at: 2026-11-13T19:48:17Z
 ---
 
 ## Notes
