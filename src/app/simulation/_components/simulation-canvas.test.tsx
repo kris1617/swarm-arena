@@ -170,9 +170,11 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 
 		expect(rafMock).toHaveBeenCalledTimes(1);
 
+		const tickErrorInstance = new Error("boids blew up");
 		vi.mocked(computeSingleRunTick).mockImplementationOnce(() => {
-			throw new Error("boids blew up");
+			throw tickErrorInstance;
 		});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		act(() => {
 			capturedCallback?.(16);
@@ -183,6 +185,12 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 		expect(rafMock).toHaveBeenCalledTimes(1);
 		expect(cafMock).toHaveBeenCalled();
 		expect(container.textContent).toContain("Simulation error: boids blew up");
+		// Logged too — the DOM message alone leaves no trace if the tab closes
+		// before anyone reads it.
+		expect(errorSpy.mock.calls).toContainEqual([
+			"simulation tick failed:",
+			tickErrorInstance,
+		]);
 
 		act(() => {
 			root.unmount();

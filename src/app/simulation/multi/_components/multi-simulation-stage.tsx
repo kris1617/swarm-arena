@@ -185,9 +185,22 @@ export function MultiSimulationStage({
 			} catch (error) {
 				// A throw here spans every slot (one shared tick call), not just
 				// one — there is no finer-grained isolation without a larger
-				// architectural change. Stop the loop and tell the user.
+				// architectural change. Stop the loop and tell the user. Logged
+				// too — the on-screen message alone leaves no trace if the tab
+				// closes before anyone reads it.
 				cancelAnimationFrame(rafIdRef.current);
+				console.error("simulation tick failed:", error);
 				setTickError(error instanceof Error ? error.message : String(error));
+				// Force-finish every still-"running" slot (same no-score path as
+				// a failed stop mutation) — without this, the dead loop never
+				// transitions any slot to "stopped", so the page's "Dismiss"
+				// button never appears and the parallel-run cap never clears,
+				// leaving no way back except a full page reload.
+				for (const slot of slotsRef.current) {
+					if (slot.status === "running") {
+						onFinishedRef.current(slot.runId, undefined);
+					}
+				}
 			}
 		}
 

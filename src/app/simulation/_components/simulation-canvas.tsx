@@ -245,8 +245,10 @@ export function SimulationCanvas({
 			} catch (error) {
 				// The tick's own state may be unreliable at this point — stop the
 				// loop and tell the user, but don't attempt to score a broken run
-				// via stop().
+				// via stop(). Logged too — the on-screen message alone leaves no
+				// trace if the tab closes before anyone reads it.
 				cancelAnimationFrame(rafIdRef.current);
+				console.error("simulation tick failed:", error);
 				setTickError(error instanceof Error ? error.message : String(error));
 			}
 		}
