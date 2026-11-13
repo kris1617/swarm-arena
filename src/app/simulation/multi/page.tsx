@@ -32,6 +32,12 @@ export default function MultiSimulationPage() {
 	const [maxDurationSeconds, setMaxDurationSeconds] = useState(30);
 	const [runSlotsState, setRunSlotsState] =
 		useState<RunSlotsState>(EMPTY_STATE);
+	// Per-slot latest populationCapped flag from MultiSimulationStage's shared
+	// tick loop — kept in page state (not RunSlot itself) since it's a
+	// tick-local UI concern, not part of a slot's identity/config.
+	const [populationCappedByRunId, setPopulationCappedByRunId] = useState<
+		Record<number, boolean>
+	>({});
 
 	const startRun = api.simulation.start.useMutation({
 		onSuccess: (data, variables) => {
@@ -75,6 +81,10 @@ export default function MultiSimulationPage() {
 
 	function handleDismiss(runId: number) {
 		setRunSlotsState((state) => removeSlot(state, runId));
+	}
+
+	function handlePopulationCapped(runId: number, capped: boolean) {
+		setPopulationCappedByRunId((state) => ({ ...state, [runId]: capped }));
 	}
 
 	return (
@@ -191,6 +201,10 @@ export default function MultiSimulationPage() {
 							<span>
 								Run {index + 1} —{" "}
 								{slot.status === "running" ? "Running" : "Stopped"}
+								{slot.status === "running" &&
+								populationCappedByRunId[slot.runId]
+									? " — Population capped — at the object limit"
+									: null}
 								{slot.status === "stopped"
 									? slot.score !== undefined
 										? ` — Score: ${slot.score.toFixed(2)}`
@@ -225,6 +239,7 @@ export default function MultiSimulationPage() {
 				<MultiSimulationStage
 					activeRunId={runSlotsState.activeRunId}
 					onFinished={handleFinished}
+					onPopulationCapped={handlePopulationCapped}
 					slots={runSlotsState.slots}
 				/>
 			) : null}

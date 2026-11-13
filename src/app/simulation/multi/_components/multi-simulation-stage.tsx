@@ -37,6 +37,12 @@ export type MultiSimulationStageProps = {
 	// `score` is `undefined` when the slot was force-finished after its stop
 	// mutation errored — see `stopSlot`'s `onError` below.
 	onFinished: (runId: number, score?: number) => void;
+	// Called only when a running slot's populationCapped flag changes value
+	// (not every tick) — the shared RAF loop below already avoids per-tick
+	// setState for things it draws directly (activeDrawBoids); mirroring
+	// that here keeps a capped/uncapped slot from re-rendering the parent
+	// page every frame while it stays capped.
+	onPopulationCapped?: (runId: number, capped: boolean) => void;
 };
 
 function drawBoids(ctx: CanvasRenderingContext2D, boids: BoidState[]) {
@@ -74,6 +80,7 @@ export function MultiSimulationStage({
 	slots,
 	activeRunId,
 	onFinished,
+	onPopulationCapped,
 }: MultiSimulationStageProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const runStatesRef = useRef<Record<number, RunState>>({});
@@ -83,6 +90,11 @@ export function MultiSimulationStage({
 	const activeRunIdRef = useRef<number | null>(activeRunId);
 	const finishedRunIdsRef = useRef<Set<number>>(new Set());
 	const onFinishedRef = useRef(onFinished);
+	const onPopulationCappedRef = useRef(onPopulationCapped);
+	// Last-known-per-slot value, used only to detect a change worth
+	// forwarding via onPopulationCappedRef — never read back into the tick
+	// loop's own decisions.
+	const lastPopulationCappedRef = useRef<Record<number, boolean>>({});
 	// Set by the manual "Stop" button below; checked once per tick so a
 	// manual stop on the active slot ends it immediately instead of waiting
 	// for the next automatic stop condition (duration elapsed / wiped out).
@@ -96,7 +108,8 @@ export function MultiSimulationStage({
 		slotsRef.current = slots;
 		activeRunIdRef.current = activeRunId;
 		onFinishedRef.current = onFinished;
-	}, [slots, activeRunId, onFinished]);
+		onPopulationCappedRef.current = onPopulationCapped;
+	}, [slots, activeRunId, onFinished, onPopulationCapped]);
 
 	const stopRun = api.simulation.stop.useMutation();
 
@@ -165,6 +178,22 @@ export function MultiSimulationStage({
 				runStatesRef.current = result.runStates;
 				lastTimestampRef.current = result.lastTimestamp;
 				manualStopRequestRef.current = result.nextManualStopRequestId;
+
+				const liveRunIds = new Set(slotsRef.current.map((slot) => slot.runId));
+				for (const runId of Object.keys(lastPopulationCappedRef.current)) {
+					if (!liveRunIds.has(Number(runId))) {
+						delete lastPopulationCappedRef.current[Number(runId)];
+					}
+				}
+				for (const [runIdKey, capped] of Object.entries(
+					result.populationCappedBySlot ?? {},
+				)) {
+					const runId = Number(runIdKey);
+					if (lastPopulationCappedRef.current[runId] !== capped) {
+						lastPopulationCappedRef.current[runId] = capped;
+						onPopulationCappedRef.current?.(runId, capped);
+					}
+				}
 
 				for (const slot of result.slotsToStop) {
 					const runState = result.runStates[slot.runId];

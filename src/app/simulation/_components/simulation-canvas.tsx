@@ -165,6 +165,7 @@ export function SimulationCanvas({
 	const hasStoppedRef = useRef(false);
 	const [status, setStatus] = useState<"running" | "stopped">("running");
 	const [tickError, setTickError] = useState<string | null>(null);
+	const [populationCapped, setPopulationCapped] = useState(false);
 
 	const stopRun = api.simulation.stop.useMutation({
 		onError: (error, variables) => {
@@ -254,6 +255,7 @@ export function SimulationCanvas({
 				cohesionSamplesRef.current = result.cohesionSamples;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;
+				setPopulationCapped(result.populationCapped);
 
 				drawScene(ctx, result.boids, result.predators);
 
@@ -308,6 +310,11 @@ export function SimulationCanvas({
 				ref={canvasRef}
 				width={CANVAS_WIDTH}
 			/>
+			{populationCapped ? (
+				<p className="text-muted-foreground text-sm">
+					Population capped — at the object limit
+				</p>
+			) : null}
 			{tickError ? (
 				<div className="flex flex-col items-center gap-2">
 					<p className="text-destructive">Simulation error: {tickError}</p>

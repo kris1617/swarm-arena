@@ -614,13 +614,13 @@ existing run columns.
 ### Phase 3: Persist rng across ticks (single-run and multi-run lifecycles)
 
 #### Automated
-- [ ] 3.1 Single-run determinism across reproduction events
-- [ ] 3.2 Multi-run determinism across reproduction events
-- [ ] 3.3 Existing lifecycle tests still pass
-- [ ] 3.4 typecheck + lint
+- [x] 3.1 Single-run determinism across reproduction events — 9afd92d
+- [x] 3.2 Multi-run determinism across reproduction events — 9afd92d
+- [x] 3.3 Existing lifecycle tests still pass — 9afd92d
+- [x] 3.4 typecheck + lint — 9afd92d
 
 #### Manual
-- [ ] 3.5 Same-seed visual determinism check
+- [x] 3.5 Same-seed visual determinism check
 
 ### Phase 4: Population-cap indicator
 

@@ -51,6 +51,12 @@ export function computeMultiRunTick(
 	slotsToStop: RunSlot[];
 	activeDrawBoids: BoidState[] | null;
 	nextManualStopRequestId: number | null;
+	// One entry per "running" slot ticked this call, sourced from that slot's
+	// own runTick result (boidsCapped || predatorsCapped) — same per-slot
+	// Record idiom as `runStates` above, not persisted on RunState itself
+	// since this is a tick-local flag, not state a later tick needs to read
+	// back.
+	populationCappedBySlot: Record<number, boolean>;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -75,6 +81,7 @@ export function computeMultiRunTick(
 
 	const slotsToStop: RunSlot[] = [];
 	let nextManualStopRequestId = manualStopRequestId;
+	const populationCappedBySlot: Record<number, boolean> = {};
 
 	for (const slot of slots) {
 		if (slot.status !== "running") {
@@ -147,6 +154,7 @@ export function computeMultiRunTick(
 			elapsedSeconds: runState.elapsedSeconds + dtSeconds,
 		};
 		nextRunStates[slot.runId] = nextRunState;
+		populationCappedBySlot[slot.runId] = tickResult.populationCapped;
 
 		if (
 			nextRunState.elapsedSeconds >= slot.maxDurationSeconds ||
@@ -167,5 +175,6 @@ export function computeMultiRunTick(
 		slotsToStop,
 		activeDrawBoids: activeRunState ? activeRunState.boids : null,
 		nextManualStopRequestId,
+		populationCappedBySlot,
 	};
 }

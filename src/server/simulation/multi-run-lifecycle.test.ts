@@ -384,3 +384,67 @@ describe("computeMultiRunTick determinism across two same-seed slots", () => {
 		expect(resultA?.predators).toEqual(resultB?.predators);
 	});
 });
+
+describe("computeMultiRunTick populationCappedBySlot", () => {
+	it("reports false for a running slot whose tick has no capped reproduction", () => {
+		const slot = makeSlot({ runId: 1, protectionThreshold: 1 });
+		const existing = {
+			1: makeRunState({
+				boids: [
+					makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+				],
+			}),
+		};
+
+		const result = computeMultiRunTick(
+			{ runStates: existing, lastTimestamp: 0 },
+			50,
+			[slot],
+			null,
+			null,
+		);
+
+		expect(result.populationCappedBySlot[1]).toBe(false);
+	});
+
+	it("reports true for a running slot whose runTick call hits the (hardcoded) populationCap via the other species' count", () => {
+		// Mirrors single-run-lifecycle.test.ts's identical scenario:
+		// computeMultiRunTick hardcodes runTick's populationCap at 500 (the
+		// same TODO(phase 6) placeholder), so 500 filler, same-gender,
+		// far-away predators clear the cap for the eligible boid pair below
+		// via totalOtherPopulationCount, without needing 500 boids.
+		const fillerPredators = Array.from({ length: 500 }, () =>
+			makePredator(
+				{ x: 0, y: 100, z: 100, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+				{ gender: "a" },
+			),
+		);
+		const slot = makeSlot({ runId: 1, protectionThreshold: 2 });
+		const existing = {
+			1: makeRunState({
+				boids: [
+					makeBoid(
+						{ x: 100, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 50, age: 5, gender: "a" },
+					),
+					makeBoid(
+						{ x: 105, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 50, age: 5, gender: "b" },
+					),
+				],
+				predators: fillerPredators,
+			}),
+		};
+
+		const result = computeMultiRunTick(
+			{ runStates: existing, lastTimestamp: 0 },
+			50,
+			[slot],
+			null,
+			null,
+		);
+
+		expect(result.populationCappedBySlot[1]).toBe(true);
+		expect(result.runStates[1]?.boids).toHaveLength(2);
+	});
+});

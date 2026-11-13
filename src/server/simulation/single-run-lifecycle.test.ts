@@ -153,4 +153,63 @@ describe("computeSingleRunTick", () => {
 		expect(resultA.boids).toEqual(resultB.boids);
 		expect(resultA.predators).toEqual(resultB.predators);
 	});
+
+	it("forwards populationCapped: false when the tick's reproduction has no capped pair", () => {
+		const state = buildState({
+			boids: [buildBoid({ x: 0, energy: 0, age: 0 })],
+			lastTimestamp: 0,
+		});
+
+		const result = computeSingleRunTick(state, 50, PARAMS);
+
+		expect(result.populationCapped).toBe(false);
+	});
+
+	it("forwards populationCapped: true when runTick's own populationCap gate blocks an otherwise-eligible mated pair", () => {
+		// computeSingleRunTick hardcodes runTick's populationCap at 500
+		// (TODO(phase 6) placeholder) and isn't itself parameterizable, so
+		// the cheapest way to force `capped: true` without 500 boids is via
+		// the OTHER species' count: boids' own reproducePopulation call
+		// checks `population.length + offspring.length +
+		// totalOtherPopulationCount >= populationCap`, and
+		// totalOtherPopulationCount is the predator count. 500 filler
+		// predators alone clears the cap for the boid pair below.
+		//
+		// Predators are placed far enough from the mating pair (euclidean
+		// distance ~173, past PREDATOR_DETECTION_RADIUS=50) that boid flee
+		// steering can't move the pair out of MATE_DISTANCE_RADIUS before
+		// reproduction runs this tick, and all share gender "a" so they
+		// never pair with each other. protectionThreshold is raised to the
+		// boid count so applyPredation (which would otherwise instant-kill
+		// the nearest boid to each predator once population exceeds the
+		// threshold) is a no-op here — this test is about the reproduction
+		// cap, not predation.
+		const fillerPredators = Array.from({ length: 500 }, () =>
+			buildBoid({
+				x: 0,
+				y: 100,
+				z: 100,
+				lifespan: 1000,
+				gender: "a" as const,
+			}),
+		);
+		const state = buildState({
+			boids: [
+				buildBoid({ x: 100, y: 0, energy: 50, age: 5, gender: "a" }),
+				buildBoid({ x: 105, y: 0, energy: 50, age: 5, gender: "b" }),
+			],
+			predators: fillerPredators,
+			lastTimestamp: 0,
+		});
+
+		const result = computeSingleRunTick(state, 50, {
+			...PARAMS,
+			protectionThreshold: 2,
+		});
+
+		expect(result.populationCapped).toBe(true);
+		// The capped pair still gets marked paired (no double-mating) and
+		// produces no offspring, per boids.ts's reproducePopulation contract.
+		expect(result.boids).toHaveLength(2);
+	});
 });

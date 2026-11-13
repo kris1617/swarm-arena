@@ -44,6 +44,11 @@ export function computeSingleRunTick(
 	elapsedSeconds: number;
 	lastTimestamp: number;
 	shouldStop: boolean;
+	// Forwarded directly from this tick's runTick result (boidsCapped ||
+	// predatorsCapped) — Phase 4's UI indicator reads this, not runTick
+	// itself, so the canvas/RAF shell never needs to reach past this
+	// decision core.
+	populationCapped: boolean;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -60,6 +65,7 @@ export function computeSingleRunTick(
 		boids: nextBoids,
 		predators: nextPredators,
 		foodStock: nextFoodStock,
+		populationCapped,
 	} = runTick(
 		{
 			boids: state.boids,
@@ -99,5 +105,6 @@ export function computeSingleRunTick(
 		elapsedSeconds: nextElapsedSeconds,
 		lastTimestamp: timestamp,
 		shouldStop,
+		populationCapped,
 	};
 }
