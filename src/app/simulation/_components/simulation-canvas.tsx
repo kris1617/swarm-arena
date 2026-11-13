@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
+	type BoidGenes,
 	type BoidState,
 	createInitialPopulation,
 	createInitialPredators,
@@ -12,11 +13,7 @@ import {
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
-import {
-	BOID_FILL_COLOR,
-	CANVAS_BACKGROUND,
-	PREDATOR_FILL_COLOR,
-} from "~/styles/theme-colors";
+import { CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
 const CANVAS_WIDTH = 600;
@@ -65,6 +62,7 @@ type DrawEntity = {
 	z: number;
 	vx: number;
 	vy: number;
+	genes: BoidGenes;
 	kind: "boid" | "predator";
 };
 
@@ -83,6 +81,28 @@ export function computeDepthScale(z: number): number {
 // comparator, directly unit-testable without a canvas context.
 export function compareByDepth(a: { z: number }, b: { z: number }): number {
 	return b.z - a.z;
+}
+
+// Converts a gene-carried unit-interval [0,1] RGB color into a CSS
+// `rgb(...)` string canvas's ctx.fillStyle accepts. Each channel is clamped
+// to [0,1] before scaling to [0,255] and rounded with Math.round — defensive
+// against an out-of-range value even though boids.ts's inheritGenes already
+// clamps color channels to [0,1] at birth. Pure and DOM-free so it's directly
+// unit-testable without a canvas context, same as computeDepthScale/
+// compareByDepth above.
+export function colorToCss({
+	r,
+	g,
+	b,
+}: {
+	r: number;
+	g: number;
+	b: number;
+}): string {
+	function toChannel(value: number): number {
+		return Math.round(Math.min(1, Math.max(0, value)) * 255);
+	}
+	return `rgb(${toChannel(r)}, ${toChannel(g)}, ${toChannel(b)})`;
 }
 
 function drawScene(
@@ -117,8 +137,8 @@ function drawScene(
 		ctx.translate(x, y);
 		ctx.rotate(heading);
 		ctx.beginPath();
+		ctx.fillStyle = colorToCss(entity.genes.color);
 		if (entity.kind === "predator") {
-			ctx.fillStyle = PREDATOR_FILL_COLOR;
 			// Diamond silhouette: nose, both wings, tail — visibly wider than
 			// the boid's narrow triangle at the same depth-scale factor.
 			ctx.moveTo(PREDATOR_LENGTH * scale, 0);
@@ -126,7 +146,6 @@ function drawScene(
 			ctx.lineTo(-PREDATOR_LENGTH * scale, 0);
 			ctx.lineTo(0, -PREDATOR_WIDTH * scale);
 		} else {
-			ctx.fillStyle = BOID_FILL_COLOR;
 			ctx.moveTo(BOID_LENGTH * scale, 0);
 			ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
 			ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);

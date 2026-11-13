@@ -42,7 +42,7 @@ vi.mock("~/server/simulation/single-run-lifecycle", async () => {
 });
 
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
-import { SimulationCanvas } from "./simulation-canvas";
+import { colorToCss, SimulationCanvas } from "./simulation-canvas";
 
 const BASE_PROPS = {
 	runId: 1,
@@ -75,6 +75,30 @@ function createFakeContext() {
 		fillStyle: "",
 	};
 }
+
+describe("colorToCss", () => {
+	it("converts a pure-red unit-interval color to its rgb() string", () => {
+		expect(colorToCss({ r: 1, g: 0, b: 0 })).toBe("rgb(255, 0, 0)");
+	});
+
+	it("converts black to rgb(0, 0, 0)", () => {
+		expect(colorToCss({ r: 0, g: 0, b: 0 })).toBe("rgb(0, 0, 0)");
+	});
+
+	// Documents the rounding rule: each channel is scaled to [0,255] and
+	// rounded with Math.round, so 0.5 -> 127.5 -> 128 (round-half-up), not
+	// truncated to 127.
+	it("rounds a fractional channel with Math.round semantics", () => {
+		expect(colorToCss({ r: 0.5, g: 0.5, b: 0.5 })).toBe("rgb(128, 128, 128)");
+	});
+
+	// Defensive clamp: genes.color should already be in [0,1] (inheritGenes
+	// clamps at birth), but colorToCss clamps again rather than trusting the
+	// caller, so an out-of-range value never produces an invalid CSS string.
+	it("clamps out-of-range channels instead of producing invalid output", () => {
+		expect(colorToCss({ r: 1.5, g: -0.5, b: 0 })).toBe("rgb(255, 0, 0)");
+	});
+});
 
 describe("SimulationCanvas RAF scheduling shell", () => {
 	let rafMock: ReturnType<typeof vi.fn>;

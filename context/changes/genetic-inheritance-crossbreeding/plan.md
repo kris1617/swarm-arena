@@ -625,10 +625,10 @@ existing run columns.
 ### Phase 4: Population-cap indicator
 
 #### Automated
-- [ ] 4.1 `populationCapped` flag correctness
+- [x] 4.1 `populationCapped` flag correctness — 6b5cbde
 
 #### Manual
-- [ ] 4.2 Indicator appears/disappears correctly in the running UI
+- [x] 4.2 Indicator appears/disappears correctly in the running UI
 
 ### Phase 5: Per-entity color rendering
 

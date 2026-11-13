@@ -50,6 +50,7 @@ export function computeMultiRunTick(
 	lastTimestamp: number;
 	slotsToStop: RunSlot[];
 	activeDrawBoids: BoidState[] | null;
+	activeDrawPredators: PredatorState[] | null;
 	nextManualStopRequestId: number | null;
 	// One entry per "running" slot ticked this call, sourced from that slot's
 	// own runTick result (boidsCapped || predatorsCapped) — same per-slot
@@ -174,6 +175,7 @@ export function computeMultiRunTick(
 		lastTimestamp: timestamp,
 		slotsToStop,
 		activeDrawBoids: activeRunState ? activeRunState.boids : null,
+		activeDrawPredators: activeRunState ? activeRunState.predators : null,
 		nextManualStopRequestId,
 		populationCappedBySlot,
 	};

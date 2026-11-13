@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { colorToCss } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
-import type { BoidState } from "~/server/simulation/boids";
+import type { BoidState, PredatorState } from "~/server/simulation/boids";
 import {
 	computeMultiRunTick,
 	type RunState,
 } from "~/server/simulation/multi-run-lifecycle";
 import type { RunSlot } from "~/server/simulation/run-slots";
-import { BOID_FILL_COLOR, CANVAS_BACKGROUND } from "~/styles/theme-colors";
+import { CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
 // S-05 (parallel-sim-switching): one shared requestAnimationFrame loop steps
@@ -27,6 +28,10 @@ const RENDER_OFFSET_X = (CANVAS_WIDTH - 200 * RENDER_SCALE) / 2;
 const RENDER_OFFSET_Y = (CANVAS_HEIGHT - 200 * RENDER_SCALE) / 2;
 const BOID_LENGTH = 6;
 const BOID_WIDTH = 4;
+// Predators render as a wider/diamond silhouette (vs. the boid's narrow
+// triangle) — same visual treatment as simulation-canvas.tsx's drawScene.
+const PREDATOR_LENGTH = 7;
+const PREDATOR_WIDTH = 7;
 const REFERENCE_DEPTH = 100;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.0;
@@ -45,31 +50,66 @@ export type MultiSimulationStageProps = {
 	onPopulationCapped?: (runId: number, capped: boolean) => void;
 };
 
-function drawBoids(ctx: CanvasRenderingContext2D, boids: BoidState[]) {
+type DrawEntity = {
+	x: number;
+	y: number;
+	z: number;
+	vx: number;
+	vy: number;
+	genes: BoidState["genes"];
+	kind: "boid" | "predator";
+};
+
+// Draws both species for the active slot — same visual treatment as
+// simulation-canvas.tsx's drawScene (boid = narrow triangle, predator =
+// wider diamond silhouette, depth-sorted by z, each colored via its own
+// genes.color), reusing colorToCss from that file since that's this file's
+// natural dependency direction (the reverse would be circular).
+function drawBoids(
+	ctx: CanvasRenderingContext2D,
+	boids: BoidState[],
+	predators: PredatorState[],
+) {
 	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 	ctx.fillStyle = CANVAS_BACKGROUND;
 	ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-	ctx.fillStyle = BOID_FILL_COLOR;
-	// Draw farthest-first so nearer boids (drawn later) paint over farther
+
+	const entities: DrawEntity[] = [
+		...boids.map((boid): DrawEntity => ({ ...boid, kind: "boid" })),
+		...predators.map(
+			(predator): DrawEntity => ({ ...predator, kind: "predator" }),
+		),
+	];
+	// Draw farthest-first so nearer entities (drawn later) paint over farther
 	// ones at overlapping screen positions instead of the reverse.
-	const sortedBoids = [...boids].sort((a, b) => b.z - a.z);
-	for (const boid of sortedBoids) {
-		const x = boid.x * RENDER_SCALE + RENDER_OFFSET_X;
-		const y = boid.y * RENDER_SCALE + RENDER_OFFSET_Y;
-		const speed = Math.hypot(boid.vx, boid.vy);
-		const heading = speed > 0 ? Math.atan2(boid.vy, boid.vx) : 0;
+	const sorted = entities.sort((a, b) => b.z - a.z);
+	for (const entity of sorted) {
+		const x = entity.x * RENDER_SCALE + RENDER_OFFSET_X;
+		const y = entity.y * RENDER_SCALE + RENDER_OFFSET_Y;
+		const speed = Math.hypot(entity.vx, entity.vy);
+		const heading = speed > 0 ? Math.atan2(entity.vy, entity.vx) : 0;
 		const scale = Math.min(
 			MAX_SCALE,
-			Math.max(MIN_SCALE, REFERENCE_DEPTH / (REFERENCE_DEPTH + boid.z)),
+			Math.max(MIN_SCALE, REFERENCE_DEPTH / (REFERENCE_DEPTH + entity.z)),
 		);
 
 		ctx.save();
 		ctx.translate(x, y);
 		ctx.rotate(heading);
 		ctx.beginPath();
-		ctx.moveTo(BOID_LENGTH * scale, 0);
-		ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
-		ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);
+		ctx.fillStyle = colorToCss(entity.genes.color);
+		if (entity.kind === "predator") {
+			// Diamond silhouette: nose, both wings, tail — visibly wider than
+			// the boid's narrow triangle at the same depth-scale factor.
+			ctx.moveTo(PREDATOR_LENGTH * scale, 0);
+			ctx.lineTo(0, PREDATOR_WIDTH * scale);
+			ctx.lineTo(-PREDATOR_LENGTH * scale, 0);
+			ctx.lineTo(0, -PREDATOR_WIDTH * scale);
+		} else {
+			ctx.moveTo(BOID_LENGTH * scale, 0);
+			ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
+			ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);
+		}
 		ctx.closePath();
 		ctx.fill();
 		ctx.restore();
@@ -203,7 +243,11 @@ export function MultiSimulationStage({
 				}
 
 				if (result.activeDrawBoids) {
-					drawBoids(ctx, result.activeDrawBoids);
+					drawBoids(
+						ctx,
+						result.activeDrawBoids,
+						result.activeDrawPredators ?? [],
+					);
 				} else {
 					ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 					ctx.fillStyle = CANVAS_BACKGROUND;
