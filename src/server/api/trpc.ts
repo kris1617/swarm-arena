@@ -64,6 +64,29 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 export const createCallerFactory = t.createCallerFactory;
 
 /**
+ * Logs every procedure error with enough identity to find it again — the
+ * adapter's `onError` callback this is wired into (see
+ * `src/app/api/trpc/[trpc]/route.ts`) is the only place a production
+ * failure in any tRPC procedure leaves a trace, so this must never be
+ * dev-only and must never throw itself, even with a missing/unauthenticated
+ * context.
+ */
+export function logTRPCError({
+	path,
+	error,
+	ctx,
+}: {
+	path: string | undefined;
+	error: TRPCError;
+	// Only the identity this needs, not the full context type — callers
+	// (prod: the real onError opts; tests: a minimal fake) don't have to
+	// construct a complete `db`/`headers` context just to call this.
+	ctx: { session: { user?: { id?: string } } | null } | undefined;
+}): void {
+	console.error("[tRPC]", { path, userId: ctx?.session?.user?.id }, error);
+}
+
+/**
  * 3. ROUTER & PROCEDURE (THE IMPORTANT BIT)
  *
  * These are the pieces you use to build your tRPC API. You should import these a lot in the
