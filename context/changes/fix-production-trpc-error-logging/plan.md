@@ -513,14 +513,14 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npm run check passes
-- [ ] 2.3 src/app/error.test.tsx passes
-- [ ] 2.4 npm test passes
+- [x] 2.1 npm run typecheck passes
+- [x] 2.2 npm run check passes
+- [x] 2.3 src/app/error.test.tsx passes
+- [x] 2.4 npm test passes
 
 #### Manual
 
-- [ ] 2.5 Force a client-render throw, confirm the styled error page + working reset button
+- [x] 2.5 Force a client-render throw, confirm the styled error page + working reset button
 
 ### Phase 3: instrumentation.ts
 
