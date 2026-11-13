@@ -15,6 +15,13 @@
       "when": 1794421047210,
       "tag": "0001_tough_ma_gnuci",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794606234249,
+      "tag": "0002_wonderful_micromacro",
+      "breakpoints": true
     }
   ]
 }

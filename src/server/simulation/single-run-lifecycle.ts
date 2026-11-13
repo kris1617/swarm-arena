@@ -35,6 +35,10 @@ export function computeSingleRunTick(
 		// state between calls itself, so creating a fresh rng here would make
 		// reproduction's mutation/gender rolls non-deterministic across ticks.
 		rng: () => number;
+		crossbreedingEnabled: boolean;
+		energyThreshold: number;
+		mutationChance: number;
+		mutationMagnitude: number;
 	},
 ): {
 	boids: BoidState[];
@@ -77,13 +81,10 @@ export function computeSingleRunTick(
 			foodRegenRate: params.foodRegenRate,
 			protectionThreshold: params.protectionThreshold,
 			rng: params.rng,
-			// TODO(phase 6): placeholder reproduction config until the start
-			// form exposes real crossbreeding/energy/mutation fields (decision
-			// #10).
-			crossbreedingEnabled: true,
-			energyThreshold: 50,
-			mutationChance: 0.1,
-			mutationMagnitude: 0.2,
+			crossbreedingEnabled: params.crossbreedingEnabled,
+			energyThreshold: params.energyThreshold,
+			mutationChance: params.mutationChance,
+			mutationMagnitude: params.mutationMagnitude,
 			populationCap: 500,
 			foodStockInitial: params.foodStockInitial,
 		},

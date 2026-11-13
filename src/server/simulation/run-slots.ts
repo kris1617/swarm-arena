@@ -17,13 +17,22 @@ export type RunSlot = {
 	// Added for genetic-inheritance-crossbreeding Phase 2's mid-implementation
 	// addition: multi-run slots now seed/tick predators and food identically
 	// to single-run, via the same shared `runTick` pipeline
-	// (multi-run-lifecycle.ts). `multi/page.tsx`'s form doesn't collect these
-	// yet (see its own `// TODO(phase 6)`), so callers pass the same
-	// "no predators" placeholder values it already sent to `startRun.mutate`.
+	// (multi-run-lifecycle.ts). `multi/page.tsx`'s start form now collects
+	// these fields directly (Phase 6), matching `page.tsx`'s field set.
 	predatorCount: number;
 	protectionThreshold: number;
 	foodStockInitial: number;
 	foodRegenRate: number;
+	// Added for genetic-inheritance-crossbreeding Phase 6: the five run-level
+	// genetics fields (decision #10), threaded from multi/page.tsx's start
+	// form into multi-run-lifecycle.ts's per-slot createInitialPopulation/
+	// createInitialPredators and runTick calls — same fields single-run's
+	// SimulationCanvasProps now carries.
+	flockCount: number;
+	crossbreedingEnabled: boolean;
+	energyThreshold: number;
+	mutationChance: number;
+	mutationMagnitude: number;
 };
 
 export type RunSlotsState = {

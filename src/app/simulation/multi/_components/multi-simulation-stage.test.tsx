@@ -160,6 +160,11 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 			protectionThreshold: 0,
 			foodStockInitial: 100,
 			foodRegenRate: 10,
+			flockCount: 2,
+			crossbreedingEnabled: true,
+			energyThreshold: 50,
+			mutationChance: 0.1,
+			mutationMagnitude: 0.2,
 		};
 		const onFinished = vi.fn();
 
@@ -215,6 +220,11 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 			protectionThreshold: 0,
 			foodStockInitial: 100,
 			foodRegenRate: 10,
+			flockCount: 2,
+			crossbreedingEnabled: true,
+			energyThreshold: 50,
+			mutationChance: 0.1,
+			mutationMagnitude: 0.2,
 		};
 
 		const onFinished = vi.fn();

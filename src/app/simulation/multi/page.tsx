@@ -5,6 +5,7 @@ import { useState } from "react";
 import { MultiSimulationStage } from "~/app/simulation/multi/_components/multi-simulation-stage";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Switch } from "~/components/ui/switch";
 import {
 	addSlot,
 	MAX_PARALLEL_RUNS,
@@ -16,10 +17,12 @@ import {
 import { api } from "~/trpc/react";
 
 // S-05 (parallel-sim-switching): this form is an independent duplicate of
-// src/app/simulation/page.tsx's (S-01's exact parameter set only — no
-// predator/food fields), not a shared/extracted component. See plan.md
-// "What We're NOT Doing": extracting a shared form would touch exactly the
-// file S-02 is concurrently editing.
+// src/app/simulation/page.tsx's, not a shared/extracted component. Per the
+// genetic-inheritance-crossbreeding plan's mid-implementation addition, both
+// forms now carry the same full field set (predator/food + genetics) so
+// multi-run gets predators/food/reproduction parity with single-run — see
+// plan.md "What We're NOT Doing": extracting a shared form stays out of
+// scope even though the field sets are now identical.
 const MAX_BOID_COUNT = 500;
 
 const EMPTY_STATE: RunSlotsState = { slots: [], activeRunId: null };
@@ -30,6 +33,15 @@ export default function MultiSimulationPage() {
 	const [alignmentWeight, setAlignmentWeight] = useState(1);
 	const [cohesionWeight, setCohesionWeight] = useState(1);
 	const [maxDurationSeconds, setMaxDurationSeconds] = useState(30);
+	const [predatorCount, setPredatorCount] = useState(5);
+	const [protectionThreshold, setProtectionThreshold] = useState(10);
+	const [foodStockInitial, setFoodStockInitial] = useState(100);
+	const [foodRegenRate, setFoodRegenRate] = useState(10);
+	const [flockCount, setFlockCount] = useState(2);
+	const [crossbreedingEnabled, setCrossbreedingEnabled] = useState(true);
+	const [energyThreshold, setEnergyThreshold] = useState(50);
+	const [mutationChance, setMutationChance] = useState(0.1);
+	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
 	const [runSlotsState, setRunSlotsState] =
 		useState<RunSlotsState>(EMPTY_STATE);
 	// Per-slot latest populationCapped flag from MultiSimulationStage's shared
@@ -56,14 +68,17 @@ export default function MultiSimulationPage() {
 						cohesion: cohesionWeight,
 					},
 					maxDurationSeconds,
-					// TODO(phase 6): this form has no predator/food UI yet — these
-					// are the same "no predators" values already sent to
-					// startRun.mutate below, now also needed on the RunSlot object
-					// so multi-run-lifecycle.ts can seed/tick predators and food.
-					predatorCount: 0,
-					protectionThreshold: 0,
-					foodStockInitial: 100,
-					foodRegenRate: 10,
+					// Use the clamped/validated values actually sent to (and stored
+					// by) the server, same rationale as boidCount above.
+					predatorCount: variables.predatorCount,
+					protectionThreshold: variables.protectionThreshold,
+					foodStockInitial: variables.foodStockInitial,
+					foodRegenRate: variables.foodRegenRate,
+					flockCount: variables.flockCount,
+					crossbreedingEnabled: variables.crossbreedingEnabled,
+					energyThreshold: variables.energyThreshold,
+					mutationChance: variables.mutationChance,
+					mutationMagnitude: variables.mutationMagnitude,
 				}),
 			);
 		},
@@ -110,15 +125,23 @@ export default function MultiSimulationPage() {
 							alignmentWeight,
 							cohesionWeight,
 							maxDurationSeconds,
-							// This route deliberately has no predator/food UI (S-05's
-							// scope is S-01's parameter set only — see plan.md "What
-							// We're NOT Doing"); these are the "no predators" values
-							// so every run here behaves exactly like the pre-S-02
-							// single-flock simulation.
-							predatorCount: 0,
-							protectionThreshold: 0,
-							foodStockInitial: 100,
-							foodRegenRate: 10,
+							// Clamped against the same 500 ceiling used server-side for
+							// the combined FR-018 boid+predator object-count cap.
+							predatorCount: Math.min(
+								Math.max(0, Math.round(predatorCount)),
+								MAX_BOID_COUNT,
+							),
+							protectionThreshold: Math.min(
+								Math.max(0, Math.round(protectionThreshold)),
+								MAX_BOID_COUNT,
+							),
+							foodStockInitial: Math.max(0.1, foodStockInitial),
+							foodRegenRate: Math.max(0, foodRegenRate),
+							flockCount: Math.min(Math.max(2, Math.round(flockCount)), 4),
+							crossbreedingEnabled,
+							energyThreshold: Math.max(0.1, energyThreshold),
+							mutationChance: Math.min(Math.max(0, mutationChance), 1),
+							mutationMagnitude: Math.min(Math.max(0, mutationMagnitude), 1),
 						});
 					}}
 				>
@@ -176,6 +199,115 @@ export default function MultiSimulationPage() {
 							onChange={(e) => setMaxDurationSeconds(Number(e.target.value))}
 							type="number"
 							value={maxDurationSeconds}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="predator-count">
+						Predator count (0-{MAX_BOID_COUNT})
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="predator-count"
+							max={MAX_BOID_COUNT}
+							min={0}
+							onChange={(e) => setPredatorCount(Number(e.target.value))}
+							type="number"
+							value={predatorCount}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="protection-threshold">
+						Protection threshold (0-{MAX_BOID_COUNT})
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="protection-threshold"
+							max={MAX_BOID_COUNT}
+							min={0}
+							onChange={(e) => setProtectionThreshold(Number(e.target.value))}
+							type="number"
+							value={protectionThreshold}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="food-stock-initial">
+						Initial food stock
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="food-stock-initial"
+							min={0}
+							onChange={(e) => setFoodStockInitial(Number(e.target.value))}
+							step="0.1"
+							type="number"
+							value={foodStockInitial}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="food-regen-rate">
+						Food regen rate
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="food-regen-rate"
+							min={0}
+							onChange={(e) => setFoodRegenRate(Number(e.target.value))}
+							step="0.1"
+							type="number"
+							value={foodRegenRate}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="flock-count">
+						Flock count (2-4)
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="flock-count"
+							max={4}
+							min={2}
+							onChange={(e) => setFlockCount(Number(e.target.value))}
+							type="number"
+							value={flockCount}
+						/>
+					</label>
+					<label
+						className="flex items-center justify-between gap-2"
+						htmlFor="crossbreeding-enabled"
+					>
+						Crossbreeding enabled
+						<Switch
+							checked={crossbreedingEnabled}
+							id="crossbreeding-enabled"
+							onCheckedChange={setCrossbreedingEnabled}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="energy-threshold">
+						Energy threshold
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="energy-threshold"
+							min={0}
+							onChange={(e) => setEnergyThreshold(Number(e.target.value))}
+							step="1"
+							type="number"
+							value={energyThreshold}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="mutation-chance">
+						Mutation chance
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="mutation-chance"
+							max={1}
+							min={0}
+							onChange={(e) => setMutationChance(Number(e.target.value))}
+							step="0.05"
+							type="number"
+							value={mutationChance}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="mutation-magnitude">
+						Mutation magnitude
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="mutation-magnitude"
+							max={1}
+							min={0}
+							onChange={(e) => setMutationMagnitude(Number(e.target.value))}
+							step="0.05"
+							type="number"
+							value={mutationMagnitude}
 						/>
 					</label>
 					<Button

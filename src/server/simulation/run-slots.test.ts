@@ -23,6 +23,11 @@ function makeSlotInput(runId: number): Omit<RunSlot, "status"> {
 		protectionThreshold: 0,
 		foodStockInitial: 100,
 		foodRegenRate: 10,
+		flockCount: 2,
+		crossbreedingEnabled: true,
+		energyThreshold: 50,
+		mutationChance: 0.1,
+		mutationMagnitude: 0.2,
 	};
 }
 

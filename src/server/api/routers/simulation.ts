@@ -26,6 +26,11 @@ export const simulationRouter = createTRPCRouter({
 					protectionThreshold: z.number().int().nonnegative().max(500),
 					foodStockInitial: z.number().finite().positive(),
 					foodRegenRate: z.number().finite().nonnegative(),
+					flockCount: z.number().int().min(2).max(4),
+					crossbreedingEnabled: z.boolean(),
+					energyThreshold: z.number().finite().positive(),
+					mutationChance: z.number().min(0).max(1),
+					mutationMagnitude: z.number().min(0).max(1),
 				})
 				.refine((input) => input.boidCount + input.predatorCount <= 500, {
 					message: "boidCount + predatorCount must not exceed 500",
@@ -71,6 +76,11 @@ export const simulationRouter = createTRPCRouter({
 					protectionThreshold: input.protectionThreshold,
 					foodStockInitial: input.foodStockInitial,
 					foodRegenRate: input.foodRegenRate,
+					flockCount: input.flockCount,
+					crossbreedingEnabled: input.crossbreedingEnabled,
+					energyThreshold: input.energyThreshold,
+					mutationChance: input.mutationChance,
+					mutationMagnitude: input.mutationMagnitude,
 					status: "running",
 				})
 				.returning({ id: simulationRuns.id });

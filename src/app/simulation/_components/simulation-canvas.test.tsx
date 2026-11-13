@@ -54,6 +54,11 @@ const BASE_PROPS = {
 	protectionThreshold: 0,
 	foodStockInitial: 100,
 	foodRegenRate: 0,
+	flockCount: 2,
+	crossbreedingEnabled: true,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
 	onFinished: vi.fn(),
 };
 

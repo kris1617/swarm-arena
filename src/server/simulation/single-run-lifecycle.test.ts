@@ -17,6 +17,14 @@ const PARAMS = {
 	// rng-driven branches, so a fixed seed is enough to satisfy the (now
 	// required) field without affecting their assertions.
 	rng: createRng(1),
+	// Phase 6: computeSingleRunTick now takes these as caller-supplied params
+	// instead of hardcoding them — mirrors the TODO(phase 6) placeholder
+	// values the tests below already assume (energyThreshold=50 etc. in
+	// their own comments).
+	crossbreedingEnabled: true,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
 };
 
 const GENES: BoidGenes = {

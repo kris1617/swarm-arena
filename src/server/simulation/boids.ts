@@ -241,19 +241,57 @@ function hslToUnitColor(
 const FLOCK_COLOR_SATURATION = 0.7;
 const FLOCK_COLOR_LIGHTNESS = 0.55;
 
+// Standard RGB->hue extraction (degrees), used so the hue spread below can
+// start from flock 0's ACTUAL hue rather than a fixed 0°. BOID_FILL_COLOR's
+// hue is ~198° — spreading flocks 1..N-1 from 0° independently of that (e.g.
+// flockCount=2 landing flock 1 at exactly 180°) put flock 1 only 18° away
+// from flock 0 on the color wheel, visually near-identical. Anchoring the
+// spread at flock 0's own hue guarantees maximal, even angular separation
+// for any flockCount in [2,4] regardless of where the seed color happens to
+// sit.
+function rgbToHueDegrees({
+	r,
+	g,
+	b,
+}: {
+	r: number;
+	g: number;
+	b: number;
+}): number {
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	const delta = max - min;
+	if (delta === 0) {
+		return 0;
+	}
+	let hue: number;
+	if (max === r) {
+		hue = ((g - b) / delta) % 6;
+	} else if (max === g) {
+		hue = (b - r) / delta + 2;
+	} else {
+		hue = (r - g) / delta + 4;
+	}
+	hue *= 60;
+	return hue < 0 ? hue + 360 : hue;
+}
+
 // Flock 0 reuses `seedColorHex` (BOID_FILL_COLOR/PREDATOR_FILL_COLOR) for
 // continuity with the pre-genetics engine; flocks 1..N-1 get hues evenly
-// spread around the color wheel so any flockCount in [2,4] (decision #1)
-// stays visually distinguishable.
+// spread around the color wheel, anchored at flock 0's own hue (see
+// rgbToHueDegrees above), so any flockCount in [2,4] (decision #1) stays
+// visually distinguishable.
 function createFlockColors(
 	flockCount: number,
 	seedColorHex: string,
 ): Array<{ r: number; g: number; b: number }> {
+	const seedColor = hexToUnitColor(seedColorHex);
+	const seedHue = rgbToHueDegrees(seedColor);
 	return Array.from({ length: flockCount }, (_, flockId) =>
 		flockId === 0
-			? hexToUnitColor(seedColorHex)
+			? seedColor
 			: hslToUnitColor(
-					(360 / flockCount) * flockId,
+					seedHue + (360 / flockCount) * flockId,
 					FLOCK_COLOR_SATURATION,
 					FLOCK_COLOR_LIGHTNESS,
 				),

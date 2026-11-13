@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Switch } from "~/components/ui/switch";
 import { api } from "~/trpc/react";
 
 // FR-018 object-count guardrail for this slice (S-01): a hardcoded client
@@ -21,6 +22,11 @@ type ActiveRun = {
 	protectionThreshold: number;
 	foodStockInitial: number;
 	foodRegenRate: number;
+	flockCount: number;
+	crossbreedingEnabled: boolean;
+	energyThreshold: number;
+	mutationChance: number;
+	mutationMagnitude: number;
 };
 
 export default function SimulationPage() {
@@ -33,6 +39,11 @@ export default function SimulationPage() {
 	const [protectionThreshold, setProtectionThreshold] = useState(10);
 	const [foodStockInitial, setFoodStockInitial] = useState(100);
 	const [foodRegenRate, setFoodRegenRate] = useState(10);
+	const [flockCount, setFlockCount] = useState(2);
+	const [crossbreedingEnabled, setCrossbreedingEnabled] = useState(true);
+	const [energyThreshold, setEnergyThreshold] = useState(50);
+	const [mutationChance, setMutationChance] = useState(0.1);
+	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
 	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
 
 	const startRun = api.simulation.start.useMutation({
@@ -54,6 +65,11 @@ export default function SimulationPage() {
 				protectionThreshold: variables.protectionThreshold,
 				foodStockInitial: variables.foodStockInitial,
 				foodRegenRate: variables.foodRegenRate,
+				flockCount: variables.flockCount,
+				crossbreedingEnabled: variables.crossbreedingEnabled,
+				energyThreshold: variables.energyThreshold,
+				mutationChance: variables.mutationChance,
+				mutationMagnitude: variables.mutationMagnitude,
 			});
 		},
 	});
@@ -65,10 +81,15 @@ export default function SimulationPage() {
 			{activeRun ? (
 				<SimulationCanvas
 					boidCount={activeRun.boidCount}
+					crossbreedingEnabled={activeRun.crossbreedingEnabled}
+					energyThreshold={activeRun.energyThreshold}
+					flockCount={activeRun.flockCount}
 					foodRegenRate={activeRun.foodRegenRate}
 					foodStockInitial={activeRun.foodStockInitial}
 					key={activeRun.runId}
 					maxDurationSeconds={activeRun.maxDurationSeconds}
+					mutationChance={activeRun.mutationChance}
+					mutationMagnitude={activeRun.mutationMagnitude}
 					onFinished={() => setActiveRun(null)}
 					predatorCount={activeRun.predatorCount}
 					protectionThreshold={activeRun.protectionThreshold}
@@ -102,6 +123,11 @@ export default function SimulationPage() {
 							),
 							foodStockInitial: Math.max(0.1, foodStockInitial),
 							foodRegenRate: Math.max(0, foodRegenRate),
+							flockCount: Math.min(Math.max(2, Math.round(flockCount)), 4),
+							crossbreedingEnabled,
+							energyThreshold: Math.max(0.1, energyThreshold),
+							mutationChance: Math.min(Math.max(0, mutationChance), 1),
+							mutationMagnitude: Math.min(Math.max(0, mutationMagnitude), 1),
 						});
 					}}
 				>
@@ -207,6 +233,67 @@ export default function SimulationPage() {
 							step="0.1"
 							type="number"
 							value={foodRegenRate}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="flock-count">
+						Flock count (2-4)
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="flock-count"
+							max={4}
+							min={2}
+							onChange={(e) => setFlockCount(Number(e.target.value))}
+							type="number"
+							value={flockCount}
+						/>
+					</label>
+					<label
+						className="flex items-center justify-between gap-2"
+						htmlFor="crossbreeding-enabled"
+					>
+						Crossbreeding enabled
+						<Switch
+							checked={crossbreedingEnabled}
+							id="crossbreeding-enabled"
+							onCheckedChange={setCrossbreedingEnabled}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="energy-threshold">
+						Energy threshold
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="energy-threshold"
+							min={0}
+							onChange={(e) => setEnergyThreshold(Number(e.target.value))}
+							step="1"
+							type="number"
+							value={energyThreshold}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="mutation-chance">
+						Mutation chance
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="mutation-chance"
+							max={1}
+							min={0}
+							onChange={(e) => setMutationChance(Number(e.target.value))}
+							step="0.05"
+							type="number"
+							value={mutationChance}
+						/>
+					</label>
+					<label className="flex flex-col gap-1" htmlFor="mutation-magnitude">
+						Mutation magnitude
+						<Input
+							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+							id="mutation-magnitude"
+							max={1}
+							min={0}
+							onChange={(e) => setMutationMagnitude(Number(e.target.value))}
+							step="0.05"
+							type="number"
+							value={mutationMagnitude}
 						/>
 					</label>
 					<Button

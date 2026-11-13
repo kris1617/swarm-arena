@@ -53,6 +53,11 @@ type SimulationCanvasProps = {
 	protectionThreshold: number;
 	foodStockInitial: number;
 	foodRegenRate: number;
+	flockCount: number;
+	crossbreedingEnabled: boolean;
+	energyThreshold: number;
+	mutationChance: number;
+	mutationMagnitude: number;
 	onFinished: () => void;
 };
 
@@ -166,6 +171,11 @@ export function SimulationCanvas({
 	protectionThreshold,
 	foodStockInitial,
 	foodRegenRate,
+	flockCount,
+	crossbreedingEnabled,
+	energyThreshold,
+	mutationChance,
+	mutationMagnitude,
 	onFinished,
 }: SimulationCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -195,7 +205,7 @@ export function SimulationCanvas({
 		},
 	});
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -208,21 +218,25 @@ export function SimulationCanvas({
 		// doesn't cut the run shorter than the duration the member chose.
 		const maxLifespan = Math.max(60, maxDurationSeconds);
 		rngRef.current = createRng(seed);
-		// TODO(phase 6): single-flock placeholder (flockCount: 1) until the
-		// start form exposes real flock-count/weights config.
+		// Per the plan's "Important design decision": all flocks in a run
+		// start from the SAME FlockWeights values — N copies of this one
+		// weights prop, not per-flock weight variance. Divergence comes from
+		// createInitialPopulation's per-flock seed colors and from mutation
+		// during reproduction, not from different starting weights.
+		const flockWeights = Array.from({ length: flockCount }, () => weights);
 		boidsRef.current = createInitialPopulation(
 			boidCount,
 			rngRef.current,
 			maxLifespan,
-			1,
-			[weights],
+			flockCount,
+			flockWeights,
 		);
 		predatorsRef.current = createInitialPredators(
 			predatorCount,
 			rngRef.current,
 			maxLifespan,
-			1,
-			[weights],
+			flockCount,
+			flockWeights,
 		);
 		foodStockRef.current = foodStockInitial;
 		drawScene(ctx, boidsRef.current, predatorsRef.current);
@@ -265,6 +279,10 @@ export function SimulationCanvas({
 						maxDurationSeconds,
 						foodStockInitial,
 						rng: rngRef.current,
+						crossbreedingEnabled,
+						energyThreshold,
+						mutationChance,
+						mutationMagnitude,
 					},
 				);
 

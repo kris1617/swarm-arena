@@ -633,11 +633,11 @@ existing run columns.
 ### Phase 5: Per-entity color rendering
 
 #### Automated
-- [ ] 5.1 `colorToCss` helper correctness
+- [x] 5.1 `colorToCss` helper correctness — 77cffb3
 
 #### Manual
-- [ ] 5.2 Visible blended-color offspring with crossbreeding on
-- [ ] 5.3 No blended color ever appears with crossbreeding off
+- [ ] 5.2 Visible blended-color offspring with crossbreeding on (deferred: needs Phase 6's real flockCount UI; verified no regression at flockCount:1 placeholder instead)
+- [ ] 5.3 No blended color ever appears with crossbreeding off (deferred: same reason)
 
 ### Phase 6: Run-level config surface
 

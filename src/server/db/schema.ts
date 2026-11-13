@@ -105,6 +105,11 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	protectionThreshold: d.integer().notNull(),
 	foodStockInitial: d.real().notNull(),
 	foodRegenRate: d.real().notNull(),
+	flockCount: d.integer().notNull(),
+	crossbreedingEnabled: d.integer({ mode: "boolean" }).notNull(),
+	energyThreshold: d.real().notNull(),
+	mutationChance: d.real().notNull(),
+	mutationMagnitude: d.real().notNull(),
 	status: d
 		.text({ enum: ["running", "stopped"] })
 		.notNull()

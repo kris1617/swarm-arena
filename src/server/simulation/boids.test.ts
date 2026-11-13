@@ -133,6 +133,35 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 			boids.map((boid) => boid.genes.color),
 		);
 	});
+
+	it("keeps flock 0 and flock 1 visually distinguishable at flockCount=2 (regression: the hue spread used to start at a fixed 0° regardless of flock 0's actual hue, so flockCount=2 could land flock 1 within ~18° of flock 0 on the color wheel — anchoring the spread at flock 0's own hue fixes this)", () => {
+		const twoFlockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS];
+		const boids = createInitialPopulation(
+			20,
+			createRng(3),
+			100,
+			2,
+			twoFlockWeights,
+		);
+		const flock0Color = boids.find((boid) => boid.genes.flockId === 0)?.genes
+			.color;
+		const flock1Color = boids.find((boid) => boid.genes.flockId === 1)?.genes
+			.color;
+		expect(flock0Color).toBeDefined();
+		expect(flock1Color).toBeDefined();
+		if (!flock0Color || !flock1Color) {
+			return;
+		}
+		// Euclidean distance in [0,1]^3 RGB space — the old bug produced two
+		// hues only ~18° apart (both cyan-ish), giving a distance well under
+		// 0.3 here; a healthy ~180° hue separation gives a much larger one.
+		const distance = Math.hypot(
+			flock0Color.r - flock1Color.r,
+			flock0Color.g - flock1Color.g,
+			flock0Color.b - flock1Color.b,
+		);
+		expect(distance).toBeGreaterThan(0.3);
+	});
 });
 
 describe("stepBoids", () => {

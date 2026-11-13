@@ -97,18 +97,29 @@ export function computeMultiRunTick(
 			// Created once, here, at first-seed time — stored on RunState and
 			// never recreated on a later tick (Phase 3 persistence note above).
 			const rng = createRng(slot.seed);
+			// Per the plan's "Important design decision": all flocks in a run
+			// start from the SAME FlockWeights values — N copies of this one
+			// weights object, not per-flock weight variance. Divergence comes
+			// from createInitialPopulation's per-flock seed colors and from
+			// mutation during reproduction, not from different starting weights.
+			const flockWeights = Array.from(
+				{ length: slot.flockCount },
+				() => slot.weights,
+			);
 			runState = {
-				// TODO(phase 6): single-flock placeholder (flockCount: 1) until
-				// the multi-run form exposes real flock-count/weights config.
-				boids: createInitialPopulation(slot.boidCount, rng, maxLifespan, 1, [
-					slot.weights,
-				]),
+				boids: createInitialPopulation(
+					slot.boidCount,
+					rng,
+					maxLifespan,
+					slot.flockCount,
+					flockWeights,
+				),
 				predators: createInitialPredators(
 					slot.predatorCount,
 					rng,
 					maxLifespan,
-					1,
-					[slot.weights],
+					slot.flockCount,
+					flockWeights,
 				),
 				foodStock: slot.foodStockInitial,
 				rng,
@@ -131,14 +142,10 @@ export function computeMultiRunTick(
 				foodRegenRate: slot.foodRegenRate,
 				protectionThreshold: slot.protectionThreshold,
 				rng: runState.rng,
-				// TODO(phase 6): placeholder reproduction config until the
-				// multi-run form exposes real crossbreeding/energy/mutation
-				// fields — mirrors single-run-lifecycle.ts's identical
-				// placeholder.
-				crossbreedingEnabled: true,
-				energyThreshold: 50,
-				mutationChance: 0.1,
-				mutationMagnitude: 0.2,
+				crossbreedingEnabled: slot.crossbreedingEnabled,
+				energyThreshold: slot.energyThreshold,
+				mutationChance: slot.mutationChance,
+				mutationMagnitude: slot.mutationMagnitude,
 				populationCap: 500,
 				foodStockInitial: slot.foodStockInitial,
 			},

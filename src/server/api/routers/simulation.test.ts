@@ -17,6 +17,11 @@ const VALID_START_INPUT = {
 	protectionThreshold: 3,
 	foodStockInitial: 100,
 	foodRegenRate: 1,
+	flockCount: 2,
+	crossbreedingEnabled: true,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
 };
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
@@ -66,6 +71,11 @@ async function insertOwnedRunningRun() {
 			protectionThreshold: VALID_START_INPUT.protectionThreshold,
 			foodStockInitial: VALID_START_INPUT.foodStockInitial,
 			foodRegenRate: VALID_START_INPUT.foodRegenRate,
+			flockCount: VALID_START_INPUT.flockCount,
+			crossbreedingEnabled: VALID_START_INPUT.crossbreedingEnabled,
+			energyThreshold: VALID_START_INPUT.energyThreshold,
+			mutationChance: VALID_START_INPUT.mutationChance,
+			mutationMagnitude: VALID_START_INPUT.mutationMagnitude,
 			status: "running",
 		})
 		.returning({ id: simulationRuns.id });
@@ -139,6 +149,105 @@ describe("simulationRouter.start", () => {
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects flockCount outside [2,4]", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({ ...VALID_START_INPUT, flockCount: 1 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		await expect(
+			caller.simulation.start({ ...VALID_START_INPUT, flockCount: 5 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects mutationChance/mutationMagnitude outside [0,1]", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({ ...VALID_START_INPUT, mutationChance: -0.1 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		await expect(
+			caller.simulation.start({ ...VALID_START_INPUT, mutationChance: 1.1 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				mutationMagnitude: -0.1,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				mutationMagnitude: 1.1,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("persists the five new genetics fields and round-trips them on read", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const submitted = {
+			...VALID_START_INPUT,
+			flockCount: 3,
+			crossbreedingEnabled: false,
+			energyThreshold: 75,
+			mutationChance: 0.25,
+			mutationMagnitude: 0.4,
+		};
+
+		const { runId } = await caller.simulation.start(submitted);
+
+		const stored = await db.query.simulationRuns.findFirst({
+			where: (simulationRuns, { eq }) => eq(simulationRuns.id, runId),
+		});
+
+		expect(stored).toMatchObject({
+			flockCount: submitted.flockCount,
+			crossbreedingEnabled: submitted.crossbreedingEnabled,
+			energyThreshold: submitted.energyThreshold,
+			mutationChance: submitted.mutationChance,
+			mutationMagnitude: submitted.mutationMagnitude,
+		});
 	});
 });
 

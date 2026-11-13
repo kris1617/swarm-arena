@@ -30,6 +30,15 @@ function makeSlot(overrides: Partial<RunSlot> = {}): RunSlot {
 		protectionThreshold: 0,
 		foodStockInitial: 1000,
 		foodRegenRate: 10,
+		// Phase 6: RunSlot now carries these five genetics fields; defaults
+		// here mirror the TODO(phase 6) placeholder values this file's own
+		// scenarios already assumed (energyThreshold=50 etc. in their
+		// comments).
+		flockCount: 1,
+		crossbreedingEnabled: true,
+		energyThreshold: 50,
+		mutationChance: 0.1,
+		mutationMagnitude: 0.2,
 		...overrides,
 	};
 }
