@@ -160,7 +160,14 @@ export function SimulationCanvas({
 	const hasStoppedRef = useRef(false);
 	const [status, setStatus] = useState<"running" | "stopped">("running");
 
-	const stopRun = api.simulation.stop.useMutation();
+	const stopRun = api.simulation.stop.useMutation({
+		onError: (error, variables) => {
+			console.error(
+				`simulation.stop failed for run ${variables.runId}: ${error.message}`,
+				error,
+			);
+		},
+	});
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
 	useEffect(() => {

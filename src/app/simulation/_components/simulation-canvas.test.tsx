@@ -6,16 +6,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Stub the tRPC react client this component calls unconditionally at the top
 // of its body (`api.simulation.stop.useMutation()`), so mounting it in a
 // plain DOM (no TRPCReactProvider / QueryClientProvider) doesn't throw.
+let capturedStopOptions: {
+	onError?: (error: { message: string }, variables: { runId: number }) => void;
+} = {};
+
 vi.mock("~/trpc/react", () => ({
 	api: {
 		simulation: {
 			stop: {
-				useMutation: () => ({
-					mutate: vi.fn(),
-					isPending: false,
-					data: undefined,
-					error: undefined,
-				}),
+				useMutation: (options: typeof capturedStopOptions = {}) => {
+					capturedStopOptions = options;
+					return {
+						mutate: vi.fn(),
+						isPending: false,
+						data: undefined,
+						error: undefined,
+					};
+				},
 			},
 		},
 	},
@@ -62,6 +69,7 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 
 	beforeEach(() => {
 		capturedCallback = undefined;
+		capturedStopOptions = {};
 
 		// Record calls but never actually schedule a real callback — the test
 		// advances ticks manually by invoking the captured callback itself.
@@ -104,6 +112,32 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 		// The one tick just processed schedules exactly one more frame: two
 		// total, not three or more (which would indicate a double-step).
 		expect(rafMock).toHaveBeenCalledTimes(2);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("logs the run id when the stop mutation fails", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		act(() => {
+			capturedStopOptions.onError?.({ message: "boom" }, { runId: 1 });
+		});
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"simulation.stop failed for run 1: boom",
+			expect.objectContaining({ message: "boom" }),
+		);
 
 		act(() => {
 			root.unmount();

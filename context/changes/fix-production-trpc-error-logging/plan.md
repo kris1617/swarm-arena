@@ -526,25 +526,25 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npm run check passes
-- [x] 3.3 src/instrumentation.test.ts passes
-- [x] 3.4 npm test passes
+- [x] 3.1 npm run typecheck passes — 2aa7b89
+- [x] 3.2 npm run check passes — 2aa7b89
+- [x] 3.3 src/instrumentation.test.ts passes — 2aa7b89
+- [x] 3.4 npm test passes — 2aa7b89
 
 #### Manual
 
-- [x] 3.5 Local production build: force an RSC-path throw, confirm the instrumentation log line
+- [x] 3.5 Local production build: force an RSC-path throw, confirm the instrumentation log line — 2aa7b89
 
 ### Phase 4: Missing onError handlers
 
 #### Automated
 
-- [ ] 4.1 npm run typecheck passes
-- [ ] 4.2 npm run check passes
-- [ ] 4.3 src/app/_components/post.test.tsx passes
-- [ ] 4.4 simulation-canvas.test.tsx passes (extended: stopRun onError logs run id)
-- [ ] 4.5 multi-simulation-stage.test.tsx passes (extended: stopSlot onError logs the error)
-- [ ] 4.6 npm test passes
+- [x] 4.1 npm run typecheck passes
+- [x] 4.2 npm run check passes
+- [x] 4.3 src/app/_components/post.test.tsx passes
+- [x] 4.4 simulation-canvas.test.tsx passes (extended: stopRun onError logs run id)
+- [x] 4.5 multi-simulation-stage.test.tsx passes (extended: stopSlot onError logs the error)
+- [x] 4.6 npm test passes
 
 ### Phase 5: RAF tick try/catch
 

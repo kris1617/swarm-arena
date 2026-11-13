@@ -134,7 +134,11 @@ export function MultiSimulationStage({
 					// it) — undismissable and stuck on "Stopping..." forever.
 					// Force-finish with no score instead, matching the
 					// single-run page's unconditional terminal-state guarantee.
-					onError: () => {
+					onError: (error) => {
+						console.error(
+							`simulation.stop failed for run ${slot.runId}: ${error.message}`,
+							error,
+						);
 						setManualStopPendingRunId((current) =>
 							current === slot.runId ? null : current,
 						);

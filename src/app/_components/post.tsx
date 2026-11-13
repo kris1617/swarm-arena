@@ -14,6 +14,9 @@ export function LatestPost() {
 			await utils.post.invalidate();
 			setName("");
 		},
+		onError: (error) => {
+			console.error(`post.create failed: ${error.message}`, error);
+		},
 	});
 
 	return (

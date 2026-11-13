@@ -6,12 +6,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Stub the tRPC react client this component calls unconditionally at the top
 // of its body (`api.simulation.stop.useMutation()`), so mounting it in a
 // plain DOM (no TRPCReactProvider / QueryClientProvider) doesn't throw.
+let capturedMutateOptions: {
+	onSuccess?: (data: { score: number }) => void;
+	onError?: (error: { message: string }) => void;
+} = {};
+const mutateMock = vi.fn(
+	(_data: unknown, options: typeof capturedMutateOptions = {}) => {
+		capturedMutateOptions = options;
+	},
+);
+
 vi.mock("~/trpc/react", () => ({
 	api: {
 		simulation: {
 			stop: {
 				useMutation: () => ({
-					mutate: vi.fn(),
+					mutate: mutateMock,
 					isPending: false,
 					data: undefined,
 					error: undefined,
@@ -20,6 +30,35 @@ vi.mock("~/trpc/react", () => ({
 		},
 	},
 }));
+
+// Force a stop on the first tick by stubbing the pure decision core, so the
+// test can reach `stopSlot`'s `onError` without driving a real multi-tick
+// countdown through the RAF shell.
+vi.mock("~/server/simulation/multi-run-lifecycle", async () => {
+	const actual = await vi.importActual<
+		typeof import("~/server/simulation/multi-run-lifecycle")
+	>("~/server/simulation/multi-run-lifecycle");
+	return {
+		...actual,
+		computeMultiRunTick: vi.fn(
+			(
+				_state: unknown,
+				timestamp: number,
+				slots: Array<{ runId: number }>,
+			) => ({
+				runStates: Object.fromEntries(
+					slots.map((slot) => [
+						slot.runId,
+						{ boids: [], cohesionSamples: [0.5], elapsedSeconds: 1 },
+					]),
+				),
+				lastTimestamp: timestamp,
+				slotsToStop: slots,
+				activeDrawBoids: null,
+			}),
+		),
+	};
+});
 
 import { MultiSimulationStage } from "./multi-simulation-stage";
 
@@ -56,6 +95,8 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 
 	beforeEach(() => {
 		capturedCallback = undefined;
+		capturedMutateOptions = {};
+		mutateMock.mockClear();
 
 		// Record calls but never actually schedule a real callback — the test
 		// advances ticks manually by invoking the captured callback itself.
@@ -98,6 +139,57 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 		// The one tick just processed schedules exactly one more frame: two
 		// total, not three or more (which would indicate a double-step).
 		expect(rafMock).toHaveBeenCalledTimes(2);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("logs the error before force-finishing the slot when stop fails", () => {
+		const slot = {
+			runId: 7,
+			seed: 1,
+			boidCount: 1,
+			weights: { separation: 0, alignment: 0, cohesion: 0 },
+			maxDurationSeconds: 100,
+			status: "running" as const,
+		};
+		const onFinished = vi.fn();
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(
+				<MultiSimulationStage
+					activeRunId={slot.runId}
+					onFinished={onFinished}
+					slots={[slot]}
+				/>,
+			);
+		});
+
+		// The mocked computeMultiRunTick forces slot 7 into slotsToStop on the
+		// very first tick, which schedules the first mutate() call.
+		act(() => {
+			capturedCallback?.(16);
+		});
+		expect(mutateMock).toHaveBeenCalledTimes(1);
+
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		act(() => {
+			capturedMutateOptions.onError?.({ message: "boom" });
+		});
+
+		expect(errorSpy).toHaveBeenCalledWith(
+			"simulation.stop failed for run 7: boom",
+			expect.objectContaining({ message: "boom" }),
+		);
+		// Still force-finishes the slot afterward (existing behavior, unchanged).
+		expect(onFinished).toHaveBeenCalledWith(7, undefined);
 
 		act(() => {
 			root.unmount();
