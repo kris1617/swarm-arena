@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "74fbcedd-8bc3-4cb1-a295-92c794d69405",
+  "id": "9c260618-6b8b-45e5-bd82-139ba23300ab",
   "prevId": "01a42c4d-e81e-4a14-8019-17ead0272fc1",
   "tables": {
     ".bootstrap-scaffold_account": {
@@ -297,35 +297,40 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 2
         },
         "crossbreedingEnabled": {
           "name": "crossbreedingEnabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": true
         },
         "energyThreshold": {
           "name": "energyThreshold",
           "type": "real",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 50
         },
         "mutationChance": {
           "name": "mutationChance",
           "type": "real",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 0.1
         },
         "mutationMagnitude": {
           "name": "mutationMagnitude",
           "type": "real",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 0.2
         },
         "status": {
           "name": "status",

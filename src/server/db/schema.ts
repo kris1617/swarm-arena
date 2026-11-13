@@ -105,11 +105,15 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	protectionThreshold: d.integer().notNull(),
 	foodStockInitial: d.real().notNull(),
 	foodRegenRate: d.real().notNull(),
-	flockCount: d.integer().notNull(),
-	crossbreedingEnabled: d.integer({ mode: "boolean" }).notNull(),
-	energyThreshold: d.real().notNull(),
-	mutationChance: d.real().notNull(),
-	mutationMagnitude: d.real().notNull(),
+	// Defaults match this phase's own chosen UI defaults (page.tsx/multi/page.tsx)
+	// so `drizzle-kit push`/`migrate` can apply these NOT NULL columns against a
+	// populated production table without an interactive default-value prompt —
+	// every INSERT from `start` still always supplies a real value explicitly.
+	flockCount: d.integer().notNull().default(2),
+	crossbreedingEnabled: d.integer({ mode: "boolean" }).notNull().default(true),
+	energyThreshold: d.real().notNull().default(50),
+	mutationChance: d.real().notNull().default(0.1),
+	mutationMagnitude: d.real().notNull().default(0.2),
 	status: d
 		.text({ enum: ["running", "stopped"] })
 		.notNull()
