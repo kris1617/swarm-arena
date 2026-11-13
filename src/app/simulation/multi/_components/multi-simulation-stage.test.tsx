@@ -33,7 +33,8 @@ vi.mock("~/trpc/react", () => ({
 
 // Force a stop on the first tick by stubbing the pure decision core, so the
 // test can reach `stopSlot`'s `onError` without driving a real multi-tick
-// countdown through the RAF shell.
+// countdown through the RAF shell. A `vi.fn` (not a plain arrow) so the
+// try/catch test can override one call with `.mockImplementationOnce`.
 vi.mock("~/server/simulation/multi-run-lifecycle", async () => {
 	const actual = await vi.importActual<
 		typeof import("~/server/simulation/multi-run-lifecycle")
@@ -60,6 +61,7 @@ vi.mock("~/server/simulation/multi-run-lifecycle", async () => {
 	};
 });
 
+import { computeMultiRunTick } from "~/server/simulation/multi-run-lifecycle";
 import { MultiSimulationStage } from "./multi-simulation-stage";
 
 const BASE_PROPS = {
@@ -190,6 +192,52 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 		);
 		// Still force-finishes the slot afterward (existing behavior, unchanged).
 		expect(onFinished).toHaveBeenCalledWith(7, undefined);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("stops the loop and shows a visible error when a tick throws", () => {
+		const slot = {
+			runId: 9,
+			seed: 1,
+			boidCount: 1,
+			weights: { separation: 0, alignment: 0, cohesion: 0 },
+			maxDurationSeconds: 100,
+			status: "running" as const,
+		};
+
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(
+				<MultiSimulationStage
+					activeRunId={slot.runId}
+					onFinished={vi.fn()}
+					slots={[slot]}
+				/>,
+			);
+		});
+
+		expect(rafMock).toHaveBeenCalledTimes(1);
+
+		vi.mocked(computeMultiRunTick).mockImplementationOnce(() => {
+			throw new Error("boids blew up");
+		});
+
+		act(() => {
+			capturedCallback?.(16);
+		});
+
+		// No further frame scheduled — the loop stopped, it didn't double-step
+		// into a broken state.
+		expect(rafMock).toHaveBeenCalledTimes(1);
+		expect(cafMock).toHaveBeenCalled();
+		expect(container.textContent).toContain("Simulation error: boids blew up");
 
 		act(() => {
 			root.unmount();

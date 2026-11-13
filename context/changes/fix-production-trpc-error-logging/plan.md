@@ -539,26 +539,26 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [x] 4.1 npm run typecheck passes
-- [x] 4.2 npm run check passes
-- [x] 4.3 src/app/_components/post.test.tsx passes
-- [x] 4.4 simulation-canvas.test.tsx passes (extended: stopRun onError logs run id)
-- [x] 4.5 multi-simulation-stage.test.tsx passes (extended: stopSlot onError logs the error)
-- [x] 4.6 npm test passes
+- [x] 4.1 npm run typecheck passes — d3c5414
+- [x] 4.2 npm run check passes — d3c5414
+- [x] 4.3 src/app/_components/post.test.tsx passes — d3c5414
+- [x] 4.4 simulation-canvas.test.tsx passes (extended: stopRun onError logs run id) — d3c5414
+- [x] 4.5 multi-simulation-stage.test.tsx passes (extended: stopSlot onError logs the error) — d3c5414
+- [x] 4.6 npm test passes — d3c5414
 
 ### Phase 5: RAF tick try/catch
 
 #### Automated
 
-- [ ] 5.1 npm run typecheck passes
-- [ ] 5.2 npm run check passes
-- [ ] 5.3 simulation-canvas.test.tsx passes (extended: forced tick throw stops the loop, renders error)
-- [ ] 5.4 multi-simulation-stage.test.tsx passes (extended: forced tick throw stops the loop, renders error)
-- [ ] 5.5 npm test passes
+- [x] 5.1 npm run typecheck passes
+- [x] 5.2 npm run check passes
+- [x] 5.3 simulation-canvas.test.tsx passes (extended: forced tick throw stops the loop, renders error)
+- [x] 5.4 multi-simulation-stage.test.tsx passes (extended: forced tick throw stops the loop, renders error)
+- [x] 5.5 npm test passes
 
 #### Manual
 
-- [ ] 5.6 Force a tick throw, confirm the canvas stops cleanly with a visible message
+- [x] 5.6 Force a tick throw, confirm the canvas stops cleanly with a visible message
 
 ### Phase 6: TOCTOU race fixes
 

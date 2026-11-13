@@ -90,6 +90,7 @@ export function MultiSimulationStage({
 	const [manualStopPendingRunId, setManualStopPendingRunId] = useState<
 		number | null
 	>(null);
+	const [tickError, setTickError] = useState<string | null>(null);
 
 	useEffect(() => {
 		slotsRef.current = slots;
@@ -149,37 +150,45 @@ export function MultiSimulationStage({
 		}
 
 		function tick(timestamp: number) {
-			const result = computeMultiRunTick(
-				{
-					runStates: runStatesRef.current,
-					lastTimestamp: lastTimestampRef.current,
-				},
-				timestamp,
-				slotsRef.current,
-				activeRunIdRef.current,
-				manualStopRequestRef.current,
-			);
+			try {
+				const result = computeMultiRunTick(
+					{
+						runStates: runStatesRef.current,
+						lastTimestamp: lastTimestampRef.current,
+					},
+					timestamp,
+					slotsRef.current,
+					activeRunIdRef.current,
+					manualStopRequestRef.current,
+				);
 
-			runStatesRef.current = result.runStates;
-			lastTimestampRef.current = result.lastTimestamp;
-			manualStopRequestRef.current = result.nextManualStopRequestId;
+				runStatesRef.current = result.runStates;
+				lastTimestampRef.current = result.lastTimestamp;
+				manualStopRequestRef.current = result.nextManualStopRequestId;
 
-			for (const slot of result.slotsToStop) {
-				const runState = result.runStates[slot.runId];
-				if (runState) {
-					stopSlot(slot, runState);
+				for (const slot of result.slotsToStop) {
+					const runState = result.runStates[slot.runId];
+					if (runState) {
+						stopSlot(slot, runState);
+					}
 				}
-			}
 
-			if (result.activeDrawBoids) {
-				drawBoids(ctx, result.activeDrawBoids);
-			} else {
-				ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-				ctx.fillStyle = CANVAS_BACKGROUND;
-				ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-			}
+				if (result.activeDrawBoids) {
+					drawBoids(ctx, result.activeDrawBoids);
+				} else {
+					ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+					ctx.fillStyle = CANVAS_BACKGROUND;
+					ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				}
 
-			rafIdRef.current = requestAnimationFrame(tick);
+				rafIdRef.current = requestAnimationFrame(tick);
+			} catch (error) {
+				// A throw here spans every slot (one shared tick call), not just
+				// one — there is no finer-grained isolation without a larger
+				// architectural change. Stop the loop and tell the user.
+				cancelAnimationFrame(rafIdRef.current);
+				setTickError(error instanceof Error ? error.message : String(error));
+			}
 		}
 
 		rafIdRef.current = requestAnimationFrame(tick);
@@ -210,7 +219,9 @@ export function MultiSimulationStage({
 				ref={canvasRef}
 				width={CANVAS_WIDTH}
 			/>
-			{activeSlot?.status === "running" ? (
+			{tickError ? (
+				<p className="text-destructive">Simulation error: {tickError}</p>
+			) : activeSlot?.status === "running" ? (
 				<Button
 					className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 					disabled={!canStopActiveSlot}

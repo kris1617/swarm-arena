@@ -28,6 +28,20 @@ vi.mock("~/trpc/react", () => ({
 	},
 }));
 
+// Spy-wrapped real implementation — the existing double-step test needs
+// genuine tick behavior, while the new try/catch test overrides one call
+// with `.mockImplementationOnce` to force the loop's exception path.
+vi.mock("~/server/simulation/single-run-lifecycle", async () => {
+	const actual = await vi.importActual<
+		typeof import("~/server/simulation/single-run-lifecycle")
+	>("~/server/simulation/single-run-lifecycle");
+	return {
+		...actual,
+		computeSingleRunTick: vi.fn(actual.computeSingleRunTick),
+	};
+});
+
+import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import { SimulationCanvas } from "./simulation-canvas";
 
 const BASE_PROPS = {
@@ -138,6 +152,37 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 			"simulation.stop failed for run 1: boom",
 			expect.objectContaining({ message: "boom" }),
 		);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("stops the loop and shows a visible error when a tick throws", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		expect(rafMock).toHaveBeenCalledTimes(1);
+
+		vi.mocked(computeSingleRunTick).mockImplementationOnce(() => {
+			throw new Error("boids blew up");
+		});
+
+		act(() => {
+			capturedCallback?.(16);
+		});
+
+		// No further frame scheduled — the loop stopped, it didn't double-step
+		// into a broken state.
+		expect(rafMock).toHaveBeenCalledTimes(1);
+		expect(cafMock).toHaveBeenCalled();
+		expect(container.textContent).toContain("Simulation error: boids blew up");
 
 		act(() => {
 			root.unmount();

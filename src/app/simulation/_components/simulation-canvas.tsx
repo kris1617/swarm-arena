@@ -159,6 +159,7 @@ export function SimulationCanvas({
 	const lastTimestampRef = useRef<number | null>(null);
 	const hasStoppedRef = useRef(false);
 	const [status, setStatus] = useState<"running" | "stopped">("running");
+	const [tickError, setTickError] = useState<string | null>(null);
 
 	const stopRun = api.simulation.stop.useMutation({
 		onError: (error, variables) => {
@@ -209,37 +210,45 @@ export function SimulationCanvas({
 		}
 
 		function tick(timestamp: number) {
-			// Decision core (dt computation, composed runTick call, next-state
-			// derivation, stop-condition check) lives in computeSingleRunTick so
-			// it's directly unit-testable without the canvas/RAF/tRPC shell here.
-			const result = computeSingleRunTick(
-				{
-					boids: boidsRef.current,
-					predators: predatorsRef.current,
-					foodStock: foodStockRef.current,
-					cohesionSamples: cohesionSamplesRef.current,
-					elapsedSeconds: elapsedSecondsRef.current,
-					lastTimestamp: lastTimestampRef.current,
-				},
-				timestamp,
-				{ weights, foodRegenRate, protectionThreshold, maxDurationSeconds },
-			);
+			try {
+				// Decision core (dt computation, composed runTick call, next-state
+				// derivation, stop-condition check) lives in computeSingleRunTick so
+				// it's directly unit-testable without the canvas/RAF/tRPC shell here.
+				const result = computeSingleRunTick(
+					{
+						boids: boidsRef.current,
+						predators: predatorsRef.current,
+						foodStock: foodStockRef.current,
+						cohesionSamples: cohesionSamplesRef.current,
+						elapsedSeconds: elapsedSecondsRef.current,
+						lastTimestamp: lastTimestampRef.current,
+					},
+					timestamp,
+					{ weights, foodRegenRate, protectionThreshold, maxDurationSeconds },
+				);
 
-			boidsRef.current = result.boids;
-			predatorsRef.current = result.predators;
-			foodStockRef.current = result.foodStock;
-			cohesionSamplesRef.current = result.cohesionSamples;
-			elapsedSecondsRef.current = result.elapsedSeconds;
-			lastTimestampRef.current = result.lastTimestamp;
+				boidsRef.current = result.boids;
+				predatorsRef.current = result.predators;
+				foodStockRef.current = result.foodStock;
+				cohesionSamplesRef.current = result.cohesionSamples;
+				elapsedSecondsRef.current = result.elapsedSeconds;
+				lastTimestampRef.current = result.lastTimestamp;
 
-			drawScene(ctx, result.boids, result.predators);
+				drawScene(ctx, result.boids, result.predators);
 
-			if (result.shouldStop) {
-				stop();
-				return;
+				if (result.shouldStop) {
+					stop();
+					return;
+				}
+
+				rafIdRef.current = requestAnimationFrame(tick);
+			} catch (error) {
+				// The tick's own state may be unreliable at this point — stop the
+				// loop and tell the user, but don't attempt to score a broken run
+				// via stop().
+				cancelAnimationFrame(rafIdRef.current);
+				setTickError(error instanceof Error ? error.message : String(error));
 			}
-
-			rafIdRef.current = requestAnimationFrame(tick);
 		}
 
 		rafIdRef.current = requestAnimationFrame(tick);
@@ -276,7 +285,18 @@ export function SimulationCanvas({
 				ref={canvasRef}
 				width={CANVAS_WIDTH}
 			/>
-			{status === "running" ? (
+			{tickError ? (
+				<div className="flex flex-col items-center gap-2">
+					<p className="text-destructive">Simulation error: {tickError}</p>
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
+						onClick={onFinished}
+						type="button"
+					>
+						Start New Run
+					</Button>
+				</div>
+			) : status === "running" ? (
 				<Button
 					className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 					onClick={handleManualStop}
