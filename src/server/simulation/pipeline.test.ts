@@ -14,10 +14,16 @@ import { createRng } from "~/server/simulation/rng";
 
 const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
 const PARAMS = {
-	weights: WEIGHTS,
 	dtSeconds: 0.1,
 	foodRegenRate: 5,
 	protectionThreshold: 0,
+	rng: createRng(99),
+	crossbreedingEnabled: true,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
+	populationCap: 500,
+	foodStockInitial: 20,
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -80,16 +86,22 @@ describe("runTick", () => {
 			};
 		}
 
-		function runTicks(initial: ReturnType<typeof buildState>) {
+		function runTicks(
+			initial: ReturnType<typeof buildState>,
+			rng: () => number,
+		) {
 			let state = initial;
 			for (let i = 0; i < 20; i++) {
-				state = runTick(state, PARAMS);
+				state = runTick(state, { ...PARAMS, rng });
 			}
 			return state;
 		}
 
-		const a = runTicks(buildState());
-		const b = runTicks(buildState());
+		// Two independent rng *instances* from the same seed — reusing one rng
+		// object across both calls would advance its state between them and
+		// falsely look non-deterministic.
+		const a = runTicks(buildState(), createRng(99));
+		const b = runTicks(buildState(), createRng(99));
 
 		expect(a).toEqual(b);
 	});
@@ -361,12 +373,22 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 		const result = runTick(
 			{ boids: [target, bystander], predators: [predator], foodStock: -1 },
 			{
-				weights: { separation: 0, alignment: 0, cohesion: 0 },
 				dtSeconds: 0.01,
 				foodRegenRate: 0,
 				// 2 boids > threshold, so predation is reachable this tick if
 				// the target is still alive when applyPredation runs.
 				protectionThreshold: 1,
+				// Reproduction is unreachable regardless of these values: every
+				// individual's age starts at 0 and only bumps by dtSeconds=0.01
+				// this tick, far short of MATURITY_AGE_SECONDS (5) — so these are
+				// inert placeholders, not asserted on.
+				rng: createRng(1),
+				crossbreedingEnabled: true,
+				energyThreshold: 50,
+				mutationChance: 0.1,
+				mutationMagnitude: 0.2,
+				populationCap: 500,
+				foodStockInitial: 20,
 			},
 		);
 

@@ -11,7 +11,10 @@ import {
 	createInitialPredators,
 	type FlockWeights,
 	inheritGenes,
+	MATE_DISTANCE_RADIUS,
+	MATURITY_AGE_SECONDS,
 	type PredatorState,
+	reproducePopulation,
 	stepBoids,
 	stepPredators,
 } from "~/server/simulation/boids";
@@ -558,6 +561,169 @@ describe("inheritGenes", () => {
 		expect(child.color.g).toBeLessThanOrEqual(1);
 		expect(child.color.b).toBeGreaterThanOrEqual(0);
 		expect(child.color.b).toBeLessThanOrEqual(1);
+	});
+});
+
+describe("reproducePopulation", () => {
+	const ELIGIBLE_ENERGY = 50;
+	const BASE_REPRODUCTION_PARAMS = {
+		crossbreedingEnabled: true,
+		energyThreshold: ELIGIBLE_ENERGY,
+		mutationChance: 0,
+		mutationMagnitude: 0.2,
+		populationCap: 500,
+		totalOtherPopulationCount: 0,
+	};
+
+	// Reproduction-focused factory, independent of this file's
+	// steering-focused makeBoid/makePredator above — these tests need to vary
+	// energy/age/gender/flockId (what reproducePopulation reads), not
+	// steering weights.
+	function makeEligibleGenes(overrides: Partial<BoidGenes> = {}): BoidGenes {
+		return {
+			color: { r: 0, g: 0, b: 0 },
+			flockId: 0,
+			separationWeight: 0,
+			alignmentWeight: 0,
+			cohesionWeight: 0,
+			maxSpeed: 40,
+			minSpeed: 15,
+			maxLifespan: 100,
+			matePreference: 0,
+			...overrides,
+		};
+	}
+
+	function makeIndividual(
+		overrides: {
+			x?: number;
+			energy?: number;
+			age?: number;
+			gender?: "a" | "b";
+			genes?: Partial<BoidGenes>;
+		} = {},
+	): BoidState {
+		return {
+			x: overrides.x ?? 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeEligibleGenes(overrides.genes),
+			energy: overrides.energy ?? ELIGIBLE_ENERGY,
+			age: overrides.age ?? MATURITY_AGE_SECONDS,
+			gender: overrides.gender ?? "a",
+		};
+	}
+
+	it("grows the population by exactly one for an eligible, opposite-gender, same-flock pair within mate distance", () => {
+		const population = [
+			makeIndividual({ x: 0, gender: "a" }),
+			makeIndividual({ x: MATE_DISTANCE_RADIUS - 1, gender: "b" }),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+		);
+
+		expect(result.population).toHaveLength(3);
+		expect(result.capped).toBe(false);
+	});
+
+	it("crossbreeding guardrail: a cross-flock pair mates only when crossbreedingEnabled is true", () => {
+		const crossFlockPopulation = [
+			makeIndividual({ x: 0, gender: "a", genes: { flockId: 0 } }),
+			makeIndividual({
+				x: MATE_DISTANCE_RADIUS - 1,
+				gender: "b",
+				genes: { flockId: 1 },
+			}),
+		];
+
+		const withCrossbreedingOff = reproducePopulation(
+			crossFlockPopulation,
+			createRng(1),
+			{ ...BASE_REPRODUCTION_PARAMS, crossbreedingEnabled: false },
+		);
+		// Never a blended-flock offspring: no offspring at all, since a
+		// cross-flock pair never even mates when the gate is off.
+		expect(withCrossbreedingOff.population).toHaveLength(2);
+
+		const withCrossbreedingOn = reproducePopulation(
+			crossFlockPopulation,
+			createRng(1),
+			{ ...BASE_REPRODUCTION_PARAMS, crossbreedingEnabled: true },
+		);
+		expect(withCrossbreedingOn.population).toHaveLength(3);
+	});
+
+	it("never reproduces below the energy threshold, regardless of a nearby eligible mate", () => {
+		const population = [
+			makeIndividual({ x: 0, gender: "a", energy: ELIGIBLE_ENERGY - 1 }),
+			makeIndividual({ x: MATE_DISTANCE_RADIUS - 1, gender: "b" }),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+		);
+
+		expect(result.population).toHaveLength(2);
+	});
+
+	it("never reproduces below MATURITY_AGE_SECONDS, regardless of a nearby eligible mate", () => {
+		const population = [
+			makeIndividual({
+				x: 0,
+				gender: "a",
+				age: MATURITY_AGE_SECONDS - 0.1,
+			}),
+			makeIndividual({ x: MATE_DISTANCE_RADIUS - 1, gender: "b" }),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+		);
+
+		expect(result.population).toHaveLength(2);
+	});
+
+	it("at populationCap, an otherwise-eligible mated pair produces no offspring and capped is true", () => {
+		const population = [
+			makeIndividual({ x: 0, gender: "a" }),
+			makeIndividual({ x: MATE_DISTANCE_RADIUS - 1, gender: "b" }),
+		];
+
+		const result = reproducePopulation(population, createRng(1), {
+			...BASE_REPRODUCTION_PARAMS,
+			populationCap: 2,
+		});
+
+		expect(result.population).toHaveLength(2);
+		expect(result.capped).toBe(true);
+	});
+
+	it("predators reproduce under the identical helper (decision #5's symmetry)", () => {
+		const population: PredatorState[] = [
+			makeIndividual({ x: 0, gender: "a" }),
+			makeIndividual({ x: MATE_DISTANCE_RADIUS - 1, gender: "b" }),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+		);
+
+		expect(result.population).toHaveLength(3);
+		expect(result.capped).toBe(false);
 	});
 });
 

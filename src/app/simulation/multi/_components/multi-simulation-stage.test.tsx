@@ -156,6 +156,10 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 			weights: { separation: 0, alignment: 0, cohesion: 0 },
 			maxDurationSeconds: 100,
 			status: "running" as const,
+			predatorCount: 0,
+			protectionThreshold: 0,
+			foodStockInitial: 100,
+			foodRegenRate: 10,
 		};
 		const onFinished = vi.fn();
 
@@ -207,6 +211,10 @@ describe("MultiSimulationStage RAF scheduling shell", () => {
 			weights: { separation: 0, alignment: 0, cohesion: 0 },
 			maxDurationSeconds: 100,
 			status: "running" as const,
+			predatorCount: 0,
+			protectionThreshold: 0,
+			foodStockInitial: 100,
+			foodRegenRate: 10,
 		};
 
 		const onFinished = vi.fn();

@@ -585,13 +585,13 @@ existing run columns.
 ### Phase 1: Gene model, per-individual instance state, and genes-drive-steering
 
 #### Automated
-- [ ] 1.1 `createInitialPopulation`/`createInitialPredators` flock split + color assignment
-- [ ] 1.2 `stepBoids` reads per-boid genes instead of global `weights`
-- [ ] 1.3 `inheritGenes` numeric-gene blending + mutation
-- [ ] 1.4 `inheritGenes` flockId coin-flip, never blended
-- [ ] 1.5 `inheritGenes` color blending clamped to [0,1]
-- [ ] 1.6 Existing determinism tests updated for new `stepBoids` signature
-- [ ] 1.7 typecheck + lint
+- [x] 1.1 `createInitialPopulation`/`createInitialPredators` flock split + color assignment — 687b097
+- [x] 1.2 `stepBoids` reads per-boid genes instead of global `weights` — 687b097
+- [x] 1.3 `inheritGenes` numeric-gene blending + mutation — 687b097
+- [x] 1.4 `inheritGenes` flockId coin-flip, never blended — 687b097
+- [x] 1.5 `inheritGenes` color blending clamped to [0,1] — 687b097
+- [x] 1.6 Existing determinism tests updated for new `stepBoids` signature — 687b097
+- [x] 1.7 typecheck + lint — 687b097
 
 #### Manual
 (none this phase)

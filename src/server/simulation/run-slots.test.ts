@@ -19,6 +19,10 @@ function makeSlotInput(runId: number): Omit<RunSlot, "status"> {
 		boidCount: 50,
 		weights: WEIGHTS,
 		maxDurationSeconds: 30,
+		predatorCount: 0,
+		protectionThreshold: 0,
+		foodStockInitial: 100,
+		foodRegenRate: 10,
 	};
 }
 

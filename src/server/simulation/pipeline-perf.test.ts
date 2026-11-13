@@ -15,10 +15,16 @@ const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
 // skew the ratio by shrinking a sample's population independently of the
 // fixed 4x scale-up this test is measuring.
 const BASE_PARAMS = {
-	weights: WEIGHTS,
 	dtSeconds: 0.01,
 	foodRegenRate: 10,
 	protectionThreshold: 0,
+	rng: createRng(99),
+	crossbreedingEnabled: true,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
+	populationCap: 500,
+	foodStockInitial: 1000,
 };
 
 function buildState(boidCount: number, predatorCount: number) {

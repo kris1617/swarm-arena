@@ -8,10 +8,10 @@ import {
 
 const WEIGHTS = { separation: 0, alignment: 0, cohesion: 0 };
 const PARAMS = {
-	weights: WEIGHTS,
 	foodRegenRate: 0,
 	protectionThreshold: 0,
 	maxDurationSeconds: 100,
+	foodStockInitial: 100,
 };
 
 const GENES: BoidGenes = {

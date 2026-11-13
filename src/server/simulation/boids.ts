@@ -175,6 +175,15 @@ function wrappedDelta(delta: number, range: number): number {
 	return delta;
 }
 
+// Wrapped midpoint between two parents on the torus (reproducePopulation's
+// spawn position) — same minimum-image reasoning as wrappedDelta above: the
+// raw arithmetic mean of two coordinates straddling a wrap seam lands
+// nowhere near either parent, so this walks the shortest wrapped delta from
+// `a` toward `b` and halves it instead.
+function wrappedMidpoint(a: number, b: number, range: number): number {
+	return wrap(a + wrappedDelta(b - a, range) / 2, range);
+}
+
 // Converts a "#rrggbb" hex string into unit-interval [0,1] RGB.
 // BOID_FILL_COLOR/PREDATOR_FILL_COLOR (src/styles/theme-colors.ts) are plain
 // hex strings for canvas's ctx.fillStyle, while BoidGenes.color stays in
@@ -707,6 +716,119 @@ export function inheritGenes(
 	};
 }
 
+// Phase 2's reproduction step: one generic helper used for BOTH boids and
+// predators (decision #5 — identical rules, shared code, not two parallel
+// implementations). Eligibility is energy + maturity; mate selection is
+// first-match in population order (not scored), so results are deterministic
+// given the same rng stream and population order. The population-cap guard
+// is a silent no-op per decision #7 — a blocked pair still gets marked
+// paired (no double-mating), it just produces no offspring.
+export function reproducePopulation<T extends BoidState | PredatorState>(
+	population: T[],
+	rng: () => number,
+	params: {
+		crossbreedingEnabled: boolean;
+		energyThreshold: number;
+		mutationChance: number;
+		mutationMagnitude: number;
+		populationCap: number;
+		totalOtherPopulationCount: number;
+	},
+): { population: T[]; capped: boolean } {
+	function isEligible(individual: T): boolean {
+		return (
+			individual.energy >= params.energyThreshold &&
+			individual.age >= MATURITY_AGE_SECONDS
+		);
+	}
+
+	const paired = new Set<number>();
+	const offspring: T[] = [];
+	let capped = false;
+
+	for (let i = 0; i < population.length; i++) {
+		if (paired.has(i)) {
+			continue;
+		}
+		const parentA = population[i];
+		if (!parentA || !isEligible(parentA)) {
+			continue;
+		}
+
+		// First-match-in-range: scan forward only (not the whole population).
+		// This is equivalent to a full bidirectional first-match scan here
+		// because eligibility doesn't change mid-pass and the match
+		// conditions are symmetric — if some earlier, still-unpaired
+		// individual could also match parentA, the outer loop would already
+		// have paired it with parentA (or something else) when it was that
+		// earlier individual's turn.
+		for (let j = i + 1; j < population.length; j++) {
+			if (paired.has(j)) {
+				continue;
+			}
+			const parentB = population[j];
+			if (!parentB || !isEligible(parentB)) {
+				continue;
+			}
+			if (parentA.gender === parentB.gender) {
+				continue;
+			}
+			if (
+				!params.crossbreedingEnabled &&
+				parentA.genes.flockId !== parentB.genes.flockId
+			) {
+				continue;
+			}
+			const dx = wrappedDelta(parentA.x - parentB.x, INITIAL_AREA_SIZE);
+			const dy = wrappedDelta(parentA.y - parentB.y, INITIAL_AREA_SIZE);
+			const dz = wrappedDelta(parentA.z - parentB.z, Z_DEPTH_RANGE);
+			if (Math.hypot(dx, dy, dz) > MATE_DISTANCE_RADIUS) {
+				continue;
+			}
+
+			// Match found — pair both parents this tick (no double-mating)
+			// regardless of whether the cap below blocks the birth, then
+			// stop scanning for parentA (first-match, not best-match).
+			paired.add(i);
+			paired.add(j);
+
+			if (
+				population.length +
+					offspring.length +
+					params.totalOtherPopulationCount >=
+				params.populationCap
+			) {
+				capped = true;
+			} else {
+				const genes = inheritGenes(
+					parentA.genes,
+					parentB.genes,
+					rng,
+					params.mutationChance,
+					params.mutationMagnitude,
+				);
+				offspring.push({
+					...parentA,
+					x: wrappedMidpoint(parentA.x, parentB.x, INITIAL_AREA_SIZE),
+					y: wrappedMidpoint(parentA.y, parentB.y, INITIAL_AREA_SIZE),
+					z: wrappedMidpoint(parentA.z, parentB.z, Z_DEPTH_RANGE),
+					vx: (rng() - 0.5) * INITIAL_SPEED,
+					vy: (rng() - 0.5) * INITIAL_SPEED,
+					vz: (rng() - 0.5) * INITIAL_SPEED,
+					lifespan: genes.maxLifespan,
+					genes,
+					energy: INITIAL_ENERGY,
+					age: 0,
+					gender: rng() < 0.5 ? "a" : "b",
+				});
+			}
+			break;
+		}
+	}
+
+	return { population: [...population, ...offspring], capped };
+}
+
 // Maintains the single global food-stock number across ticks: depletes with
 // population size, regenerates by the caller-supplied rate (one of the
 // run's persisted parameters, not an engine constant), and — only when the
@@ -781,26 +903,41 @@ export function applyPredation(
 
 // Composes the single-run pipeline's documented fixed per-tick order into one
 // DOM-free, directly-testable entry point: stepBoids (flee steering reads
-// this tick's predators) -> stepPredators -> applyHunger -> applyPredation.
-// Predation must run after both populations have moved this tick, using
-// current-tick positions; hunger runs before predation so a boid that
-// starved this tick is already removed and can't also be "captured"
-// redundantly by the same tick's predation pass. Mirrors
+// this tick's predators) -> stepPredators -> applyHunger -> applyPredation ->
+// [energy/age bump] -> reproducePopulation(boids) -> reproducePopulation
+// (predators). Predation must run after both populations have moved this
+// tick, using current-tick positions; hunger runs before predation so a
+// boid that starved this tick is already removed and can't also be
+// "captured" redundantly by the same tick's predation pass. Reproduction
+// runs last, after this tick's deaths are already removed, so a boid that
+// starved or was captured this tick cannot also reproduce. Mirrors
 // simulation-canvas.tsx's inline tick sequence exactly so callers can switch
 // to this function without changing behavior.
+//
+// `params.weights` (Phase 1's FlockWeights) is dropped from this signature —
+// stepBoids has read each boid's own genes since Phase 1, so the field was
+// already dead weight here; Phase 2 is this function's first real signature
+// revision since then, so it's cleaned up now rather than carried further.
 export function runTick(
 	state: { boids: BoidState[]; predators: PredatorState[]; foodStock: number },
 	params: {
-		weights: FlockWeights;
 		dtSeconds: number;
 		foodRegenRate: number;
 		protectionThreshold: number;
+		rng: () => number;
+		crossbreedingEnabled: boolean;
+		energyThreshold: number;
+		mutationChance: number;
+		mutationMagnitude: number;
+		populationCap: number;
+		foodStockInitial: number;
 	},
-): { boids: BoidState[]; predators: PredatorState[]; foodStock: number } {
-	// params.weights is no longer read here — stepBoids now reads each boid's
-	// own genes (Phase 1 of the genetic-inheritance-crossbreeding plan).
-	// params/runTick's own signature isn't revised until that plan's Phase 2,
-	// so the field stays on the type for now even though this call drops it.
+): {
+	boids: BoidState[];
+	predators: PredatorState[];
+	foodStock: number;
+	populationCapped: boolean;
+} {
 	const steeredBoids = stepBoids(
 		state.boids,
 		params.dtSeconds,
@@ -817,16 +954,70 @@ export function runTick(
 		params.dtSeconds,
 		params.foodRegenRate,
 	);
-	const nextBoids = applyPredation(
+	const predatedBoids = applyPredation(
 		fedBoids,
 		steeredPredators,
 		params.protectionThreshold,
 	);
 
+	// Every surviving individual gains energy and ages by dtSeconds this
+	// tick. Boids' energy gain scales with food availability; predators have
+	// no food-stock mechanic (see PredatorState's comment above), so their
+	// ratio is fixed at 1.
+	const foodAvailabilityRatio = Math.min(
+		1,
+		Math.max(0, nextFoodStock / params.foodStockInitial),
+	);
+	const agedBoids = predatedBoids.map((boid) => ({
+		...boid,
+		energy: Math.min(
+			ENERGY_MAX,
+			boid.energy + ENERGY_GAIN_RATE * params.dtSeconds * foodAvailabilityRatio,
+		),
+		age: boid.age + params.dtSeconds,
+	}));
+	const agedPredators = steeredPredators.map((predator) => ({
+		...predator,
+		energy: Math.min(
+			ENERGY_MAX,
+			predator.energy + ENERGY_GAIN_RATE * params.dtSeconds,
+		),
+		age: predator.age + params.dtSeconds,
+	}));
+
+	// params.populationCap is the combined FR-018 ceiling across both
+	// species. Each reproducePopulation call enforces that combined ceiling
+	// via `totalOtherPopulationCount` (the other species' live count at this
+	// point in the tick) rather than by ALSO pre-subtracting populationCap
+	// itself — doing both would double-count the other species and let the
+	// combined population exceed the cap. Predators' call uses the
+	// PRE-reproduction boid count (agedBoids.length, before boids' own
+	// reproduction below runs) rather than the post-reproduction count —
+	// simpler, and explicitly allowed by the plan.
+	const { population: reproducedBoids, capped: boidsCapped } =
+		reproducePopulation(agedBoids, params.rng, {
+			crossbreedingEnabled: params.crossbreedingEnabled,
+			energyThreshold: params.energyThreshold,
+			mutationChance: params.mutationChance,
+			mutationMagnitude: params.mutationMagnitude,
+			populationCap: params.populationCap,
+			totalOtherPopulationCount: agedPredators.length,
+		});
+	const { population: reproducedPredators, capped: predatorsCapped } =
+		reproducePopulation(agedPredators, params.rng, {
+			crossbreedingEnabled: params.crossbreedingEnabled,
+			energyThreshold: params.energyThreshold,
+			mutationChance: params.mutationChance,
+			mutationMagnitude: params.mutationMagnitude,
+			populationCap: params.populationCap,
+			totalOtherPopulationCount: agedBoids.length,
+		});
+
 	return {
-		boids: nextBoids,
-		predators: steeredPredators,
+		boids: reproducedBoids,
+		predators: reproducedPredators,
 		foodStock: nextFoodStock,
+		populationCapped: boidsCapped || predatorsCapped,
 	};
 }
 

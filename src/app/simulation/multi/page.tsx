@@ -50,6 +50,14 @@ export default function MultiSimulationPage() {
 						cohesion: cohesionWeight,
 					},
 					maxDurationSeconds,
+					// TODO(phase 6): this form has no predator/food UI yet — these
+					// are the same "no predators" values already sent to
+					// startRun.mutate below, now also needed on the RunSlot object
+					// so multi-run-lifecycle.ts can seed/tick predators and food.
+					predatorCount: 0,
+					protectionThreshold: 0,
+					foodStockInitial: 100,
+					foodRegenRate: 10,
 				}),
 			);
 		},

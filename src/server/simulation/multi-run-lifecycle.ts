@@ -2,7 +2,9 @@ import {
 	type BoidState,
 	computeCohesion,
 	createInitialPopulation,
-	stepBoids,
+	createInitialPredators,
+	type PredatorState,
+	runTick,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import type { RunSlot } from "~/server/simulation/run-slots";
@@ -13,8 +15,18 @@ import type { RunSlot } from "~/server/simulation/run-slots";
 // NOT Doing".
 export const MAX_DT_SECONDS = 0.1;
 
+// Same tick-state shape as single-run-lifecycle.ts's — the
+// genetic-inheritance-crossbreeding plan's mid-implementation addition makes
+// multi-run adopt the identical `runTick` pipeline (predators, food,
+// reproduction), not a boid-only subset.
 export type RunState = {
 	boids: BoidState[];
+	predators: PredatorState[];
+	foodStock: number;
+	// Persisted once at first-seed time per slot (Phase 3 note: never
+	// recreated on later ticks) so reproduction's mutation/gender rolls draw
+	// from one continuous stream, not a fresh one every tick.
+	rng: () => number;
 	cohesionSamples: number[];
 	elapsedSeconds: number;
 };
@@ -74,29 +86,63 @@ export function computeMultiRunTick(
 			// Generous relative to maxDurationSeconds so natural lifespan decay
 			// doesn't cut the run shorter than the duration the member chose.
 			const maxLifespan = Math.max(60, slot.maxDurationSeconds);
+			// Created once, here, at first-seed time — stored on RunState and
+			// never recreated on a later tick (Phase 3 persistence note above).
+			const rng = createRng(slot.seed);
 			runState = {
 				// TODO(phase 6): single-flock placeholder (flockCount: 1) until
 				// the multi-run form exposes real flock-count/weights config.
-				boids: createInitialPopulation(
-					slot.boidCount,
-					createRng(slot.seed),
+				boids: createInitialPopulation(slot.boidCount, rng, maxLifespan, 1, [
+					slot.weights,
+				]),
+				predators: createInitialPredators(
+					slot.predatorCount,
+					rng,
 					maxLifespan,
 					1,
 					[slot.weights],
 				),
+				foodStock: slot.foodStockInitial,
+				rng,
 				cohesionSamples: [],
 				elapsedSeconds: 0,
 			};
 		}
 
-		// weights is no longer passed here — stepBoids now reads each boid's
-		// own genes (seeded from slot.weights above), not a shared argument.
-		const nextBoids = stepBoids(runState.boids, dtSeconds);
+		// The same composed pipeline single-run-lifecycle.ts's
+		// computeSingleRunTick uses — no separate multi-run reproduction
+		// implementation to maintain.
+		const tickResult = runTick(
+			{
+				boids: runState.boids,
+				predators: runState.predators,
+				foodStock: runState.foodStock,
+			},
+			{
+				dtSeconds,
+				foodRegenRate: slot.foodRegenRate,
+				protectionThreshold: slot.protectionThreshold,
+				rng: runState.rng,
+				// TODO(phase 6): placeholder reproduction config until the
+				// multi-run form exposes real crossbreeding/energy/mutation
+				// fields — mirrors single-run-lifecycle.ts's identical
+				// placeholder.
+				crossbreedingEnabled: true,
+				energyThreshold: 50,
+				mutationChance: 0.1,
+				mutationMagnitude: 0.2,
+				populationCap: 500,
+				foodStockInitial: slot.foodStockInitial,
+			},
+		);
 		const nextRunState: RunState = {
-			boids: nextBoids,
+			boids: tickResult.boids,
+			predators: tickResult.predators,
+			foodStock: tickResult.foodStock,
+			rng: runState.rng,
 			cohesionSamples: [
 				...runState.cohesionSamples,
-				computeCohesion(nextBoids),
+				computeCohesion(tickResult.boids),
 			],
 			elapsedSeconds: runState.elapsedSeconds + dtSeconds,
 		};
@@ -104,7 +150,7 @@ export function computeMultiRunTick(
 
 		if (
 			nextRunState.elapsedSeconds >= slot.maxDurationSeconds ||
-			nextBoids.length === 0 ||
+			tickResult.boids.length === 0 ||
 			manualStopRequestId === slot.runId
 		) {
 			slotsToStop.push(slot);

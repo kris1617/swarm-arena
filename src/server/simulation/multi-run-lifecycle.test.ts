@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { BoidGenes, BoidState } from "~/server/simulation/boids";
+import type {
+	BoidGenes,
+	BoidState,
+	PredatorState,
+} from "~/server/simulation/boids";
 import {
 	computeMultiRunTick,
 	MAX_DT_SECONDS,
 	type RunState,
 } from "~/server/simulation/multi-run-lifecycle";
+import { createRng } from "~/server/simulation/rng";
 import type { RunSlot } from "~/server/simulation/run-slots";
 
 const WEIGHTS = { separation: 0, alignment: 0, cohesion: 0 };
@@ -17,18 +22,26 @@ function makeSlot(overrides: Partial<RunSlot> = {}): RunSlot {
 		weights: WEIGHTS,
 		maxDurationSeconds: 100,
 		status: "running",
+		// Generous food/no predators by default — these tests exercise
+		// computeMultiRunTick's own decision core (seeding, stopping,
+		// draw-target selection), not the reproduction/hunger mechanics a
+		// later describe block below tests directly.
+		predatorCount: 0,
+		protectionThreshold: 0,
+		foodStockInitial: 1000,
+		foodRegenRate: 10,
 		...overrides,
 	};
 }
 
-// Minimal placeholder genes for raw BoidState literals in this file — these
-// tests exercise computeMultiRunTick's own decision core (seeding, stopping,
-// draw-target selection), not steering, so the exact gene values don't
-// matter beyond satisfying the type.
-function makeBoid(
-	state: Pick<BoidState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
-): BoidState {
-	const genes: BoidGenes = {
+// Minimal placeholder genes for raw BoidState/PredatorState literals in this
+// file — these tests exercise computeMultiRunTick's own decision core
+// (seeding, stopping, draw-target selection, and — in the "reproduction
+// parity" describe block below — growth), not steering, so the exact gene
+// values don't matter beyond satisfying the type and (for the growth tests)
+// carrying a flockId/gender/energy/age that mate selection reads.
+function makeGenes(overrides: Partial<BoidGenes> = {}): BoidGenes {
+	return {
 		color: { r: 0, g: 0, b: 0 },
 		flockId: 0,
 		separationWeight: WEIGHTS.separation,
@@ -38,8 +51,36 @@ function makeBoid(
 		minSpeed: 15,
 		maxLifespan: 100,
 		matePreference: 0,
+		...overrides,
 	};
-	return { ...state, genes, energy: 0, age: 0, gender: "a" };
+}
+
+function makeBoid(
+	state: Pick<BoidState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
+	overrides: Partial<Pick<BoidState, "energy" | "age" | "gender">> &
+		Partial<BoidGenes> = {},
+): BoidState {
+	return {
+		...state,
+		genes: makeGenes(overrides),
+		energy: overrides.energy ?? 0,
+		age: overrides.age ?? 0,
+		gender: overrides.gender ?? "a",
+	};
+}
+
+function makePredator(
+	state: Pick<PredatorState, "x" | "y" | "z" | "vx" | "vy" | "vz" | "lifespan">,
+	overrides: Partial<Pick<PredatorState, "energy" | "age" | "gender">> &
+		Partial<BoidGenes> = {},
+): PredatorState {
+	return {
+		...state,
+		genes: makeGenes(overrides),
+		energy: overrides.energy ?? 0,
+		age: overrides.age ?? 0,
+		gender: overrides.gender ?? "a",
+	};
 }
 
 function makeRunState(overrides: Partial<RunState> = {}): RunState {
@@ -47,6 +88,9 @@ function makeRunState(overrides: Partial<RunState> = {}): RunState {
 		boids: [
 			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
 		],
+		predators: [],
+		foodStock: 1000,
+		rng: createRng(1),
 		cohesionSamples: [],
 		elapsedSeconds: 0,
 		...overrides,
@@ -234,5 +278,54 @@ describe("computeMultiRunTick", () => {
 		);
 
 		expect(result.runStates[1]?.elapsedSeconds).toBeCloseTo(MAX_DT_SECONDS);
+	});
+});
+
+describe("computeMultiRunTick reproduction parity with single-run", () => {
+	it("grows a slot's boid AND predator population under the same eligibility/gate rules as single-run (both now via the shared runTick pipeline)", () => {
+		const slot = makeSlot({ runId: 1, boidCount: 2, predatorCount: 2 });
+		// Two eligible, opposite-gender, same-flock pairs per species — energy
+		// (100) clears computeMultiRunTick's hardcoded energyThreshold
+		// placeholder (50) and age (10) clears MATURITY_AGE_SECONDS (5). Boid
+		// and predator clusters sit far apart (distance ~100, past
+		// PREDATOR_DETECTION_RADIUS=50) so boid flee-steering doesn't move
+		// either pair out of MATE_DISTANCE_RADIUS before reproduction runs.
+		const existing = {
+			1: makeRunState({
+				boids: [
+					makeBoid(
+						{ x: 100, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 100, age: 10, gender: "a" },
+					),
+					makeBoid(
+						{ x: 105, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 100, age: 10, gender: "b" },
+					),
+				],
+				predators: [
+					makePredator(
+						{ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 100, age: 10, gender: "a" },
+					),
+					makePredator(
+						{ x: 5, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+						{ energy: 100, age: 10, gender: "b" },
+					),
+				],
+				foodStock: 1000,
+			}),
+		};
+
+		const result = computeMultiRunTick(
+			{ runStates: existing, lastTimestamp: 0 },
+			10,
+			[slot],
+			null,
+			null,
+		);
+
+		const nextState = result.runStates[1];
+		expect(nextState?.boids.length).toBeGreaterThan(2);
+		expect(nextState?.predators.length).toBeGreaterThan(2);
 	});
 });

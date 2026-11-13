@@ -230,7 +230,12 @@ export function SimulationCanvas({
 						lastTimestamp: lastTimestampRef.current,
 					},
 					timestamp,
-					{ weights, foodRegenRate, protectionThreshold, maxDurationSeconds },
+					{
+						foodRegenRate,
+						protectionThreshold,
+						maxDurationSeconds,
+						foodStockInitial,
+					},
 				);
 
 				boidsRef.current = result.boids;

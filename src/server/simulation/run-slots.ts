@@ -14,6 +14,16 @@ export type RunSlot = {
 	maxDurationSeconds: number;
 	status: "running" | "stopped";
 	score?: number;
+	// Added for genetic-inheritance-crossbreeding Phase 2's mid-implementation
+	// addition: multi-run slots now seed/tick predators and food identically
+	// to single-run, via the same shared `runTick` pipeline
+	// (multi-run-lifecycle.ts). `multi/page.tsx`'s form doesn't collect these
+	// yet (see its own `// TODO(phase 6)`), so callers pass the same
+	// "no predators" placeholder values it already sent to `startRun.mutate`.
+	predatorCount: number;
+	protectionThreshold: number;
+	foodStockInitial: number;
+	foodRegenRate: number;
 };
 
 export type RunSlotsState = {
