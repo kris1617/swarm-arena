@@ -564,7 +564,7 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [x] 6.1 npm run typecheck passes
-- [x] 6.2 npm run check passes
-- [x] 6.3 simulation.test.ts passes (extended: stop race case, start race case, existing contrast case)
-- [x] 6.4 npm test passes
+- [x] 6.1 npm run typecheck passes — 880fdcb
+- [x] 6.2 npm run check passes — 880fdcb
+- [x] 6.3 simulation.test.ts passes (extended: stop race case, start race case, existing contrast case) — 880fdcb
+- [x] 6.4 npm test passes — 880fdcb
