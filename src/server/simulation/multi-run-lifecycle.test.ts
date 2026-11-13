@@ -329,3 +329,58 @@ describe("computeMultiRunTick reproduction parity with single-run", () => {
 		expect(nextState?.predators.length).toBeGreaterThan(2);
 	});
 });
+
+describe("computeMultiRunTick determinism across two same-seed slots", () => {
+	it("produces bit-for-bit identical boids/predators across two slots driven with independently-created same-seed rng instances for the same number of ticks, including a reproduction event (Phase 3 rng-persistence parity with single-run)", () => {
+		function runSlotSequence(runId: number, seed: number) {
+			const slot = makeSlot({ runId, maxDurationSeconds: 1000 });
+			// Mirrors this file's own "reproduction parity" describe block
+			// above: explicit close-together, opposite-gender, mature,
+			// high-energy boids so eligibility is deterministic rather than
+			// dependent on createInitialPopulation's random spawn positions
+			// landing within MATE_DISTANCE_RADIUS.
+			let runStates: Record<number, RunState> = {
+				[runId]: makeRunState({
+					boids: [
+						makeBoid(
+							{ x: 100, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+							{ energy: 40, age: 0, gender: "a" },
+						),
+						makeBoid(
+							{ x: 105, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 },
+							{ energy: 40, age: 0, gender: "b" },
+						),
+					],
+					predators: [],
+					foodStock: 1000,
+					rng: createRng(seed),
+					elapsedSeconds: 0,
+				}),
+			};
+			let timestamp = 0;
+			// Each tick's raw 1000ms gap clamps to MAX_DT_SECONDS (0.1s), so
+			// 100 ticks accrue 10s of age/energy growth — same budget as the
+			// single-run determinism test, comfortably past both eligibility
+			// gates (energyThreshold=50, MATURITY_AGE_SECONDS=5).
+			for (let i = 0; i < 100; i++) {
+				const result = computeMultiRunTick(
+					{ runStates, lastTimestamp: 0 },
+					timestamp,
+					[slot],
+					null,
+					null,
+				);
+				runStates = result.runStates;
+				timestamp += 1000;
+			}
+			return runStates[runId];
+		}
+
+		const resultA = runSlotSequence(1, 7);
+		const resultB = runSlotSequence(2, 7);
+
+		expect(resultA?.boids.length).toBeGreaterThan(2);
+		expect(resultA?.boids).toEqual(resultB?.boids);
+		expect(resultA?.predators).toEqual(resultB?.predators);
+	});
+});

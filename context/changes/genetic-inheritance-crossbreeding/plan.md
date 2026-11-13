@@ -599,14 +599,14 @@ existing run columns.
 ### Phase 2: Reproduction step, mate selection, and the crossbreeding gate
 
 #### Automated
-- [ ] 2.1 Eligible same-flock pair reproduces
-- [ ] 2.2 Crossbreeding gate on/off behavior (the PRD guardrail)
-- [ ] 2.3 Energy/maturity eligibility gating
-- [ ] 2.4 Population-cap suppression + `capped` flag
-- [ ] 2.5 Predator reproduction symmetry (single-run and multi-run)
-- [ ] 2.6 `runTick` determinism given rng stream
-- [ ] 2.7 `multi-run-lifecycle.ts` calls `runTick` per slot (replacing the raw `stepBoids` call) with full predator/food/reproduction parity
-- [ ] 2.8 typecheck + lint
+- [x] 2.1 Eligible same-flock pair reproduces — 9363a00
+- [x] 2.2 Crossbreeding gate on/off behavior (the PRD guardrail) — 9363a00
+- [x] 2.3 Energy/maturity eligibility gating — 9363a00
+- [x] 2.4 Population-cap suppression + `capped` flag — 9363a00
+- [x] 2.5 Predator reproduction symmetry (single-run and multi-run) — 9363a00
+- [x] 2.6 `runTick` determinism given rng stream — 9363a00
+- [x] 2.7 `multi-run-lifecycle.ts` calls `runTick` per slot (replacing the raw `stepBoids` call) with full predator/food/reproduction parity — 9363a00
+- [x] 2.8 typecheck + lint — 9363a00
 
 #### Manual
 (none this phase)

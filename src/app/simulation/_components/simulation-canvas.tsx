@@ -150,6 +150,11 @@ export function SimulationCanvas({
 	onFinished,
 }: SimulationCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	// Created once per run (inside the run-once effect below) and reused for
+	// every tick's createInitial*/computeSingleRunTick call, never recreated —
+	// a fresh rng per tick would make reproduction's mutation/gender rolls
+	// non-deterministic across ticks.
+	const rngRef = useRef<() => number>(() => Math.random());
 	const boidsRef = useRef<BoidState[]>([]);
 	const predatorsRef = useRef<PredatorState[]>([]);
 	const foodStockRef = useRef(foodStockInitial);
@@ -182,15 +187,19 @@ export function SimulationCanvas({
 		// Generous relative to maxDurationSeconds so natural lifespan decay
 		// doesn't cut the run shorter than the duration the member chose.
 		const maxLifespan = Math.max(60, maxDurationSeconds);
-		const rng = createRng(seed);
+		rngRef.current = createRng(seed);
 		// TODO(phase 6): single-flock placeholder (flockCount: 1) until the
 		// start form exposes real flock-count/weights config.
-		boidsRef.current = createInitialPopulation(boidCount, rng, maxLifespan, 1, [
-			weights,
-		]);
+		boidsRef.current = createInitialPopulation(
+			boidCount,
+			rngRef.current,
+			maxLifespan,
+			1,
+			[weights],
+		);
 		predatorsRef.current = createInitialPredators(
 			predatorCount,
-			rng,
+			rngRef.current,
 			maxLifespan,
 			1,
 			[weights],
@@ -235,6 +244,7 @@ export function SimulationCanvas({
 						protectionThreshold,
 						maxDurationSeconds,
 						foodStockInitial,
+						rng: rngRef.current,
 					},
 				);
 

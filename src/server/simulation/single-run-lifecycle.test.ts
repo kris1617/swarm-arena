@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BoidGenes, BoidState } from "~/server/simulation/boids";
+import { createRng } from "~/server/simulation/rng";
 import {
 	computeSingleRunTick,
 	MAX_DT_SECONDS,
@@ -12,6 +13,10 @@ const PARAMS = {
 	protectionThreshold: 0,
 	maxDurationSeconds: 100,
 	foodStockInitial: 100,
+	// Params' own rng field — most tests below don't exercise reproduction's
+	// rng-driven branches, so a fixed seed is enough to satisfy the (now
+	// required) field without affecting their assertions.
+	rng: createRng(1),
 };
 
 const GENES: BoidGenes = {
@@ -107,5 +112,45 @@ describe("computeSingleRunTick", () => {
 		const result = computeSingleRunTick(state, 50, PARAMS);
 
 		expect(result.shouldStop).toBe(false);
+	});
+
+	it("produces bit-for-bit identical boids/predators across two independently-driven tick sequences given the same seed, including a reproduction event (Phase 3: rng is now caller-owned/persisted, not recreated per tick)", () => {
+		function runSequence(seed: number) {
+			// Two opposite-gender, same-flock boids close enough to mate
+			// (MATE_DISTANCE_RADIUS=30) that accrue past energyThreshold (the
+			// hardcoded placeholder 50) and MATURITY_AGE_SECONDS (5) well
+			// within the tick budget below.
+			let state = buildState({
+				boids: [
+					buildBoid({ x: 100, y: 0, energy: 40, age: 0, gender: "a" }),
+					buildBoid({ x: 105, y: 0, energy: 40, age: 0, gender: "b" }),
+				],
+				lastTimestamp: 0,
+			});
+			const params = {
+				...PARAMS,
+				maxDurationSeconds: 1000,
+				rng: createRng(seed),
+			};
+			let timestamp = 0;
+			// Each tick's raw 1000ms gap clamps to MAX_DT_SECONDS (0.1s), so
+			// 100 ticks accrue 10s of age/energy growth — comfortably past
+			// both eligibility gates, triggering at least one reproduction.
+			for (let i = 0; i < 100; i++) {
+				timestamp += 1000;
+				state = computeSingleRunTick(state, timestamp, params);
+			}
+			return state;
+		}
+
+		const resultA = runSequence(42);
+		const resultB = runSequence(42);
+
+		// Sanity check that the scenario actually exercised reproduction's
+		// rng-driven branches (inheritGenes/mutation/gender rolls), not just
+		// the non-rng-dependent movement/aging code.
+		expect(resultA.boids.length).toBeGreaterThan(2);
+		expect(resultA.boids).toEqual(resultB.boids);
+		expect(resultA.predators).toEqual(resultB.predators);
 	});
 });

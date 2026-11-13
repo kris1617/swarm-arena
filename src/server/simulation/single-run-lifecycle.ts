@@ -4,7 +4,6 @@ import {
 	type PredatorState,
 	runTick,
 } from "~/server/simulation/boids";
-import { createRng } from "~/server/simulation/rng";
 
 // Clamp a single frame's dt so a backgrounded/stalled tab can't apply one
 // huge physics step when it resumes. Moved from simulation-canvas.tsx so the
@@ -31,6 +30,11 @@ export function computeSingleRunTick(
 		protectionThreshold: number;
 		maxDurationSeconds: number;
 		foodStockInitial: number;
+		// Owned and persisted across ticks by the caller (simulation-canvas.tsx,
+		// via a ref created once per run) — this function has no way to persist
+		// state between calls itself, so creating a fresh rng here would make
+		// reproduction's mutation/gender rolls non-deterministic across ticks.
+		rng: () => number;
 	},
 ): {
 	boids: BoidState[];
@@ -52,13 +56,6 @@ export function computeSingleRunTick(
 		MAX_DT_SECONDS,
 	);
 
-	// TODO(phase 3): rng must be persisted across ticks via
-	// simulation-canvas.tsx, not recreated here — this makes reproduction's
-	// mutation/gender rolls non-deterministic *across* ticks, even though
-	// any single runTick call below is still internally deterministic for
-	// the rng instance it's given.
-	const rng = createRng(Date.now());
-
 	const {
 		boids: nextBoids,
 		predators: nextPredators,
@@ -73,7 +70,7 @@ export function computeSingleRunTick(
 			dtSeconds,
 			foodRegenRate: params.foodRegenRate,
 			protectionThreshold: params.protectionThreshold,
-			rng,
+			rng: params.rng,
 			// TODO(phase 6): placeholder reproduction config until the start
 			// form exposes real crossbreeding/energy/mutation fields (decision
 			// #10).
