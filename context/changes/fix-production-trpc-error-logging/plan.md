@@ -500,14 +500,14 @@ which rows a correctly-sequenced call would already have matched).
 
 #### Automated
 
-- [x] 1.1 npm run typecheck passes
-- [x] 1.2 npm run check passes
-- [x] 1.3 src/server/api/trpc.test.ts passes (authenticated ctx, undefined ctx, null session)
-- [x] 1.4 npm test passes
+- [x] 1.1 npm run typecheck passes — c897806
+- [x] 1.2 npm run check passes — c897806
+- [x] 1.3 src/server/api/trpc.test.ts passes (authenticated ctx, undefined ctx, null session) — c897806
+- [x] 1.4 npm test passes — c897806
 
 #### Manual
 
-- [x] 1.5 Local production build: trigger a real tRPC error, confirm the structured log line
+- [x] 1.5 Local production build: trigger a real tRPC error, confirm the structured log line — c897806
 
 ### Phase 2: Root error boundary
 

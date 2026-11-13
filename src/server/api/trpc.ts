@@ -70,6 +70,12 @@ export const createCallerFactory = t.createCallerFactory;
  * failure in any tRPC procedure leaves a trace, so this must never be
  * dev-only and must never throw itself, even with a missing/unauthenticated
  * context.
+ *
+ * Logs the full `error` object, including `.cause` — which can be a
+ * `ZodError` whose issues sometimes carry the invalid input value. This
+ * stays on the server (stdout / `docker compose logs app`) today, but if
+ * logs are ever shipped to a third-party aggregator, revisit whether that's
+ * still fine under this project's PII-handling policy at that time.
  */
 export function logTRPCError({
 	path,
