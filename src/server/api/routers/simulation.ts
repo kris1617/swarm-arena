@@ -19,7 +19,9 @@ export const simulationRouter = createTRPCRouter({
 					separationWeight: z.number().finite(),
 					alignmentWeight: z.number().finite(),
 					cohesionWeight: z.number().finite(),
-					maxDurationSeconds: z.number().int().positive(),
+					// .max(600) (10 min) closes an unbounded-run resource surface —
+					// matches the spirit of boidCount's own .max(500).
+					maxDurationSeconds: z.number().int().positive().max(600),
 					predatorCount: z.number().int().nonnegative().max(500),
 					protectionThreshold: z.number().int().nonnegative().max(500),
 					foodStockInitial: z.number().finite().positive(),
@@ -109,7 +111,9 @@ export const simulationRouter = createTRPCRouter({
 			z.object({
 				runId: z.number(),
 				elapsedTicks: z.number().nonnegative(),
-				cohesionSamples: z.array(z.number().min(0).max(1)).min(1),
+				// .max(50_000) closes an unbounded-array resource surface — generous
+				// relative to the 600s run cap above even at a high sample rate.
+				cohesionSamples: z.array(z.number().min(0).max(1)).min(1).max(50_000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

@@ -123,6 +123,23 @@ describe("simulationRouter.start", () => {
 			code: "UNAUTHORIZED",
 		} satisfies Partial<TRPCError>);
 	});
+
+	it("rejects an unbounded maxDurationSeconds", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				maxDurationSeconds: 100_000,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
 });
 
 describe("simulationRouter.stop authorization", () => {
@@ -188,6 +205,29 @@ describe("simulationRouter.stop authorization", () => {
 			}),
 		).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects an unbounded cohesionSamples array", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: ownerId, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.stop({
+				runId,
+				elapsedTicks: 1,
+				cohesionSamples: new Array(100_000).fill(0.5),
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
 	});
 
