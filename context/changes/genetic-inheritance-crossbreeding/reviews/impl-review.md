@@ -5,8 +5,8 @@
 - **Scope**: Full plan
 - **Reviewed phases**: 1, 2, 3, 4, 5, 6
 - **Date**: 2026-11-13
-- **Verdict**: NEEDS ATTENTION
-- **Findings**: 0 critical, 1 high-impact warning (deploy-blocking), 1 warning, 1 observation
+- **Verdict**: NEEDS ATTENTION → all 3 findings fixed (commits 4099b47, c50888f)
+- **Findings**: 0 critical, 1 high-impact warning (deploy-blocking), 1 warning, 1 observation — all FIXED
 
 ## Verdicts
 
@@ -41,6 +41,7 @@ This went unnoticed locally because Phase 6 used `db:push` against a dev `db.sql
   - Tradeoff: `schema.ts`'s Drizzle column defs would need matching `.default(...)` calls (currently deliberately required-only, per the plan's own design intent that these are real user inputs) — a cosmetic widening of the TS type to `number | undefined` at the schema layer unless the app-level zod/insert path still always supplies a value (it does, via `start`), so this is low-risk but does touch a file already reviewed as PASS.
   - Confidence: HIGH — this is the standard safe pattern for adding NOT NULL columns to a populated table; this exact concern is why `src/server/db/schema.ts`'s other NOT NULL columns were always added at table-creation time, never retrofitted before now.
   - Blind spot: Haven't verified whether the production `db.sqlite` currently has any `simulation_run` rows (if it's actually empty right now, this migration would apply cleanly as-is and the fix is precautionary rather than urgently blocking) — this needs checking before deploying, not before finishing this review.
+- **Decision**: FIXED (commit 4099b47 — squashed migration 0002 with explicit defaults matching the UI's own chosen values; empirically verified old version fails and new version succeeds against a populated SQLite table)
 
 ### F2 — `multi-run-lifecycle.ts`'s mate-scan adds real weight to an already-quadratic per-tick cost
 
@@ -52,6 +53,7 @@ This went unnoticed locally because Phase 6 used `db:push` against a dev `db.sql
 **Detail**: `reproducePopulation`'s mate-scan is O(n²), run twice per tick (boids + predators) on top of `stepBoids`'s existing O(n²) neighbor scan. Bounded worst case for one run: ~500² pairwise ops × 2 ≈ 500k comparisons/tick. Multi-run compounds this across up to 4 parallel slots every animation frame (by design — backgrounded runs still tick so they don't stall when viewed) → up to ~2M comparisons/frame on the main thread, worst case. Not unbounded, not a regression in kind, but it is new weight added on top of a pre-existing quadratic design, and the first FR-018-adjacent feature to actually push multiple near-cap populations through reproduction every frame simultaneously.
 
 **Fix**: No code change required now — this is a "watch it" finding, not a defect. If users report frame drops running multiple near-cap parallel simulations, profile `computeMultiRunTick` first; the likely lever is adding an early-exit in `reproducePopulation` once a tick's `populationCap` is already reached (skip the mate-scan entirely rather than scanning and then discarding at the cap check), which only helps the already-capped case, not the general one.
+- **Decision**: FIXED (commit c50888f — implemented the suggested early-exit anyway, since it was a small, low-risk, behavior-preserving change once identified; verified via a deliberate-break test that an existing cap test still catches a regression)
 
 ### F3 — Dismissed multi-run slots leak their `populationCapped` flag in page state
 
@@ -63,6 +65,7 @@ This went unnoticed locally because Phase 6 used `db:push` against a dev `db.sql
 **Detail**: `populationCappedByRunId` only grows (via `handlePopulationCapped`) and is never pruned when a slot is dismissed via `handleDismiss`/`removeSlot`. Over a long session with many started/stopped/dismissed runs, this `Record` accumulates one boolean per ever-seen `runId` for the lifetime of the page. Asymmetric with `multi-run-lifecycle.ts`'s own `runStates`, which does prune dismissed slots. Low real-world impact (booleans, bounded by session length), but it's a genuine, easily-fixed inconsistency.
 
 **Fix**: In `handleDismiss`, also remove the dismissed `runId`'s entry from `populationCappedByRunId`, mirroring how `removeSlot` already prunes `RunSlotsState`.
+- **Decision**: FIXED (commit c50888f)
 
 ## Notes on what was NOT flagged
 
