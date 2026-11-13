@@ -9,7 +9,10 @@ export default defineConfig({
 		// .claude/skills/** ships its own node:test-style *.test.mjs files (run by the
 		// 10x-cli toolkit itself, not this app) — exclude them, same category as the
 		// context/, CLAUDE.md, .claude excludes already in biome.jsonc.
-		exclude: ["**/node_modules/**", ".claude/**"],
+		// tests/e2e/**/*.spec.ts are Playwright specs, run by `npx playwright
+		// test`, not Vitest — Vitest's default include glob also matches
+		// `*.spec.ts`, so exclude the E2E directory explicitly.
+		exclude: ["**/node_modules/**", ".claude/**", "tests/e2e/**"],
 		env: {
 			DATABASE_URL: "file:./db.sqlite",
 			NODE_ENV: "test",

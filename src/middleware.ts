@@ -9,5 +9,7 @@ export { auth as middleware } from "~/server/auth";
 export const runtime = "nodejs";
 
 export const config = {
-	matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)"],
+	matcher: [
+		"/((?!login|api/auth|api/test-auth|_next/static|_next/image|favicon.ico).*)",
+	],
 };

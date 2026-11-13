@@ -53,6 +53,13 @@ export const authConfig: NextAuthConfig = {
 	}),
 	session: { strategy: "database" },
 	secret: env.AUTH_SECRET,
+	// Without this, next-auth rejects every request's session with
+	// "UntrustedHost" whenever no AUTH_URL is configured — including a
+	// correctly-adapter-backed session — so sign-in silently never sticks.
+	// See env.js for why this can't just be process.env.AUTH_TRUST_HOST read
+	// implicitly by next-auth: this project passes every Auth.js-recognized
+	// var through the T3-validated `env` object explicitly, consistently.
+	trustHost: env.AUTH_TRUST_HOST,
 	providers: [
 		GitHub({
 			clientId: env.AUTH_GITHUB_ID,

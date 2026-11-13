@@ -15,6 +15,21 @@ export const env = createEnv({
 		AUTH_GITHUB_ID: z.string().min(1),
 		AUTH_GITHUB_SECRET: z.string().min(1),
 		ADMIN_EMAILS: z.string().default(""),
+		// next-auth v5 refuses every session (logs "UntrustedHost") unless the
+		// request's host is explicitly trusted and no AUTH_URL is configured.
+		// Required for `next start` against localhost (E2E) and, separately,
+		// for the real deploy behind its reverse proxy — see
+		// https://errors.authjs.dev#untrustedhost.
+		AUTH_TRUST_HOST: z
+			.string()
+			.optional()
+			.transform((v) => v === "true"),
+		// Enables POST /api/test-auth/login, a database-session bypass for local
+		// Playwright E2E runs (this app has no credentials provider — GitHub
+		// OAuth only). The route 404s whenever this is unset — see its own
+		// file for why that's the only gate. Never set this in a deployed
+		// environment.
+		E2E_TEST_AUTH_SECRET: z.string().optional(),
 	},
 
 	/**
@@ -37,6 +52,8 @@ export const env = createEnv({
 		AUTH_GITHUB_ID: process.env.AUTH_GITHUB_ID,
 		AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET,
 		ADMIN_EMAILS: process.env.ADMIN_EMAILS,
+		AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
+		E2E_TEST_AUTH_SECRET: process.env.E2E_TEST_AUTH_SECRET,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
 	/**
