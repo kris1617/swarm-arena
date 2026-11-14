@@ -68,7 +68,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
-| S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | in-progress |
+| S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
 
 ## Streams
@@ -449,7 +449,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (resolved at `/10x-plan`: time-boxed auto-expiring grant, any account by email, self always allowed / others require caller already admin)
 - **Risk:** `users.role` already has the `admin`/`member` enum (schema.ts) — this is a new UI/mutation path to flip it temporarily, not a new data model.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-23: Spatial-hash performance optimization
 
@@ -524,6 +524,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-22: User temporarily elevates their own account (or another account) to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then reverts — the elevation is reversible, not a permanent role change.** — Archived 2026-11-14 → `context/archive/2026-11-14-temporary-admin-elevation/`. Lesson: NextAuth's database-strategy session round-trips through JSON before any consumer reads it, turning a Date-typed column into an ISO string (or the adapter's own raw number) at runtime — a helper reading a session-sourced timestamp should normalize with `new Date(x).getTime()` rather than trust the Drizzle column's declared type, and this gap went undetected by unit tests because every fabricated session fixture passed a real `Date`.
 - **S-21: User sees a run-specific optimization suggestion on a completed run's analysis view, derived from that single run's own phase/resource history — distinct from S-13's cross-run suggestion.** — Archived 2026-11-14 → `context/archive/2026-11-14-post-run-optimization-suggestion/`. Lesson: —.
 - **S-18: User sees the run-analysis and run-comparison pages restyled with the new design direction, with no change to existing chart/table behavior.** — Archived 2026-11-14 → `context/archive/2026-11-14-analysis-comparison-restyle/`. Lesson: —.
 - **S-17: User sees the simulation staging form and live view restyled with the new design direction, with no change to existing form state or live-rendering behavior.** — Archived 2026-11-14 → `context/archive/2026-11-14-staging-live-view-restyle/`. Lesson: —.
