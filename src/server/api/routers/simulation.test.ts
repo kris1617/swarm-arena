@@ -475,6 +475,75 @@ describe("simulationRouter.stop authorization", () => {
 		});
 		expect(finalRun?.score).toBe(0.1);
 	});
+
+	// impl-review (full-score-save-resume, F1): `stop` must reject a
+	// server-owned run (one with a live registry entry) instead of scoring
+	// it while the registry keeps ticking it in the background.
+	it("rejects with BAD_REQUEST when the run is server-owned (has a live registry entry)", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await expect(
+			caller.simulation.stop({
+				runId,
+				elapsedTicks: 1,
+				cohesionSamples: [0.5],
+				...VALID_STOP_EXTRAS,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		// Row is untouched — still "running", not scored by the rejected call.
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.status).toBe("running");
+	});
+
+	// impl-review (full-score-save-resume, F2): same unbounded-array bound
+	// the sibling fields already enforce.
+	it("rejects an unbounded survivingBoidGenes array", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: ownerId, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.stop({
+				runId,
+				elapsedTicks: 1,
+				cohesionSamples: [0.5],
+				...VALID_STOP_EXTRAS,
+				survivingBoidGenes: new Array(50_001).fill(
+					VALID_STOP_EXTRAS.survivingBoidGenes[0],
+				),
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
 });
 
 describe("simulationRouter.start — parallel-run cap race", () => {

@@ -286,6 +286,13 @@ old `computeScore` call site used it for scoring purposes, and leave any
 other caller untouched.
 
 **Contract**: `export function computeGeneticDiversity(boids: BoidState[]): number`
+<!-- impl-review (full-score-save-resume, F3): implemented as
+`computeGeneticDiversity(genes: BoidGenes[]): number` instead — diversity
+only ever reads `.genes`, and taking genes directly is the minimal payload
+shape the client-staged path can send over `stop`'s wire input
+(`survivingBoidGenes`), rather than the full `BoidState[]`. Deliberate,
+consistently propagated to every call site; recorded here since it
+deviates from this section's original contract text. -->
 — computes the coefficient of variation (stddev / mean, or an equivalent
 bounded normalization — implementer's call on the exact formula, document
 whichever is chosen) across each heritable numeric gene field

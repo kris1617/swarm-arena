@@ -278,23 +278,30 @@ export const simulationRouter = createTRPCRouter({
 					)
 					.min(1)
 					.max(50_000),
-				survivingBoidGenes: z.array(
-					z.object({
-						color: z.object({
-							r: z.number(),
-							g: z.number(),
-							b: z.number(),
+				survivingBoidGenes: z
+					.array(
+						z.object({
+							color: z.object({
+								r: z.number(),
+								g: z.number(),
+								b: z.number(),
+							}),
+							flockId: z.number(),
+							separationWeight: z.number(),
+							alignmentWeight: z.number(),
+							cohesionWeight: z.number(),
+							maxSpeed: z.number(),
+							minSpeed: z.number(),
+							maxLifespan: z.number(),
+							matePreference: z.number(),
 						}),
-						flockId: z.number(),
-						separationWeight: z.number(),
-						alignmentWeight: z.number(),
-						cohesionWeight: z.number(),
-						maxSpeed: z.number(),
-						minSpeed: z.number(),
-						maxLifespan: z.number(),
-						matePreference: z.number(),
-					}),
-				),
+					)
+					// impl-review (full-score-save-resume, F2): same unbounded-array
+					// resource surface the three sibling fields above already
+					// close, just missed for this one — each element here is
+					// heavier (8 fields vs. a number) and is iterated multiple
+					// times by computeGeneticDiversity.
+					.max(50_000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -312,6 +319,21 @@ export const simulationRouter = createTRPCRouter({
 
 			if (run.status !== "running") {
 				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+
+			// impl-review (full-score-save-resume, F1): a server-owned run's
+			// row also has `status: "running"` — nothing in the DB alone
+			// distinguishes it from a client-staged one. Without this check, a
+			// `stop` call against a server-owned run would score/terminate the
+			// row while the registry's live interval keeps ticking it,
+			// eventually overwriting this call's score when the run later
+			// finishes naturally. Server-owned runs go through
+			// `savePause`/natural completion instead.
+			if (isServerRunActive(input.runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is server-owned — use savePause instead of stop",
+				});
 			}
 
 			const clampedElapsedTicks = Math.min(

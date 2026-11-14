@@ -333,6 +333,11 @@ export function resumeServerRun(
 			`server run ${runId} is already registered — resumeServerRun called for an already-active runId`,
 		);
 	}
+	// impl-review (full-score-save-resume, F4): `createRng`'s seed argument
+	// does no real work here — `setState` immediately below fully overwrites
+	// whatever seed-derived state it produced. It's only needed because
+	// `createRng` requires one to construct an `Rng` at all; don't "simplify"
+	// this away thinking the seed alone is enough to resume correctly.
 	const rng = createRng(snapshot.params.seed);
 	rng.setState(snapshot.rngState);
 
