@@ -68,7 +68,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
-| S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | ready |
+| S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | planning |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
 
 ## Streams
@@ -447,10 +447,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** —
 - **Parallel with:** F-06, S-18, S-19, S-20, S-21, S-23
 - **Blockers:** —
-- **Unknowns:**
-  - Exact elevation mechanism (self-service toggle, time-boxed grant, or other) — Owner: user. Block: no — PRD Open Question #6 explicitly defers this to `/10x-plan` as a planning-level decision; the product-level requirement (elevation exists and is reversible) is already fixed.
+- **Unknowns:** — (resolved at `/10x-plan`: time-boxed auto-expiring grant, any account by email, self always allowed / others require caller already admin)
 - **Risk:** `users.role` already has the `admin`/`member` enum (schema.ts) — this is a new UI/mutation path to flip it temporarily, not a new data model.
-- **Status:** ready
+- **Status:** planning
 
 ### S-23: Spatial-hash performance optimization
 
