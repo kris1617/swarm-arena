@@ -188,29 +188,29 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 Hardcoded-value scan on simulation/page.tsx still returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck` — 992f673
+- [x] 2.2 Linting passes: `npm run check` — 992f673
+- [x] 2.3 Full suite still passes: `npm test` — 992f673
+- [x] 2.4 Hardcoded-value scan on simulation/page.tsx still returns zero hits — 992f673
 
 #### Manual
 
-- [x] 2.5 All 12 numeric fields render and update correctly through NumberField
-- [x] 2.6 Exactly one `main` landmark on the simulation page
-- [x] 2.7 Loading skeleton shown before run-list panels appear
-- [x] 2.8 Staging form, suggestion card, run-switcher/save/resume all behave as before
+- [x] 2.5 All 12 numeric fields render and update correctly through NumberField — 992f673
+- [x] 2.6 Exactly one `main` landmark on the simulation page — 992f673
+- [x] 2.7 Loading skeleton shown before run-list panels appear — 992f673
+- [x] 2.8 Staging form, suggestion card, run-switcher/save/resume all behave as before — 992f673
 
 ### Phase 3: States verification pass
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Desktop screenshots: default (staging form), loading skeleton, an error state
-- [ ] 3.5 Mobile (375px) screenshot, no layout regression
-- [ ] 3.6 Empty-state N/A reasoning still holds
-- [ ] 3.7 Existing error-state coverage (4 mutation error renders) unaffected
+- [x] 3.4 Desktop screenshots: default (staging form), loading skeleton, an error state
+- [x] 3.5 Mobile (375px) screenshot, no layout regression
+- [x] 3.6 Empty-state N/A reasoning still holds
+- [x] 3.7 Existing error-state coverage (4 mutation error renders) unaffected
