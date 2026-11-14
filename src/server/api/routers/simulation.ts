@@ -515,12 +515,24 @@ export const simulationRouter = createTRPCRouter({
 			// `history` is a schema-less JSON column — older rows may have
 			// `null` (predate F-05) or lack `populationCountSamples`
 			// (predate this change's Phase 1). Cast, don't assume.
-			const history = run.history as {
+			const rawHistory = run.history as {
 				phaseHistory: PopulationPhase[];
 				foodRatioSamples: number[];
 				survivorGenes: BoidGenes[];
 				populationCountSamples?: number[];
 			} | null;
+			// impl-review (run-analysis-view): `history` is a schema-less JSON
+			// column — the cast above is unchecked. Guard the required fields
+			// too (not just the newer optional `populationCountSamples`), so a
+			// legacy or hand-corrupted row degrades to the same "no data"
+			// response the null case already gets, instead of throwing inside
+			// segmentCompletedCycles/computeGeneticDiversity.
+			const history =
+				rawHistory &&
+				Array.isArray(rawHistory.phaseHistory) &&
+				Array.isArray(rawHistory.survivorGenes)
+					? rawHistory
+					: null;
 
 			return {
 				id: run.id,

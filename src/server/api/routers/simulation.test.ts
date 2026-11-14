@@ -1132,6 +1132,46 @@ describe("simulationRouter.getRunAnalysis", () => {
 		expect(result.finalGeneticDiversity).toBe(0);
 		expect(result.history).toBeNull();
 	});
+
+	// impl-review (run-analysis-view): history is a schema-less JSON
+	// column — a malformed row (required fields not actually arrays) must
+	// degrade to the same "no data" response as a null history, not throw.
+	it("degrades to the null-history response for a malformed history row instead of throwing", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				// biome-ignore lint/suspicious/noExplicitAny: deliberately malformed to test the runtime guard.
+				history: { phaseHistory: "not-an-array", survivorGenes: null } as any,
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
+		expect(result.completedCycles).toEqual([]);
+		expect(result.finalGeneticDiversity).toBe(0);
+		expect(result.history).toBeNull();
+	});
 });
 
 describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
