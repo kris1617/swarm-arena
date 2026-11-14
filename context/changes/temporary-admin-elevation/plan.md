@@ -234,15 +234,15 @@ One schema migration (`elevatedUntil` nullable column, `npm run db:generate` + `
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
-- [x] 3.4 Hardcoded-value scan on the new page/component returns zero hits
+- [x] 3.1 Type checking passes: `npm run typecheck` — eb69177
+- [x] 3.2 Linting passes: `npm run check` — eb69177
+- [x] 3.3 Full suite still passes: `npm test` — eb69177
+- [x] 3.4 Hardcoded-value scan on the new page/component returns zero hits — eb69177
 
 #### Manual
 
-- [x] 3.5 Self-elevate/self-revert works end-to-end, no re-login needed
-- [x] 3.6 Cross-account elevate/revoke works end-to-end
-- [x] 3.7 Non-admin caller is rejected (FORBIDDEN) on cross-account mutations
-- [x] 3.8 A lapsed grant loses access automatically, no explicit revert needed
-- [x] 3.9 `/admin/settings` redirects a lapsed-elevation account like a plain member
+- [x] 3.5 Self-elevate/self-revert works end-to-end, no re-login needed — eb69177
+- [x] 3.6 Cross-account elevate/revoke works end-to-end — eb69177
+- [x] 3.7 Non-admin caller is rejected (FORBIDDEN) on cross-account mutations — eb69177
+- [x] 3.8 A lapsed grant loses access automatically, no explicit revert needed — eb69177
+- [x] 3.9 `/admin/settings` redirects a lapsed-elevation account like a plain member — eb69177
