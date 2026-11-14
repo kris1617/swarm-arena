@@ -205,14 +205,14 @@ None — no schema change; `listCompleted` reads existing columns only.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 0c72aea
+- [x] 1.2 Linting passes: `npm run check` — 0c72aea
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts` — 0c72aea
+- [x] 1.4 Full suite still passes: `npm test` — 0c72aea
 
 #### Manual
 
-- [x] 1.5 Logging in lands on `/dashboard`, not `/` or `/simulation`
-- [x] 1.6 Running/Saved/Completed sections correctly reflect a run's lifecycle
-- [x] 1.7 Status filter correctly narrows visible rows
-- [x] 1.8 Empty state renders with zero runs
+- [x] 1.5 Logging in lands on `/dashboard`, not `/` or `/simulation` — 0c72aea
+- [x] 1.6 Running/Saved/Completed sections correctly reflect a run's lifecycle — 0c72aea
+- [x] 1.7 Status filter correctly narrows visible rows — 0c72aea
+- [x] 1.8 Empty state renders with zero runs — 0c72aea
