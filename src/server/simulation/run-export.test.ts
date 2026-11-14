@@ -64,6 +64,26 @@ describe("buildRunExport", () => {
 		});
 	});
 
+	it("excludes fields outside RunExportRow from JSON mode, even if present on the input object", () => {
+		// The real Drizzle row the route handler passes in has more columns
+		// than RunExportRow types (userId, seed, savedState) — the type
+		// annotation alone doesn't strip them at runtime, so this guards
+		// against a regression to spreading `run` directly.
+		const rowWithExtraFields = {
+			...SAMPLE_RUN,
+			userId: "some-user-uuid",
+			seed: 123456,
+			savedState: { some: "live-state-snapshot" },
+		};
+
+		const result = buildRunExport(rowWithExtraFields, "json");
+		const parsed = JSON.parse(result.body) as Record<string, unknown>;
+
+		expect(parsed.userId).toBeUndefined();
+		expect(parsed.seed).toBeUndefined();
+		expect(parsed.savedState).toBeUndefined();
+	});
+
 	it("serializes a null stoppedAt as null in JSON mode", () => {
 		const result = buildRunExport({ ...SAMPLE_RUN, stoppedAt: null }, "json");
 		const parsed = JSON.parse(result.body) as Record<string, unknown>;

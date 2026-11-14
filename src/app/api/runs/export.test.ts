@@ -156,6 +156,18 @@ describe("GET /api/runs/[runId]/export", () => {
 		expect(response.status).toBe(400);
 	});
 
+	it("defaults to JSON for a garbage format value instead of erroring", async () => {
+		const { ownerId, runId } = await insertRun();
+		mockSessionFor(ownerId);
+
+		const response = await GET(requestFor(String(runId), "xml"), {
+			params: Promise.resolve({ runId: String(runId) }),
+		});
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Content-Type")).toBe("application/json");
+	});
+
 	it("returns 400 for a non-numeric runId", async () => {
 		mockSessionFor("irrelevant-user-id");
 

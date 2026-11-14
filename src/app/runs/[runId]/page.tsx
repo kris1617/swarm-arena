@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
 	CartesianGrid,
@@ -99,13 +100,19 @@ export default function RunAnalysisPage() {
 				{score !== null ? `— Score: ${score.toFixed(2)}` : ""}
 			</h1>
 
-			<div className="flex gap-4">
-				<a className="underline" href={`/api/runs/${runId}/export?format=json`}>
+			<div className="flex gap-2">
+				<Link
+					className="bg-input text-foreground hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
+					href={`/api/runs/${runId}/export?format=json`}
+				>
 					Export JSON
-				</a>
-				<a className="underline" href={`/api/runs/${runId}/export?format=csv`}>
+				</Link>
+				<Link
+					className="bg-input text-foreground hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
+					href={`/api/runs/${runId}/export?format=csv`}
+				>
 					Export CSV
-				</a>
+				</Link>
 			</div>
 
 			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">

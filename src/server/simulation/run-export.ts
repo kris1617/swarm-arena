@@ -72,11 +72,19 @@ export function buildRunExport(
 		};
 	}
 
-	const jsonBody = {
-		...run,
-		startedAt: run.startedAt.toISOString(),
-		stoppedAt: run.stoppedAt ? run.stoppedAt.toISOString() : null,
-	};
+	// impl-review (run-export): build an explicit allow-listed object here
+	// too, same as the CSV branch's `CSV_COLUMNS` — spreading `run` directly
+	// leaked fields outside `RunExportRow`'s named contract (`userId`,
+	// `seed`, `savedState`) because the type annotation only restricts what
+	// TypeScript checks at the call site, not what's actually on the object
+	// the route handler passes in (the raw Drizzle row has every column).
+	const jsonBody: Record<string, unknown> = {};
+	for (const column of CSV_COLUMNS) {
+		jsonBody[column] = run[column];
+	}
+	jsonBody.startedAt = run.startedAt.toISOString();
+	jsonBody.stoppedAt = run.stoppedAt ? run.stoppedAt.toISOString() : null;
+	jsonBody.history = run.history;
 
 	return {
 		body: JSON.stringify(jsonBody, null, 2),
