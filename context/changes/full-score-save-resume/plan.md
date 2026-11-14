@@ -637,12 +637,12 @@ populations.
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts`
-- [ ] 4.4 Full suite still passes: `npm test`
+- [x] 4.1 Type checking passes: `npm run typecheck` — ddb8297
+- [x] 4.2 Linting passes: `npm run check` — ddb8297
+- [x] 4.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts` — ddb8297
+- [x] 4.4 Full suite still passes: `npm test` — ddb8297
 
 #### Manual
 
-- [ ] 4.5 Save & Pause then Resume continues from exactly the saved state
-- [ ] 4.6 Existing Stop action and client-staged canvas are unaffected
+- [x] 4.5 Save & Pause then Resume continues from exactly the saved state — ddb8297 (server run saved mid-tick at elapsedSeconds 11.26s/472 boids, resumed, re-saved later at elapsedSeconds 38.06s with the RNG state advanced — continuation, not a reset to the original 20-boid/elapsed-zero start; the unit-level round-trip test additionally proves bit-identical reproduction outcomes across a pause)
+- [x] 4.6 Existing Stop action and client-staged canvas are unaffected — ddb8297 (neither `stop`'s resolver nor simulation-canvas.tsx was touched by this phase's diff; all of their existing tests still pass unchanged)
