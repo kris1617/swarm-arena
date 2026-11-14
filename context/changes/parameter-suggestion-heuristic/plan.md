@@ -174,13 +174,13 @@ None — no schema change, pure read of existing columns.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — ed27237
+- [x] 2.2 Linting passes: `npm run check` — ed27237
+- [x] 2.3 Full suite still passes: `npm test` — ed27237
 
 #### Manual
 
-- [x] 2.4 With fewer than 3 completed runs (or no varying parameter), the staging page shows "Not enough data yet"
-- [x] 2.5 With 3+ completed runs where one parameter clearly varies with score, the staging page shows a suggestion naming that parameter, a direction, and a confidence qualifier
-- [x] 2.6 The suggestion never auto-fills or changes the form's current values
-- [x] 2.7 The rest of the staging page (parameter form, running/saved lists) renders unchanged
+- [x] 2.4 With fewer than 3 completed runs (or no varying parameter), the staging page shows "Not enough data yet" — ed27237
+- [x] 2.5 With 3+ completed runs where one parameter clearly varies with score, the staging page shows a suggestion naming that parameter, a direction, and a confidence qualifier — ed27237
+- [x] 2.6 The suggestion never auto-fills or changes the form's current values — ed27237
+- [x] 2.7 The rest of the staging page (parameter form, running/saved lists) renders unchanged — ed27237
