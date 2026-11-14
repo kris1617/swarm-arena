@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ServerRunViewer } from "~/app/simulation/_components/server-run-viewer";
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
@@ -54,6 +54,36 @@ export default function SimulationPage() {
 	const runningRunsQuery = api.simulation.listRunning.useQuery(undefined, {
 		refetchInterval: 2000,
 	});
+
+	// impl-review (S-08): without this, a run that naturally stops drops out
+	// of the list (and its switcher button) within one poll, while the
+	// mounted ServerRunViewer keeps showing its last-drawn frame forever with
+	// no indication — the list says "gone" and the canvas says "still
+	// going". Stop viewing automatically once the viewed run is confirmed no
+	// longer in the running list.
+	//
+	// `seenRunningIds` guards a real race: starting a server run sets
+	// `viewingRunId` immediately, but the list's first poll hasn't included
+	// it yet — without this guard, that gap would read as "not in the list"
+	// and immediately clear the id that was just set. Only a run we've
+	// previously confirmed as running, that has since disappeared, counts as
+	// "stopped"; a run never yet seen is "not loaded yet", not "gone".
+	const seenRunningIds = useRef(new Set<number>());
+	useEffect(() => {
+		if (!runningRunsQuery.data) {
+			return;
+		}
+		for (const run of runningRunsQuery.data) {
+			seenRunningIds.current.add(run.id);
+		}
+		if (
+			viewingRunId !== null &&
+			seenRunningIds.current.has(viewingRunId) &&
+			!runningRunsQuery.data.some((run) => run.id === viewingRunId)
+		) {
+			setViewingRunId(null);
+		}
+	}, [viewingRunId, runningRunsQuery.data]);
 
 	// Shared by both the staging "Start" button and the "Start on server"
 	// button — identical clamping, diverging only in which mutation receives
