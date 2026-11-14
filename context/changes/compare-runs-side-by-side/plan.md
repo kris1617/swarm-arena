@@ -223,27 +223,27 @@ None — `history` is a schema-less JSON column (`d.text({ mode: "json" })`); ad
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — ff24bcb
+- [x] 2.2 Linting passes: `npm run check` — ff24bcb
+- [x] 2.3 Full suite still passes: `npm test` — ff24bcb
 
 #### Manual
 
-- [x] 2.4 Checking 1 run leaves "Compare selected" disabled; checking 2–4 enables it; checking a 5th is prevented or the 5th checkbox is disabled
-- [x] 2.5 Clicking "Compare selected" with 2 runs checked navigates to `/runs/compare?ids=<those two ids>`
-- [x] 2.6 Unchecking a run removes it from the pending selection without affecting Running/Saved sections
+- [x] 2.4 Checking 1 run leaves "Compare selected" disabled; checking 2–4 enables it; checking a 5th is prevented or the 5th checkbox is disabled — ff24bcb
+- [x] 2.5 Clicking "Compare selected" with 2 runs checked navigates to `/runs/compare?ids=<those two ids>` — ff24bcb
+- [x] 2.6 Unchecking a run removes it from the pending selection without affecting Running/Saved sections — ff24bcb
 
 ### Phase 3: Comparison view
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Comparing 2 completed runs with full persisted history (post-Phase-1) shows matching scores/factors in both the table and the bar chart
-- [ ] 3.5 Comparing a run with full history against one with `history: null` (or pre-Phase-1) shows `—` for that run's breakdown cells/survival factor, without crashing, and the chart omits that run's missing bars
-- [ ] 3.6 Visiting `/runs/compare?ids=<id>` with only 1 id, another user's id, or a non-completed run's id renders the appropriate fallback/dropped-row behavior instead of crashing
-- [ ] 3.7 Navigating from the dashboard's "Compare selected" button round-trips correctly with the exact selected run IDs
+- [x] 3.4 Comparing 2 completed runs with full persisted history (post-Phase-1) shows matching scores/factors in both the table and the bar chart
+- [x] 3.5 Comparing a run with full history against one with `history: null` (or pre-Phase-1) shows `—` for that run's breakdown cells/survival factor, without crashing, and the chart omits that run's missing bars
+- [x] 3.6 Visiting `/runs/compare?ids=<id>` with only 1 id, another user's id, or a non-completed run's id renders the appropriate fallback/dropped-row behavior instead of crashing
+- [x] 3.7 Navigating from the dashboard's "Compare selected" button round-trips correctly with the exact selected run IDs
