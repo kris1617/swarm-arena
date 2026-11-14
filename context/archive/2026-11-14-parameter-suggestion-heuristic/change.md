@@ -1,10 +1,10 @@
 ---
 change_id: parameter-suggestion-heuristic
 title: Heuristic next-parameter suggestion correlated with final score
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T17:59:21Z
 ---
 
 ## Notes

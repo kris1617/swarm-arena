@@ -58,7 +58,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-10 | post-login-run-dashboard        | User lands on a dashboard of their own runs right after logging in, with standard status/filter/detail-link conventions | F-01           | MS-07, FR-013, FR-014                                   | done |
 | S-11 | run-analysis-view               | User opens a completed run's analysis view (growth-curve comparison, per-cycle phase breakdown, diversity-index trend) to decide what to change next | F-05, S-09, S-10 | MS-08, FR-019, FR-010 (full)                          | done |
 | S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | done |
-| S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, correlated with improving their final score across past runs | F-05            | FR-015                                                 | in-progress |
+| S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, correlated with improving their final score across past runs | F-05            | FR-015                                                 | done |
 | S-14 | run-export                      | User exports a run's parameters/score/history outside the app (JSON and CSV) | F-05            | FR-017                                                 | done |
 
 ## Streams
@@ -312,7 +312,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Needs at least 3 of the user's own completed runs with a given parameter varied before it can say anything meaningful for that parameter — degrades to "not enough data yet" otherwise, same degrade-gracefully posture as S-11/S-12's partial-data handling.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-14: Export a run outside the app
 
@@ -372,6 +372,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-13: User sees a heuristic-suggested next parameter change — the single admin-ranged parameter most correlated with improving their final score across their own past runs — with a one-line rationale and a confidence qualifier.** — Archived 2026-11-14 → `context/archive/2026-11-14-parameter-suggestion-heuristic/`. Lesson: —.
 - **S-14: User exports a run's parameters, score, and history outside the app, in JSON (full-fidelity) and CSV (parameters + score, no nested history).** — Archived 2026-11-14 → `context/archive/2026-11-14-run-export/`. Lesson: a formatter's named return type doesn't strip extra fields from a spread object at runtime — a `{...row}` JSON export leaked userId/seed/savedState outside the documented contract until caught in impl-review; build the output from an explicit field list, same discipline the CSV branch already used.
 - **S-12: User selects two or more completed runs and compares their scores and four-factor breakdowns side by side.** — Archived 2026-11-14 → `context/archive/2026-11-14-compare-runs-side-by-side/`. Lesson: —.
 - **S-11: From a completed run, the user opens an analysis view presenting the run's population dynamics — a logistic-growth-curve comparison against the run's actual population trajectory, a phase/cycle breakdown of time spent in each lifecycle phase (summarized per completed cycle, matching S-09's fix), and a diversity-index-style summary of genetic diversity over time — so they can draw a concrete conclusion about what to change in the next staged run.** — Archived 2026-11-14 → `context/archive/2026-11-14-run-analysis-view/`. Lesson: —.
