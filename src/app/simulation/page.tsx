@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ServerRunViewer } from "~/app/simulation/_components/server-run-viewer";
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { NumberField } from "~/components/ui/number-field";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
 import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import { api } from "~/trpc/react";
@@ -217,9 +218,16 @@ export default function SimulationPage() {
 		},
 	});
 
+	const isRunListsLoading =
+		runningRunsQuery.isPending || savedRunsQuery.isPending;
+
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Flocking Simulation</h1>
+
+			{isRunListsLoading ? (
+				<Skeleton className="h-16 w-full max-w-xs rounded-2xl" />
+			) : null}
 
 			{viewingRunId ? (
 				<ServerRunViewer
@@ -335,133 +343,91 @@ export default function SimulationPage() {
 						startRun.mutate(buildStartInput());
 					}}
 				>
-					<label className="flex flex-col gap-1" htmlFor="boid-count">
-						Boid count ({ranges.boidCount.min}-{ranges.boidCount.max})
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="boid-count"
-							max={ranges.boidCount.max}
-							min={ranges.boidCount.min}
-							onChange={(e) => setBoidCount(Number(e.target.value))}
-							type="number"
-							value={boidCount}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="separation-weight">
-						Separation weight
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="separation-weight"
-							max={ranges.separationWeight.max}
-							min={ranges.separationWeight.min}
-							onChange={(e) => setSeparationWeight(Number(e.target.value))}
-							step="0.1"
-							type="number"
-							value={separationWeight}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="alignment-weight">
-						Alignment weight
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="alignment-weight"
-							max={ranges.alignmentWeight.max}
-							min={ranges.alignmentWeight.min}
-							onChange={(e) => setAlignmentWeight(Number(e.target.value))}
-							step="0.1"
-							type="number"
-							value={alignmentWeight}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="cohesion-weight">
-						Cohesion weight
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="cohesion-weight"
-							max={ranges.cohesionWeight.max}
-							min={ranges.cohesionWeight.min}
-							onChange={(e) => setCohesionWeight(Number(e.target.value))}
-							step="0.1"
-							type="number"
-							value={cohesionWeight}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="max-duration-seconds">
-						Max duration (seconds)
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="max-duration-seconds"
-							max={ranges.maxDurationSeconds.max}
-							min={ranges.maxDurationSeconds.min}
-							onChange={(e) => setMaxDurationSeconds(Number(e.target.value))}
-							type="number"
-							value={maxDurationSeconds}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="predator-count">
-						Predator count ({ranges.predatorCount.min}-
-						{ranges.predatorCount.max})
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="predator-count"
-							max={ranges.predatorCount.max}
-							min={ranges.predatorCount.min}
-							onChange={(e) => setPredatorCount(Number(e.target.value))}
-							type="number"
-							value={predatorCount}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="protection-threshold">
-						Protection threshold ({ranges.protectionThreshold.min}-
-						{ranges.protectionThreshold.max})
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="protection-threshold"
-							max={ranges.protectionThreshold.max}
-							min={ranges.protectionThreshold.min}
-							onChange={(e) => setProtectionThreshold(Number(e.target.value))}
-							type="number"
-							value={protectionThreshold}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="food-stock-initial">
-						Initial food stock
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="food-stock-initial"
-							max={ranges.foodStockInitial.max}
-							min={ranges.foodStockInitial.min}
-							onChange={(e) => setFoodStockInitial(Number(e.target.value))}
-							step="0.1"
-							type="number"
-							value={foodStockInitial}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="food-regen-rate">
-						Food regen rate
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="food-regen-rate"
-							max={ranges.foodRegenRate.max}
-							min={ranges.foodRegenRate.min}
-							onChange={(e) => setFoodRegenRate(Number(e.target.value))}
-							step="0.1"
-							type="number"
-							value={foodRegenRate}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="flock-count">
-						Flock count ({ranges.flockCount.min}-{ranges.flockCount.max})
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="flock-count"
-							max={ranges.flockCount.max}
-							min={ranges.flockCount.min}
-							onChange={(e) => setFlockCount(Number(e.target.value))}
-							type="number"
-							value={flockCount}
-						/>
-					</label>
+					<NumberField
+						id="boid-count"
+						label={`Boid count (${ranges.boidCount.min}-${ranges.boidCount.max})`}
+						max={ranges.boidCount.max}
+						min={ranges.boidCount.min}
+						onChange={setBoidCount}
+						value={boidCount}
+					/>
+					<NumberField
+						id="separation-weight"
+						label="Separation weight"
+						max={ranges.separationWeight.max}
+						min={ranges.separationWeight.min}
+						onChange={setSeparationWeight}
+						step="0.1"
+						value={separationWeight}
+					/>
+					<NumberField
+						id="alignment-weight"
+						label="Alignment weight"
+						max={ranges.alignmentWeight.max}
+						min={ranges.alignmentWeight.min}
+						onChange={setAlignmentWeight}
+						step="0.1"
+						value={alignmentWeight}
+					/>
+					<NumberField
+						id="cohesion-weight"
+						label="Cohesion weight"
+						max={ranges.cohesionWeight.max}
+						min={ranges.cohesionWeight.min}
+						onChange={setCohesionWeight}
+						step="0.1"
+						value={cohesionWeight}
+					/>
+					<NumberField
+						id="max-duration-seconds"
+						label="Max duration (seconds)"
+						max={ranges.maxDurationSeconds.max}
+						min={ranges.maxDurationSeconds.min}
+						onChange={setMaxDurationSeconds}
+						value={maxDurationSeconds}
+					/>
+					<NumberField
+						id="predator-count"
+						label={`Predator count (${ranges.predatorCount.min}-${ranges.predatorCount.max})`}
+						max={ranges.predatorCount.max}
+						min={ranges.predatorCount.min}
+						onChange={setPredatorCount}
+						value={predatorCount}
+					/>
+					<NumberField
+						id="protection-threshold"
+						label={`Protection threshold (${ranges.protectionThreshold.min}-${ranges.protectionThreshold.max})`}
+						max={ranges.protectionThreshold.max}
+						min={ranges.protectionThreshold.min}
+						onChange={setProtectionThreshold}
+						value={protectionThreshold}
+					/>
+					<NumberField
+						id="food-stock-initial"
+						label="Initial food stock"
+						max={ranges.foodStockInitial.max}
+						min={ranges.foodStockInitial.min}
+						onChange={setFoodStockInitial}
+						step="0.1"
+						value={foodStockInitial}
+					/>
+					<NumberField
+						id="food-regen-rate"
+						label="Food regen rate"
+						max={ranges.foodRegenRate.max}
+						min={ranges.foodRegenRate.min}
+						onChange={setFoodRegenRate}
+						step="0.1"
+						value={foodRegenRate}
+					/>
+					<NumberField
+						id="flock-count"
+						label={`Flock count (${ranges.flockCount.min}-${ranges.flockCount.max})`}
+						max={ranges.flockCount.max}
+						min={ranges.flockCount.min}
+						onChange={setFlockCount}
+						value={flockCount}
+					/>
 					<label
 						className="flex items-center justify-between gap-2"
 						htmlFor="crossbreeding-enabled"
@@ -473,45 +439,33 @@ export default function SimulationPage() {
 							onCheckedChange={setCrossbreedingEnabled}
 						/>
 					</label>
-					<label className="flex flex-col gap-1" htmlFor="energy-threshold">
-						Energy threshold
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="energy-threshold"
-							max={ranges.energyThreshold.max}
-							min={ranges.energyThreshold.min}
-							onChange={(e) => setEnergyThreshold(Number(e.target.value))}
-							step="1"
-							type="number"
-							value={energyThreshold}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="mutation-chance">
-						Mutation chance
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="mutation-chance"
-							max={ranges.mutationChance.max}
-							min={ranges.mutationChance.min}
-							onChange={(e) => setMutationChance(Number(e.target.value))}
-							step="0.05"
-							type="number"
-							value={mutationChance}
-						/>
-					</label>
-					<label className="flex flex-col gap-1" htmlFor="mutation-magnitude">
-						Mutation magnitude
-						<Input
-							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="mutation-magnitude"
-							max={ranges.mutationMagnitude.max}
-							min={ranges.mutationMagnitude.min}
-							onChange={(e) => setMutationMagnitude(Number(e.target.value))}
-							step="0.05"
-							type="number"
-							value={mutationMagnitude}
-						/>
-					</label>
+					<NumberField
+						id="energy-threshold"
+						label="Energy threshold"
+						max={ranges.energyThreshold.max}
+						min={ranges.energyThreshold.min}
+						onChange={setEnergyThreshold}
+						step="1"
+						value={energyThreshold}
+					/>
+					<NumberField
+						id="mutation-chance"
+						label="Mutation chance"
+						max={ranges.mutationChance.max}
+						min={ranges.mutationChance.min}
+						onChange={setMutationChance}
+						step="0.05"
+						value={mutationChance}
+					/>
+					<NumberField
+						id="mutation-magnitude"
+						label="Mutation magnitude"
+						max={ranges.mutationMagnitude.max}
+						min={ranges.mutationMagnitude.min}
+						onChange={setMutationMagnitude}
+						step="0.05"
+						value={mutationMagnitude}
+					/>
 					<Button
 						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 						disabled={startRun.isPending}
@@ -539,6 +493,6 @@ export default function SimulationPage() {
 					) : null}
 				</form>
 			)}
-		</main>
+		</div>
 	);
 }

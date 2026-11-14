@@ -180,25 +180,25 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — f3595c6
+- [x] 1.2 Linting passes: `npm run check` — f3595c6
+- [x] 1.3 Full suite still passes: `npm test` — f3595c6
 
 ### Phase 2: Apply the three fixes to the simulation view
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on simulation/page.tsx still returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 Hardcoded-value scan on simulation/page.tsx still returns zero hits
 
 #### Manual
 
-- [ ] 2.5 All 12 numeric fields render and update correctly through NumberField
-- [ ] 2.6 Exactly one `main` landmark on the simulation page
-- [ ] 2.7 Loading skeleton shown before run-list panels appear
-- [ ] 2.8 Staging form, suggestion card, run-switcher/save/resume all behave as before
+- [x] 2.5 All 12 numeric fields render and update correctly through NumberField
+- [x] 2.6 Exactly one `main` landmark on the simulation page
+- [x] 2.7 Loading skeleton shown before run-list panels appear
+- [x] 2.8 Staging form, suggestion card, run-switcher/save/resume all behave as before
 
 ### Phase 3: States verification pass
 
