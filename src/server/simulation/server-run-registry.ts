@@ -97,14 +97,30 @@ async function finishRun(
 		clearInterval(run.intervalId);
 		registry.delete(runId);
 	}
-	await db
-		.update(simulationRuns)
-		.set({
-			status: "stopped",
-			score: outcome.score,
-			stoppedAt: new Date(),
-		})
-		.where(eq(simulationRuns.id, runId));
+	try {
+		await db
+			.update(simulationRuns)
+			.set({
+				status: "stopped",
+				score: outcome.score,
+				stoppedAt: new Date(),
+			})
+			.where(eq(simulationRuns.id, runId));
+	} catch (error) {
+		// This is called fire-and-forget (`void finishRun(...)`) from the tick
+		// loop, so an uncaught rejection here would be an unhandled promise
+		// rejection — potentially crashing the process. Catching and logging
+		// loudly is this Foundation's minimal answer; the run is already
+		// removed from the registry above (can't be un-removed without a
+		// resumable-state mechanism, which is S-04's job, not this one), so a
+		// failed write here leaves the row stuck at `status: "running"` with
+		// no live run tracking it. That is a known, logged gap — not silently
+		// swallowed — until S-04 adds real durability.
+		console.error(
+			`server run ${runId}: failed to write final status/score — row may be stuck at "running":`,
+			error,
+		);
+	}
 }
 
 function tick(runId: number): void {

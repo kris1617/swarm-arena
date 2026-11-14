@@ -183,6 +183,30 @@ describe("server-run-registry", () => {
 		activeRunIds.length = 0;
 	});
 
+	it("a DB write failure in finishRun is caught and logged, not an unhandled rejection", async () => {
+		vi.useFakeTimers();
+		const runId = await insertOwnedRunningRun(6);
+		activeRunIds.push(runId);
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+		const updateSpy = vi.spyOn(db, "update").mockImplementationOnce(() => {
+			throw new Error("simulated DB failure");
+		});
+
+		startServerRun({ runId, seed: 6, ...BASE_PARAMS, maxDurationSeconds: 600 });
+		await expect(stopServerRun(runId)).resolves.toBeUndefined();
+
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining(`server run ${runId}`),
+			expect.anything(),
+		);
+
+		updateSpy.mockRestore();
+		consoleErrorSpy.mockRestore();
+		activeRunIds.length = 0; // registry entry already removed by finishRun
+	});
+
 	it("stops the run on a population wipe (zero boids) without crashing", async () => {
 		vi.useFakeTimers();
 		const runId = await insertOwnedRunningRun(4);
