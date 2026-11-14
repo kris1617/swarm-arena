@@ -204,13 +204,13 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 0bc9efc
+- [x] 3.2 Linting passes: `npm run check` — 0bc9efc
+- [x] 3.3 Full suite still passes: `npm test` — 0bc9efc
 
 #### Manual
 
-- [x] 3.4 Desktop screenshots: default (staging form), loading skeleton, an error state
-- [x] 3.5 Mobile (375px) screenshot, no layout regression
-- [x] 3.6 Empty-state N/A reasoning still holds
-- [x] 3.7 Existing error-state coverage (4 mutation error renders) unaffected
+- [x] 3.4 Desktop screenshots: default (staging form), loading skeleton, an error state — 0bc9efc
+- [x] 3.5 Mobile (375px) screenshot, no layout regression — 0bc9efc
+- [x] 3.6 Empty-state N/A reasoning still holds — 0bc9efc
+- [x] 3.7 Existing error-state coverage (4 mutation error renders) unaffected — 0bc9efc

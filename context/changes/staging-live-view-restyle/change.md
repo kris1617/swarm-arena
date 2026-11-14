@@ -1,7 +1,7 @@
 ---
 change_id: staging-live-view-restyle
 title: Restyle the simulation staging form and live view onto the F-06 design-system contract
-status: implementing
+status: implemented
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
