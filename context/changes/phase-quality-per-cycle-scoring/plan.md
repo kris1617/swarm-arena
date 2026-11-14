@@ -212,7 +212,7 @@ None — pure in-memory function, no schema, no persisted shape change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Updated/new tests pass: `npx vitest run src/server/simulation/boids.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 7f31696
+- [x] 1.2 Linting passes: `npm run check` — 7f31696
+- [x] 1.3 Updated/new tests pass: `npx vitest run src/server/simulation/boids.test.ts` — 7f31696
+- [x] 1.4 Full suite still passes: `npm test` — 7f31696
