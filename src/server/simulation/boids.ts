@@ -1256,14 +1256,19 @@ const PHASE_QUALITY_WEIGHTS: Record<PopulationPhase, number> = {
 const RESILIENCE_BONUS_STEP = 0.2;
 const RESILIENCE_BONUS_CAP_CYCLES = 3;
 
-// Counts non-overlapping Crash -> Recovery pairs in `phaseHistory`: scans
+// Finds non-overlapping Crash -> Recovery pairs in `phaseHistory`: scans
 // forward for an unconsumed "crash" tick, then forward from there for the
-// next "recovery" tick: if found, counts one cycle and continues scanning
-// from just past that recovery (so it can't be claimed by a later crash
-// too), otherwise a trailing crash with no following recovery is an
-// incomplete cycle and isn't counted. Single forward pass, O(n).
-function countCrashToRecoveryCycles(phaseHistory: PopulationPhase[]): number {
-	let cycles = 0;
+// next "recovery" tick: if found, records the tick range and continues
+// scanning from just past that recovery (so it can't be claimed by a
+// later crash too), otherwise a trailing crash with no following recovery
+// is an incomplete cycle and isn't recorded. Single forward pass, O(n).
+// S-11 (MS-08): exported so the run-analysis-view can show the actual
+// tick ranges, not just a count (`countCrashToRecoveryCycles` below is now
+// a thin wrapper over this, same algorithm, no behavior change).
+export function segmentCompletedCycles(
+	phaseHistory: PopulationPhase[],
+): { startTick: number; endTick: number }[] {
+	const cycles: { startTick: number; endTick: number }[] = [];
 	let i = 0;
 	while (i < phaseHistory.length) {
 		if (phaseHistory[i] !== "crash") {
@@ -1274,10 +1279,14 @@ function countCrashToRecoveryCycles(phaseHistory: PopulationPhase[]): number {
 		if (recoveryIndex === -1) {
 			break;
 		}
-		cycles++;
+		cycles.push({ startTick: i, endTick: recoveryIndex });
 		i = recoveryIndex + 1;
 	}
 	return cycles;
+}
+
+function countCrashToRecoveryCycles(phaseHistory: PopulationPhase[]): number {
+	return segmentCompletedCycles(phaseHistory).length;
 }
 
 export function computePhaseQuality(phaseHistory: PopulationPhase[]): number {

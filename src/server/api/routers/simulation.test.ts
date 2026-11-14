@@ -947,6 +947,193 @@ describe("simulationRouter.listCompleted", () => {
 	});
 });
 
+describe("simulationRouter.getRunAnalysis", () => {
+	it("rejects with FORBIDDEN when the caller does not own the run", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: "attacker-user-id", role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.getRunAnalysis({ runId: run.id }),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST when the run is missing", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.getRunAnalysis({ runId: 999_999 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST when the run is not completed", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "running",
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.getRunAnalysis({ runId: run.id }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("computes completedCycles and finalGeneticDiversity from a known fixture history", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		// Two non-overlapping crash->recovery cycles, matching
+		// boids.test.ts's segmentCompletedCycles fixture exactly.
+		const twoCycles = [
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"crash",
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"recovery",
+		];
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				history: {
+					phaseHistory: twoCycles,
+					foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+					// A single gene -> computeGeneticDiversity is 0 (no
+					// variance across one sample) — same fact established in
+					// full-score-save-resume's own "allows the owner's own
+					// call to succeed" test.
+					survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+					populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				},
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
+		expect(result.completedCycles).toEqual([
+			{ startTick: 0, endTick: 2 },
+			{ startTick: 4, endTick: 7 },
+		]);
+		expect(result.finalGeneticDiversity).toBe(0);
+		expect(result.history).toMatchObject({
+			phaseHistory: twoCycles,
+		});
+	});
+
+	it("returns empty completedCycles and zero finalGeneticDiversity when history is null", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
+		expect(result.completedCycles).toEqual([]);
+		expect(result.finalGeneticDiversity).toBe(0);
+		expect(result.history).toBeNull();
+	});
+});
+
 describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 	it("seeds and returns the default ranges on first read", async () => {
 		const caller = createCaller({

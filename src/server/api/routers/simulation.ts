@@ -10,10 +10,13 @@ import {
 import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, simulationRuns } from "~/server/db/schema";
 import {
+	type BoidGenes,
 	computeGeneticDiversity,
 	computePhaseQuality,
 	computeResourceManagement,
 	computeScore,
+	type PopulationPhase,
+	segmentCompletedCycles,
 } from "~/server/simulation/boids";
 import {
 	DEFAULT_MAX_OBJECT_COUNT,
@@ -485,6 +488,56 @@ export const simulationRouter = createTRPCRouter({
 			.orderBy(desc(simulationRuns.startedAt))
 			.limit(50);
 	}),
+
+	// S-11 (MS-08): a completed run's full stored data for the
+	// run-analysis-view, plus two values computed server-side so the
+	// client page never needs to import boids.ts (a server-only module).
+	getRunAnalysis: protectedProcedure
+		.input(z.object({ runId: z.number() }))
+		.query(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+			});
+
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "stopped") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not completed",
+				});
+			}
+
+			// `history` is a schema-less JSON column — older rows may have
+			// `null` (predate F-05) or lack `populationCountSamples`
+			// (predate this change's Phase 1). Cast, don't assume.
+			const history = run.history as {
+				phaseHistory: PopulationPhase[];
+				foodRatioSamples: number[];
+				survivorGenes: BoidGenes[];
+				populationCountSamples?: number[];
+			} | null;
+
+			return {
+				id: run.id,
+				score: run.score,
+				startedAt: run.startedAt,
+				stoppedAt: run.stoppedAt,
+				boidCount: run.boidCount,
+				predatorCount: run.predatorCount,
+				history,
+				completedCycles: history
+					? segmentCompletedCycles(history.phaseHistory)
+					: [],
+				finalGeneticDiversity: history
+					? computeGeneticDiversity(history.survivorGenes)
+					: 0,
+			};
+		}),
 
 	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable
 	// "saved" row — distinct from `stop`, which is terminal and scores

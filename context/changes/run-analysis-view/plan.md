@@ -306,19 +306,19 @@ and the values written into it change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 1db166f
+- [x] 1.2 Linting passes: `npm run check` — 1db166f
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts` — 1db166f
+- [x] 1.4 Full suite still passes: `npm test` — 1db166f
 
 ### Phase 2: segmentCompletedCycles, Recharts dependency, getRunAnalysis query
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 New/updated tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/api/routers/simulation.test.ts`
-- [ ] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 New/updated tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/api/routers/simulation.test.ts`
+- [x] 2.4 Full suite still passes: `npm test`
 
 ### Phase 3: /runs/[runId] analysis page, dashboard link
 

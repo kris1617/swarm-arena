@@ -20,6 +20,7 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 	reproducePopulation,
+	segmentCompletedCycles,
 	stepBoids,
 	stepPredators,
 } from "~/server/simulation/boids";
@@ -1030,6 +1031,51 @@ describe("computeResourceManagement", () => {
 
 	it("averages the food-availability-ratio samples", () => {
 		expect(computeResourceManagement([0, 1])).toBe(0.5);
+	});
+});
+
+// S-11 (MS-08): exposes the tick ranges `countCrashToRecoveryCycles`
+// (tested indirectly via computePhaseQuality above) only counts.
+describe("segmentCompletedCycles", () => {
+	it("returns an empty array for a history with no completed cycle", () => {
+		const allCrash: PopulationPhase[] = Array(5).fill("crash");
+		expect(segmentCompletedCycles(allCrash)).toEqual([]);
+	});
+
+	it("returns the correct tick range for a single completed cycle", () => {
+		const oneCycle: PopulationPhase[] = [
+			"growth",
+			"growth",
+			...Array(3).fill("crash"),
+			...Array(2).fill("recovery"),
+		];
+		// crash starts at index 2, the first recovery is at index 5.
+		expect(segmentCompletedCycles(oneCycle)).toEqual([
+			{ startTick: 2, endTick: 5 },
+		]);
+	});
+
+	it("returns one range per non-overlapping cycle, matching the count countCrashToRecoveryCycles derives from it", () => {
+		const twoCycles: PopulationPhase[] = [
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"crash",
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"recovery",
+		];
+		const result = segmentCompletedCycles(twoCycles);
+		expect(result).toEqual([
+			{ startTick: 0, endTick: 2 },
+			{ startTick: 4, endTick: 7 },
+		]);
+		// Same input computePhaseQuality's resilience-bonus test (above)
+		// already proves scores as "2 cycles" via the count this wraps.
+		expect(result).toHaveLength(2);
 	});
 });
 
