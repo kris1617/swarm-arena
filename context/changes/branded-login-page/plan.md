@@ -92,12 +92,12 @@ None.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 `file public/favicon.ico` reports a valid multi-size MS Windows icon resource
+- [x] 1.1 Type checking passes: `npm run typecheck` — b3b7553
+- [x] 1.2 Linting passes: `npm run check` — b3b7553
+- [x] 1.3 Full suite still passes: `npm test` — b3b7553
+- [x] 1.4 `file public/favicon.ico` reports a valid multi-size MS Windows icon resource — b3b7553
 
 #### Manual
 
-- [x] 1.5 New triangle/flock glyph renders in the browser tab on `/login` and other pages
-- [x] 1.6 Icon is legible (not a solid blob) at actual tab size
+- [x] 1.5 New triangle/flock glyph renders in the browser tab on `/login` and other pages — b3b7553
+- [x] 1.6 Icon is legible (not a solid blob) at actual tab size — b3b7553
