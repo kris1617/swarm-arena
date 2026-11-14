@@ -3,4 +3,18 @@ set -eu
 cd /opt/swarm-arena
 git pull --ff-only
 docker compose build app
+# Apply any new migrations against the production DB before the new image
+# starts — previously a manual, undocumented step (see deploy-plan.md's
+# "Known gap"), which is why admin_settings/savedState never landed here
+# even after CI went green. The final `runner` stage ships only the Next.js
+# standalone output (no devDependencies, no drizzle/ files — see Dockerfile),
+# so this targets the `builder` stage instead, which already has the full
+# repo + node_modules baked in as image layers; the `docker compose build`
+# above just populated Docker's layer cache for it, so this build is cheap.
+docker build --target builder -t swarm-arena-migrator:latest .
+docker run --rm \
+	-v /opt/swarm-arena/data:/data \
+	-e DATABASE_URL=file:/data/db.sqlite \
+	-e SKIP_ENV_VALIDATION=1 \
+	swarm-arena-migrator:latest npx drizzle-kit migrate
 docker compose up -d
