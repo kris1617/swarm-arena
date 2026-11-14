@@ -158,22 +158,22 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — e5e80ec
+- [x] 1.2 Linting passes: `npm run check` — e5e80ec
+- [x] 1.3 Full suite still passes: `npm test` — e5e80ec
 
 ### Phase 2: Mount AppShell and restyle the login page
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 2.4 Visiting `/login` (signed out) shows the restyled page with "Swarm Arena" branding, token-based colors, and no sidebar
-- [ ] 2.5 Signing in and landing on `/dashboard` shows the new sidebar shell with working Dashboard/Simulation nav links and a working sign-out action
-- [ ] 2.6 Navigating to `/simulation` keeps the same sidebar shell, with existing staging-form functionality unchanged
-- [ ] 2.7 The browser tab title reads "Swarm Arena", not "Create T3 App"
-- [ ] 2.8 No regression to any existing page's own content/functionality, including `/runs/[runId]` and `/runs/compare`
+- [x] 2.4 Visiting `/login` (signed out) shows the restyled page with "Swarm Arena" branding, token-based colors, and no sidebar
+- [x] 2.5 Signing in and landing on `/dashboard` shows the new sidebar shell with working Dashboard/Simulation nav links and a working sign-out action
+- [x] 2.6 Navigating to `/simulation` keeps the same sidebar shell, with existing staging-form functionality unchanged
+- [x] 2.7 The browser tab title reads "Swarm Arena", not "Create T3 App"
+- [x] 2.8 No regression to any existing page's own content/functionality, including `/runs/[runId]` and `/runs/compare`
