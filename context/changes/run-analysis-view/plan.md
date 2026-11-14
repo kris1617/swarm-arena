@@ -315,22 +315,22 @@ and the values written into it change.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 New/updated tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/api/routers/simulation.test.ts`
-- [x] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — ed94517
+- [x] 2.2 Linting passes: `npm run check` — ed94517
+- [x] 2.3 New/updated tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/api/routers/simulation.test.ts` — ed94517
+- [x] 2.4 Full suite still passes: `npm test` — ed94517
 
 ### Phase 3: /runs/[runId] analysis page, dashboard link
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Completed run with full data shows internally-consistent population chart, phase breakdown, cycle list, and diversity value
-- [ ] 3.5 Pre-Phase-1 run (no populationCountSamples) shows "no population data" instead of crashing, while other sections still render
-- [ ] 3.6 Dashboard's "View analysis" link navigates to the correct run
-- [ ] 3.7 Visiting another user's run analysis page is rejected (FORBIDDEN)
+- [x] 3.4 Completed run with full data shows internally-consistent population chart, phase breakdown, cycle list, and diversity value
+- [x] 3.5 Pre-Phase-1 run (no populationCountSamples) shows "no population data" instead of crashing, while other sections still render
+- [x] 3.6 Dashboard's "View analysis" link navigates to the correct run
+- [x] 3.7 Visiting another user's run analysis page is rejected (FORBIDDEN)

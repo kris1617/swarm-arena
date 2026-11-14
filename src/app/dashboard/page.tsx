@@ -141,6 +141,13 @@ export default function DashboardPage() {
 											? "—"
 											: `Score: ${run.score.toFixed(2)}`}
 									</span>
+									{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
+									<Link
+										className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
+										href={`/runs/${run.id}`}
+									>
+										View analysis
+									</Link>
 								</div>
 							))}
 						</section>
