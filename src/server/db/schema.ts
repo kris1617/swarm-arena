@@ -47,6 +47,12 @@ export const users = createTable("user", (d) => ({
 		.text("role", { enum: ["member", "admin"] })
 		.notNull()
 		.default("member"),
+	// temporary-admin-elevation (FR-030): null means "not time-boxed" (never
+	// elevated via this mechanism, or a permanent ADMIN_EMAILS admin) and
+	// never expires; a future timestamp means a still-valid time-boxed
+	// grant; a past timestamp means a lapsed grant, treated as `member` by
+	// `isEffectivelyAdmin` regardless of what `role` still literally says.
+	elevatedUntil: d.integer({ mode: "timestamp" }),
 }));
 
 export const accounts = createTable(

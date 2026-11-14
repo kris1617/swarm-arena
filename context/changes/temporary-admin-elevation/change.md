@@ -1,7 +1,7 @@
 ---
 change_id: temporary-admin-elevation
 title: Time-boxed, self-service admin elevation for any account
-status: plan_reviewed
+status: implementing
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null

@@ -214,10 +214,10 @@ One schema migration (`elevatedUntil` nullable column, `npm run db:generate` + `
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 New unit tests cover all 4 `isEffectivelyAdmin` cases
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run check`
+- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.4 New unit tests cover all 4 `isEffectivelyAdmin` cases
 
 ### Phase 2: Mutations, query, and wiring
 

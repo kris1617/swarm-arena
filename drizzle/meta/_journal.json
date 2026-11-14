@@ -36,6 +36,13 @@
       "when": 1794666829023,
       "tag": "0004_colorful_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794690659908,
+      "tag": "0005_loving_tarantula",
+      "breakpoints": true
     }
   ]
 }
