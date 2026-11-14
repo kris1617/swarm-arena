@@ -194,7 +194,7 @@ score-time, not new computation or new unbounded growth.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — ae1b9ee
+- [x] 1.2 Linting passes: `npm run check` — ae1b9ee
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts` — ae1b9ee
+- [x] 1.4 Full suite still passes: `npm test` — ae1b9ee
