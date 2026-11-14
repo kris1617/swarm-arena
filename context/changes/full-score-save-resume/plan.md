@@ -601,10 +601,10 @@ populations.
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 Updated test passes: `npx vitest run src/server/simulation/rng.test.ts`
-- [ ] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run check`
+- [x] 1.3 Updated test passes: `npx vitest run src/server/simulation/rng.test.ts`
+- [x] 1.4 Full suite still passes: `npm test`
 
 ### Phase 2: Admin-defined parameter ranges (FR-002 full, FR-018 full)
 

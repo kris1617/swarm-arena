@@ -27,4 +27,35 @@ describe("createRng", () => {
 		expect(() => createRng(Number.NaN)).toThrow(RangeError);
 		expect(() => createRng(1.5)).toThrow(RangeError);
 	});
+
+	it("is still callable as a plain () => number everywhere it was before", () => {
+		const rng = createRng(1);
+		const value: number = rng();
+		expect(typeof value).toBe("number");
+	});
+
+	it("getState/setState round-trips to the exact continuing sequence", () => {
+		const live = createRng(7);
+		// Advance partway through a sequence.
+		for (let i = 0; i < 5; i++) {
+			live();
+		}
+		const capturedState = live.getState();
+		const continuedFromLive = Array.from({ length: 5 }, () => live());
+
+		// A fresh rng, replayed to the same point via setState, must produce
+		// the identical continuation — not just "a" sequence, but the exact
+		// one the live rng would have produced had it never been
+		// snapshotted.
+		const restored = createRng(999); // different seed — setState must override it
+		restored.setState(capturedState);
+		const continuedFromRestored = Array.from({ length: 5 }, () => restored());
+
+		expect(continuedFromRestored).toEqual(continuedFromLive);
+	});
+
+	it("getState returns the seed itself before any advance", () => {
+		const rng = createRng(123);
+		expect(rng.getState()).toBe(123);
+	});
 });

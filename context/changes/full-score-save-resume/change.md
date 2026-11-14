@@ -1,7 +1,7 @@
 ---
 change_id: full-score-save-resume
 title: Full scoring with save and resume
-status: plan_reviewed
+status: implementing
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
