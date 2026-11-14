@@ -950,6 +950,194 @@ describe("simulationRouter.listCompleted", () => {
 	});
 });
 
+describe("simulationRouter.getParameterSuggestion", () => {
+	it("computes the suggestion from only the caller's own stopped runs, excluding another user's", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [other] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!other) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(other.id);
+
+		// Owner's own runs: boidCount perfectly correlated with score.
+		const boidCounts = [10, 20, 30, 40, 50, 60];
+		const scores = [1, 2, 3, 4, 5, 6];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				boidCount: boidCounts[i] as number,
+				status: "stopped",
+				score: scores[i],
+				stoppedAt: new Date(),
+			});
+		}
+
+		// Another user's runs, with a parameter/score relationship that would
+		// win if it leaked into the caller's computation — must be ignored.
+		for (let i = 0; i < 6; i++) {
+			await db.insert(simulationRuns).values({
+				userId: other.id,
+				seed: 100 + i,
+				...VALID_START_INPUT,
+				predatorCount: i,
+				status: "stopped",
+				score: 6 - i,
+				stoppedAt: new Date(),
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result.status).toBe("ok");
+		if (result.status === "ok") {
+			expect(result.parameter).toBe("boidCount");
+			expect(result.sampleSize).toBe(6);
+			expect(result.direction).toBe("increase");
+		}
+	});
+
+	it("excludes non-stopped runs from the computation", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		// Only 2 stopped runs — below the minimum sample size on its own —
+		// plus running/saved rows that must not be counted toward it.
+		const boidCounts = [10, 20];
+		const scores = [1, 2];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				boidCount: boidCounts[i] as number,
+				status: "stopped",
+				score: scores[i],
+				stoppedAt: new Date(),
+			});
+		}
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 50,
+			...VALID_START_INPUT,
+			boidCount: 30,
+			status: "running",
+		});
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 51,
+			...VALID_START_INPUT,
+			boidCount: 40,
+			status: "saved",
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result).toEqual({ status: "insufficient-data" });
+	});
+
+	it("excludes stopped rows with a null score", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const boidCounts = [10, 20];
+		const scores = [1, 2];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				boidCount: boidCounts[i] as number,
+				status: "stopped",
+				score: scores[i],
+				stoppedAt: new Date(),
+			});
+		}
+		// plan-review F1 precedent (listCompleted): a stopped row can have a
+		// null score — must be excluded, not treated as a 3rd sample.
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 2,
+			...VALID_START_INPUT,
+			boidCount: 30,
+			status: "stopped",
+			stoppedAt: new Date(),
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		// Only 2 non-null-score rows reach the heuristic — below the minimum
+		// sample size, so it must report insufficient-data rather than
+		// computing from 3 rows (one of which has no real score).
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result).toEqual({ status: "insufficient-data" });
+	});
+
+	it("returns insufficient-data for a caller with no completed runs", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result).toEqual({ status: "insufficient-data" });
+	});
+
+	it("rejects with UNAUTHORIZED when there is no session", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: null,
+		});
+
+		await expect(
+			caller.simulation.getParameterSuggestion(),
+		).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 describe("simulationRouter.getRunAnalysis", () => {
 	it("rejects with FORBIDDEN when the caller does not own the run", async () => {
 		const [owner] = await db

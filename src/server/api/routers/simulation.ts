@@ -24,6 +24,11 @@ import {
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
 } from "~/server/simulation/parameter-ranges";
+import {
+	type ParameterSuggestion,
+	type SuggestionInputRow,
+	suggestParameterChange,
+} from "~/server/simulation/parameter-suggestion";
 // Shared cap on how many simulations (staging or server-run) a user may
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
@@ -493,6 +498,58 @@ export const simulationRouter = createTRPCRouter({
 			.orderBy(desc(simulationRuns.startedAt))
 			.limit(50);
 	}),
+
+	// parameter-suggestion-heuristic Phase 1: heuristic "try changing this
+	// parameter" nudge for the staging page, scoped to the caller's own
+	// completed runs — same ownership/status filter as `listCompleted`
+	// above, `.limit(500)` sized larger since this reads 13 parameter
+	// columns per row rather than the handful `listCompleted` selects.
+	getParameterSuggestion: protectedProcedure.query(
+		async ({ ctx }): Promise<ParameterSuggestion> => {
+			const userId = ctx.session.user.id;
+			if (!userId) {
+				throw new TRPCError({ code: "UNAUTHORIZED" });
+			}
+
+			const rows = await ctx.db
+				.select({
+					score: simulationRuns.score,
+					boidCount: simulationRuns.boidCount,
+					separationWeight: simulationRuns.separationWeight,
+					alignmentWeight: simulationRuns.alignmentWeight,
+					cohesionWeight: simulationRuns.cohesionWeight,
+					maxDurationSeconds: simulationRuns.maxDurationSeconds,
+					predatorCount: simulationRuns.predatorCount,
+					protectionThreshold: simulationRuns.protectionThreshold,
+					foodStockInitial: simulationRuns.foodStockInitial,
+					foodRegenRate: simulationRuns.foodRegenRate,
+					flockCount: simulationRuns.flockCount,
+					energyThreshold: simulationRuns.energyThreshold,
+					mutationChance: simulationRuns.mutationChance,
+					mutationMagnitude: simulationRuns.mutationMagnitude,
+				})
+				.from(simulationRuns)
+				.where(
+					and(
+						eq(simulationRuns.userId, userId),
+						eq(simulationRuns.status, "stopped"),
+					),
+				)
+				.limit(500);
+
+			// Defensive: `stopped` rows should always have a score, but
+			// `startServer`'s catch-block failure path (above) can leave one
+			// null — exclude rather than let `suggestParameterChange` see a
+			// non-numeric score.
+			const inputRows: SuggestionInputRow[] = rows
+				.filter(
+					(row): row is typeof row & { score: number } => row.score !== null,
+				)
+				.map((row) => ({ ...row, score: row.score }));
+
+			return suggestParameterChange(inputRows);
+		},
+	),
 
 	// S-11 (MS-08): a completed run's full stored data for the
 	// run-analysis-view, plus two values computed server-side so the
