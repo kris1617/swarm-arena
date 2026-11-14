@@ -166,14 +166,14 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — cdc4bd6
+- [x] 2.2 Linting passes: `npm run check` — cdc4bd6
+- [x] 2.3 Full suite still passes: `npm test` — cdc4bd6
 
 #### Manual
 
-- [x] 2.4 Visiting `/login` (signed out) shows the restyled page with "Swarm Arena" branding, token-based colors, and no sidebar
-- [x] 2.5 Signing in and landing on `/dashboard` shows the new sidebar shell with working Dashboard/Simulation nav links and a working sign-out action
-- [x] 2.6 Navigating to `/simulation` keeps the same sidebar shell, with existing staging-form functionality unchanged
-- [x] 2.7 The browser tab title reads "Swarm Arena", not "Create T3 App"
-- [x] 2.8 No regression to any existing page's own content/functionality, including `/runs/[runId]` and `/runs/compare`
+- [x] 2.4 Visiting `/login` (signed out) shows the restyled page with "Swarm Arena" branding, token-based colors, and no sidebar — cdc4bd6
+- [x] 2.5 Signing in and landing on `/dashboard` shows the new sidebar shell with working Dashboard/Simulation nav links and a working sign-out action — cdc4bd6
+- [x] 2.6 Navigating to `/simulation` keeps the same sidebar shell, with existing staging-form functionality unchanged — cdc4bd6
+- [x] 2.7 The browser tab title reads "Swarm Arena", not "Create T3 App" — cdc4bd6
+- [x] 2.8 No regression to any existing page's own content/functionality, including `/runs/[runId]` and `/runs/compare` — cdc4bd6
