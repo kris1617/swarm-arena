@@ -67,7 +67,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
-| S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | in-progress |
+| S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | ready |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
 
@@ -437,7 +437,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — reuses the same persisted `history` (phaseHistory, foodRatioSamples) S-11/S-13 already read; the new logic is "reason about one run's own trajectory" rather than "correlate across runs," a narrower, more constrained problem than S-13's. Sequencing alongside S-18 (analysis restyle) avoids touching that page's layout twice, though it is not a hard dependency.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-22: Temporary admin elevation
 
@@ -525,6 +525,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-21: User sees a run-specific optimization suggestion on a completed run's analysis view, derived from that single run's own phase/resource history — distinct from S-13's cross-run suggestion.** — Archived 2026-11-14 → `context/archive/2026-11-14-post-run-optimization-suggestion/`. Lesson: —.
 - **S-18: User sees the run-analysis and run-comparison pages restyled with the new design direction, with no change to existing chart/table behavior.** — Archived 2026-11-14 → `context/archive/2026-11-14-analysis-comparison-restyle/`. Lesson: —.
 - **S-17: User sees the simulation staging form and live view restyled with the new design direction, with no change to existing form state or live-rendering behavior.** — Archived 2026-11-14 → `context/archive/2026-11-14-staging-live-view-restyle/`. Lesson: —.
 - **S-16: User sees the post-login dashboard restyled with the new design direction, with no change to its existing Running/Saved/Completed functionality.** — Archived 2026-11-14 → `context/archive/2026-11-14-dashboard-restyle/`. Lesson: an `isLoading` state and a `<main>`/landmark fix both shipped cleanly, but impl-review still caught a missing `isError` branch the plan itself had reasoned away as N/A — the 7-state matrix's "error" cell deserves a second look whenever a view's plan dismisses it without checking the underlying query's actual failure mode.
