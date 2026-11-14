@@ -9,7 +9,12 @@ import {
 } from "~/server/api/trpc";
 import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, simulationRuns } from "~/server/db/schema";
-import { computeScore } from "~/server/simulation/boids";
+import {
+	computeGeneticDiversity,
+	computePhaseQuality,
+	computeResourceManagement,
+	computeScore,
+} from "~/server/simulation/boids";
 import {
 	DEFAULT_MAX_OBJECT_COUNT,
 	DEFAULT_PARAMETER_RANGES,
@@ -251,6 +256,41 @@ export const simulationRouter = createTRPCRouter({
 				// .max(50_000) closes an unbounded-array resource surface — generous
 				// relative to the 600s run cap above even at a high sample rate.
 				cohesionSamples: z.array(z.number().min(0).max(1)).min(1).max(50_000),
+				// S-04 (FR-010 full, FR-019): the client-staged path's scoring
+				// signals, matching the server-owned path's locally-tracked state
+				// (server-run-registry.ts). Raw signals, not pre-computed factor
+				// numbers — the server computes the score, same trust posture
+				// `cohesionSamples` already established.
+				foodRatioSamples: z.array(z.number().min(0).max(1)).min(1).max(50_000),
+				phaseHistory: z
+					.array(
+						z.enum([
+							"establishment",
+							"growth",
+							"overshoot",
+							"crash",
+							"recovery",
+						]),
+					)
+					.min(1)
+					.max(50_000),
+				survivingBoidGenes: z.array(
+					z.object({
+						color: z.object({
+							r: z.number(),
+							g: z.number(),
+							b: z.number(),
+						}),
+						flockId: z.number(),
+						separationWeight: z.number(),
+						alignmentWeight: z.number(),
+						cohesionWeight: z.number(),
+						maxSpeed: z.number(),
+						minSpeed: z.number(),
+						maxLifespan: z.number(),
+						matePreference: z.number(),
+					}),
+				),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -275,7 +315,12 @@ export const simulationRouter = createTRPCRouter({
 				run.maxDurationSeconds + 1,
 			);
 
-			const score = computeScore(input.cohesionSamples, clampedElapsedTicks);
+			const score = computeScore(
+				clampedElapsedTicks,
+				computeResourceManagement(input.foodRatioSamples),
+				computeGeneticDiversity(input.survivingBoidGenes),
+				computePhaseQuality(input.phaseHistory),
+			);
 
 			// Race-safety net: a second concurrent `stop` call for the same run
 			// can pass the read-time check above before either write lands. The

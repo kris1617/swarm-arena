@@ -5,7 +5,11 @@ import {
 	applyPredation,
 	type BoidGenes,
 	type BoidState,
+	classifyPopulationPhase,
 	computeCohesion,
+	computeGeneticDiversity,
+	computePhaseQuality,
+	computeResourceManagement,
 	computeScore,
 	createInitialPopulation,
 	createInitialPredators,
@@ -13,6 +17,7 @@ import {
 	inheritGenes,
 	MATE_DISTANCE_RADIUS,
 	MATURITY_AGE_SECONDS,
+	type PopulationPhase,
 	type PredatorState,
 	reproducePopulation,
 	stepBoids,
@@ -935,21 +940,162 @@ describe("predator-prey dynamics", () => {
 	});
 });
 
-describe("computeScore", () => {
-	it("increases monotonically with elapsedTicks, holding cohesion fixed", () => {
-		const samples = [0.8, 0.8, 0.8];
+describe("computeGeneticDiversity (S-04 FR-010 full — correctness fix)", () => {
+	it("returns 0 for an empty population", () => {
+		expect(computeGeneticDiversity([])).toBe(0);
+	});
 
-		expect(computeScore(samples, 20)).toBeGreaterThan(
-			computeScore(samples, 10),
+	it("returns 0 when every individual has identical genes", () => {
+		const genes = Array.from({ length: 5 }, () => makeGenes());
+		expect(computeGeneticDiversity(genes)).toBe(0);
+	});
+
+	it("returns a higher value for a population with widely spread gene values than one with tightly clustered values", () => {
+		const tight = [
+			makeGenes(WEIGHTS, { maxSpeed: 40 }),
+			makeGenes(WEIGHTS, { maxSpeed: 41 }),
+			makeGenes(WEIGHTS, { maxSpeed: 39 }),
+		];
+		const spread = [
+			makeGenes(WEIGHTS, { maxSpeed: 10 }),
+			makeGenes(WEIGHTS, { maxSpeed: 80 }),
+			makeGenes(WEIGHTS, { maxSpeed: 150 }),
+		];
+
+		expect(computeGeneticDiversity(spread)).toBeGreaterThan(
+			computeGeneticDiversity(tight),
 		);
 	});
 
-	it("increases monotonically with average cohesion, holding elapsedTicks fixed", () => {
-		const lowCohesion = [0.2, 0.2, 0.2];
-		const highCohesion = [0.9, 0.9, 0.9];
+	it("does not read computeCohesion's spatial-clustering concept at all — same genes at different positions still reads 0 diversity", () => {
+		// Regression guard for the S-01/S-03 mislabeling this fix corrects:
+		// genetic diversity must depend only on genes, never on position.
+		const genes = makeGenes();
+		expect(computeGeneticDiversity([genes, genes, genes])).toBe(0);
+	});
+});
 
-		expect(computeScore(highCohesion, 10)).toBeGreaterThan(
-			computeScore(lowCohesion, 10),
+describe("classifyPopulationPhase", () => {
+	const WINDOW = 20;
+
+	function sample(populationCount: number, foodAvailabilityRatio: number) {
+		return { populationCount, foodAvailabilityRatio };
+	}
+
+	it("classifies as establishment when fewer than the window's worth of history exists", () => {
+		const shortHistory = Array.from({ length: WINDOW - 1 }, () =>
+			sample(50, 0.9),
 		);
+		expect(classifyPopulationPhase(shortHistory, null)).toBe("establishment");
+	});
+
+	it("classifies as growth when population is rising and food is abundant", () => {
+		const history = Array.from({ length: WINDOW }, (_, i) =>
+			sample(50 + i * 5, 0.9),
+		);
+		expect(classifyPopulationPhase(history, null)).toBe("growth");
+	});
+
+	it("classifies as overshoot when population is elevated but food is scarce, without a sharp decline yet", () => {
+		const history = Array.from({ length: WINDOW }, () => sample(200, 0.1));
+		expect(classifyPopulationPhase(history, null)).toBe("overshoot");
+	});
+
+	it("classifies as crash when population is sharply declining alongside scarce food", () => {
+		const history = Array.from({ length: WINDOW }, (_, i) =>
+			sample(200 - i * 10, 0.1),
+		);
+		expect(classifyPopulationPhase(history, null)).toBe("crash");
+	});
+
+	it("classifies as recovery only when the previous phase was crash and population is no longer declining", () => {
+		const recoveringHistory = Array.from({ length: WINDOW }, (_, i) =>
+			sample(50 + i, 0.5),
+		);
+		expect(classifyPopulationPhase(recoveringHistory, "crash")).toBe(
+			"recovery",
+		);
+
+		// The same rising population, with no prior crash, is just growth —
+		// recovery is only reachable from crash.
+		expect(classifyPopulationPhase(recoveringHistory, "growth")).toBe("growth");
+		expect(classifyPopulationPhase(recoveringHistory, null)).toBe("growth");
+	});
+});
+
+describe("computeResourceManagement", () => {
+	it("returns 0 for no samples", () => {
+		expect(computeResourceManagement([])).toBe(0);
+	});
+
+	it("averages the food-availability-ratio samples", () => {
+		expect(computeResourceManagement([0, 1])).toBe(0.5);
+	});
+});
+
+describe("computePhaseQuality", () => {
+	it("returns 0 for an empty phase history", () => {
+		expect(computePhaseQuality([])).toBe(0);
+	});
+
+	it("scores a run that stays in growth higher than one that stays in crash", () => {
+		const allGrowth: PopulationPhase[] = Array(10).fill("growth");
+		const allCrash: PopulationPhase[] = Array(10).fill("crash");
+
+		expect(computePhaseQuality(allGrowth)).toBeGreaterThan(
+			computePhaseQuality(allCrash),
+		);
+	});
+
+	it("rewards a genuine crash-then-recovery run above a crash-only run of the same length (resilience bonus)", () => {
+		const crashOnly: PopulationPhase[] = Array(10).fill("crash");
+		const crashThenRecovery: PopulationPhase[] = [
+			...Array(5).fill("crash"),
+			...Array(5).fill("recovery"),
+		];
+
+		expect(computePhaseQuality(crashThenRecovery)).toBeGreaterThan(
+			computePhaseQuality(crashOnly),
+		);
+	});
+
+	it("never exceeds 1 even with the resilience bonus applied", () => {
+		const allGrowthThenRecovery: PopulationPhase[] = [
+			"crash",
+			...Array(20).fill("recovery"),
+		];
+		expect(computePhaseQuality(allGrowthThenRecovery)).toBeLessThanOrEqual(1);
+	});
+});
+
+describe("computeScore", () => {
+	it("increases monotonically with elapsedTicks, holding every other factor fixed", () => {
+		expect(computeScore(20, 0.8, 0.8, 0.8)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8),
+		);
+	});
+
+	it("increases monotonically with resourceManagement, holding every other factor fixed", () => {
+		expect(computeScore(10, 0.9, 0.8, 0.8)).toBeGreaterThan(
+			computeScore(10, 0.2, 0.8, 0.8),
+		);
+	});
+
+	it("increases monotonically with geneticDiversity, holding every other factor fixed", () => {
+		expect(computeScore(10, 0.8, 0.9, 0.8)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.2, 0.8),
+		);
+	});
+
+	it("increases monotonically with phaseQuality, holding every other factor fixed", () => {
+		expect(computeScore(10, 0.8, 0.8, 0.9)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.2),
+		);
+	});
+
+	it("is 0 when any single factor is 0 (true product, not a sum)", () => {
+		expect(computeScore(10, 0, 0.8, 0.8)).toBe(0);
+		expect(computeScore(10, 0.8, 0, 0.8)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0)).toBe(0);
 	});
 });

@@ -5,10 +5,14 @@ import { db } from "~/server/db";
 import { simulationRuns } from "~/server/db/schema";
 import {
 	type BoidState,
+	computeGeneticDiversity,
+	computePhaseQuality,
+	computeResourceManagement,
 	computeScore,
 	createInitialPopulation,
 	createInitialPredators,
 	type FlockWeights,
+	type PopulationPhase,
 	type PredatorState,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
@@ -50,6 +54,9 @@ type LiveRun = {
 	predators: PredatorState[];
 	foodStock: number;
 	cohesionSamples: number[];
+	foodRatioSamples: number[];
+	populationCountSamples: number[];
+	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
 	populationCapped: boolean;
@@ -142,6 +149,9 @@ function tick(runId: number): void {
 				predators: run.predators,
 				foodStock: run.foodStock,
 				cohesionSamples: run.cohesionSamples,
+				foodRatioSamples: run.foodRatioSamples,
+				populationCountSamples: run.populationCountSamples,
+				phaseHistory: run.phaseHistory,
 				elapsedSeconds: run.elapsedSeconds,
 				lastTimestamp: run.lastTimestamp,
 			},
@@ -163,12 +173,20 @@ function tick(runId: number): void {
 		run.predators = result.predators;
 		run.foodStock = result.foodStock;
 		run.cohesionSamples = result.cohesionSamples;
+		run.foodRatioSamples = result.foodRatioSamples;
+		run.populationCountSamples = result.populationCountSamples;
+		run.phaseHistory = result.phaseHistory;
 		run.elapsedSeconds = result.elapsedSeconds;
 		run.lastTimestamp = result.lastTimestamp;
 		run.populationCapped = result.populationCapped;
 
 		if (result.shouldStop) {
-			const score = computeScore(run.cohesionSamples, run.elapsedSeconds);
+			const score = computeScore(
+				run.elapsedSeconds,
+				computeResourceManagement(run.foodRatioSamples),
+				computeGeneticDiversity(run.boids.map((b) => b.genes)),
+				computePhaseQuality(run.phaseHistory),
+			);
 			void finishRun(runId, { score });
 		}
 	} catch (error) {
@@ -223,6 +241,9 @@ export function startServerRun(params: ServerRunParams): void {
 		predators,
 		foodStock: params.foodStockInitial,
 		cohesionSamples: [],
+		foodRatioSamples: [],
+		populationCountSamples: [],
+		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: null,
 		populationCapped: false,
@@ -244,7 +265,12 @@ export async function stopServerRun(runId: number): Promise<void> {
 		// stop should not throw.
 		return;
 	}
-	const score = computeScore(run.cohesionSamples, run.elapsedSeconds);
+	const score = computeScore(
+		run.elapsedSeconds,
+		computeResourceManagement(run.foodRatioSamples),
+		computeGeneticDiversity(run.boids.map((b) => b.genes)),
+		computePhaseQuality(run.phaseHistory),
+	);
 	await finishRun(runId, { score });
 }
 

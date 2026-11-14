@@ -9,6 +9,7 @@ import {
 	createInitialPopulation,
 	createInitialPredators,
 	type FlockWeights,
+	type PopulationPhase,
 	type PredatorState,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
@@ -192,6 +193,11 @@ export function SimulationCanvas({
 	const predatorsRef = useRef<PredatorState[]>([]);
 	const foodStockRef = useRef(foodStockInitial);
 	const cohesionSamplesRef = useRef<number[]>([]);
+	// S-04 (FR-010 full, FR-019): threaded through the same shared tick core
+	// server-run-registry.ts uses — see single-run-lifecycle.ts.
+	const foodRatioSamplesRef = useRef<number[]>([]);
+	const populationCountSamplesRef = useRef<number[]>([]);
+	const phaseHistoryRef = useRef<PopulationPhase[]>([]);
 	const elapsedSecondsRef = useRef(0);
 	const rafIdRef = useRef<number>(0);
 	const lastTimestampRef = useRef<number | null>(null);
@@ -208,6 +214,35 @@ export function SimulationCanvas({
 			);
 		},
 	});
+
+	// S-04 (FR-010 full, FR-019): the signals `stop`'s mutation input needs
+	// so the server can compute the real 4-factor score. Sends raw signals
+	// (same trust posture `cohesionSamples` already established — client
+	// reports, server computes), not pre-computed factor numbers.
+	// `survivingBoidGenes` carries only the gene fields
+	// `computeGeneticDiversity` reads, not full per-boid position/velocity/
+	// age/energy state it doesn't need. Defined at component scope (not
+	// inside the effect below) so both the effect's `stop()` and
+	// `handleManualStop()` below can call it.
+	function buildStopInput() {
+		return {
+			runId,
+			elapsedTicks: elapsedSecondsRef.current,
+			cohesionSamples:
+				cohesionSamplesRef.current.length > 0
+					? cohesionSamplesRef.current
+					: [0],
+			foodRatioSamples:
+				foodRatioSamplesRef.current.length > 0
+					? foodRatioSamplesRef.current
+					: [0],
+			phaseHistory:
+				phaseHistoryRef.current.length > 0
+					? phaseHistoryRef.current
+					: (["establishment"] satisfies PopulationPhase[]),
+			survivingBoidGenes: boidsRef.current.map((boid) => boid.genes),
+		};
+	}
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
 	useEffect(() => {
@@ -252,14 +287,7 @@ export function SimulationCanvas({
 			hasStoppedRef.current = true;
 			cancelAnimationFrame(rafIdRef.current);
 			setStatus("stopped");
-			stopRun.mutate({
-				runId,
-				elapsedTicks: elapsedSecondsRef.current,
-				cohesionSamples:
-					cohesionSamplesRef.current.length > 0
-						? cohesionSamplesRef.current
-						: [0],
-			});
+			stopRun.mutate(buildStopInput());
 		}
 
 		function tick(timestamp: number) {
@@ -273,6 +301,9 @@ export function SimulationCanvas({
 						predators: predatorsRef.current,
 						foodStock: foodStockRef.current,
 						cohesionSamples: cohesionSamplesRef.current,
+						foodRatioSamples: foodRatioSamplesRef.current,
+						populationCountSamples: populationCountSamplesRef.current,
+						phaseHistory: phaseHistoryRef.current,
 						elapsedSeconds: elapsedSecondsRef.current,
 						lastTimestamp: lastTimestampRef.current,
 					},
@@ -294,6 +325,9 @@ export function SimulationCanvas({
 				predatorsRef.current = result.predators;
 				foodStockRef.current = result.foodStock;
 				cohesionSamplesRef.current = result.cohesionSamples;
+				foodRatioSamplesRef.current = result.foodRatioSamples;
+				populationCountSamplesRef.current = result.populationCountSamples;
+				phaseHistoryRef.current = result.phaseHistory;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;
 				setPopulationCapped(result.populationCapped);
@@ -333,14 +367,7 @@ export function SimulationCanvas({
 		hasStoppedRef.current = true;
 		cancelAnimationFrame(rafIdRef.current);
 		setStatus("stopped");
-		stopRun.mutate({
-			runId,
-			elapsedTicks: elapsedSecondsRef.current,
-			cohesionSamples:
-				cohesionSamplesRef.current.length > 0
-					? cohesionSamplesRef.current
-					: [0],
-		});
+		stopRun.mutate(buildStopInput());
 	}
 
 	return (

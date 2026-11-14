@@ -64,6 +64,12 @@ function buildState(
 		predators: [],
 		foodStock: 100,
 		cohesionSamples: [],
+		// S-04 (FR-010 full, FR-019): threaded alongside cohesionSamples —
+		// empty defaults are fine for every pre-existing test here, none of
+		// which assert on resource-management/phase-classifier state.
+		foodRatioSamples: [],
+		populationCountSamples: [],
+		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: 0,
 		...overrides,

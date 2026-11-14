@@ -1,6 +1,8 @@
 import {
 	type BoidState,
+	classifyPopulationPhase,
 	computeCohesion,
+	type PopulationPhase,
 	type PredatorState,
 	runTick,
 } from "~/server/simulation/boids";
@@ -21,6 +23,13 @@ export function computeSingleRunTick(
 		predators: PredatorState[];
 		foodStock: number;
 		cohesionSamples: number[];
+		// S-04 (FR-010 full, FR-019): threaded once here so both the
+		// client-staged and server-owned paths (which both call this one
+		// shared function) get resource-management/phase-classifier
+		// tracking automatically, with no duplicated logic.
+		foodRatioSamples: number[];
+		populationCountSamples: number[];
+		phaseHistory: PopulationPhase[];
 		elapsedSeconds: number;
 		lastTimestamp: number | null;
 	},
@@ -45,6 +54,9 @@ export function computeSingleRunTick(
 	predators: PredatorState[];
 	foodStock: number;
 	cohesionSamples: number[];
+	foodRatioSamples: number[];
+	populationCountSamples: number[];
+	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number;
 	shouldStop: boolean;
@@ -70,6 +82,7 @@ export function computeSingleRunTick(
 		predators: nextPredators,
 		foodStock: nextFoodStock,
 		populationCapped,
+		foodAvailabilityRatio,
 	} = runTick(
 		{
 			boids: state.boids,
@@ -94,6 +107,27 @@ export function computeSingleRunTick(
 		...state.cohesionSamples,
 		computeCohesion(nextBoids),
 	];
+	const nextFoodRatioSamples = [
+		...state.foodRatioSamples,
+		foodAvailabilityRatio,
+	];
+	const nextPopulationCountSamples = [
+		...state.populationCountSamples,
+		nextBoids.length,
+	];
+	const phaseHistoryWindow = nextPopulationCountSamples.map(
+		(populationCount, index) => ({
+			populationCount,
+			foodAvailabilityRatio:
+				nextFoodRatioSamples[index] ?? foodAvailabilityRatio,
+		}),
+	);
+	const nextPhase = classifyPopulationPhase(
+		phaseHistoryWindow,
+		state.phaseHistory.at(-1) ?? null,
+	);
+	const nextPhaseHistory = [...state.phaseHistory, nextPhase];
+
 	const nextElapsedSeconds = state.elapsedSeconds + dtSeconds;
 	const shouldStop =
 		nextElapsedSeconds >= params.maxDurationSeconds || nextBoids.length === 0;
@@ -103,6 +137,9 @@ export function computeSingleRunTick(
 		predators: nextPredators,
 		foodStock: nextFoodStock,
 		cohesionSamples: nextCohesionSamples,
+		foodRatioSamples: nextFoodRatioSamples,
+		populationCountSamples: nextPopulationCountSamples,
+		phaseHistory: nextPhaseHistory,
 		elapsedSeconds: nextElapsedSeconds,
 		lastTimestamp: timestamp,
 		shouldStop,

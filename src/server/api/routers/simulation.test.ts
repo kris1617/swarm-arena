@@ -29,6 +29,34 @@ const VALID_START_INPUT = {
 	mutationMagnitude: 0.2,
 };
 
+// S-04 (FR-010 full, FR-019): the stop input's new required fields —
+// minimal valid values shared by every pre-existing stop() test below, none
+// of which assert on resource-management/phase-classifier/genetic-diversity
+// scoring.
+const VALID_STOP_EXTRAS = {
+	foodRatioSamples: [0.5],
+	phaseHistory: ["establishment"] satisfies (
+		| "establishment"
+		| "growth"
+		| "overshoot"
+		| "crash"
+		| "recovery"
+	)[],
+	survivingBoidGenes: [
+		{
+			color: { r: 0, g: 0, b: 0 },
+			flockId: 0,
+			separationWeight: 1,
+			alignmentWeight: 1,
+			cohesionWeight: 1,
+			maxSpeed: 40,
+			minSpeed: 15,
+			maxLifespan: 100,
+			matePreference: 0,
+		},
+	],
+};
+
 // A minimal but type-correct session (see the `declare module "next-auth"`
 // augmentation in ~/server/auth/config.ts) — just enough for
 // `protectedProcedure`'s middleware to pass. The FR-018 combined-cap check
@@ -296,6 +324,7 @@ describe("simulationRouter.stop authorization", () => {
 				runId,
 				elapsedTicks: 1,
 				cohesionSamples: [0.5],
+				...VALID_STOP_EXTRAS,
 			}),
 		).rejects.toMatchObject({
 			code: "FORBIDDEN",
@@ -318,9 +347,17 @@ describe("simulationRouter.stop authorization", () => {
 			runId,
 			elapsedTicks: 1,
 			cohesionSamples: [0.5],
+			...VALID_STOP_EXTRAS,
 		});
 
-		expect(result).toMatchObject({ score: 0.5 });
+		// S-04: score is now a 4-factor product (survival x resourceManagement
+		// x geneticDiversity x phaseQuality) — a single surviving boid's
+		// genetic diversity is 0 (no variance across one sample), so the
+		// product is 0 regardless of the other factors. This test is about
+		// ownership succeeding, not the formula's value — formula behavior is
+		// covered by boids.test.ts's computeScore/computeGeneticDiversity
+		// suites.
+		expect(result).toMatchObject({ score: 0 });
 	});
 
 	it("rejects with UNAUTHORIZED when there is no session", async () => {
@@ -335,6 +372,7 @@ describe("simulationRouter.stop authorization", () => {
 				runId: 1,
 				elapsedTicks: 1,
 				cohesionSamples: [0.5],
+				...VALID_STOP_EXTRAS,
 			}),
 		).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
@@ -358,6 +396,7 @@ describe("simulationRouter.stop authorization", () => {
 				runId,
 				elapsedTicks: 1,
 				cohesionSamples: new Array(100_000).fill(0.5),
+				...VALID_STOP_EXTRAS,
 			}),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
@@ -421,6 +460,7 @@ describe("simulationRouter.stop authorization", () => {
 				runId,
 				elapsedTicks: 1,
 				cohesionSamples: [0.5],
+				...VALID_STOP_EXTRAS,
 			}),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",

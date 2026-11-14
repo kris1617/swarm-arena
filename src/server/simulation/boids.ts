@@ -981,6 +981,9 @@ export function runTick(
 	predators: PredatorState[];
 	foodStock: number;
 	populationCapped: boolean;
+	// S-04 (FR-010 full): exposed for the "resource management" scoring
+	// factor — this value was already computed below, just never returned.
+	foodAvailabilityRatio: number;
 } {
 	const steeredBoids = stepBoids(
 		state.boids,
@@ -1062,6 +1065,7 @@ export function runTick(
 		predators: reproducedPredators,
 		foodStock: nextFoodStock,
 		populationCapped: boidsCapped || predatorsCapped,
+		foodAvailabilityRatio,
 	};
 }
 
@@ -1121,15 +1125,183 @@ export function computeCohesion(boids: BoidState[]): number {
 	return Math.max(0, Math.min(1, cohesion));
 }
 
-export function computeScore(
-	cohesionSamples: number[],
-	elapsedTicks: number,
-): number {
-	const average =
-		cohesionSamples.length > 0
-			? cohesionSamples.reduce((sum, sample) => sum + sample, 0) /
-				cohesionSamples.length
-			: 0;
+// S-04 (FR-010 full, correctness fix): `computeCohesion` above measures
+// spatial clustering, not gene-value spread — it reads zero gene fields,
+// so it was a mislabeled stand-in for "genetic diversity" since S-01/S-03.
+// This is the real metric: the coefficient of variation (stddev / mean,
+// clamped into [0, 1]) of each heritable numeric gene field, averaged
+// across fields. `computeCohesion` itself is unchanged and keeps whatever
+// non-scoring role it has elsewhere (rendering is unaffected by this
+// change) — only the scoring call site switches to this function.
+const GENETIC_DIVERSITY_FIELDS = [
+	"separationWeight",
+	"alignmentWeight",
+	"cohesionWeight",
+	"maxSpeed",
+	"minSpeed",
+	"maxLifespan",
+	"matePreference",
+] as const satisfies readonly (keyof BoidGenes)[];
 
-	return elapsedTicks * average;
+function coefficientOfVariation(values: number[]): number {
+	if (values.length === 0) {
+		return 0;
+	}
+	const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+	if (mean === 0) {
+		return 0;
+	}
+	const variance =
+		values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+	const stddev = Math.sqrt(variance);
+	return Math.max(0, Math.min(1, stddev / mean));
+}
+
+// Takes gene arrays directly (not full BoidState) — diversity only ever
+// reads `.genes`, and this is also exactly the minimal payload shape the
+// client-staged path can send over `stop`'s mutation input without
+// shipping full per-boid position/velocity/age/energy state it doesn't
+// need for this calculation.
+export function computeGeneticDiversity(genes: BoidGenes[]): number {
+	if (genes.length === 0) {
+		return 0;
+	}
+	const fieldDiversities = GENETIC_DIVERSITY_FIELDS.map((field) =>
+		coefficientOfVariation(genes.map((g) => g[field])),
+	);
+	// Color channels (r/g/b, each already in [0,1]) contribute the same way
+	// as the numeric gene fields above.
+	const colorDiversities = (["r", "g", "b"] as const).map((channel) =>
+		coefficientOfVariation(genes.map((g) => g.color[channel])),
+	);
+	const all = [...fieldDiversities, ...colorDiversities];
+	return all.reduce((sum, v) => sum + v, 0) / all.length;
+}
+
+// S-04 (FR-019): the population-lifecycle phase model, resolved in the PRD
+// as boom-bust/irruptive-growth (not the simpler logistic-growth curve,
+// which has no crash phase) — this simulation's finite food + starvation +
+// predation can genuinely crash a population.
+export type PopulationPhase =
+	| "establishment"
+	| "growth"
+	| "overshoot"
+	| "crash"
+	| "recovery";
+
+const PHASE_WINDOW_SIZE = 20;
+const OVERSHOOT_FOOD_RATIO_THRESHOLD = 0.3;
+const CRASH_POPULATION_DROP_THRESHOLD = 0.1; // 10% decline over the window
+
+export function classifyPopulationPhase(
+	history: { populationCount: number; foodAvailabilityRatio: number }[],
+	previousPhase: PopulationPhase | null,
+): PopulationPhase {
+	if (history.length < PHASE_WINDOW_SIZE) {
+		return "establishment";
+	}
+	const window = history.slice(-PHASE_WINDOW_SIZE);
+	const first = window[0];
+	const last = window.at(-1);
+	if (!first || !last) {
+		return "establishment";
+	}
+	const populationTrend =
+		first.populationCount > 0
+			? (last.populationCount - first.populationCount) / first.populationCount
+			: 0;
+	const recentFoodRatio =
+		window.reduce((sum, sample) => sum + sample.foodAvailabilityRatio, 0) /
+		window.length;
+
+	const isCrashing =
+		populationTrend <= -CRASH_POPULATION_DROP_THRESHOLD &&
+		recentFoodRatio < OVERSHOOT_FOOD_RATIO_THRESHOLD;
+	if (isCrashing) {
+		return "crash";
+	}
+
+	const isRecovering = previousPhase === "crash" && populationTrend >= 0;
+	if (isRecovering) {
+		return "recovery";
+	}
+
+	if (recentFoodRatio < OVERSHOOT_FOOD_RATIO_THRESHOLD) {
+		return "overshoot";
+	}
+
+	return "growth";
+}
+
+// S-04 (FR-010 full): the per-phase quality weight time-averaged across a
+// run's `phaseHistory`, used by `computePhaseQuality` below. Tuning
+// values — rewards sustained health (growth, recovery) over crash, with
+// overshoot/establishment as intermediate.
+const PHASE_QUALITY_WEIGHTS: Record<PopulationPhase, number> = {
+	establishment: 0.5,
+	growth: 1.0,
+	overshoot: 0.7,
+	crash: 0.2,
+	recovery: 0.9,
+};
+
+// Multiplier applied when a run's phaseHistory shows at least one genuine
+// Crash -> Recovery transition — rewards resilience (bouncing back), not
+// just avoiding Crash in the first place. Clamped so the final value never
+// exceeds 1.
+const RESILIENCE_BONUS_MULTIPLIER = 1.2;
+
+export function computePhaseQuality(phaseHistory: PopulationPhase[]): number {
+	if (phaseHistory.length === 0) {
+		return 0;
+	}
+	const average =
+		phaseHistory.reduce((sum, phase) => sum + PHASE_QUALITY_WEIGHTS[phase], 0) /
+		phaseHistory.length;
+
+	let hasCrashToRecovery = false;
+	for (let i = 0; i < phaseHistory.length - 1; i++) {
+		if (phaseHistory[i] === "crash") {
+			for (let j = i + 1; j < phaseHistory.length; j++) {
+				if (phaseHistory[j] === "recovery") {
+					hasCrashToRecovery = true;
+					break;
+				}
+			}
+		}
+		if (hasCrashToRecovery) {
+			break;
+		}
+	}
+
+	const withBonus = hasCrashToRecovery
+		? average * RESILIENCE_BONUS_MULTIPLIER
+		: average;
+	return Math.max(0, Math.min(1, withBonus));
+}
+
+export function computeResourceManagement(foodRatioSamples: number[]): number {
+	if (foodRatioSamples.length === 0) {
+		return 0;
+	}
+	return (
+		foodRatioSamples.reduce((sum, sample) => sum + sample, 0) /
+		foodRatioSamples.length
+	);
+}
+
+// S-04 (FR-010 full): the real four-factor formula, replacing the
+// 2-argument placeholder (`elapsedTicks * average(cohesionSamples)`).
+// Deliberately takes four plain numbers rather than raw arrays — see
+// `research.md`/`plan.md` Phase 3 item 5: both the server-owned path
+// (which holds state locally) and the client-staged path (which sends its
+// signals over `stop`'s mutation input) compute each factor from whatever
+// state they hold, via the `compute*` helpers above, before calling this.
+export function computeScore(
+	elapsedTicks: number,
+	resourceManagement: number,
+	geneticDiversity: number,
+	phaseQuality: number,
+): number {
+	return elapsedTicks * resourceManagement * geneticDiversity * phaseQuality;
 }
