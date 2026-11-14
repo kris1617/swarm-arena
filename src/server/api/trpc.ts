@@ -10,7 +10,9 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { env } from "~/env";
 import { auth } from "~/server/auth";
+import { isEffectivelyAdmin } from "~/server/auth/elevation";
 import { db } from "~/server/db";
 
 /**
@@ -31,6 +33,11 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 	return {
 		db,
 		session,
+		// Threaded through context (not read directly from `env` inside a
+		// procedure) so tests can inject it like `db`/`session`, matching
+		// this project's established "no hidden singleton reads inside
+		// testable logic" discipline. See userRouter.elevateSelf.
+		allowSelfElevation: env.ALLOW_SELF_ELEVATION,
 		...opts,
 	};
 };
@@ -158,11 +165,14 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 /**
  * Admin-only procedure
  *
- * Builds on `protectedProcedure` and additionally requires `session.user.role === "admin"`,
- * throwing `FORBIDDEN` otherwise.
+ * Builds on `protectedProcedure` and additionally requires the caller be
+ * *effectively* admin right now — `isEffectivelyAdmin` accounts for a
+ * time-boxed elevation grant (temporary-admin-elevation, FR-030) having
+ * lapsed, even if `session.user.role` still literally says `"admin"`.
+ * Throws `FORBIDDEN` otherwise.
  */
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-	if (ctx.session.user.role !== "admin") {
+	if (!isEffectivelyAdmin(ctx.session.user)) {
 		throw new TRPCError({ code: "FORBIDDEN" });
 	}
 	return next({ ctx });

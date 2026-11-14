@@ -30,6 +30,15 @@ export const env = createEnv({
 		// file for why that's the only gate. Never set this in a deployed
 		// environment.
 		E2E_TEST_AUTH_SECRET: z.string().optional(),
+		// temporary-admin-elevation (FR-030): gates the self-service
+		// elevateSelf mutation. Defaults to disabled — GitHub OAuth sign-in
+		// has no allowlist, so without this flag any signed-up account could
+		// self-elevate to admin. Enable only in a deployment where every
+		// signed-up account is already trusted.
+		ALLOW_SELF_ELEVATION: z
+			.string()
+			.optional()
+			.transform((v) => v === "true"),
 	},
 
 	/**
@@ -54,6 +63,7 @@ export const env = createEnv({
 		ADMIN_EMAILS: process.env.ADMIN_EMAILS,
 		AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
 		E2E_TEST_AUTH_SECRET: process.env.E2E_TEST_AUTH_SECRET,
+		ALLOW_SELF_ELEVATION: process.env.ALLOW_SELF_ELEVATION,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
 	/**

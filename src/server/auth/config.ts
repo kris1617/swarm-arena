@@ -22,7 +22,13 @@ import {
 declare module "next-auth" {
 	interface Session {
 		user: {
+			// `DefaultSession["user"]["id"]` is `string | undefined` — this
+			// app's database session strategy always has an id, and
+			// temporary-admin-elevation's self-mutations (user.ts) pass it
+			// directly into Drizzle's `eq()`, which rejects `undefined`.
+			id: string;
 			role: (typeof users.$inferSelect)["role"];
+			elevatedUntil: (typeof users.$inferSelect)["elevatedUntil"];
 		} & DefaultSession["user"];
 	}
 }
@@ -92,6 +98,7 @@ export const authConfig: NextAuthConfig = {
 			user: {
 				...session.user,
 				role: (user as typeof users.$inferSelect).role,
+				elevatedUntil: (user as typeof users.$inferSelect).elevatedUntil,
 			},
 		}),
 		// Without this, next-auth's bare `auth` middleware defaults

@@ -5,7 +5,12 @@ import { db } from "~/server/db";
 
 describe("postRouter.hello", () => {
 	it("echoes the input text back in a greeting", async () => {
-		const caller = createCaller({ db, headers: new Headers(), session: null });
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: null,
+			allowSelfElevation: false,
+		});
 
 		const result = await caller.post.hello({ text: "world" });
 

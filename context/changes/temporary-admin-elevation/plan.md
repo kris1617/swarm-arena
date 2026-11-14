@@ -119,6 +119,8 @@ Add the four tRPC procedures (self-elevate, self-revert, elevate-another, revert
 
 **Contract**: `env.ALLOW_SELF_ELEVATION: boolean`, read by `elevateSelf` (change 2 above) to gate the mutation.
 
+**Implementation note (minor adaptation during Phase 2)**: `elevateSelf` reads the flag via `ctx.allowSelfElevation` (threaded through `createTRPCContext`, sourced from `env.ALLOW_SELF_ELEVATION`), not the `env` singleton directly — matching this project's established "no hidden singleton reads inside testable logic" discipline (the same reason router helpers take `ctx.db`, not a module-level `db` import) and making the flag injectable in tests without needing to mock the `env` module (which `vi.stubEnv` cannot do, since T3's `createEnv` validates `process.env` once at import time).
+
 #### 3. Make the session reflect effective state
 
 **File**: `src/server/auth/config.ts`
@@ -214,19 +216,19 @@ One schema migration (`elevatedUntil` nullable column, `npm run db:generate` + `
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 New unit tests cover all 4 `isEffectivelyAdmin` cases
+- [x] 1.1 Type checking passes: `npm run typecheck` — b1e07c5
+- [x] 1.2 Linting passes: `npm run check` — b1e07c5
+- [x] 1.3 Full suite still passes: `npm test` — b1e07c5
+- [x] 1.4 New unit tests cover all 4 `isEffectivelyAdmin` cases — b1e07c5
 
 ### Phase 2: Mutations, query, and wiring
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 New tests cover self-elevate/revert (flag on/off), cross-account elevate/revert (admin-only), lapsed-grant rejection, unknown-email error, and case-insensitive email matching
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 New tests cover self-elevate/revert (flag on/off), cross-account elevate/revert (admin-only), lapsed-grant rejection, unknown-email error, and case-insensitive email matching
 
 ### Phase 3: Elevation UI
 

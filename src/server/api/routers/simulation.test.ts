@@ -68,7 +68,7 @@ const VALID_STOP_EXTRAS = {
 // this fabricated session's userId, since `adminSettings` has no such
 // reference.
 const SESSION = {
-	user: { id: "test-user-id", role: "member" as const },
+	user: { id: "test-user-id", role: "member" as const, elevatedUntil: null },
 	expires: new Date(Date.now() + 60_000).toISOString(),
 };
 
@@ -155,6 +155,7 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -178,6 +179,7 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -192,6 +194,7 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -209,6 +212,7 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -229,6 +233,7 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -274,8 +279,9 @@ describe("simulationRouter.start", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -315,8 +321,13 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: "attacker-user-id", role: "member" as const },
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -339,8 +350,9 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: ownerId, role: "member" as const },
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -382,6 +394,7 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -403,8 +416,9 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: ownerId, role: "member" as const },
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -467,8 +481,9 @@ describe("simulationRouter.stop authorization", () => {
 			// biome-ignore lint/suspicious/noExplicitAny: proxy narrows `update`'s return shape to only what this one test calls.
 			db: sabotagingDb as any,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: ownerId, role: "member" as const },
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -508,8 +523,9 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -542,8 +558,9 @@ describe("simulationRouter.stop authorization", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: ownerId, role: "member" as const },
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -640,8 +657,9 @@ describe("simulationRouter.start — parallel-run cap race", () => {
 			// biome-ignore lint/suspicious/noExplicitAny: proxy narrows `select`'s return shape to only what this one test calls.
 			db: sabotagingDb as any,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -681,8 +699,9 @@ describe("simulationRouter.startServer", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -705,8 +724,9 @@ describe("simulationRouter.startServer", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -726,6 +746,7 @@ describe("simulationRouter.startServer", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -756,8 +777,9 @@ describe("simulationRouter.startServer", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -822,8 +844,9 @@ describe("simulationRouter.listRunning", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -837,6 +860,7 @@ describe("simulationRouter.listRunning", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -892,8 +916,9 @@ describe("simulationRouter.listCompleted", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -926,8 +951,9 @@ describe("simulationRouter.listCompleted", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -941,6 +967,7 @@ describe("simulationRouter.listCompleted", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -998,8 +1025,9 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1054,8 +1082,9 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1099,8 +1128,9 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1116,6 +1146,7 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -1127,6 +1158,7 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: null,
 		});
 
@@ -1162,8 +1194,13 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: "attacker-user-id", role: "member" as const },
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1179,6 +1216,7 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -1211,8 +1249,9 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1272,8 +1311,9 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1312,8 +1352,9 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1352,8 +1393,9 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1377,8 +1419,9 @@ describe("simulationRouter.getRunsComparison", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1638,6 +1681,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -1654,6 +1698,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 
@@ -1670,12 +1715,17 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 
 	it("lets an admin update ranges, and start enforces the new bound", async () => {
 		const adminSession = {
-			user: { id: "test-admin-id", role: "admin" as const },
+			user: {
+				id: "test-admin-id",
+				role: "admin" as const,
+				elevatedUntil: null,
+			},
 			expires: new Date(Date.now() + 60_000).toISOString(),
 		};
 		const adminCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: adminSession,
 		});
 
@@ -1691,6 +1741,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 		const memberCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: SESSION,
 		});
 		await expect(
@@ -1702,12 +1753,17 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 
 	it("rejects an update where a range violates min <= default <= max", async () => {
 		const adminSession = {
-			user: { id: "test-admin-id-2", role: "admin" as const },
+			user: {
+				id: "test-admin-id-2",
+				role: "admin" as const,
+				elevatedUntil: null,
+			},
 			expires: new Date(Date.now() + 60_000).toISOString(),
 		};
 		const adminCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: adminSession,
 		});
 		const current = await adminCaller.simulation.getParameterRanges();
@@ -1738,8 +1794,9 @@ describe("simulationRouter.savePause / resume", () => {
 		const caller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: owner.id, role: "member" as const },
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1780,8 +1837,13 @@ describe("simulationRouter.savePause / resume", () => {
 		const attackerCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: "attacker-user-id", role: "member" as const },
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1834,8 +1896,13 @@ describe("simulationRouter.savePause / resume", () => {
 		const attackerCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: "attacker-user-id", role: "member" as const },
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
@@ -1867,8 +1934,13 @@ describe("simulationRouter.savePause / resume", () => {
 		const otherCaller = createCaller({
 			db,
 			headers: new Headers(),
+			allowSelfElevation: false,
 			session: {
-				user: { id: otherOwner.id, role: "member" as const },
+				user: {
+					id: otherOwner.id,
+					role: "member" as const,
+					elevatedUntil: null,
+				},
 				expires: new Date(Date.now() + 60_000).toISOString(),
 			},
 		});
