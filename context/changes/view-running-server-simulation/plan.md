@@ -208,12 +208,12 @@ None — no schema change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New test file passes: `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 1702f03
+- [x] 1.2 Linting passes: `npm run check` — 1702f03
+- [x] 1.3 New test file passes: `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx` — 1702f03
+- [x] 1.4 Full suite still passes: `npm test` — 1702f03
 
 #### Manual
 
-- [x] 1.5 Canvas renders boids/predators moving for a real running server simulation
-- [x] 1.6 "Stop viewing" removes the viewer without stopping the underlying server run
+- [x] 1.5 Canvas renders boids/predators moving for a real running server simulation — 1702f03
+- [x] 1.6 "Stop viewing" removes the viewer without stopping the underlying server run — 1702f03
