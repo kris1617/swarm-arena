@@ -43,6 +43,8 @@ swarm-arena is a Next.js 16 app on the T3 stack (tRPC, Drizzle ORM over SQLite v
 - Tokens live in `src/styles/globals.css` (`:root`, `@theme inline`). Canvas-only color values live in `src/styles/theme-colors.ts` and must be kept in sync with `globals.css` by hand — nothing enforces this automatically.
 - Shared components live in `src/components/ui`. Check that directory before writing a new one; add missing ones via `npx shadcn@latest add <name>`.
 - No literal colors or arbitrary Tailwind values in views — reference a token instead.
+- A link styled to look like a button (`rounded-full`, button-like padding/weight) goes through `<Button asChild><Link href="...">...</Link></Button>`, not a manually-styled `<Link>` — `Button`'s `asChild` (Radix `Slot`) is the only way these get the shared `focus-visible` ring; a bare styled `Link` has none.
+- `AppShell`'s `SidebarInset` (mounted in `layout.tsx` for every authenticated page) already renders the page's one `<main>` landmark. A page's own root element must be a `<div>`, never another `<main>` — two nested `main` landmarks is invalid for assistive tech. (`src/app/dashboard/page.tsx` follows this; `simulation/page.tsx` and `runs/*` pages still use `<main>` as their root and need the same fix when they're next restyled — S-17/S-18.)
 
 <!-- BEGIN:nextjs-agent-rules -->
 
