@@ -1,10 +1,10 @@
 ---
 change_id: full-score-save-resume
 title: Full scoring with save and resume
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T13:21:40Z
 ---
 
 ## Notes
