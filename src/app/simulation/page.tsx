@@ -45,6 +45,49 @@ export default function SimulationPage() {
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
 	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
+	// S-06: distinct from `activeRun` (the client-staged run rendered via
+	// SimulationCanvas below) — a server-owned run has nothing for this page
+	// to render; this just confirms it started. Independent of `activeRun` so
+	// starting a server run never hides the staging form.
+	const [serverRunConfirmation, setServerRunConfirmation] = useState<{
+		runId: number;
+	} | null>(null);
+
+	// Shared by both the staging "Start" button and the "Start on server"
+	// button — identical clamping, diverging only in which mutation receives
+	// the result and what happens on success.
+	function buildStartInput() {
+		return {
+			boidCount: Math.min(Math.max(1, Math.round(boidCount)), MAX_BOID_COUNT),
+			separationWeight,
+			alignmentWeight,
+			cohesionWeight,
+			maxDurationSeconds,
+			// Clamped against the same 500 ceiling used server-side for the
+			// combined FR-018 boid+predator object-count cap.
+			predatorCount: Math.min(
+				Math.max(0, Math.round(predatorCount)),
+				MAX_BOID_COUNT,
+			),
+			protectionThreshold: Math.min(
+				Math.max(0, Math.round(protectionThreshold)),
+				MAX_BOID_COUNT,
+			),
+			foodStockInitial: Math.max(0.1, foodStockInitial),
+			foodRegenRate: Math.max(0, foodRegenRate),
+			flockCount: Math.min(Math.max(2, Math.round(flockCount)), 4),
+			crossbreedingEnabled,
+			energyThreshold: Math.max(0.1, energyThreshold),
+			mutationChance: Math.min(Math.max(0, mutationChance), 1),
+			mutationMagnitude: Math.min(Math.max(0, mutationMagnitude), 1),
+		};
+	}
+
+	const startServerMutation = api.simulation.startServer.useMutation({
+		onSuccess: (data) => {
+			setServerRunConfirmation({ runId: data.runId });
+		},
+	});
 
 	const startRun = api.simulation.start.useMutation({
 		onSuccess: (data, variables) => {
@@ -78,6 +121,13 @@ export default function SimulationPage() {
 		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Flocking Simulation</h1>
 
+			{serverRunConfirmation ? (
+				<p className="bg-input text-foreground w-full max-w-xs rounded-2xl px-4 py-3 text-center">
+					Server run #{serverRunConfirmation.runId} started — it keeps running
+					even if you close this tab. Viewing it live is a future update.
+				</p>
+			) : null}
+
 			{activeRun ? (
 				<SimulationCanvas
 					boidCount={activeRun.boidCount}
@@ -102,33 +152,7 @@ export default function SimulationPage() {
 					className="flex w-full max-w-xs flex-col gap-3"
 					onSubmit={(e) => {
 						e.preventDefault();
-						startRun.mutate({
-							boidCount: Math.min(
-								Math.max(1, Math.round(boidCount)),
-								MAX_BOID_COUNT,
-							),
-							separationWeight,
-							alignmentWeight,
-							cohesionWeight,
-							maxDurationSeconds,
-							// Clamped against the same 500 ceiling used server-side for
-							// the combined FR-018 boid+predator object-count cap.
-							predatorCount: Math.min(
-								Math.max(0, Math.round(predatorCount)),
-								MAX_BOID_COUNT,
-							),
-							protectionThreshold: Math.min(
-								Math.max(0, Math.round(protectionThreshold)),
-								MAX_BOID_COUNT,
-							),
-							foodStockInitial: Math.max(0.1, foodStockInitial),
-							foodRegenRate: Math.max(0, foodRegenRate),
-							flockCount: Math.min(Math.max(2, Math.round(flockCount)), 4),
-							crossbreedingEnabled,
-							energyThreshold: Math.max(0.1, energyThreshold),
-							mutationChance: Math.min(Math.max(0, mutationChance), 1),
-							mutationMagnitude: Math.min(Math.max(0, mutationMagnitude), 1),
-						});
+						startRun.mutate(buildStartInput());
 					}}
 				>
 					<label className="flex flex-col gap-1" htmlFor="boid-count">
@@ -305,6 +329,21 @@ export default function SimulationPage() {
 					</Button>
 					{startRun.error ? (
 						<p className="text-destructive">{startRun.error.message}</p>
+					) : null}
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
+						disabled={startServerMutation.isPending}
+						onClick={() => startServerMutation.mutate(buildStartInput())}
+						type="button"
+					>
+						{startServerMutation.isPending
+							? "Starting on server..."
+							: "Start on server"}
+					</Button>
+					{startServerMutation.error ? (
+						<p className="text-destructive">
+							{startServerMutation.error.message}
+						</p>
 					) : null}
 				</form>
 			)}

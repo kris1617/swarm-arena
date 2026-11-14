@@ -6,6 +6,10 @@ import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
+import {
+	isServerRunActive,
+	stopServerRun,
+} from "~/server/simulation/server-run-registry";
 
 const VALID_START_INPUT = {
 	boidCount: 10,
@@ -37,6 +41,12 @@ const SESSION = {
 // Owner ids from fixtures inserted by `insertOwnedRunningRun()` in this test
 // run, so `afterEach` can clean each one up via cascade delete.
 const trackedOwnerIds: string[] = [];
+
+// Run ids started via `startServer` in this test run, so `afterEach` can
+// stop them before the owner cleanup — otherwise a failed assertion could
+// leak a live interval into a later test file in this worker, same
+// discipline `server-run-registry.test.ts` already follows.
+const trackedServerRunIds: number[] = [];
 
 // `@libsql/client` enforces foreign keys by default, so `simulation.stop`'s
 // ownership check (which reads an existing `simulationRuns` row) needs a
@@ -88,6 +98,11 @@ async function insertOwnedRunningRun() {
 }
 
 afterEach(async () => {
+	for (const runId of trackedServerRunIds) {
+		await stopServerRun(runId);
+	}
+	trackedServerRunIds.length = 0;
+
 	// Deleting the `users` row cascade-deletes the matching `simulationRuns`
 	// row (see `simulationRuns.userId`'s `onDelete: "cascade"` reference).
 	for (const ownerId of trackedOwnerIds) {
@@ -506,5 +521,82 @@ describe("simulationRouter.start — parallel-run cap race", () => {
 		// was invalidated — proving the re-check's invalidation actually ran,
 		// not just that an error was thrown while the bypass stood.
 		expect(await runningCountFor(owner.id)).toBe(MAX_PARALLEL_RUNS);
+	});
+});
+
+describe("simulationRouter.startServer", () => {
+	it("enforces the same MAX_PARALLEL_RUNS cap as start", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		for (let i = 0; i < MAX_PARALLEL_RUNS; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				status: "running",
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.startServer(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("inserts a running row and makes it an active server run", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(result.runId);
+
+		expect(isServerRunActive(result.runId)).toBe(true);
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, result.runId),
+		});
+		expect(row?.status).toBe("running");
+	});
+
+	it("rejects with UNAUTHORIZED when there is no session", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: null,
+		});
+
+		await expect(
+			caller.simulation.startServer(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
 	});
 });

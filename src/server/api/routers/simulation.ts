@@ -3,118 +3,158 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import type { db as dbSingleton } from "~/server/db";
 import { simulationRuns } from "~/server/db/schema";
 import { computeScore } from "~/server/simulation/boids";
 // S-05 (parallel-sim-switching): the client-side run-slot manager already
 // caps a single browser session at MAX_PARALLEL_RUNS, but that's UI-only —
 // a second tab or a direct API call would bypass it without this check.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
-import { watchServerRun } from "~/server/simulation/server-run-registry";
+import {
+	startServerRun,
+	watchServerRun,
+} from "~/server/simulation/server-run-registry";
+
+const startInputSchema = z
+	.object({
+		boidCount: z.number().int().positive().max(500),
+		separationWeight: z.number().finite(),
+		alignmentWeight: z.number().finite(),
+		cohesionWeight: z.number().finite(),
+		// .max(600) (10 min) closes an unbounded-run resource surface —
+		// matches the spirit of boidCount's own .max(500).
+		maxDurationSeconds: z.number().int().positive().max(600),
+		predatorCount: z.number().int().nonnegative().max(500),
+		protectionThreshold: z.number().int().nonnegative().max(500),
+		foodStockInitial: z.number().finite().positive(),
+		foodRegenRate: z.number().finite().nonnegative(),
+		flockCount: z.number().int().min(2).max(4),
+		crossbreedingEnabled: z.boolean(),
+		energyThreshold: z.number().finite().positive(),
+		mutationChance: z.number().min(0).max(1),
+		mutationMagnitude: z.number().min(0).max(1),
+	})
+	.refine((input) => input.boidCount + input.predatorCount <= 500, {
+		message: "boidCount + predatorCount must not exceed 500",
+		path: ["predatorCount"],
+	});
+
+// Shared by `start` and `startServer` — both need identical validation,
+// capacity-check, and insert behavior; only what ticks the row afterward
+// differs (the client's RAF loop vs. startServerRun). Extracted here so the
+// two paths can never silently drift apart.
+//
+// Takes `db` as a parameter (the exact `ctx.db` instance), not the module
+// singleton — `simulation.test.ts`'s race tests inject a sabotaging Proxy
+// via `createCaller({ db: sabotagingDb, ... })` to reproduce an exact
+// concurrent-insert timing; reading the global singleton directly here
+// would silently bypass that injection and break those tests.
+async function insertRunningSimulation(
+	db: typeof dbSingleton,
+	userId: string,
+	input: z.infer<typeof startInputSchema>,
+): Promise<{ runId: number; seed: number }> {
+	const [runningCountRow] = await db
+		.select({ runningCount: count() })
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.status, "running"),
+			),
+		);
+	const runningCount = runningCountRow?.runningCount ?? 0;
+	if (runningCount >= MAX_PARALLEL_RUNS) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
+		});
+	}
+
+	const seed = Date.now() ^ Math.floor(Math.random() * 2 ** 31);
+
+	const [run] = await db
+		.insert(simulationRuns)
+		.values({
+			userId,
+			seed,
+			boidCount: input.boidCount,
+			separationWeight: input.separationWeight,
+			alignmentWeight: input.alignmentWeight,
+			cohesionWeight: input.cohesionWeight,
+			maxDurationSeconds: input.maxDurationSeconds,
+			predatorCount: input.predatorCount,
+			protectionThreshold: input.protectionThreshold,
+			foodStockInitial: input.foodStockInitial,
+			foodRegenRate: input.foodRegenRate,
+			flockCount: input.flockCount,
+			crossbreedingEnabled: input.crossbreedingEnabled,
+			energyThreshold: input.energyThreshold,
+			mutationChance: input.mutationChance,
+			mutationMagnitude: input.mutationMagnitude,
+			status: "running",
+		})
+		.returning({ id: simulationRuns.id });
+
+	if (!run) {
+		throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+	}
+
+	// Race-safety net: a concurrent `start`/`startServer` call can pass the
+	// count check above before either insert lands, breaching the cap. Catch
+	// it immediately after this insert and invalidate the row this call just
+	// created rather than trusting the pre-insert count alone.
+	const [recheckRow] = await db
+		.select({ runningCount: count() })
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.status, "running"),
+			),
+		);
+	if ((recheckRow?.runningCount ?? 0) > MAX_PARALLEL_RUNS) {
+		await db
+			.update(simulationRuns)
+			.set({ status: "stopped" })
+			.where(eq(simulationRuns.id, run.id));
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
+		});
+	}
+
+	return { runId: run.id, seed };
+}
 
 export const simulationRouter = createTRPCRouter({
 	start: protectedProcedure
-		.input(
-			z
-				.object({
-					boidCount: z.number().int().positive().max(500),
-					separationWeight: z.number().finite(),
-					alignmentWeight: z.number().finite(),
-					cohesionWeight: z.number().finite(),
-					// .max(600) (10 min) closes an unbounded-run resource surface —
-					// matches the spirit of boidCount's own .max(500).
-					maxDurationSeconds: z.number().int().positive().max(600),
-					predatorCount: z.number().int().nonnegative().max(500),
-					protectionThreshold: z.number().int().nonnegative().max(500),
-					foodStockInitial: z.number().finite().positive(),
-					foodRegenRate: z.number().finite().nonnegative(),
-					flockCount: z.number().int().min(2).max(4),
-					crossbreedingEnabled: z.boolean(),
-					energyThreshold: z.number().finite().positive(),
-					mutationChance: z.number().min(0).max(1),
-					mutationMagnitude: z.number().min(0).max(1),
-				})
-				.refine((input) => input.boidCount + input.predatorCount <= 500, {
-					message: "boidCount + predatorCount must not exceed 500",
-					path: ["predatorCount"],
-				}),
-		)
+		.input(startInputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 			if (!userId) {
 				throw new TRPCError({ code: "UNAUTHORIZED" });
 			}
+			return insertRunningSimulation(ctx.db, userId, input);
+		}),
 
-			const [runningCountRow] = await ctx.db
-				.select({ runningCount: count() })
-				.from(simulationRuns)
-				.where(
-					and(
-						eq(simulationRuns.userId, userId),
-						eq(simulationRuns.status, "running"),
-					),
-				);
-			const runningCount = runningCountRow?.runningCount ?? 0;
-			if (runningCount >= MAX_PARALLEL_RUNS) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
-				});
+	// S-06: starts a real (non-staging) simulation whose execution is owned
+	// by the server from the moment it's created — no client tick loop
+	// involved at all, unlike `start` (which the client itself ticks).
+	startServer: protectedProcedure
+		.input(startInputSchema)
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+			if (!userId) {
+				throw new TRPCError({ code: "UNAUTHORIZED" });
 			}
-
-			const seed = Date.now() ^ Math.floor(Math.random() * 2 ** 31);
-
-			const [run] = await ctx.db
-				.insert(simulationRuns)
-				.values({
-					userId,
-					seed,
-					boidCount: input.boidCount,
-					separationWeight: input.separationWeight,
-					alignmentWeight: input.alignmentWeight,
-					cohesionWeight: input.cohesionWeight,
-					maxDurationSeconds: input.maxDurationSeconds,
-					predatorCount: input.predatorCount,
-					protectionThreshold: input.protectionThreshold,
-					foodStockInitial: input.foodStockInitial,
-					foodRegenRate: input.foodRegenRate,
-					flockCount: input.flockCount,
-					crossbreedingEnabled: input.crossbreedingEnabled,
-					energyThreshold: input.energyThreshold,
-					mutationChance: input.mutationChance,
-					mutationMagnitude: input.mutationMagnitude,
-					status: "running",
-				})
-				.returning({ id: simulationRuns.id });
-
-			if (!run) {
-				throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-			}
-
-			// Race-safety net: a concurrent `start` call can pass the count
-			// check above before either insert lands, breaching the cap. Catch
-			// it immediately after this insert and invalidate the row this call
-			// just created rather than trusting the pre-insert count alone.
-			const [recheckRow] = await ctx.db
-				.select({ runningCount: count() })
-				.from(simulationRuns)
-				.where(
-					and(
-						eq(simulationRuns.userId, userId),
-						eq(simulationRuns.status, "running"),
-					),
-				);
-			if ((recheckRow?.runningCount ?? 0) > MAX_PARALLEL_RUNS) {
-				await ctx.db
-					.update(simulationRuns)
-					.set({ status: "stopped" })
-					.where(eq(simulationRuns.id, run.id));
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: `Already running ${MAX_PARALLEL_RUNS} simulations — stop one before starting another.`,
-				});
-			}
-
-			return { runId: run.id, seed };
+			const { runId, seed } = await insertRunningSimulation(
+				ctx.db,
+				userId,
+				input,
+			);
+			startServerRun({ runId, seed, ...input });
+			return { runId, seed };
 		}),
 
 	stop: protectedProcedure
