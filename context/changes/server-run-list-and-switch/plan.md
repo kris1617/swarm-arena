@@ -210,14 +210,14 @@ have created) are untouched and still readable by `listRunning`/`stop`/etc.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
-- [x] 1.5 Retired files are actually gone
+- [x] 1.1 Type checking passes: `npm run typecheck` — eacd25a
+- [x] 1.2 Linting passes: `npm run check` — eacd25a
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts` — eacd25a
+- [x] 1.4 Full suite still passes: `npm test` — eacd25a
+- [x] 1.5 Retired files are actually gone — eacd25a
 
 #### Manual
 
-- [x] 1.6 Two server runs both appear in the list; switching the viewer between them works with no console errors
-- [x] 1.7 Both runs keep advancing regardless of which is being viewed
-- [x] 1.8 `/simulation/multi` now 404s
+- [x] 1.6 Two server runs both appear in the list; switching the viewer between them works with no console errors — eacd25a
+- [x] 1.7 Both runs keep advancing regardless of which is being viewed — eacd25a
+- [x] 1.8 `/simulation/multi` now 404s — eacd25a
