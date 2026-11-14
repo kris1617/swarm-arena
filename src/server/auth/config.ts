@@ -28,7 +28,10 @@ declare module "next-auth" {
 			// directly into Drizzle's `eq()`, which rejects `undefined`.
 			id: string;
 			role: (typeof users.$inferSelect)["role"];
-			elevatedUntil: (typeof users.$inferSelect)["elevatedUntil"];
+			// Declared as the DB's Date type, but NextAuth serializes the
+			// session through JSON before a consumer ever sees it, so at
+			// runtime this is an ISO string (or null) — see elevation.ts.
+			elevatedUntil: Date | string | null;
 		} & DefaultSession["user"];
 	}
 }
@@ -93,14 +96,26 @@ export const authConfig: NextAuthConfig = {
 	callbacks: {
 		// Database strategy: `user` is the row the adapter loaded for this
 		// session. We only read `role` off it here — no writes.
-		session: ({ session, user }) => ({
-			...session,
-			user: {
-				...session.user,
-				role: (user as typeof users.$inferSelect).role,
-				elevatedUntil: (user as typeof users.$inferSelect).elevatedUntil,
-			},
-		}),
+		session: ({ session, user }) => {
+			const rawElevatedUntil = (user as typeof users.$inferSelect)
+				.elevatedUntil;
+			return {
+				...session,
+				user: {
+					...session.user,
+					role: (user as typeof users.$inferSelect).role,
+					// temporary-admin-elevation: the Auth.js adapter returns this
+					// column as a raw number (Unix ms), not a Date, even though
+					// Drizzle's own `mode: "timestamp"` type says `Date | null` —
+					// confirmed by a live /admin/settings 500
+					// ("elevatedUntil.getTime is not a function") during manual
+					// verification. Normalize here, the one place this raw
+					// adapter value enters the typed session, so every consumer
+					// of `session.user.elevatedUntil` can trust it's a real Date.
+					elevatedUntil: rawElevatedUntil ? new Date(rawElevatedUntil) : null,
+				},
+			};
+		},
 		// Without this, next-auth's bare `auth` middleware defaults
 		// `authorized = true` for every request — it only attaches session
 		// info, it does not gate anything on its own. This is what actually

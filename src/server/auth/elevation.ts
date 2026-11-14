@@ -8,7 +8,12 @@
 
 export function isEffectivelyAdmin(user: {
 	role: "member" | "admin";
-	elevatedUntil: Date | null;
+	// NextAuth's session round-trips through JSON (cookie/RSC serialization),
+	// turning the Date this app's types promise into an ISO string by the
+	// time it reaches a session consumer — confirmed live via a logged
+	// `typeof` during manual verification. Accept both so every caller
+	// (session-sourced or a direct Drizzle row) works the same way.
+	elevatedUntil: Date | string | null;
 }): boolean {
 	if (user.role !== "admin") {
 		return false;
@@ -18,5 +23,5 @@ export function isEffectivelyAdmin(user: {
 		// permanent ADMIN_EMAILS admin. Never expires.
 		return true;
 	}
-	return user.elevatedUntil.getTime() > Date.now();
+	return new Date(user.elevatedUntil).getTime() > Date.now();
 }
