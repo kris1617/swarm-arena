@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: first-working-simulation-loop
 milestone_seq: 1
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-1: First working simulation loop** — Status: open
+**M-1: First working simulation loop** — Status: done
 
 - **Intent:** Deliver the first end-to-end run of a boids/predator simulation — configure it, watch it, stop/resume it, and get a score — with the domain logic (genetics, predator-prey, scoring) built correctly rather than fast, since the project's main goal for this milestone is quality. Extended 2026-11-14 to add a second execution model: real simulations run server-side in the background (no rendering, no client-tab dependency), while a single client-side simulation stays available for parameter-tuning staging, exactly as today. Extended again 2026-11-14 (same day) to add a post-login run dashboard, a per-run analysis view that draws on standard population/ecological analysis methods, and a correctness fix to the phase-quality scoring factor shipped in S-04.
 - **Source materials:** `context/foundation/prd.md` (v1); user-described extension 2026-11-14 (scope anchors MS-01–MS-05); second user-described extension 2026-11-14 (scope anchors MS-06–MS-08 below) — neither reflected in `prd.md` yet, which should be updated to match once this scope lands.
@@ -330,6 +330,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Shared/collaborative simulations across users** — Why parked: explicit PRD Non-Goal — admin/member are access roles, not co-editing roles; a run belongs to the user who started it.
 
 ## Milestone History
+
+- **M-1: First working simulation loop** (`first-working-simulation-loop`) — closed 2026-11-14. Delivered the first end-to-end boids/predator simulation loop (configure, run, stop/resume, score) plus server-owned execution, a post-login run dashboard, and a per-run population-dynamics analysis view; all 5 foundations and 11 slices done.
 
 ## Done
 

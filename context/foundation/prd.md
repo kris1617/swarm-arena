@@ -1,6 +1,6 @@
 ---
 project: "Swarm Arena"
-version: 2
+version: 3
 status: draft
 created: 2026-11-02
 updated: 2026-11-14
@@ -38,7 +38,10 @@ No secondary persona — single user, self-directed use.
 ### Primary
 
 - A logged-in user can start a boids+predator simulation, configure its parameters, watch it run, stop/save it, resume it later, and receive a score once it ends (automatically or by user stop).
-- A user can run several simulations in parallel and switch which one they're actively viewing, without losing the others' progress.
+- A real (non-staging) simulation executes on the server, independent of any client connection, and keeps running if the browser tab closes; the user can view exactly one server-run simulation at a time, rendered live from server-pushed state. (Resolved 2026-11-14: replaces the original client-driven "run several in parallel" model — see Non-Goals.)
+- Right after logging in, the user lands on a dashboard listing their own simulation runs (running, saved, completed) with standard run-dashboard conventions (status, start time, filters, a detail link).
+- From a completed run, the user opens an analysis view — population-over-time chart, phase/cycle breakdown, final genetic-diversity value — to decide what to change in the next run.
+- A single client-side simulation remains available for parameter-tuning staging, started and rendered entirely on the client, unchanged from the original MVP behavior.
 
 ### Secondary
 
@@ -65,6 +68,30 @@ No secondary persona — single user, self-directed use.
 - Starting a run with crossbreeding disabled never produces offspring with a blended-flock color
 - A flock at or below the protection threshold is never attacked by a predator during the run
 - Stopping the simulation mid-run and resuming it later reproduces the exact population/resource state at the moment of stop
+
+### US-02: User starts a real simulation that keeps running server-side and watches it live
+
+- **Given** a logged-in user who has configured a simulation
+- **When** they start it as a real (non-staging) run
+- **Then** the simulation executes on the server, independent of any client connection — it keeps running if the browser tab is closed — and the user can open a live view that renders exactly one server-run simulation at a time from state the server pushes (not polls)
+
+#### Acceptance Criteria
+
+- Closing the browser tab mid-run does not stop or affect the server-owned simulation
+- The live view reflects server-pushed state, not a client-side re-simulation
+- Only one server-run simulation can be actively viewed at a time; the user can switch which one without stopping any of them
+
+### US-03: User reviews a dashboard of their runs and analyzes a completed one
+
+- **Given** a logged-in user with at least one simulation run (running, saved, or completed)
+- **When** they log in or navigate to their dashboard
+- **Then** they see their own runs listed with status, start time, and a filter, with a link into each run's detail; opening a completed run's analysis view shows a population-over-time chart (phase-colored), a phase/cycle time breakdown, and a final genetic-diversity value
+
+#### Acceptance Criteria
+
+- The dashboard shows only the logged-in user's own runs, filterable by status (running/saved/completed)
+- A completed run's analysis view renders population, phase-breakdown, and diversity sections consistently for runs with persisted history, and degrades gracefully (no crash) for older runs that predate history persistence
+- A user cannot open another user's run analysis view
 
 ## Functional Requirements
 
@@ -108,10 +135,10 @@ No secondary persona — single user, self-directed use.
   > Socratic: Brak kontrargumentu — zostaje jak jest.
 - FR-012: Użytkownik może wznowić zapisaną symulację. Priority: must-have
   > Socratic: Brak kontrargumentu — zostaje jak jest.
-- FR-013: Użytkownik może uruchomić kilka symulacji równolegle. Priority: must-have
-  > Socratic: Brak kontrargumentu — to najdroższy element MVP, świadomie zaakceptowany podczas doprecyzowania zakresu (patrz Timeline acknowledgment w shape-notes).
-- FR-014: Użytkownik może przełączać, którą z równolegle działających symulacji aktualnie obserwuje, bez przerywania pozostałych. Priority: must-have
-  > Socratic: Brak kontrargumentu — jak wyżej.
+- FR-013: Użytkownik widzi wszystkie swoje aktualnie działające symulacje serwerowe i przełącza, którą aktywnie obserwuje, bez przerywania pozostałych. Priority: must-have
+  > Socratic (2026-11-14, zamknięcie Open Question #3): pierwotnie FR-013 zakładał kilka symulacji renderowanych równolegle po stronie klienta — najdroższy element pierwotnego MVP. Rozstrzygnięcie: zastąpione modelem serwerowym (FR-020–FR-022) — "równoległość" to teraz kilka serwerowych przebiegów działających niezależnie od renderowania; klient obserwuje jeden naraz.
+- FR-014: Użytkownik może przełączać, którą z działających symulacji serwerowych aktualnie obserwuje, bez przerywania pozostałych. Priority: must-have
+  > Socratic: jak FR-013 — przełączanie działa teraz na liście symulacji serwerowych, nie na kilku równolegle renderowanych widokach klienckich.
 
 ### Sugestie i porównanie wyników
 
@@ -126,6 +153,29 @@ No secondary persona — single user, self-directed use.
 
 - FR-018: Admin konfiguruje globalny maksymalny limit liczby symulowanych obiektów (boidy + predatory), chroniąc płynność renderowania (guardrail). Priority: must-have
   > Socratic: Brak kontrargumentu — potwierdzone jako właściwe ujęcie (limit globalny, ustawiany przez admina).
+
+### Serwerowe wykonanie symulacji (2026-11-14 extension — MS-01, MS-02, MS-03, MS-04, MS-05)
+
+- FR-020: Rzeczywista (nie-stagingowa) symulacja jest wykonywana przez proces po stronie serwera, niezależny od połączenia klienta — działa dalej, jeśli użytkownik zamknie kartę przeglądarki. Priority: must-have
+  > Socratic: Kontrargument rozważony: wykonanie po stronie klienta ogranicza liczbę/rozmiar symulacji do możliwości renderowania. Rozstrzygnięcie: przeniesienie wykonania na serwer usuwa to ograniczenie; renderowanie zostaje osobnym, opcjonalnym krokiem (FR-021).
+- FR-021: Symulacje serwerowe działają bez etapu renderowania — renderowanie jest odrębną, opcjonalną operacją podglądu, nie częścią samego wykonania. Priority: must-have
+  > Socratic: Brak kontrargumentu — konsekwencja FR-020.
+- FR-022: Jedna symulacja kliencka (stagingowa, do dopasowywania parametrów) pozostaje dostępna, uruchamiana i renderowana w całości po stronie klienta, bez zmian względem oryginalnego MVP. Priority: must-have
+  > Socratic: Brak kontrargumentu — staging nie wymaga trwałości po zamknięciu karty, więc zostaje bez zmian.
+- FR-023: Użytkownik może obserwować dokładnie jedną symulację serwerową naraz, renderowaną w przeglądarce na podstawie stanu wypychanego przez serwer (push, nie polling). Priority: must-have
+  > Socratic: Kontrargument rozważony: polling byłby prostszy, ale wprowadza zauważalne opóźnienie i niepotrzebny ruch sieciowy przy wielu działających symulacjach. Rozstrzygnięcie: SSE/WebSocket push, potwierdzone przez użytkownika.
+
+### Ewaluacja etapu cyklu życiowego per cykl (2026-11-14 extension — MS-06)
+
+- FR-019 (uszczegółowienie, 2026-11-14): Czwarty czynnik punktacji liczy premię za odporność proporcjonalnie do liczby zakończonych cykli załamanie→odbudowa w całym przebiegu, nie jako jednorazową flagę tak/nie za cały przebieg. Priority: must-have
+  > Socratic: Kontrargument rozważony: jednorazowa flaga nie odróżniała przebiegu z jednym cyklem odbudowy od przebiegu z kilkoma — a te drugie demonstrują realną odporność silniej. Rozstrzygnięcie: premia skaluje się z liczbą zakończonych cykli (z rozsądnym pułapem), ustalonym na poziomie planu (`/10x-plan`), nie tutaj.
+
+### Dashboard i analiza przebiegów (2026-11-14 extension — MS-07, MS-08)
+
+- FR-024: Zaraz po zalogowaniu użytkownik trafia na dashboard listujący jego własne przebiegi symulacji (działające, zapisane, zakończone), ze statusem, czasem startu, filtrem i linkiem do szczegółu każdego przebiegu — zgodnie ze standardowymi konwencjami dashboardów przebiegów, nie wymyślonymi od nowa. Priority: must-have
+  > Socratic: Kontrargument rozważony: dashboard mógłby być bespoke. Rozstrzygnięcie: użytkownik poprosił o zbadanie standardowych konwencji (Databricks, dbt, Control-M, Sauce Labs) i ich zastosowanie, nie wymyślanie własnych od zera.
+- FR-025: Z dashboardu, dla zakończonego przebiegu, użytkownik otwiera widok analizy pokazujący wykres liczebności populacji w czasie (kolorowany etapami cyklu życiowego), rozkład czasu wg etapu/cyklu (zgodny z korektą z FR-019) oraz końcową wartość różnorodności genetycznej. Priority: must-have
+  > Socratic: Kontrargument rozważony: trend różnorodności genetycznej w czasie wydawał się częścią zakresu, ale dane historyczne to tylko jedna migawka końcowa (geny ocalałych w momencie zakończenia), nie seria. Rozstrzygnięcie: v1 pokazuje jedną końcową wartość różnorodności, nie trend; trend wymagałby nowego śledzenia danych w czasie, poza zakresem tego rozszerzenia.
 
 ## Non-Functional Requirements
 
@@ -163,9 +213,12 @@ Role → capability split: `admin` defines the available parameter ranges and de
 ## Non-Goals
 
 - **No shared/collaborative simulations across users** — `admin`/`member` are access roles, not co-editing roles; a simulation run belongs to the user who started it, not to a team session. Rationale: scope stays personal-experimentation-sized, avoids building multi-user concurrency into the simulation engine itself.
+- **No client-driven parallel rendering of multiple simulations at once** (2026-11-14 extension) — retired in favor of server-owned execution (FR-020–FR-023): the client renders at most one server-run simulation live at a time, switching between them (FR-013/FR-014) rather than rendering several simultaneously. Rationale: rendering was the actual scaling bottleneck, not execution; removing it from the critical path removes the limit on how many simulations can run or how large they can be.
+- **No diversity-index trend over time in the analysis view (v1)** (2026-11-14 extension) — only a single final genetic-diversity value is shown (FR-025); a trend would require persisting a per-tick diversity series, which nothing downstream currently needs beyond this view. Rationale: avoid adding tracked state solely for a nice-to-have chart; revisit if a future slice needs the same series.
 
 ## Open Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Formula: equal product of four factors — cycle length (survival) × resource management × genetic diversity × population-lifecycle-phase quality (FR-010, FR-019; see Business Logic for the phase model and what the fourth factor rewards). The exact per-phase quality values and resilience-bonus magnitude are deferred to `/10x-plan` as planning-level tuning, not a product open question — the product rule (equal multiplicative product; phase factor rewards both sustained health and Crash→Recovery resilience) is fixed. Unblocks FR-016 (run comparison).
 2. **What export format(s) should FR-017 support (CSV / JSON / image / other)?** — Owner: user. Not yet resolved; nice-to-have, not MVP-blocking.
-3. **Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?** — Owner: user. Not yet resolved; affects whether multi-user data isolation needs to be designed now or can stay implicit.
+3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14 (by extension, not by direct answer).** The 2026-11-14 extensions (server-side execution, dashboard, analysis view) were all scoped to each user's own runs only — no cross-user admin capability was added. The role split beyond parameter/object-count governance (FR-002, FR-018) remains unspecified but is no longer blocking: every FR added since stays within per-user data isolation (dashboard and analysis view both reject access to another user's runs).
+4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Not blocking. Resolved by default during implementation: forward-only — pre-existing runs show only their final score; the analysis view (FR-025) degrades gracefully for runs without persisted history instead of crashing.
