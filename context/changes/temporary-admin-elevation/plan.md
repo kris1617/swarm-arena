@@ -225,10 +225,10 @@ One schema migration (`elevatedUntil` nullable column, `npm run db:generate` + `
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 New tests cover self-elevate/revert (flag on/off), cross-account elevate/revert (admin-only), lapsed-grant rejection, unknown-email error, and case-insensitive email matching
+- [x] 2.1 Type checking passes: `npm run typecheck` — 9f34537
+- [x] 2.2 Linting passes: `npm run check` — 9f34537
+- [x] 2.3 Full suite still passes: `npm test` — 9f34537
+- [x] 2.4 New tests cover self-elevate/revert (flag on/off), cross-account elevate/revert (admin-only), lapsed-grant rejection, unknown-email error, and case-insensitive email matching — 9f34537
 
 ### Phase 3: Elevation UI
 
