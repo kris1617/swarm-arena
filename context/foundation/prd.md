@@ -1,6 +1,6 @@
 ---
 project: "Swarm Arena"
-version: 3
+version: 4
 status: draft
 created: 2026-11-02
 updated: 2026-11-14
@@ -142,12 +142,12 @@ No secondary persona — single user, self-directed use.
 
 ### Sugestie i porównanie wyników
 
-- FR-015: System sugeruje zmiany parametrów na podstawie obserwacji, jak dotychczasowe zmiany wpływały na stabilizację populacji (heurystyka, nie pełna optymalizacja). Priority: nice-to-have
-  > Socratic: Kontrargument rozważony: przy sprzężonych parametrach proste "zwiększ X" może ignorować interakcje między zmiennymi. Rozstrzygnięcie: sugestia bazuje konkretnie na obserwowanym wpływie zmian na stabilizację populacji, nie na ogólnym "polepsz wynik".
+- FR-015: System sugeruje zmiany parametrów na podstawie obserwacji, jak dotychczasowe zmiany wpływały na końcowy wynik (heurystyka, nie pełna optymalizacja). Priority: nice-to-have
+  > Socratic: Kontrargument rozważony: przy sprzężonych parametrach proste "zwiększ X" może ignorować interakcje między zmiennymi; wcześniejsze rozstrzygnięcie zawężało sygnał do czynnika jakości etapu cyklu (FR-019) jako bezpośredniej miary "stabilizacji populacji". Rozstrzygnięcie (2026-11-14, zamknięcie): użytkownik wybrał korelację z końcowym wynikiem (FR-010), nie z jednym czynnikiem — to jest liczba, którą użytkownik faktycznie widzi i chce poprawić. Mechanizm: dla każdego z 13 parametrów konfigurowalnych (zakres admina, FR-002) o różnych wartościach w ostatnich przebiegach użytkownika, system liczy korelację między wartością parametru a końcowym wynikiem; sugeruje zmianę tego jednego parametru, którego korelacja jest najsilniejsza, z jednolinijkowym uzasadnieniem i kwalifikatorem pewności (liczba przebiegów, w których ten parametr się różnił). Wymaga co najmniej 3 przebiegów z różnymi wartościami danego parametru — inaczej system informuje, że danych jest za mało, nie zgaduje.
 - FR-016: Użytkownik może porównać wyniki (punktację) wielu przebiegów symulacji side-by-side. Priority: nice-to-have
   > Socratic: Kontrargument rozważony: porównanie wymaga tej samej jednoznacznej formuły punktacji co FR-010. Rozstrzygnięcie: FR stoi, ale zależy od rozstrzygnięcia formuły/wag punktacji (patrz Open Questions).
-- FR-017: Użytkownik może wyeksportować przebieg/parametry/wynik symulacji poza aplikację. Priority: nice-to-have
-  > Socratic: Kontrargument rozważony: format eksportu nieokreślony. Rozstrzygnięcie: FR stoi, format (CSV/JSON/obraz) zostaje jako open question.
+- FR-017: Użytkownik może wyeksportować przebieg/parametry/wynik symulacji poza aplikację, w formacie JSON (pełna wierność — surowa historia przebiegu bez spłaszczania) oraz CSV (parametry + wynik w jednym wierszu, do porównań w arkuszu kalkulacyjnym; zagnieżdżone pola historii, takie jak phaseHistory czy survivorGenes, nie są częścią eksportu CSV). Priority: nice-to-have
+  > Socratic: Kontrargument rozważony: format eksportu nieokreślony; dwa formaty podwajają zakres implementacji dla funkcji nice-to-have. Rozstrzygnięcie (2026-11-14, zamknięcie Open Question #2): użytkownik wybrał oba formaty — JSON dla pełnej, nieutraconej historii (do analizy skryptowej), CSV dla szybkiego porównania parametrów/wyniku w arkuszu. Zagnieżdżone tablice historii nie trafiają do CSV — to jest ograniczenie formatu, nie niedopatrzenie.
 
 ### Ograniczenia wydajnościowe
 
@@ -186,7 +186,7 @@ No secondary persona — single user, self-directed use.
 
 ## Business Logic
 
-Each simulation run is scored as the **product of four factors**: how long the population survived, how efficiently it managed available food, how genetically diverse the surviving population remained, and the quality of the population's lifecycle-phase history over the run — and that score history drives heuristic suggestions for parameter changes that improve population stability.
+Each simulation run is scored as the **product of four factors**: how long the population survived, how efficiently it managed available food, how genetically diverse the surviving population remained, and the quality of the population's lifecycle-phase history over the run — and that score history drives heuristic suggestions for the single parameter change most correlated with improving the final score across the user's own past runs (resolved 2026-11-14; see FR-015).
 
 **Population lifecycle phases (resolved 2026-11-14, closing Open Question #1).** The boid population's state is classified tick-by-tick into one of five phases, using the boom-bust/irruptive-growth model from population ecology (chosen over the simpler logistic-growth-curve model because logistic growth has no crash phase, and this simulation's finite food + starvation + predation can genuinely crash a population):
 
@@ -219,6 +219,7 @@ Role → capability split: `admin` defines the available parameter ranges and de
 ## Open Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Formula: equal product of four factors — cycle length (survival) × resource management × genetic diversity × population-lifecycle-phase quality (FR-010, FR-019; see Business Logic for the phase model and what the fourth factor rewards). The exact per-phase quality values and resilience-bonus magnitude are deferred to `/10x-plan` as planning-level tuning, not a product open question — the product rule (equal multiplicative product; phase factor rewards both sustained health and Crash→Recovery resilience) is fixed. Unblocks FR-016 (run comparison).
-2. **What export format(s) should FR-017 support (CSV / JSON / image / other)?** — Owner: user. Not yet resolved; nice-to-have, not MVP-blocking.
+2. ~~What export format(s) should FR-017 support (CSV / JSON / image / other)?~~ — **Resolved 2026-11-14.** Both JSON (full-fidelity, unflattened history) and CSV (parameters + score, one row per run, no nested history fields). See FR-017. Unblocks S-14.
 3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14 (by extension, not by direct answer).** The 2026-11-14 extensions (server-side execution, dashboard, analysis view) were all scoped to each user's own runs only — no cross-user admin capability was added. The role split beyond parameter/object-count governance (FR-002, FR-018) remains unspecified but is no longer blocking: every FR added since stays within per-user data isolation (dashboard and analysis view both reject access to another user's runs).
 4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Not blocking. Resolved by default during implementation: forward-only — pre-existing runs show only their final score; the analysis view (FR-025) degrades gracefully for runs without persisted history instead of crashing.
+5. ~~What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?~~ — **Resolved 2026-11-14.** Optimizes toward the final combined score (FR-010), not an isolated factor; correlates each of the 13 admin-ranged parameters (FR-002) against the user's own past-run scores and suggests changing the single most-correlated one, with a one-line rationale and a confidence qualifier based on sample size (minimum 3 runs with that parameter varied). See FR-015. Unblocks S-13.

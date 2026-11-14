@@ -4,7 +4,7 @@ version: 1
 status: draft
 created: 2026-11-09
 updated: 2026-11-14
-prd_version: 3
+prd_version: 4
 main_goal: learn
 top_blocker: decisions
 milestone_id: insight-and-comparison
@@ -58,8 +58,8 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-10 | post-login-run-dashboard        | User lands on a dashboard of their own runs right after logging in, with standard status/filter/detail-link conventions | F-01           | MS-07, FR-013, FR-014                                   | done |
 | S-11 | run-analysis-view               | User opens a completed run's analysis view (growth-curve comparison, per-cycle phase breakdown, diversity-index trend) to decide what to change next | F-05, S-09, S-10 | MS-08, FR-019, FR-010 (full)                          | done |
 | S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | done |
-| S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, based on how past changes affected population stability | F-05            | FR-015                                                 | blocked |
-| S-14 | run-export                      | User exports a run's parameters/score/history outside the app | F-05            | FR-017                                                 | blocked |
+| S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, correlated with improving their final score across past runs | F-05            | FR-015                                                 | ready |
+| S-14 | run-export                      | User exports a run's parameters/score/history outside the app (JSON and CSV) | F-05            | FR-017                                                 | ready |
 
 ## Streams
 
@@ -70,7 +70,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | C      | Server-side execution            | `F-03` → `F-04` → `S-06` → `S-07` → `S-08` | 2026-11-14 extension: moves "real" simulation execution off the client and onto a server-owned process, removing the rendering-imposed limit on how many can run; the client-side staging simulation (S-01's single-run path) is explicitly unchanged. |
 | D      | Run visibility                   | `F-01` → `S-10`                          | 2026-11-14 (second) extension: a post-login dashboard of the user's own runs. Joins Stream A at `F-01`. |
 | E      | Scoring correctness & analysis    | `F-05` → `S-11`                          | Persists per-run history (no prerequisites — purely additive) then builds the analysis view on it; `S-11` also waits on `S-09` (the corrected per-cycle aggregation it displays) and `S-10` (Stream D, the dashboard to navigate from). |
-| F      | Insight and comparison (M-2)      | `S-11` → `S-12`, `F-05` → `S-13`, `F-05` → `S-14` | M-2's three items share only the F-05 history data, not each other — `S-12`/`S-13`/`S-14` can run in parallel once their own Unknowns (if any) resolve. |
+| F      | Insight and comparison (M-2)      | `S-11` → `S-12`, `F-05` → `S-13`, `F-05` → `S-14` | M-2's three items share only the F-05 history data, not each other — `S-12`/`S-13`/`S-14` can all run in parallel. S-12 done; S-13/S-14's Unknowns resolved 2026-11-14, both `ready`. |
 
 ## Baseline
 
@@ -304,29 +304,27 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-13: Heuristic parameter-change suggestion
 
-- **Outcome:** User sees a heuristic-suggested next parameter change, based on how past parameter changes affected population stability across the user's runs.
+- **Outcome:** User sees a heuristic-suggested next parameter change — the single admin-ranged parameter most correlated with improving their final score across their own past runs — with a one-line rationale and a confidence qualifier.
 - **Change ID:** parameter-suggestion-heuristic
 - **PRD refs:** FR-015
 - **Prerequisites:** F-05
 - **Parallel with:** S-12, S-14
 - **Blockers:** —
-- **Unknowns:**
-  - What exactly counts as "population stability" for the heuristic to optimize toward, and what shape the suggestion takes (a single parameter nudge, a ranked list, a confidence qualifier)? — Owner: user. Block: yes — FR-015's Socratic note already flags per-parameter interaction effects as an open design risk; `/10x-plan` should not invent the heuristic's decision rule.
-- **Risk:** This is the PRD's most underspecified must-have-adjacent FR — "heuristic, not full optimization" bounds scope but doesn't define the rule. Sequenced after the north star deliberately: seeing comparison data first (S-12) may sharpen what "a good suggestion" should look like before committing to a heuristic design.
-- **Status:** blocked
+- **Unknowns:** —
+- **Risk:** Needs at least 3 of the user's own completed runs with a given parameter varied before it can say anything meaningful for that parameter — degrades to "not enough data yet" otherwise, same degrade-gracefully posture as S-11/S-12's partial-data handling.
+- **Status:** ready
 
 ### S-14: Export a run outside the app
 
-- **Outcome:** User exports a run's parameters, score, and history outside the app.
+- **Outcome:** User exports a run's parameters, score, and history outside the app, in JSON (full-fidelity, unflattened) and CSV (parameters + score, one row, no nested history fields).
 - **Change ID:** run-export
 - **PRD refs:** FR-017
 - **Prerequisites:** F-05
 - **Parallel with:** S-12, S-13
 - **Blockers:** —
-- **Unknowns:**
-  - What export format(s) (CSV / JSON / image / other)? — Owner: user. Block: yes — this is PRD Open Question #2, still unresolved.
-- **Risk:** Low complexity once the format is chosen — F-05 already persists everything a run-level export would need; the only real decision is the format itself.
-- **Status:** blocked
+- **Unknowns:** —
+- **Risk:** Low complexity — F-05 already persists everything a run-level export would need; CSV deliberately drops nested history arrays (phaseHistory, survivorGenes, per-tick samples) rather than awkwardly serializing them into a single cell — a format limitation, not an oversight.
+- **Status:** ready
 
 ## Backlog Handoff
 
@@ -349,16 +347,16 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-10       | post-login-run-dashboard           | Post-login dashboard of the user's own runs                             | yes                     | Waiting on F-01 (done); can run parallel with S-09, F-05  |
 | S-11       | run-analysis-view                   | Per-run population-dynamics analysis view                               | no                      | Waiting on F-05, S-09, S-10                               |
 | S-12       | compare-runs-side-by-side           | Compare completed runs' scores side by side                             | yes                     | No new unknowns; waiting on F-05, S-11 (both done) — M-2 north star |
-| S-13       | parameter-suggestion-heuristic      | Heuristic next-parameter suggestion based on past run outcomes          | no                      | Blocked — heuristic design (what it optimizes, suggestion shape) unresolved |
-| S-14       | run-export                          | Export a run's parameters/score/history outside the app                 | no                      | Blocked — export format unresolved (Open Roadmap Question #2) |
+| S-13       | parameter-suggestion-heuristic      | Heuristic next-parameter suggestion correlated with final score         | yes                     | Heuristic design resolved 2026-11-14; can run parallel with S-12, S-14 |
+| S-14       | run-export                          | Export a run's parameters/score/history outside the app (JSON + CSV)    | yes                     | Export formats resolved 2026-11-14; can run parallel with S-12, S-13 |
 
 ## Open Roadmap Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Equal product of four factors, now including population-lifecycle-phase quality (FR-019). See PRD Open Questions #1 and Business Logic. No longer blocks S-04.
-2. **What export format(s) should the export feature (FR-017) support (CSV / JSON / image / other)?** — Owner: user. Block: yes — blocks S-14.
+2. ~~What export format(s) should the export feature (FR-017) support (CSV / JSON / image / other)?~~ — **Resolved 2026-11-14.** Both JSON (full-fidelity) and CSV (parameters + score, no nested history). See PRD Open Questions #2. No longer blocks S-14.
 3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14** (see PRD Open Questions #3) — every FR added since stays within per-user data isolation; not blocking.
 4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; resolved by default: forward-only, with old runs showing only their final score in the dashboard).
-5. **What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?** — Owner: user. Block: yes — blocks S-13.
+5. ~~What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?~~ — **Resolved 2026-11-14.** Optimizes toward the final combined score, correlating each of the 13 admin-ranged parameters against the user's own past-run scores; suggests the single most-correlated one with a rationale and a confidence qualifier (minimum 3 varied runs). See PRD Open Questions #5. No longer blocks S-13.
 
 ## Parked
 
