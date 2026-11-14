@@ -54,6 +54,9 @@ export default function DashboardPage() {
 	const isLoading =
 		runningQuery.isPending || savedQuery.isPending || completedQuery.isPending;
 
+	const isError =
+		runningQuery.isError || savedQuery.isError || completedQuery.isError;
+
 	const isEmpty =
 		(runningQuery.data?.length ?? 0) === 0 &&
 		(savedQuery.data?.length ?? 0) === 0 &&
@@ -88,6 +91,10 @@ export default function DashboardPage() {
 				<div className="flex w-full max-w-2xl flex-col gap-6">
 					<Skeleton className="h-24 w-full rounded-2xl" />
 					<Skeleton className="h-24 w-full rounded-2xl" />
+				</div>
+			) : isError ? (
+				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
+					<p>Couldn&apos;t load your simulations. Try reloading the page.</p>
 				</div>
 			) : isEmpty ? (
 				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
