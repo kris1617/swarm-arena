@@ -63,8 +63,13 @@ export default function RunAnalysisPage() {
 		);
 	}
 
-	const { history, completedCycles, finalGeneticDiversity, score } =
-		analysisQuery.data;
+	const {
+		history,
+		completedCycles,
+		finalGeneticDiversity,
+		score,
+		runOptimizationSuggestion,
+	} = analysisQuery.data;
 
 	const populationSamples = history?.populationCountSamples;
 	const chartData = populationSamples?.map((population, tick) => ({
@@ -113,6 +118,15 @@ export default function RunAnalysisPage() {
 					<Link href={`/api/runs/${runId}/export?format=csv`}>Export CSV</Link>
 				</Button>
 			</div>
+
+			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
+				<h2 className="font-semibold">Run suggestion</h2>
+				{runOptimizationSuggestion.status === "ok" ? (
+					<p>{runOptimizationSuggestion.rationale}</p>
+				) : (
+					<p>Not enough data in this run to suggest a change.</p>
+				)}
+			</section>
 
 			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
 				<h2 className="font-semibold">Population over time</h2>
