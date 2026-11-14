@@ -212,13 +212,13 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 862e71c
+- [x] 3.2 Linting passes: `npm run check` — 862e71c
+- [x] 3.3 Full suite still passes: `npm test` — 862e71c
 
 #### Manual
 
-- [x] 3.4 Desktop screenshots: default (with runs), empty, loading
-- [x] 3.5 Mobile (375px) screenshot, no layout regression
-- [x] 3.6 Keyboard Tab order reaches all five fixed links/buttons with visible ring
-- [x] 3.7 Error-state N/A reasoning still holds
+- [x] 3.4 Desktop screenshots: default (with runs), empty, loading — 862e71c
+- [x] 3.5 Mobile (375px) screenshot, no layout regression — 862e71c
+- [x] 3.6 Keyboard Tab order reaches all five fixed links/buttons with visible ring — 862e71c
+- [x] 3.7 Error-state N/A reasoning still holds — 862e71c
