@@ -247,25 +247,25 @@ None — no schema or data change. `globals.css`'s chart-token value change affe
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 4fe19fd
+- [x] 1.2 Linting passes: `npm run check` — 4fe19fd
+- [x] 1.3 Full suite still passes: `npm test` — 4fe19fd
 
 ### Phase 2: Apply the fixes to the run-analysis view
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx returns zero hits
 
 #### Manual
 
-- [ ] 2.5 Population chart and phase-tally colors match the pre-change palette, now via --chart tokens
-- [ ] 2.6 Loading/error states render identically through StatusMessage
-- [ ] 2.7 Exactly one `main` landmark in each of the 3 page states
-- [ ] 2.8 Visible focus ring on both export links
+- [x] 2.5 Population chart and phase-tally colors match the pre-change palette, now via --chart tokens
+- [x] 2.6 Loading/error states render identically through StatusMessage
+- [x] 2.7 Exactly one `main` landmark in each of the 3 page states
+- [x] 2.8 Visible focus ring on both export links
 
 ### Phase 3: Apply the fixes to the run-comparison view
 

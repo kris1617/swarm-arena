@@ -11,17 +11,20 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Button } from "~/components/ui/button";
+import { StatusMessage } from "~/components/ui/status-message";
 import type { PopulationPhase } from "~/server/simulation/boids";
 import { api } from "~/trpc/react";
 
 // S-11 (MS-08): one color per phase, used for the population chart's
-// per-point dot color and the phase-breakdown stat list.
+// per-point dot color and the phase-breakdown stat list. Sourced from the
+// --chart-1..5 tokens (globals.css), which carry this exact palette.
 const PHASE_COLORS: Record<PopulationPhase, string> = {
-	establishment: "#9ca3af",
-	growth: "#22c55e",
-	overshoot: "#f59e0b",
-	crash: "#ef4444",
-	recovery: "#38bdf8",
+	establishment: "var(--chart-1)",
+	growth: "var(--chart-2)",
+	overshoot: "var(--chart-3)",
+	crash: "var(--chart-4)",
+	recovery: "var(--chart-5)",
 };
 
 const PHASE_LABELS: Record<PopulationPhase, string> = {
@@ -51,18 +54,12 @@ export default function RunAnalysisPage() {
 	});
 
 	if (analysisQuery.isPending) {
-		return (
-			<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center bg-gradient-to-b p-8">
-				<p>Loading…</p>
-			</main>
-		);
+		return <StatusMessage>Loading…</StatusMessage>;
 	}
 
 	if (analysisQuery.isError || !analysisQuery.data) {
 		return (
-			<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center bg-gradient-to-b p-8">
-				<p>Could not load this run&apos;s analysis.</p>
-			</main>
+			<StatusMessage>Could not load this run&apos;s analysis.</StatusMessage>
 		);
 	}
 
@@ -94,25 +91,27 @@ export default function RunAnalysisPage() {
 	const totalTicks = history?.phaseHistory.length ?? 0;
 
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">
 				Run #{runId} Analysis{" "}
 				{score !== null ? `— Score: ${score.toFixed(2)}` : ""}
 			</h1>
 
 			<div className="flex gap-2">
-				<Link
-					className="bg-input text-foreground hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-					href={`/api/runs/${runId}/export?format=json`}
+				<Button
+					asChild
+					className="bg-input text-foreground hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
 				>
-					Export JSON
-				</Link>
-				<Link
-					className="bg-input text-foreground hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-					href={`/api/runs/${runId}/export?format=csv`}
+					<Link href={`/api/runs/${runId}/export?format=json`}>
+						Export JSON
+					</Link>
+				</Button>
+				<Button
+					asChild
+					className="bg-input text-foreground hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
 				>
-					Export CSV
-				</Link>
+					<Link href={`/api/runs/${runId}/export?format=csv`}>Export CSV</Link>
+				</Button>
 			</div>
 
 			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
@@ -128,7 +127,7 @@ export default function RunAnalysisPage() {
 								dataKey="population"
 								// biome-ignore lint/suspicious/noExplicitAny: Recharts' dot prop type doesn't accept a typed custom-props function cleanly.
 								dot={PhaseDot as any}
-								stroke="#38bdf8"
+								stroke="var(--chart-5)"
 								type="monotone"
 							/>
 						</LineChart>
@@ -181,6 +180,6 @@ export default function RunAnalysisPage() {
 				<h2 className="font-semibold">Final genetic diversity</h2>
 				<p>{finalGeneticDiversity.toFixed(3)}</p>
 			</section>
-		</main>
+		</div>
 	);
 }
