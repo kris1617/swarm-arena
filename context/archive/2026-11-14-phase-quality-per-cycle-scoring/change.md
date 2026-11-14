@@ -1,10 +1,10 @@
 ---
 change_id: phase-quality-per-cycle-scoring
 title: Score phase quality per completed lifecycle cycle, not as one flat average
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T14:28:19Z
 ---
 
 ## Notes
