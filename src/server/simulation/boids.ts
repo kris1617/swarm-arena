@@ -1245,11 +1245,40 @@ const PHASE_QUALITY_WEIGHTS: Record<PopulationPhase, number> = {
 	recovery: 0.9,
 };
 
-// Multiplier applied when a run's phaseHistory shows at least one genuine
-// Crash -> Recovery transition — rewards resilience (bouncing back), not
-// just avoiding Crash in the first place. Clamped so the final value never
-// exceeds 1.
-const RESILIENCE_BONUS_MULTIPLIER = 1.2;
+// Per-cycle resilience bonus step and cap (S-09, roadmap MS-06): each
+// completed Crash -> Recovery cycle adds another step, with diminishing
+// returns capped at RESILIENCE_BONUS_CAP_CYCLES — a population that
+// survives several crashes and recovers each time scores higher than one
+// that barely survives a single cycle, but endless crash-cycling doesn't
+// get unbounded reward. 1 cycle reproduces this constant's pre-S-09
+// magnitude (1 + 0.2 = 1.2) exactly, so the single-cycle case is unchanged.
+// Clamped so the final value never exceeds 1.
+const RESILIENCE_BONUS_STEP = 0.2;
+const RESILIENCE_BONUS_CAP_CYCLES = 3;
+
+// Counts non-overlapping Crash -> Recovery pairs in `phaseHistory`: scans
+// forward for an unconsumed "crash" tick, then forward from there for the
+// next "recovery" tick: if found, counts one cycle and continues scanning
+// from just past that recovery (so it can't be claimed by a later crash
+// too), otherwise a trailing crash with no following recovery is an
+// incomplete cycle and isn't counted. Single forward pass, O(n).
+function countCrashToRecoveryCycles(phaseHistory: PopulationPhase[]): number {
+	let cycles = 0;
+	let i = 0;
+	while (i < phaseHistory.length) {
+		if (phaseHistory[i] !== "crash") {
+			i++;
+			continue;
+		}
+		const recoveryIndex = phaseHistory.indexOf("recovery", i + 1);
+		if (recoveryIndex === -1) {
+			break;
+		}
+		cycles++;
+		i = recoveryIndex + 1;
+	}
+	return cycles;
+}
 
 export function computePhaseQuality(phaseHistory: PopulationPhase[]): number {
 	if (phaseHistory.length === 0) {
@@ -1259,25 +1288,11 @@ export function computePhaseQuality(phaseHistory: PopulationPhase[]): number {
 		phaseHistory.reduce((sum, phase) => sum + PHASE_QUALITY_WEIGHTS[phase], 0) /
 		phaseHistory.length;
 
-	let hasCrashToRecovery = false;
-	for (let i = 0; i < phaseHistory.length - 1; i++) {
-		if (phaseHistory[i] === "crash") {
-			for (let j = i + 1; j < phaseHistory.length; j++) {
-				if (phaseHistory[j] === "recovery") {
-					hasCrashToRecovery = true;
-					break;
-				}
-			}
-		}
-		if (hasCrashToRecovery) {
-			break;
-		}
-	}
+	const cycles = countCrashToRecoveryCycles(phaseHistory);
+	const bonusMultiplier =
+		1 + RESILIENCE_BONUS_STEP * Math.min(cycles, RESILIENCE_BONUS_CAP_CYCLES);
 
-	const withBonus = hasCrashToRecovery
-		? average * RESILIENCE_BONUS_MULTIPLIER
-		: average;
-	return Math.max(0, Math.min(1, withBonus));
+	return Math.max(0, Math.min(1, average * bonusMultiplier));
 }
 
 export function computeResourceManagement(foodRatioSamples: number[]): number {

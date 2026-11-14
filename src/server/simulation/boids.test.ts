@@ -1066,6 +1066,51 @@ describe("computePhaseQuality", () => {
 		];
 		expect(computePhaseQuality(allGrowthThenRecovery)).toBeLessThanOrEqual(1);
 	});
+
+	// S-09 (roadmap MS-06): the resilience bonus must scale with the number
+	// of completed cycles, not just whether at least one exists — this is
+	// the actual gap the previous boolean-only `hasCrashToRecovery` scan had.
+	it("rewards two completed crash-to-recovery cycles above exactly one, at the same flat phase-weight average", () => {
+		const oneCycle: PopulationPhase[] = [
+			...Array(5).fill("crash"),
+			...Array(5).fill("recovery"),
+		];
+		const twoCycles: PopulationPhase[] = [
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"crash",
+			"crash",
+			"crash",
+			"recovery",
+			"recovery",
+			"recovery",
+		];
+
+		// Same composition (5 crash + 5 recovery ticks either way), so the
+		// flat time-weighted average term is identical — any score
+		// difference comes entirely from the resilience bonus.
+		expect(computePhaseQuality(twoCycles)).toBeGreaterThan(
+			computePhaseQuality(oneCycle),
+		);
+	});
+
+	it("caps the resilience bonus at RESILIENCE_BONUS_CAP_CYCLES completed cycles", () => {
+		const threeCycles: PopulationPhase[] = Array(3)
+			.fill(["crash", "recovery"])
+			.flat();
+		const fourCycles: PopulationPhase[] = Array(4)
+			.fill(["crash", "recovery"])
+			.flat();
+
+		// Every crash/recovery pair contributes the same per-pair average
+		// regardless of pair count, so both arrays score identically once
+		// the cap is reached — proving the 4th cycle adds no further bonus.
+		expect(computePhaseQuality(fourCycles)).toBe(
+			computePhaseQuality(threeCycles),
+		);
+	});
 });
 
 describe("computeScore", () => {
