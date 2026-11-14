@@ -44,7 +44,8 @@ swarm-arena is a Next.js 16 app on the T3 stack (tRPC, Drizzle ORM over SQLite v
 - Shared components live in `src/components/ui`. Check that directory before writing a new one; add missing ones via `npx shadcn@latest add <name>`.
 - No literal colors or arbitrary Tailwind values in views — reference a token instead.
 - A link styled to look like a button (`rounded-full`, button-like padding/weight) goes through `<Button asChild><Link href="...">...</Link></Button>`, not a manually-styled `<Link>` — `Button`'s `asChild` (Radix `Slot`) is the only way these get the shared `focus-visible` ring; a bare styled `Link` has none.
-- `AppShell`'s `SidebarInset` (mounted in `layout.tsx` for every authenticated page) already renders the page's one `<main>` landmark. A page's own root element must be a `<div>`, never another `<main>` — two nested `main` landmarks is invalid for assistive tech. (`src/app/dashboard/page.tsx` follows this; `simulation/page.tsx` and `runs/*` pages still use `<main>` as their root and need the same fix when they're next restyled — S-17/S-18.)
+- `AppShell`'s `SidebarInset` (mounted in `layout.tsx` for every authenticated page) already renders the page's one `<main>` landmark. A page's own root element must be a `<div>`, never another `<main>` — two nested `main` landmarks is invalid for assistive tech. (`dashboard/page.tsx` and `simulation/page.tsx` already follow this; `runs/*` pages still use `<main>` as their root and need the same fix when they're next restyled — S-18.)
+- A hand-copied `<label>`+`<Input>` block repeated across many fields is a missing-shared-component signal — see `src/components/ui/number-field.tsx` for the pattern (a thin wrapper that still renders `Input` for its token/focus-visible styling, not a second primitive).
 
 <!-- BEGIN:nextjs-agent-rules -->
 
