@@ -13,9 +13,9 @@ export default async function AdminElevationPage() {
 		: false;
 
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Admin Elevation</h1>
 			<ElevationForm isCurrentlyAdmin={isCurrentlyAdmin} />
-		</main>
+		</div>
 	);
 }
