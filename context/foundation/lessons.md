@@ -37,6 +37,13 @@
 **Rule**: Never plan to test a tRPC subscription procedure via `createCaller`. Extract the subscription's generator logic into a plain, exported async generator function with no tRPC types in its signature (e.g. `watchServerRun` here) — tests call that function directly. The `.subscription(...)` procedure itself becomes a thin delegate (ownership/input validation already happened in the plain function if it needs DB access, or stays in the procedure if it's request-specific) that only adds `tracked()`'s SSE envelope; it is acceptable, and expected, for that thin delegate to have no independent test coverage.
 **Applies to**: `/10x-plan` and `/10x-plan-review` for any future tRPC subscription procedure in this project — check the TCaller type signature before designing its test strategy around `createCaller`.
 
+## SQLite's libsql client needs an explicit `busy_timeout` or concurrent test writers get spurious `SQLITE_BUSY` failures
+
+**Context**: `src/server/db/index.ts` (run-export Phase 1, 2026-11-14, side-fix found while running the full suite)
+**Problem**: `createClient({ url: env.DATABASE_URL })` never set a busy-timeout pragma. SQLite's default busy handler fails immediately with `SQLITE_BUSY`/"database is locked" instead of waiting, so once enough Vitest test files write to the same file-based `db.sqlite` under the default parallel-worker model, writers collide and tests fail intermittently — worse as more test files accumulate (this session hit it repeatedly across many phases, always "fixed" by retrying rather than root-caused, until adding a 20th concurrent-writer test file made the full suite fail consistently rather than occasionally).
+**Rule**: Any new SQLite client in this project must set `PRAGMA busy_timeout = <ms>` once at creation (now done in `src/server/db/index.ts` itself, so this is already fixed project-wide) — never add a second db client elsewhere without the same pragma. If "database is locked" reappears, the fix is the timeout value or the write pattern, not another retry-until-green.
+**Applies to**: Anyone touching `src/server/db/index.ts` or adding a new db connection; `/10x-implement` should recognize `SQLITE_BUSY` as a real, fixable bug rather than disposable flakiness if it recurs after this fix.
+
 ## tRPC router helpers must take `ctx.db` as a parameter, not the module-level `db` singleton
 
 **Context**: `src/server/api/routers/simulation.ts`'s `insertRunningSimulation` helper (start-server-run-simulation / roadmap S-06, 2026-11-14)
