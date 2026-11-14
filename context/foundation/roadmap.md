@@ -57,7 +57,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | F-05 | persist-run-history             | (foundation) A finished run's tick-level population history (phase history, food-ratio samples, gene snapshots) is persisted instead of discarded | —              | MS-08, FR-019, FR-010 (full)                            | done |
 | S-10 | post-login-run-dashboard        | User lands on a dashboard of their own runs right after logging in, with standard status/filter/detail-link conventions | F-01           | MS-07, FR-013, FR-014                                   | done |
 | S-11 | run-analysis-view               | User opens a completed run's analysis view (growth-curve comparison, per-cycle phase breakdown, diversity-index trend) to decide what to change next | F-05, S-09, S-10 | MS-08, FR-019, FR-010 (full)                          | done |
-| S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | ready |
+| S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | in-progress |
 | S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, based on how past changes affected population stability | F-05            | FR-015                                                 | blocked |
 | S-14 | run-export                      | User exports a run's parameters/score/history outside the app | F-05            | FR-017                                                 | blocked |
 
@@ -300,7 +300,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — every completed run since F-05 already has a persisted score and history; this is a new read-only view over existing data, not new data collection. Runs that predate F-05 have only a final score (same degrade-gracefully pattern S-11 already established for its own empty state).
-- **Status:** ready
+- **Status:** in-progress
 
 ### S-13: Heuristic parameter-change suggestion
 
