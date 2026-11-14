@@ -286,13 +286,13 @@ None — no schema or data change. `globals.css`'s chart-token value change affe
 
 #### Automated
 
-- [x] 4.1 Type checking passes: `npm run typecheck`
-- [x] 4.2 Linting passes: `npm run check`
-- [x] 4.3 Full suite still passes: `npm test`
+- [x] 4.1 Type checking passes: `npm run typecheck` — 813e9b9
+- [x] 4.2 Linting passes: `npm run check` — 813e9b9
+- [x] 4.3 Full suite still passes: `npm test` — 813e9b9
 
 #### Manual
 
-- [x] 4.4 Desktop screenshots: default, loading, error/empty for both views
-- [x] 4.5 Mobile (375px) screenshots for both views, no layout regression
-- [x] 4.6 Disabled-state N/A reasoning holds for both views
-- [x] 4.7 Existing empty-data messages on the analysis page unaffected
+- [x] 4.4 Desktop screenshots: default, loading, error/empty for both views — 813e9b9
+- [x] 4.5 Mobile (375px) screenshots for both views, no layout regression — 813e9b9
+- [x] 4.6 Disabled-state N/A reasoning holds for both views — 813e9b9
+- [x] 4.7 Existing empty-data messages on the analysis page unaffected — 813e9b9

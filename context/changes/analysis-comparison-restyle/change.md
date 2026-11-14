@@ -1,7 +1,7 @@
 ---
 change_id: analysis-comparison-restyle
 title: Restyle the run-analysis and run-comparison pages onto the F-06 design-system contract
-status: implementing
+status: implemented
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
