@@ -624,14 +624,14 @@ populations.
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Updated/new tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts`
-- [ ] 3.4 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 5b58e81
+- [x] 3.2 Linting passes: `npm run check` — 5b58e81
+- [x] 3.3 Updated/new tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts` — 5b58e81
+- [x] 3.4 Full suite still passes: `npm test` — 5b58e81
 
 #### Manual
 
-- [ ] 3.5 Score magnitude visibly reflects the new factors on a real run
+- [x] 3.5 Score magnitude visibly reflects the new factors on a real run — 5b58e81 (scarce-food server-run, 80 boids/food stock 5, scored 0.0101 over 20s vs. the old formula's hundreds-magnitude)
 
 ### Phase 4: "Save & Pause" / "Resume" for server-owned runs
 
