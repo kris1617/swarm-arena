@@ -242,11 +242,11 @@ None — no schema change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — b3af369
+- [x] 1.2 Linting passes: `npm run check` — b3af369
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts` — b3af369
+- [x] 1.4 Full suite still passes: `npm test` — b3af369
 
 #### Manual
 
-- [x] 1.5 Subscription link rewiring doesn't change existing (non-subscription) page/network behavior
+- [x] 1.5 Subscription link rewiring doesn't change existing (non-subscription) page/network behavior — b3af369
