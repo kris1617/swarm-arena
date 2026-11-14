@@ -1,10 +1,10 @@
 ---
 change_id: server-run-list-and-switch
 title: List and switch between running server simulations; retire old client switcher
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T11:29:36Z
 ---
 
 ## Notes
