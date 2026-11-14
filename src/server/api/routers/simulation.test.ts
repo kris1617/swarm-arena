@@ -851,3 +851,163 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 		} satisfies Partial<TRPCError>);
 	});
 });
+
+describe("simulationRouter.savePause / resume", () => {
+	async function insertOwnerAndCaller() {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		return { ownerId: owner.id, caller };
+	}
+
+	it("pauses a running server run into a saved row, then resume continues ticking", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await caller.simulation.savePause({ runId });
+
+		expect(isServerRunActive(runId)).toBe(false);
+		const savedRow = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(savedRow?.status).toBe("saved");
+		expect(savedRow?.savedState).not.toBeNull();
+
+		await caller.simulation.resume({ runId });
+
+		expect(isServerRunActive(runId)).toBe(true);
+		const resumedRow = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(resumedRow?.status).toBe("running");
+		expect(resumedRow?.savedState).toBeNull();
+		void ownerId;
+	});
+
+	it("rejects savePause with FORBIDDEN for a non-owner", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: "attacker-user-id", role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.savePause({ runId }),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects savePause with BAD_REQUEST when the run has no live registry entry", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+		// A plain inserted "running" row with no matching startServerRun call —
+		// same shape watchServerRun's own "not an active server run" test uses.
+		const [row] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: ownerId,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "running",
+			})
+			.returning({ id: simulationRuns.id });
+		if (!row) throw new Error("failed to insert fixture run");
+
+		await expect(
+			caller.simulation.savePause({ runId: row.id }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects resume with BAD_REQUEST when the run isn't saved", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await expect(caller.simulation.resume({ runId })).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects resume with FORBIDDEN for a non-owner", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+		await caller.simulation.savePause({ runId });
+
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: "attacker-user-id", role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.resume({ runId }),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+
+		// Clean up: this run is "saved" (no live interval), not "running" —
+		// afterEach's trackedServerRunIds loop calls stopServerRun, a no-op
+		// against the registry, so finish it explicitly via resume+stop.
+		await caller.simulation.resume({ runId });
+	});
+
+	it("listSaved returns only the caller's own saved rows", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+		await caller.simulation.savePause({ runId });
+
+		const [otherOwner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!otherOwner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(otherOwner.id);
+		const otherCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: otherOwner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		const { runId: otherRunId } =
+			await otherCaller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(otherRunId);
+		await otherCaller.simulation.savePause({ runId: otherRunId });
+
+		const result = await caller.simulation.listSaved();
+		expect(result.map((r) => r.id)).toEqual([runId]);
+		void ownerId;
+
+		await caller.simulation.resume({ runId });
+		await otherCaller.simulation.resume({ runId: otherRunId });
+	});
+});

@@ -58,6 +58,25 @@ export default function SimulationPage() {
 	const runningRunsQuery = api.simulation.listRunning.useQuery(undefined, {
 		refetchInterval: 2000,
 	});
+	// S-04 Phase 4 (FR-012): paused server-owned runs, for the "Saved"
+	// section's "Resume" list — same polling cadence as `listRunning`.
+	const savedRunsQuery = api.simulation.listSaved.useQuery(undefined, {
+		refetchInterval: 2000,
+	});
+	const utils = api.useUtils();
+	const savePauseMutation = api.simulation.savePause.useMutation({
+		onSuccess: () => {
+			void utils.simulation.listRunning.invalidate();
+			void utils.simulation.listSaved.invalidate();
+		},
+	});
+	const resumeMutation = api.simulation.resume.useMutation({
+		onSuccess: (_data, variables) => {
+			void utils.simulation.listRunning.invalidate();
+			void utils.simulation.listSaved.invalidate();
+			setViewingRunId(variables.runId);
+		},
+	});
 
 	// impl-review (S-08): without this, a run that naturally stops drops out
 	// of the list (and its switcher button) within one poll, while the
@@ -213,20 +232,56 @@ export default function SimulationPage() {
 					</p>
 					<div className="flex flex-wrap justify-center gap-2">
 						{runningRunsQuery.data.map((run) => (
+							<div className="flex items-center gap-1" key={run.id}>
+								<Button
+									className={
+										run.id === viewingRunId
+											? "bg-foreground/35 text-foreground h-auto rounded-full px-6 py-2 font-semibold"
+											: "bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
+									}
+									onClick={() => setViewingRunId(run.id)}
+									type="button"
+								>
+									Run #{run.id}
+								</Button>
+								<Button
+									className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-4 py-2 text-sm font-semibold"
+									disabled={savePauseMutation.isPending}
+									onClick={() => savePauseMutation.mutate({ runId: run.id })}
+									type="button"
+								>
+									Save &amp; Pause
+								</Button>
+							</div>
+						))}
+					</div>
+					{savePauseMutation.error ? (
+						<p className="text-destructive">
+							{savePauseMutation.error.message}
+						</p>
+					) : null}
+				</div>
+			) : null}
+
+			{savedRunsQuery.data && savedRunsQuery.data.length > 0 ? (
+				<div className="bg-input text-foreground flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl px-4 py-3 text-center">
+					<p>Saved — paused and ready to resume.</p>
+					<div className="flex flex-wrap justify-center gap-2">
+						{savedRunsQuery.data.map((run) => (
 							<Button
-								className={
-									run.id === viewingRunId
-										? "bg-foreground/35 text-foreground h-auto rounded-full px-6 py-2 font-semibold"
-										: "bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
-								}
+								className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
+								disabled={resumeMutation.isPending}
 								key={run.id}
-								onClick={() => setViewingRunId(run.id)}
+								onClick={() => resumeMutation.mutate({ runId: run.id })}
 								type="button"
 							>
-								Run #{run.id}
+								Resume Run #{run.id}
 							</Button>
 						))}
 					</div>
+					{resumeMutation.error ? (
+						<p className="text-destructive">{resumeMutation.error.message}</p>
+					) : null}
 				</div>
 			) : null}
 

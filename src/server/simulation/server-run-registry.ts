@@ -15,7 +15,7 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 } from "~/server/simulation/boids";
-import { createRng } from "~/server/simulation/rng";
+import { createRng, type Rng } from "~/server/simulation/rng";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 
 // Same cadence the client's RAF loop approximates (~60fps) — keeps
@@ -49,7 +49,7 @@ export type ServerRunParams = {
 
 type LiveRun = {
 	params: ServerRunParams;
-	rng: () => number;
+	rng: Rng;
 	boids: BoidState[];
 	predators: PredatorState[];
 	foodStock: number;
@@ -272,6 +272,86 @@ export async function stopServerRun(runId: number): Promise<void> {
 		computePhaseQuality(run.phaseHistory),
 	);
 	await finishRun(runId, { score });
+}
+
+// S-04 Phase 4 (FR-012): everything needed to reconstruct an identical
+// `LiveRun` later — persisted verbatim into `simulationRuns.savedState`.
+export type ServerRunSnapshot = {
+	params: ServerRunParams;
+	rngState: number;
+	boids: BoidState[];
+	predators: PredatorState[];
+	foodStock: number;
+	cohesionSamples: number[];
+	foodRatioSamples: number[];
+	populationCountSamples: number[];
+	phaseHistory: PopulationPhase[];
+	elapsedSeconds: number;
+	lastTimestamp: number | null;
+	populationCapped: boolean;
+};
+
+// The pause half of save/resume: stops ticking and hands back everything
+// `resumeServerRun` needs to continue from exactly this point — same
+// registry cleanup `stopServerRun` does (clear interval, delete entry),
+// but returns the live state instead of scoring/finishing the run.
+export function snapshotServerRun(
+	runId: number,
+): ServerRunSnapshot | undefined {
+	const run = registry.get(runId);
+	if (!run) {
+		return undefined;
+	}
+	clearInterval(run.intervalId);
+	registry.delete(runId);
+	return {
+		params: run.params,
+		rngState: run.rng.getState(),
+		boids: run.boids,
+		predators: run.predators,
+		foodStock: run.foodStock,
+		cohesionSamples: run.cohesionSamples,
+		foodRatioSamples: run.foodRatioSamples,
+		populationCountSamples: run.populationCountSamples,
+		phaseHistory: run.phaseHistory,
+		elapsedSeconds: run.elapsedSeconds,
+		lastTimestamp: run.lastTimestamp,
+		populationCapped: run.populationCapped,
+	};
+}
+
+// The `startServerRun` counterpart: reconstructs a `LiveRun` directly from
+// a snapshot's arrays/values — never re-generates the population — and
+// restores the RNG to the exact point it was paused at, then resumes
+// ticking exactly as `startServerRun` does.
+export function resumeServerRun(
+	runId: number,
+	snapshot: ServerRunSnapshot,
+): void {
+	if (registry.has(runId)) {
+		throw new Error(
+			`server run ${runId} is already registered — resumeServerRun called for an already-active runId`,
+		);
+	}
+	const rng = createRng(snapshot.params.seed);
+	rng.setState(snapshot.rngState);
+
+	const run: LiveRun = {
+		params: snapshot.params,
+		rng,
+		boids: snapshot.boids,
+		predators: snapshot.predators,
+		foodStock: snapshot.foodStock,
+		cohesionSamples: snapshot.cohesionSamples,
+		foodRatioSamples: snapshot.foodRatioSamples,
+		populationCountSamples: snapshot.populationCountSamples,
+		phaseHistory: snapshot.phaseHistory,
+		elapsedSeconds: snapshot.elapsedSeconds,
+		lastTimestamp: snapshot.lastTimestamp,
+		populationCapped: snapshot.populationCapped,
+		intervalId: setInterval(() => tick(runId), TICK_INTERVAL_MS),
+	};
+	registry.set(runId, run);
 }
 
 // Plain, exported async generator — the testable core of F-04's live view

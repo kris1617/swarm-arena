@@ -4,9 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
+import type { BoidGenes, BoidState } from "~/server/simulation/boids";
 import {
 	getLiveRunState,
+	resumeServerRun,
 	type ServerRunParams,
+	type ServerRunSnapshot,
+	snapshotServerRun,
 	startServerRun,
 	stopServerRun,
 	watchServerRun,
@@ -235,6 +239,238 @@ describe("server-run-registry", () => {
 		});
 		expect(row?.status).toBe("stopped");
 		activeRunIds.length = 0;
+	});
+});
+
+describe("snapshotServerRun / resumeServerRun", () => {
+	it("returns undefined for an unregistered runId", () => {
+		expect(snapshotServerRun(999_999)).toBeUndefined();
+	});
+
+	it("snapshotting removes the run from the live registry without scoring/stopping it", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(11);
+		startServerRun({
+			runId,
+			seed: 11,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const snapshot = snapshotServerRun(runId);
+
+		expect(snapshot).toBeDefined();
+		expect(getLiveRunState(runId)).toBeUndefined();
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		// snapshotServerRun is a pure in-memory pause — the row is untouched
+		// until the caller (the `savePause` procedure) writes `status: "saved"`.
+		expect(row?.status).toBe("running");
+	});
+
+	it("resumeServerRun reconstructs ticking that continues from exactly the snapshotted state", async () => {
+		vi.useFakeTimers();
+		const { runId: runIdA } = await insertOwnedRunningRun(12);
+		const { runId: runIdB } = await insertOwnedRunningRun(12);
+		activeRunIds.push(runIdA, runIdB);
+
+		// Run A: tick uninterrupted for a stretch.
+		startServerRun({
+			runId: runIdA,
+			seed: 12,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(320);
+		const referenceState = getLiveRunState(runIdA);
+		expect(referenceState).toBeDefined();
+
+		// Run B: tick for half the stretch, snapshot, resume, then tick the
+		// other half — same total elapsed ticking, split by a pause.
+		startServerRun({
+			runId: runIdB,
+			seed: 12,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(160);
+		const snapshot = snapshotServerRun(runIdB);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		expect(getLiveRunState(runIdB)).toBeUndefined();
+
+		resumeServerRun(runIdB, snapshot);
+		expect(getLiveRunState(runIdB)).toBeDefined();
+		await vi.advanceTimersByTimeAsync(160);
+
+		const resumedState = getLiveRunState(runIdB);
+		expect(resumedState?.boids).toEqual(referenceState?.boids);
+		expect(resumedState?.predators).toEqual(referenceState?.predators);
+
+		await stopServerRun(runIdA);
+		await stopServerRun(runIdB);
+		activeRunIds.length = 0;
+	});
+
+	// The test above proves continuity when no rng-driven branch (reproduction)
+	// fires in the window — it would pass even if resumeServerRun forgot to
+	// restore the RNG's state, since plain movement never calls `rng()`. This
+	// test manufactures a mate-eligible pair (same shape as
+	// single-run-lifecycle.test.ts's reproduction test) so reproduction's
+	// rng-driven branches (inheritGenes/mutation/gender rolls) actually fire
+	// across the pause, proving `rng.setState` genuinely resumes the sequence
+	// rather than restarting it.
+	function buildMatingSnapshot(
+		runId: number,
+		seed: number,
+		rngState: number,
+	): ServerRunSnapshot {
+		const genes: BoidGenes = {
+			color: { r: 0, g: 0, b: 0 },
+			flockId: 0,
+			separationWeight: 0,
+			alignmentWeight: 0,
+			cohesionWeight: 0,
+			maxSpeed: 40,
+			minSpeed: 15,
+			maxLifespan: 1000,
+			matePreference: 0,
+		};
+		function buildBoid(overrides: Partial<BoidState>): BoidState {
+			return {
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 1000,
+				genes,
+				energy: 45,
+				age: 0,
+				gender: "a",
+				...overrides,
+			};
+		}
+		return {
+			params: { runId, seed, ...BASE_PARAMS, maxDurationSeconds: 600 },
+			rngState,
+			boids: [
+				// The tracked pair: matures (crosses energyThreshold/
+				// MATURITY_AGE_SECONDS) partway through the test, well after
+				// the pause point below — this is the pair whose reproduction
+				// outcome the test actually compares.
+				buildBoid({ x: 100, y: 0, gender: "a" }),
+				buildBoid({ x: 105, y: 0, gender: "b" }),
+				// A decoy pair, already eligible on tick 1 and far enough away
+				// (MATE_DISTANCE_RADIUS=30) not to interact with the tracked
+				// pair. Mating it immediately consumes several rng() calls
+				// (gene inheritance/mutation/gender rolls) well before the
+				// pause, shifting the RNG's actual state away from the raw
+				// seed — without this, the tracked pair's later mating would
+				// consume the SAME rng state whether or not resumeServerRun
+				// restores it (since nothing would have advanced the state yet
+				// at the pause point), and the break-check below wouldn't
+				// prove anything. A near-zero `genes.maxLifespan` (inherited by
+				// its own offspring too) keeps this decoy lineage short-lived —
+				// without it, nothing stops the decoys (whose energy/age never
+				// reset after mating — see `reproducePopulation`'s own
+				// comment) from re-mating every tick for the rest of the test
+				// window.
+				buildBoid({
+					x: 1000,
+					y: 1000,
+					z: 1000,
+					energy: 50,
+					age: 5,
+					gender: "a",
+					genes: { ...genes, maxLifespan: 0.05 },
+					lifespan: 0.05,
+				}),
+				buildBoid({
+					x: 1005,
+					y: 1000,
+					z: 1000,
+					energy: 50,
+					age: 5,
+					gender: "b",
+					genes: { ...genes, maxLifespan: 0.05 },
+					lifespan: 0.05,
+				}),
+			],
+			predators: [],
+			foodStock: BASE_PARAMS.foodStockInitial,
+			cohesionSamples: [],
+			foodRatioSamples: [],
+			populationCountSamples: [],
+			phaseHistory: [],
+			elapsedSeconds: 0,
+			lastTimestamp: null,
+			populationCapped: false,
+		};
+	}
+
+	it("restores the exact RNG sequence across a pause, producing bit-identical reproduction outcomes", async () => {
+		vi.useFakeTimers();
+		const runIdA = 900_001;
+		const runIdB = 900_002;
+		activeRunIds.push(runIdA, runIdB);
+
+		// Run A: resume once (from a freshly-built snapshot, rngState = seed),
+		// tick straight through to a reproduction event.
+		resumeServerRun(runIdA, buildMatingSnapshot(runIdA, 42, 42));
+		await vi.advanceTimersByTimeAsync(6000);
+		const referenceState = getLiveRunState(runIdA);
+		expect(referenceState?.boids.length).toBeGreaterThan(2);
+
+		// Run B: resume, tick partway, pause (snapshot), resume again, tick the
+		// rest — same total ticking, split by a pause in between. Both halves
+		// are exact multiples of the registry's 16ms tick interval so the
+		// split doesn't itself shift which wall-clock instants land on a tick
+		// (an artifact of the fake-timer split, not of resume/RNG fidelity).
+		resumeServerRun(runIdB, buildMatingSnapshot(runIdB, 42, 42));
+		await vi.advanceTimersByTimeAsync(3008);
+		const midSnapshot = snapshotServerRun(runIdB);
+		if (!midSnapshot) {
+			throw new Error("expected a snapshot");
+		}
+		resumeServerRun(runIdB, midSnapshot);
+		await vi.advanceTimersByTimeAsync(2992);
+
+		const resumedState = getLiveRunState(runIdB);
+		expect(resumedState?.boids.length).toBeGreaterThan(2);
+		expect(resumedState?.boids).toEqual(referenceState?.boids);
+
+		await stopServerRun(runIdA);
+		await stopServerRun(runIdB);
+		activeRunIds.length = 0;
+	});
+
+	it("resumeServerRun throws if the runId is already registered", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(13);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 13,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		resumeServerRun(runId, snapshot);
+		activeRunIds.length = 1;
+		activeRunIds[0] = runId;
+
+		expect(() => resumeServerRun(runId, snapshot)).toThrow(
+			/already registered/,
+		);
 	});
 });
 

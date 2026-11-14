@@ -25,6 +25,10 @@ import {
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
+	isServerRunActive,
+	resumeServerRun,
+	type ServerRunSnapshot,
+	snapshotServerRun,
 	startServerRun,
 	watchServerRun,
 } from "~/server/simulation/server-run-registry";
@@ -391,6 +395,153 @@ export const simulationRouter = createTRPCRouter({
 			)
 			.orderBy(desc(simulationRuns.startedAt));
 	}),
+
+	// S-04 Phase 4 (FR-012): mirrors listRunning but for paused server-owned
+	// runs, feeding the "Saved" section's "Resume" list.
+	listSaved: protectedProcedure.query(async ({ ctx }) => {
+		const userId = ctx.session.user.id;
+		if (!userId) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+		return ctx.db
+			.select({
+				id: simulationRuns.id,
+				startedAt: simulationRuns.startedAt,
+				boidCount: simulationRuns.boidCount,
+				predatorCount: simulationRuns.predatorCount,
+			})
+			.from(simulationRuns)
+			.where(
+				and(
+					eq(simulationRuns.userId, userId),
+					eq(simulationRuns.status, "saved"),
+				),
+			)
+			.orderBy(desc(simulationRuns.startedAt));
+	}),
+
+	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable
+	// "saved" row — distinct from `stop`, which is terminal and scores
+	// immediately. Only server-owned runs have a live registry entry to
+	// snapshot; the client-staged path is untouched by this action.
+	savePause: protectedProcedure
+		.input(z.object({ runId: z.number() }))
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (simulationRuns, { eq }) => eq(simulationRuns.id, input.runId),
+			});
+
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "running" || !isServerRunActive(input.runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not an active server-run simulation",
+				});
+			}
+
+			const snapshot = snapshotServerRun(input.runId);
+			if (!snapshot) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+
+			// Race-safety net, same shape as `stop`'s: the snapshot above has
+			// already pulled this run out of the live registry (it cannot be
+			// un-paused in-memory), so a losing race here — someone else's
+			// `stop`/`savePause` already changed the row's status — leaves it
+			// stuck at whatever that other write set, untracked by this
+			// snapshot. Logged loudly rather than silently retried, same
+			// accepted-gap posture as `finishRun`'s own comment.
+			const [saved] = await ctx.db
+				.update(simulationRuns)
+				.set({
+					status: "saved",
+					savedState: snapshot,
+				})
+				.where(
+					and(
+						eq(simulationRuns.id, input.runId),
+						eq(simulationRuns.status, "running"),
+					),
+				)
+				.returning({ id: simulationRuns.id });
+
+			if (!saved) {
+				console.error(
+					`savePause: run ${input.runId} was snapshotted but its row's status changed before the write landed — snapshot discarded, live run was already removed from the registry`,
+				);
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run already stopped or saved",
+				});
+			}
+
+			return { ok: true };
+		}),
+
+	// S-04 Phase 4 (FR-012): the `savePause` counterpart — reconstructs the
+	// live registry entry from `savedState` and flips the row back to
+	// "running", exactly as `startServer` does for a fresh run.
+	resume: protectedProcedure
+		.input(z.object({ runId: z.number() }))
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (simulationRuns, { eq }) => eq(simulationRuns.id, input.runId),
+			});
+
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "saved" || !run.savedState) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not in a saved state",
+				});
+			}
+
+			try {
+				resumeServerRun(input.runId, run.savedState as ServerRunSnapshot);
+			} catch (error) {
+				console.error(
+					`resume: resumeServerRun failed for run ${input.runId}:`,
+					error,
+				);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to resume the saved simulation",
+				});
+			}
+
+			const [resumed] = await ctx.db
+				.update(simulationRuns)
+				.set({ status: "running", savedState: null })
+				.where(
+					and(
+						eq(simulationRuns.id, input.runId),
+						eq(simulationRuns.status, "saved"),
+					),
+				)
+				.returning({ id: simulationRuns.id });
+
+			if (!resumed) {
+				console.error(
+					`resume: run ${input.runId} was reconstructed into the live registry but its row's status changed before the write landed`,
+				);
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer in a saved state",
+				});
+			}
+
+			return { ok: true };
+		}),
 
 	// S-04 (FR-002 full): any logged-in user can read the current ranges
 	// (needed to render the start form's bounds); only an admin can change

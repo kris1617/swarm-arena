@@ -115,7 +115,7 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	mutationChance: d.real().notNull().default(0.1),
 	mutationMagnitude: d.real().notNull().default(0.2),
 	status: d
-		.text({ enum: ["running", "stopped"] })
+		.text({ enum: ["running", "stopped", "saved"] })
 		.notNull()
 		.default("running"),
 	score: d.real(),
@@ -124,6 +124,11 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 		.default(sql`(unixepoch())`)
 		.notNull(),
 	stoppedAt: d.integer({ mode: "timestamp" }),
+	// S-04 Phase 4 (FR-012): the full live-state snapshot for a
+	// server-owned run paused via "Save & Pause" — null except while
+	// `status: "saved"`. Shape matches `ServerRunSnapshot` in
+	// server-run-registry.ts.
+	savedState: d.text({ mode: "json" }),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config
