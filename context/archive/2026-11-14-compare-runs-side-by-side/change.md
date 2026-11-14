@@ -1,10 +1,10 @@
 ---
 change_id: compare-runs-side-by-side
 title: Compare completed runs' scores and four-factor breakdowns side by side
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T16:46:41Z
 ---
 
 ## Notes
