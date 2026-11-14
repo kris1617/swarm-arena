@@ -1,10 +1,10 @@
 ---
 change_id: branded-login-page
 title: Branded Swarm Arena login page
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T19:11:25Z
 ---
 
 ## Notes
