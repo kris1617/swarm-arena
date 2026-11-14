@@ -122,6 +122,13 @@ describe("server-run-registry", () => {
 			foodRatioSamples: expect.any(Array),
 			survivorGenes: expect.any(Array),
 		});
+		// S-11 (MS-08): population-over-time chart's data source — checked
+		// for non-empty, not just "is an array", so a write that always sends
+		// `[]` (losing the actual per-tick data) is actually caught.
+		expect(
+			(row?.history as { populationCountSamples?: number[] } | null)
+				?.populationCountSamples?.length,
+		).toBeGreaterThan(0);
 		activeRunIds.length = 0; // already finished; nothing left for afterEach to stop
 	});
 
@@ -151,6 +158,10 @@ describe("server-run-registry", () => {
 			foodRatioSamples: expect.any(Array),
 			survivorGenes: expect.any(Array),
 		});
+		expect(
+			(row?.history as { populationCountSamples?: number[] } | null)
+				?.populationCountSamples?.length,
+		).toBeGreaterThan(0);
 		activeRunIds.length = 0;
 	});
 

@@ -302,6 +302,13 @@ export const simulationRouter = createTRPCRouter({
 					// heavier (8 fields vs. a number) and is iterated multiple
 					// times by computeGeneticDiversity.
 					.max(50_000),
+				// S-11 (MS-08): the run-analysis-view's population-over-time
+				// chart needs this time series — same bound pattern as its
+				// three siblings above.
+				populationCountSamples: z
+					.array(z.number().int().nonnegative())
+					.min(1)
+					.max(50_000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -364,6 +371,7 @@ export const simulationRouter = createTRPCRouter({
 						phaseHistory: input.phaseHistory,
 						foodRatioSamples: input.foodRatioSamples,
 						survivorGenes: input.survivingBoidGenes,
+						populationCountSamples: input.populationCountSamples,
 					},
 				})
 				.where(

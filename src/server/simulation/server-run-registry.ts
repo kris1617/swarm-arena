@@ -112,6 +112,9 @@ async function finishRun(
 			phaseHistory: PopulationPhase[];
 			foodRatioSamples: number[];
 			survivorGenes: BoidGenes[];
+			// S-11 (MS-08): the run-analysis-view's population-over-time chart
+			// needs this time series — added alongside the other three.
+			populationCountSamples: number[];
 		} | null;
 	},
 ): Promise<void> {
@@ -204,6 +207,7 @@ function tick(runId: number): void {
 					phaseHistory: run.phaseHistory,
 					foodRatioSamples: run.foodRatioSamples,
 					survivorGenes: run.boids.map((b) => b.genes),
+					populationCountSamples: run.populationCountSamples,
 				},
 			});
 		}
@@ -295,6 +299,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 			phaseHistory: run.phaseHistory,
 			foodRatioSamples: run.foodRatioSamples,
 			survivorGenes: run.boids.map((b) => b.genes),
+			populationCountSamples: run.populationCountSamples,
 		},
 	});
 }

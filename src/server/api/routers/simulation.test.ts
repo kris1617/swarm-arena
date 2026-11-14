@@ -55,6 +55,8 @@ const VALID_STOP_EXTRAS = {
 			matePreference: 0,
 		},
 	],
+	// S-11 (run-analysis-view): added alongside the other three sample arrays.
+	populationCountSamples: [10],
 };
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
@@ -368,6 +370,8 @@ describe("simulationRouter.stop authorization", () => {
 			phaseHistory: VALID_STOP_EXTRAS.phaseHistory,
 			foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
 			survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+			// S-11 (MS-08): round-trips the same way as its three siblings.
+			populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
 		});
 	});
 

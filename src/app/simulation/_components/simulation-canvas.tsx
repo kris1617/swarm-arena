@@ -241,6 +241,12 @@ export function SimulationCanvas({
 					? phaseHistoryRef.current
 					: (["establishment"] satisfies PopulationPhase[]),
 			survivingBoidGenes: boidsRef.current.map((boid) => boid.genes),
+			// plan-review F1 (run-analysis-view): was tracked but never sent —
+			// same fallback pattern as the other sample arrays above.
+			populationCountSamples:
+				populationCountSamplesRef.current.length > 0
+					? populationCountSamplesRef.current
+					: [0],
 		};
 	}
 
