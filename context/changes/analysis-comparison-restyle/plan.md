@@ -271,28 +271,28 @@ None — no schema or data change. `globals.css`'s chart-token value change affe
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
-- [x] 3.4 Hardcoded-value scan on runs/compare/page.tsx returns zero hits
+- [x] 3.1 Type checking passes: `npm run typecheck` — 74a2896
+- [x] 3.2 Linting passes: `npm run check` — 74a2896
+- [x] 3.3 Full suite still passes: `npm test` — 74a2896
+- [x] 3.4 Hardcoded-value scan on runs/compare/page.tsx returns zero hits — 74a2896
 
 #### Manual
 
-- [x] 3.5 Factor-breakdown bar chart colors match the pre-change palette, now via --chart tokens
-- [x] 3.6 All 3 status branches render identically through StatusMessage
-- [x] 3.7 Exactly one `main` landmark in each of the 4 page states
+- [x] 3.5 Factor-breakdown bar chart colors match the pre-change palette, now via --chart tokens — 74a2896
+- [x] 3.6 All 3 status branches render identically through StatusMessage — 74a2896
+- [x] 3.7 Exactly one `main` landmark in each of the 4 page states — 74a2896
 
 ### Phase 4: States verification pass
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 Full suite still passes: `npm test`
+- [x] 4.1 Type checking passes: `npm run typecheck`
+- [x] 4.2 Linting passes: `npm run check`
+- [x] 4.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 4.4 Desktop screenshots: default, loading, error/empty for both views
-- [ ] 4.5 Mobile (375px) screenshots for both views, no layout regression
-- [ ] 4.6 Disabled-state N/A reasoning holds for both views
-- [ ] 4.7 Existing empty-data messages on the analysis page unaffected
+- [x] 4.4 Desktop screenshots: default, loading, error/empty for both views
+- [x] 4.5 Mobile (375px) screenshots for both views, no layout regression
+- [x] 4.6 Disabled-state N/A reasoning holds for both views
+- [x] 4.7 Existing empty-data messages on the analysis page unaffected
