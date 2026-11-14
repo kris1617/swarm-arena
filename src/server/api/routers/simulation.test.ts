@@ -1,11 +1,12 @@
 import type { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
+import * as serverRunRegistry from "~/server/simulation/server-run-registry";
 import {
 	isServerRunActive,
 	stopServerRun,
@@ -598,5 +599,48 @@ describe("simulationRouter.startServer", () => {
 		).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
 		} satisfies Partial<TRPCError>);
+	});
+
+	it("marks the row stopped and surfaces an error when startServerRun throws", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const startServerRunSpy = vi
+			.spyOn(serverRunRegistry, "startServerRun")
+			.mockImplementationOnce(() => {
+				throw new Error("boom");
+			});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => undefined);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.startServer(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "INTERNAL_SERVER_ERROR",
+		} satisfies Partial<TRPCError>);
+
+		const [row] = await db
+			.select()
+			.from(simulationRuns)
+			.where(eq(simulationRuns.userId, owner.id));
+		expect(row?.status).toBe("stopped");
+		expect(consoleErrorSpy).toHaveBeenCalled();
+
+		startServerRunSpy.mockRestore();
+		consoleErrorSpy.mockRestore();
 	});
 });

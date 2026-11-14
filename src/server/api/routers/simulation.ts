@@ -153,7 +153,29 @@ export const simulationRouter = createTRPCRouter({
 				userId,
 				input,
 			);
-			startServerRun({ runId, seed, ...input });
+			try {
+				startServerRun({ runId, seed, ...input });
+			} catch (error) {
+				// startServerRun threw before registering the run (e.g. building
+				// the initial population failed) — the row above was already
+				// inserted as "running" with nothing now tracking it. Flip it
+				// back to "stopped" so it doesn't silently occupy a
+				// MAX_PARALLEL_RUNS slot forever with no way to recover
+				// visibility of it, then surface the failure to the caller
+				// instead of returning a false-positive success.
+				console.error(
+					`startServer: startServerRun failed for run ${runId} — marking it stopped:`,
+					error,
+				);
+				await ctx.db
+					.update(simulationRuns)
+					.set({ status: "stopped", stoppedAt: new Date() })
+					.where(eq(simulationRuns.id, runId));
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to start the server-run simulation",
+				});
+			}
 			return { runId, seed };
 		}),
 
