@@ -11,6 +11,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { StatusMessage } from "~/components/ui/status-message";
 import { api } from "~/trpc/react";
 
 const FACTOR_LABELS = {
@@ -20,8 +21,15 @@ const FACTOR_LABELS = {
 	phaseQuality: "Phase quality",
 } as const;
 
-// S-12: one color per run column/bar, cycled for up to 4 runs.
-const RUN_COLORS = ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444"];
+// S-12: one color per run column/bar, cycled for up to 4 runs. Sourced from
+// the --chart-1..5 tokens (globals.css) — same identities runs/[runId] uses
+// for recovery/growth/overshoot/crash.
+const RUN_COLORS = [
+	"var(--chart-5)",
+	"var(--chart-2)",
+	"var(--chart-3)",
+	"var(--chart-4)",
+];
 
 const ERROR_LABELS = {
 	"not-found": "not found",
@@ -88,27 +96,15 @@ export default function RunsComparePage() {
 	);
 
 	if (runIds === null) {
-		return (
-			<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center bg-gradient-to-b p-8">
-				<p>Could not load this comparison.</p>
-			</main>
-		);
+		return <StatusMessage>Could not load this comparison.</StatusMessage>;
 	}
 
 	if (comparisonQuery.isPending) {
-		return (
-			<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center bg-gradient-to-b p-8">
-				<p>Loading…</p>
-			</main>
-		);
+		return <StatusMessage>Loading…</StatusMessage>;
 	}
 
 	if (comparisonQuery.isError || !comparisonQuery.data) {
-		return (
-			<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center bg-gradient-to-b p-8">
-				<p>Could not load this comparison.</p>
-			</main>
-		);
+		return <StatusMessage>Could not load this comparison.</StatusMessage>;
 	}
 
 	const rows = comparisonQuery.data;
@@ -130,7 +126,7 @@ export default function RunsComparePage() {
 	});
 
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Compare runs</h1>
 
 			{erroredRows.map((row) => (
@@ -224,6 +220,6 @@ export default function RunsComparePage() {
 					</section>
 				</>
 			)}
-		</main>
+		</div>
 	);
 }

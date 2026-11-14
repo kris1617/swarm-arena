@@ -255,32 +255,32 @@ None — no schema or data change. `globals.css`'s chart-token value change affe
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck` — 9f9b0db
+- [x] 2.2 Linting passes: `npm run check` — 9f9b0db
+- [x] 2.3 Full suite still passes: `npm test` — 9f9b0db
+- [x] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx returns zero hits — 9f9b0db
 
 #### Manual
 
-- [x] 2.5 Population chart and phase-tally colors match the pre-change palette, now via --chart tokens
-- [x] 2.6 Loading/error states render identically through StatusMessage
-- [x] 2.7 Exactly one `main` landmark in each of the 3 page states
-- [x] 2.8 Visible focus ring on both export links
+- [x] 2.5 Population chart and phase-tally colors match the pre-change palette, now via --chart tokens — 9f9b0db
+- [x] 2.6 Loading/error states render identically through StatusMessage — 9f9b0db
+- [x] 2.7 Exactly one `main` landmark in each of the 3 page states — 9f9b0db
+- [x] 2.8 Visible focus ring on both export links — 9f9b0db
 
 ### Phase 3: Apply the fixes to the run-comparison view
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
-- [ ] 3.4 Hardcoded-value scan on runs/compare/page.tsx returns zero hits
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.4 Hardcoded-value scan on runs/compare/page.tsx returns zero hits
 
 #### Manual
 
-- [ ] 3.5 Factor-breakdown bar chart colors match the pre-change palette, now via --chart tokens
-- [ ] 3.6 All 3 status branches render identically through StatusMessage
-- [ ] 3.7 Exactly one `main` landmark in each of the 4 page states
+- [x] 3.5 Factor-breakdown bar chart colors match the pre-change palette, now via --chart tokens
+- [x] 3.6 All 3 status branches render identically through StatusMessage
+- [x] 3.7 Exactly one `main` landmark in each of the 4 page states
 
 ### Phase 4: States verification pass
 
