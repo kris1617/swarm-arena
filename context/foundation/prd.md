@@ -1,6 +1,6 @@
 ---
 project: "Swarm Arena"
-version: 4
+version: 5
 status: draft
 created: 2026-11-02
 updated: 2026-11-14
@@ -48,6 +48,10 @@ No secondary persona — single user, self-directed use.
 - The system suggests parameter changes likely to improve the score (heuristic, not full optimization).
 - The user can compare scores across multiple simulation runs side by side.
 - The user can export a simulation's run/parameters/score outside the app.
+- (2026-11-14 extension round 3) The user sees a leaderboard of their own highest-scoring runs, and — on a completed run's analysis view — a second, run-specific optimization suggestion distinct from the cross-run one above.
+- (2026-11-14 extension round 3) The application looks and feels like a modern, coherent web app — a branded login page, a consistent design direction across every page, and a confirmed login → dashboard → staging → run → analysis flow.
+- (2026-11-14 extension round 3) Reference pages exist describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics — separated from the functional app pages.
+- (2026-11-14 extension round 3) A user can temporarily elevate to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then revert.
 
 ### Guardrails
 
@@ -177,12 +181,43 @@ No secondary persona — single user, self-directed use.
 - FR-025: Z dashboardu, dla zakończonego przebiegu, użytkownik otwiera widok analizy pokazujący wykres liczebności populacji w czasie (kolorowany etapami cyklu życiowego), rozkład czasu wg etapu/cyklu (zgodny z korektą z FR-019) oraz końcową wartość różnorodności genetycznej. Priority: must-have
   > Socratic: Kontrargument rozważony: trend różnorodności genetycznej w czasie wydawał się częścią zakresu, ale dane historyczne to tylko jedna migawka końcowa (geny ocalałych w momencie zakończenia), nie seria. Rozstrzygnięcie: v1 pokazuje jedną końcową wartość różnorodności, nie trend; trend wymagałby nowego śledzenia danych w czasie, poza zakresem tego rozszerzenia.
 
+### Leaderboard and post-run optimization (2026-11-14 extension round 3 — MS-09, MS-10)
+
+- FR-026: The user sees a leaderboard of their own completed runs ranked by score, highest first. Priority: must-have
+  > Socratic: Counter-argument considered: a leaderboard with one user is just a sorted list, not competitive. Resolution: still a real, distinct user-facing capability (FR-016's comparison view is bounded at 2-4 explicitly-selected runs; a leaderboard is an unbounded, score-ordered view of all of them) — not redundant with FR-016.
+- FR-027: On a completed run's analysis view, the user sees a second, run-specific optimization suggestion — distinct from FR-015's cross-run heuristic — derived from that single run's own phase/resource history (e.g. "this run spent most of its time in Crash; consider raising food stock or lowering predator count next time"). Priority: must-have
+  > Socratic: Counter-argument considered: FR-015 already suggests a parameter change — is a second suggestion redundant? Resolution: no — FR-015 correlates a parameter against score across the user's *past runs* (needs ≥3 runs); this one reasons about *this one run's* own trajectory and needs no run history beyond itself. They answer different questions ("what's historically correlated with a better score" vs. "what went wrong in this specific run") and can both be shown.
+- FR-028 (parked, not built this round): live, in-run parameter adjustment — while a simulation is actively running, the user adjusts parameters and sees the effect immediately. Explicitly deferred — see Non-Goals; FR-027 (post-run) ships now as the smaller, already-buildable half of the user's original "in-run optimization" request.
+
+### Calculation performance (2026-11-14 extension round 3 — MS-11)
+
+- FR-029: Boid/predator flocking-force calculation (separation/alignment/cohesion neighbor lookups) uses spatial partitioning — a grid-based neighbor search — instead of a full pairwise scan across every other agent, reducing complexity from O(N²) to O(N) per tick. Priority: must-have
+  > Socratic: Counter-argument considered: premature optimization for a hobby-scale simulation. Resolution: not invented — ported from the project's own prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`), whose own architecture docs (`docs/ARCHITEKTURA.md`, "Siatka Haszu Przestrzennego") document this exact technique as the thing that let that version scale past a naive pairwise scan; this is reapplying a already-proven, already-designed optimization to this codebase's `boids.ts`, which today does a full `for (const other of boids)` pairwise scan per boid (confirmed at implementation time, not invented speculation). Expected to improve both tick calculation time and the resulting render frame rate at higher agent counts (NFR below).
+
+### Temporary admin elevation (2026-11-14 extension round 3 — MS-12)
+
+- FR-030: A user can temporarily elevate their own account (or another account) to the `admin` role when they need to adjust admin-only settings — parameter ranges, the global object-count cap (FR-018), or the number of tribes/flocks (`flockCount`'s configurable range) — then the elevation is reversible (not a permanent role change). Priority: must-have
+  > Socratic: Counter-argument considered: this is a single-real-user hobby app — why build a reversible-elevation mechanism instead of just always being admin? Resolution: the user explicitly asked for *temporary* elevation, not permanent — the role split (Access Control) stays meaningful as a deliberate guardrail the user can lift on demand, not removed outright. Exact mechanism (a self-service toggle vs. a time-boxed grant vs. something else) is a planning-level decision (`/10x-plan`), not fixed here; the product-level requirement fixed here is only that elevation exists and is temporary/reversible.
+
+### UI modernization and reference pages (2026-11-14 extension round 3 — MS-13, MS-14)
+
+- FR-031: The login page is branded for "Swarm Arena" specifically (name, framing, visual identity), replacing today's generic/default-looking login screen. Priority: must-have
+  > Socratic: Counter-argument considered: a hobby app's login page is low-stakes. Resolution: the user explicitly flagged the current UI as not looking like "a common application UI" — the login page, as the very first thing anyone sees, is where that impression is set.
+- FR-032: The application's visual design is modernized across its existing pages (login, dashboard, staging form, live view, analysis, comparison) using a consistent, modern admin-dashboard design direction, adopted incrementally on top of the existing shadcn/ui component primitives already in use — not a full rewrite. Priority: must-have
+  > Socratic: Counter-argument considered: a full rewrite onto a new template would guarantee visual consistency fastest. Resolution: user-confirmed direction is incremental adoption (see Business Logic / research below for the specific reference template) — the app already uses shadcn/ui (`Button`, `Input`, `Switch`), so the existing design-token system (`src/styles/globals.css`) and component layer are extended, not replaced.
+- FR-033: The confirmed navigation flow after login is: dashboard → simulation staging → simulation run (live view) → analysis — each step reachable from the previous one, matching the app's existing page structure (no new pages required for the flow itself, only restyling). Priority: must-have
+  > Socratic: Brak kontrargumentu — this flow already exists end-to-end (S-10 → `/simulation` → live view → `/runs/[runId]`); FR-033 fixes it as the confirmed intended flow so the UI-modernization work (FR-032) doesn't restructure navigation while restyling it.
+- FR-034: Four reference/documentation pages exist, separated from the main app flow (not interleaved with the functional pages): a general storyline description of the simulation, a description of each configurable parameter, a description of the population lifecycle model (the five phases from Business Logic), and a description of the scoring metrics (the four score factors). Priority: must-have
+  > Socratic: Counter-argument considered: parameter/metric descriptions could just be inline tooltips on the staging form instead of separate pages. Resolution: user explicitly asked for these as separated, reference-style pages, not inline UI — inline tooltips remain a possible future addition but don't replace this requirement.
+
 ## Non-Functional Requirements
 
 - A simulation with the maximum configured number of objects (FR-018) renders without visibly freezing or dropping below a usable frame rate for observation.
 - Two runs started with identical parameters and the same random seed produce identical scores — comparison between variants is meaningless otherwise.
 - A saved/paused simulation's state survives an app restart with no loss of population, genetic, or resource data.
 - Switching which of several parallel simulations is being viewed does not interrupt or measurably slow the others.
+- (2026-11-14 extension round 3) The spatial-partitioning optimization (FR-029) must produce identical scores/behavior to the pre-optimization pairwise scan for the same parameters and seed (NFR above on determinism) — it is a performance change, not a behavior change; any deviation is a bug, not an accepted tradeoff.
+- (2026-11-14 extension round 3) FR-032's UI modernization must not regress this project's existing design-token discipline (`AGENTS.md`: "No literal colors or arbitrary Tailwind values in views — reference a token instead") — the modernization extends `globals.css`'s tokens, it doesn't bypass them.
 
 ## Business Logic
 
@@ -210,11 +245,17 @@ Login (email/OAuth) with two roles: `admin` and `member`. Both roles exist from 
 
 Role → capability split: `admin` defines the available parameter ranges and default values for simulations, plus the global maximum object count (FR-018). `member` configures and runs individual simulations within the ranges the admin has set (FR-002). This is the full capability difference defined so far; finer-grained role behavior (e.g. whether an admin can also act as a member, or view/manage other users' runs) is not yet specified — see Open Questions.
 
+**Temporary elevation (2026-11-14 extension round 3, FR-030).** A user can temporarily become `admin` to exercise the above capabilities, then revert — the role boundary stays meaningful by default (most of the time, the account behaves as `member`) while remaining liftable on demand, rather than the user simply always running as `admin`. The exact mechanism (self-service toggle, time-boxed grant, or other) is a planning-level decision.
+
+**UI direction reference (2026-11-14 extension round 3, FR-032).** Web research during this scoping round identified `next-shadcn-admin-dashboard` (Next.js App Router + shadcn/ui + Tailwind, MIT-licensed) as a concrete structural/pattern reference — sidebar nav shell, dashboard layout, data-table pattern, theme tokens — adoptable incrementally since this app already uses shadcn/ui primitives. The new reference/documentation pages (FR-034) have no equally strong template match; a simple shared-sidebar content-page pattern is the pragmatic default rather than a separate docs framework.
+
 ## Non-Goals
 
 - **No shared/collaborative simulations across users** — `admin`/`member` are access roles, not co-editing roles; a simulation run belongs to the user who started it, not to a team session. Rationale: scope stays personal-experimentation-sized, avoids building multi-user concurrency into the simulation engine itself.
 - **No client-driven parallel rendering of multiple simulations at once** (2026-11-14 extension) — retired in favor of server-owned execution (FR-020–FR-023): the client renders at most one server-run simulation live at a time, switching between them (FR-013/FR-014) rather than rendering several simultaneously. Rationale: rendering was the actual scaling bottleneck, not execution; removing it from the critical path removes the limit on how many simulations can run or how large they can be.
 - **No diversity-index trend over time in the analysis view (v1)** (2026-11-14 extension) — only a single final genetic-diversity value is shown (FR-025); a trend would require persisting a per-tick diversity series, which nothing downstream currently needs beyond this view. Rationale: avoid adding tracked state solely for a nice-to-have chart; revisit if a future slice needs the same series.
+- **No live, in-run parameter adjustment (v1)** (2026-11-14 extension round 3, FR-028) — the user cannot tweak parameters while a simulation is actively running and see the effect immediately. Rationale: the live simulation engine (`server-run-registry.ts`) has no live-parameter-update path today; this is a materially larger architectural change than the post-run suggestion (FR-027), which ships now instead. Revisit as its own future milestone.
+- **No full UI rewrite onto a new template (v1)** (2026-11-14 extension round 3, FR-032) — the modernization adopts a modern admin-dashboard design direction incrementally on the existing shadcn/ui component layer, not a wholesale replacement. Rationale: the app already has a working design-token system and component layer; a rewrite would re-risk everything already shipped for a cosmetic goal.
 
 ## Open Questions
 
@@ -223,3 +264,5 @@ Role → capability split: `admin` defines the available parameter ranges and de
 3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14 (by extension, not by direct answer).** The 2026-11-14 extensions (server-side execution, dashboard, analysis view) were all scoped to each user's own runs only — no cross-user admin capability was added. The role split beyond parameter/object-count governance (FR-002, FR-018) remains unspecified but is no longer blocking: every FR added since stays within per-user data isolation (dashboard and analysis view both reject access to another user's runs).
 4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Not blocking. Resolved by default during implementation: forward-only — pre-existing runs show only their final score; the analysis view (FR-025) degrades gracefully for runs without persisted history instead of crashing.
 5. ~~What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?~~ — **Resolved 2026-11-14.** Optimizes toward the final combined score (FR-010), not an isolated factor; correlates each of the 13 admin-ranged parameters (FR-002) against the user's own past-run scores and suggests changing the single most-correlated one, with a one-line rationale and a confidence qualifier based on sample size (minimum 3 runs with that parameter varied). See FR-015. Unblocks S-13.
+6. **What exact mechanism should temporary admin elevation (FR-030) use — a self-service toggle, a time-boxed grant, or something else?** — Owner: user. Not blocking; the product-level requirement (elevation exists and is reversible) is fixed, the mechanism is deferred to `/10x-plan`.
+7. **Beyond the `next-shadcn-admin-dashboard` structural reference, which specific pages get restyled first, and in what order?** — Owner: roadmap decomposition (`/10x-roadmap`). Not blocking; FR-031–FR-034 are fixed as requirements, sequencing is a roadmap-level decision.
