@@ -1,10 +1,10 @@
 ---
 change_id: testing-composed-pipeline-correctness
 title: Test composed simulation pipeline order and determinism (test-plan Phase 1)
-status: impl_reviewed
+status: archived
 created: 2026-11-12
-updated: 2026-11-12
-archived_at: null
+updated: 2026-11-14
+archived_at: 2026-11-14T10:03:52Z
 ---
 
 ## Notes

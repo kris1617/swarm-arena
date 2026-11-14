@@ -1,10 +1,10 @@
 ---
 change_id: testing-simulation-ownership
 title: Test cross-user ownership regression on simulation.stop (test-plan Phase 3)
-status: impl_reviewed
+status: archived
 created: 2026-11-12
-updated: 2026-11-12
-archived_at: null
+updated: 2026-11-14
+archived_at: 2026-11-14T10:03:52Z
 ---
 
 ## Notes

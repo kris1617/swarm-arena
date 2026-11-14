@@ -1,10 +1,10 @@
 ---
 change_id: ui-simulation-tokens
 title: Ui simulation tokens
-status: impl_reviewed
+status: archived
 created: 2026-11-11
-updated: 2026-11-11
-archived_at: null
+updated: 2026-11-14
+archived_at: 2026-11-14T10:03:52Z
 ---
 
 ## Notes

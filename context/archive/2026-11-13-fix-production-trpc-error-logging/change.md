@@ -1,10 +1,10 @@
 ---
 change_id: fix-production-trpc-error-logging
 title: Production error visibility (tRPC, error boundary, instrumentation, races)
-status: impl_reviewed
+status: archived
 created: 2026-11-13
-updated: 2026-11-13
-archived_at: null
+updated: 2026-11-14
+archived_at: 2026-11-14T10:03:52Z
 ---
 
 ## Notes

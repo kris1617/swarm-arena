@@ -1,10 +1,10 @@
 ---
 change_id: pseudo-3d-depth-rendering
 title: Add a z-axis to boids simulation with depth-scaled rendering
-status: impl_reviewed
+status: archived
 created: 2026-11-11
-updated: 2026-11-11
-archived_at: null
+updated: 2026-11-14
+archived_at: 2026-11-14T10:03:52Z
 ---
 
 ## Notes
