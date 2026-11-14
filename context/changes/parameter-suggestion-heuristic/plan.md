@@ -165,22 +165,22 @@ None — no schema change, pure read of existing columns.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/parameter-suggestion.test.ts src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 1c99612
+- [x] 1.2 Linting passes: `npm run check` — 1c99612
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/parameter-suggestion.test.ts src/server/api/routers/simulation.test.ts` — 1c99612
+- [x] 1.4 Full suite still passes: `npm test` — 1c99612
 
 ### Phase 2: Suggestion card on the staging page
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 2.4 With fewer than 3 completed runs (or no varying parameter), the staging page shows "Not enough data yet"
-- [ ] 2.5 With 3+ completed runs where one parameter clearly varies with score, the staging page shows a suggestion naming that parameter, a direction, and a confidence qualifier
-- [ ] 2.6 The suggestion never auto-fills or changes the form's current values
-- [ ] 2.7 The rest of the staging page (parameter form, running/saved lists) renders unchanged
+- [x] 2.4 With fewer than 3 completed runs (or no varying parameter), the staging page shows "Not enough data yet"
+- [x] 2.5 With 3+ completed runs where one parameter clearly varies with score, the staging page shows a suggestion naming that parameter, a direction, and a confidence qualifier
+- [x] 2.6 The suggestion never auto-fills or changes the form's current values
+- [x] 2.7 The rest of the staging page (parameter form, running/saved lists) renders unchanged

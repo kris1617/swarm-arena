@@ -77,6 +77,10 @@ export default function SimulationPage() {
 			setViewingRunId(variables.runId);
 		},
 	});
+	// parameter-suggestion-heuristic Phase 2: advisory-only suggestion for the
+	// staging form below — never auto-fills or changes the form's `useState`
+	// fields, per the plan's "What We're NOT Doing".
+	const suggestionQuery = api.simulation.getParameterSuggestion.useQuery();
 
 	// impl-review (S-08): without this, a run that naturally stops drops out
 	// of the list (and its switcher button) within one poll, while the
@@ -283,6 +287,25 @@ export default function SimulationPage() {
 						<p className="text-destructive">{resumeMutation.error.message}</p>
 					) : null}
 				</div>
+			) : null}
+
+			{suggestionQuery.data ? (
+				<section className="bg-input text-foreground flex w-full max-w-xs flex-col gap-2 rounded-2xl px-4 py-3 text-center">
+					<h2 className="font-semibold">Suggestion</h2>
+					{suggestionQuery.data.status === "ok" ? (
+						<>
+							<p>{suggestionQuery.data.rationale}</p>
+							<span className="bg-background self-center rounded-full px-3 py-1 text-sm font-semibold">
+								Confidence: {suggestionQuery.data.confidence}
+							</span>
+						</>
+					) : (
+						<p>
+							Not enough data yet — run a few more simulations with varied
+							parameters to get a suggestion.
+						</p>
+					)}
+				</section>
 			) : null}
 
 			{activeRun ? (
