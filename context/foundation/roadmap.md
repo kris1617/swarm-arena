@@ -4,12 +4,12 @@ version: 1
 status: draft
 created: 2026-11-09
 updated: 2026-11-14
-prd_version: 2
-main_goal: quality
+prd_version: 3
+main_goal: learn
 top_blocker: decisions
-milestone_id: first-working-simulation-loop
-milestone_seq: 1
-milestone_status: done
+milestone_id: insight-and-comparison
+milestone_seq: 2
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,30 +20,22 @@ milestone_status: done
 
 ## Milestone
 
-**M-1: First working simulation loop** — Status: done
+**M-2: Insight and comparison** — Status: open
 
-- **Intent:** Deliver the first end-to-end run of a boids/predator simulation — configure it, watch it, stop/resume it, and get a score — with the domain logic (genetics, predator-prey, scoring) built correctly rather than fast, since the project's main goal for this milestone is quality. Extended 2026-11-14 to add a second execution model: real simulations run server-side in the background (no rendering, no client-tab dependency), while a single client-side simulation stays available for parameter-tuning staging, exactly as today. Extended again 2026-11-14 (same day) to add a post-login run dashboard, a per-run analysis view that draws on standard population/ecological analysis methods, and a correctness fix to the phase-quality scoring factor shipped in S-04.
-- **Source materials:** `context/foundation/prd.md` (v1); user-described extension 2026-11-14 (scope anchors MS-01–MS-05); second user-described extension 2026-11-14 (scope anchors MS-06–MS-08 below) — neither reflected in `prd.md` yet, which should be updated to match once this scope lands.
-- **Done when:** F-01 through F-05, and S-01 through S-11, are all `done`. The nice-to-have FRs are explicitly allowed to carry into the next milestone — see Parked.
-- **Scope anchors:** US-01; FR-001 through FR-014, FR-018 (must-have); Access Control section; the three PRD Open Questions; plus the 2026-11-14 extensions:
-  - MS-01: Real (non-staging) simulations execute on the server, independent of any client connection, so they keep running in the background with no client tab needed.
-  - MS-02: Server-side simulations run with no rendering step, removing the rendering-imposed limit on how many can run or how large they can be.
-  - MS-03: A single client-side simulation remains available for staging/parameter-tuning, started and rendered entirely on the client exactly as today — unchanged by this extension.
-  - MS-04: The user can view exactly one server-run simulation at a time, rendered live in the browser from server-pushed state (confirmed: SSE/WebSocket push, not polling).
-  - MS-05: The existing client-driven "run several in parallel, switch which you view" feature (S-05) is retired in favor of server-side execution for running multiple simulations at once (confirmed: replace, not keep both).
-  - MS-06: The score's phase-quality factor is computed per completed lifecycle cycle (establishment→growth→overshoot→crash→recovery, repeating until the run ends), not as a single flat average plus a one-time yes/no resilience flag over the whole run — a population that completes several crash→recovery cycles must score meaningfully higher than one that barely survives a single cycle.
-  - MS-07: Right after logging in, the user lands on a dashboard listing their own simulation runs (running, saved, and completed), following standard run-dashboard conventions (status, start time, filters, a link into each run's detail) rather than inventing bespoke ones.
-  - MS-08: From a completed run, the user can open an analysis view presenting the run's population dynamics — adapted from standard, well-documented ecological/population-analysis methods rather than invented from scratch — so they can draw a concrete conclusion about what to change in the next staged run.
+- **Intent:** Turn individual run scores into actionable insight by letting the user compare completed runs side by side and get heuristic parameter-change suggestions, closing the loop the PRD's Vision describes ("turning trial-and-error tuning into a measurable, resumable experimentation loop"). Main goal for this milestone is to learn/explore — the parameter-suggestion heuristic (FR-015) is the project's most novel, least-specified idea, and this milestone treats getting it right as more valuable than shipping the whole nice-to-have backlog fast.
+- **Source materials:** `context/foundation/prd.md` (v3) — the three remaining nice-to-have FRs M-1 did not cover.
+- **Done when:** S-12 through S-14 are all `done`. No new foundations — M-2 reuses F-05's persisted history; nothing in its scope needs a new cross-cutting enabler.
+- **Scope anchors:** FR-015 (parameter-change suggestion heuristic), FR-016 (side-by-side run comparison), FR-017 (export), US-01/US-03's implied "compare and act on past runs" follow-through, PRD Open Question #2 (export format).
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 is where "compared rather than guessed at" becomes literal — comparing runs side by side and, eventually, getting a suggested next parameter change.
 
 ## North star
 
-**S-01: User starts a simulation, watches basic flocking run, stops it, and gets a survival-based score** — the smallest end-to-end flow that proves the core loop (configure → run → observe → score) actually works, before any predator, genetics, or save/resume complexity is layered on top.
+**S-12: User compares completed runs' scores side by side** — the smallest end-to-end flow that proves M-2's core value: every completed run already has a score and persisted history (from M-1's F-05/S-11), so comparison needs no new data, only a new view — placed first because the suggestion heuristic (S-13) is more valuable once the user has already seen what "comparing runs" looks like.
 
-> "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow, because the richer slices (predator-prey, genetics, full scoring) only matter if this basic loop works first.
+> "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
 ## At a glance
 
@@ -65,6 +57,9 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | F-05 | persist-run-history             | (foundation) A finished run's tick-level population history (phase history, food-ratio samples, gene snapshots) is persisted instead of discarded | —              | MS-08, FR-019, FR-010 (full)                            | done |
 | S-10 | post-login-run-dashboard        | User lands on a dashboard of their own runs right after logging in, with standard status/filter/detail-link conventions | F-01           | MS-07, FR-013, FR-014                                   | done |
 | S-11 | run-analysis-view               | User opens a completed run's analysis view (growth-curve comparison, per-cycle phase breakdown, diversity-index trend) to decide what to change next | F-05, S-09, S-10 | MS-08, FR-019, FR-010 (full)                          | done |
+| S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | ready |
+| S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, based on how past changes affected population stability | F-05            | FR-015                                                 | blocked |
+| S-14 | run-export                      | User exports a run's parameters/score/history outside the app | F-05            | FR-017                                                 | blocked |
 
 ## Streams
 
@@ -75,6 +70,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | C      | Server-side execution            | `F-03` → `F-04` → `S-06` → `S-07` → `S-08` | 2026-11-14 extension: moves "real" simulation execution off the client and onto a server-owned process, removing the rendering-imposed limit on how many can run; the client-side staging simulation (S-01's single-run path) is explicitly unchanged. |
 | D      | Run visibility                   | `F-01` → `S-10`                          | 2026-11-14 (second) extension: a post-login dashboard of the user's own runs. Joins Stream A at `F-01`. |
 | E      | Scoring correctness & analysis    | `F-05` → `S-11`                          | Persists per-run history (no prerequisites — purely additive) then builds the analysis view on it; `S-11` also waits on `S-09` (the corrected per-cycle aggregation it displays) and `S-10` (Stream D, the dashboard to navigate from). |
+| F      | Insight and comparison (M-2)      | `S-11` → `S-12`, `F-05` → `S-13`, `F-05` → `S-14` | M-2's three items share only the F-05 history data, not each other — `S-12`/`S-13`/`S-14` can run in parallel once their own Unknowns (if any) resolve. |
 
 ## Baseline
 
@@ -294,6 +290,44 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** The analysis math itself borrows directly from standard, well-documented population-ecology methods (logistic growth curve as the comparison baseline; Shannon/Simpson-style diversity indices adapted from species-diversity to gene-value diversity; survivorship-curve-style staging adapted to this sim's phase model) — not invented from scratch, which bounds the real risk to UI/visualization scope, not methodology.
 - **Status:** done
 
+### S-12: Compare completed runs side by side
+
+- **Outcome:** User selects two or more completed runs and compares their scores and four-factor breakdowns side by side.
+- **Change ID:** compare-runs-side-by-side
+- **PRD refs:** FR-016
+- **Prerequisites:** F-05, S-11
+- **Parallel with:** S-13, S-14
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — every completed run since F-05 already has a persisted score and history; this is a new read-only view over existing data, not new data collection. Runs that predate F-05 have only a final score (same degrade-gracefully pattern S-11 already established for its own empty state).
+- **Status:** ready
+
+### S-13: Heuristic parameter-change suggestion
+
+- **Outcome:** User sees a heuristic-suggested next parameter change, based on how past parameter changes affected population stability across the user's runs.
+- **Change ID:** parameter-suggestion-heuristic
+- **PRD refs:** FR-015
+- **Prerequisites:** F-05
+- **Parallel with:** S-12, S-14
+- **Blockers:** —
+- **Unknowns:**
+  - What exactly counts as "population stability" for the heuristic to optimize toward, and what shape the suggestion takes (a single parameter nudge, a ranked list, a confidence qualifier)? — Owner: user. Block: yes — FR-015's Socratic note already flags per-parameter interaction effects as an open design risk; `/10x-plan` should not invent the heuristic's decision rule.
+- **Risk:** This is the PRD's most underspecified must-have-adjacent FR — "heuristic, not full optimization" bounds scope but doesn't define the rule. Sequenced after the north star deliberately: seeing comparison data first (S-12) may sharpen what "a good suggestion" should look like before committing to a heuristic design.
+- **Status:** blocked
+
+### S-14: Export a run outside the app
+
+- **Outcome:** User exports a run's parameters, score, and history outside the app.
+- **Change ID:** run-export
+- **PRD refs:** FR-017
+- **Prerequisites:** F-05
+- **Parallel with:** S-12, S-13
+- **Blockers:** —
+- **Unknowns:**
+  - What export format(s) (CSV / JSON / image / other)? — Owner: user. Block: yes — this is PRD Open Question #2, still unresolved.
+- **Risk:** Low complexity once the format is chosen — F-05 already persists everything a run-level export would need; the only real decision is the format itself.
+- **Status:** blocked
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -314,20 +348,25 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-05       | persist-run-history                 | Persist per-run population history for analysis                        | yes                     | No prerequisites — can run parallel with S-09, S-10       |
 | S-10       | post-login-run-dashboard           | Post-login dashboard of the user's own runs                             | yes                     | Waiting on F-01 (done); can run parallel with S-09, F-05  |
 | S-11       | run-analysis-view                   | Per-run population-dynamics analysis view                               | no                      | Waiting on F-05, S-09, S-10                               |
+| S-12       | compare-runs-side-by-side           | Compare completed runs' scores side by side                             | yes                     | No new unknowns; waiting on F-05, S-11 (both done) — M-2 north star |
+| S-13       | parameter-suggestion-heuristic      | Heuristic next-parameter suggestion based on past run outcomes          | no                      | Blocked — heuristic design (what it optimizes, suggestion shape) unresolved |
+| S-14       | run-export                          | Export a run's parameters/score/history outside the app                 | no                      | Blocked — export format unresolved (Open Roadmap Question #2) |
 
 ## Open Roadmap Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Equal product of four factors, now including population-lifecycle-phase quality (FR-019). See PRD Open Questions #1 and Business Logic. No longer blocks S-04.
-2. **What export format(s) should the export feature support (CSV / JSON / image / other)?** — Owner: user. Block: — (gates the Parked export item, not any sequenced slice).
-3. **Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?** — Owner: user. Block: — (affects design of F-01/S-04, not blocking; current scope assumes parameter-governance-only).
-4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; reasonable default: forward-only, with old runs showing only their final score in the dashboard).
+2. **What export format(s) should the export feature (FR-017) support (CSV / JSON / image / other)?** — Owner: user. Block: yes — blocks S-14.
+3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14** (see PRD Open Questions #3) — every FR added since stays within per-user data isolation; not blocking.
+4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; resolved by default: forward-only, with old runs showing only their final score in the dashboard).
+5. **What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?** — Owner: user. Block: yes — blocks S-13.
 
 ## Parked
 
-- **Parameter-change suggestions (FR-015)** — Why parked: nice-to-have; needs several completed runs' history to be useful, which doesn't exist until S-04 is done and in use for a while.
-- **Side-by-side run comparison (FR-016)** — Why parked: nice-to-have; the PRD itself says this isn't meaningful until the scoring formula (Open Roadmap Question 1) is resolved.
-- **Run export (FR-017)** — Why parked: nice-to-have; export format is an unresolved Open Question (Open Roadmap Question 2).
 - **Shared/collaborative simulations across users** — Why parked: explicit PRD Non-Goal — admin/member are access roles, not co-editing roles; a run belongs to the user who started it.
+- **Client-driven parallel rendering of multiple simulations at once** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — retired in favor of server-owned execution; the client renders at most one server-run simulation live at a time.
+- **Diversity-index trend over time in the analysis view** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.
+
+(FR-015, FR-016, and FR-017 — previously parked here as nice-to-have — are promoted into M-2's slices S-13, S-12, and S-14 respectively; see `## Slices`.)
 
 ## Milestone History
 
