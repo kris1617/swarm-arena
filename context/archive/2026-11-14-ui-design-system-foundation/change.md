@@ -1,10 +1,10 @@
 ---
 change_id: ui-design-system-foundation
 title: Shared app shell and extended design tokens (shadcn-admin-dashboard pattern)
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T18:51:59Z
 ---
 
 ## Notes

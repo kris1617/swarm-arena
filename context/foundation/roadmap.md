@@ -60,7 +60,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | done |
 | S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, correlated with improving their final score across past runs | F-05            | FR-015                                                 | done |
 | S-14 | run-export                      | User exports a run's parameters/score/history outside the app (JSON and CSV) | F-05            | FR-017                                                 | done |
-| F-06 | ui-design-system-foundation     | (foundation) A shared app shell (sidebar nav) and extended design tokens exist, following a shadcn-admin-dashboard structural pattern | —              | FR-032                                                 | in-progress |
+| F-06 | ui-design-system-foundation     | (foundation) A shared app shell (sidebar nav) and extended design tokens exist, following a shadcn-admin-dashboard structural pattern | —              | FR-032                                                 | done |
 | S-15 | branded-login-page              | User sees a properly branded Swarm Arena login page | F-06            | FR-031                                                 | proposed |
 | S-16 | dashboard-restyle               | User sees the post-login dashboard restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
 | S-17 | staging-live-view-restyle       | User sees the simulation staging form and live view restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
@@ -179,7 +179,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The main risk is scope creep into "redesign everything at once" — explicitly bounded to establishing the shell + token extensions and proving them on exactly one page (S-15) before any other page adopts them. Must not regress the existing design-token discipline (`AGENTS.md`: no literal colors/arbitrary Tailwind values) — extends `globals.css`'s tokens, doesn't bypass them.
-- **Status:** in-progress
+- **Status:** done
 
 ## Slices
 
@@ -525,6 +525,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **F-06: (foundation) A shared app shell (sidebar navigation) and an extended set of design tokens exist, following `next-shadcn-admin-dashboard`'s structural pattern, demonstrated end-to-end on the login page (S-15) before being applied to the rest of the app.** — Archived 2026-11-14 → `context/archive/2026-11-14-ui-design-system-foundation/`. Lesson: —.
 - **S-13: User sees a heuristic-suggested next parameter change — the single admin-ranged parameter most correlated with improving their final score across their own past runs — with a one-line rationale and a confidence qualifier.** — Archived 2026-11-14 → `context/archive/2026-11-14-parameter-suggestion-heuristic/`. Lesson: —.
 - **S-14: User exports a run's parameters, score, and history outside the app, in JSON (full-fidelity) and CSV (parameters + score, no nested history).** — Archived 2026-11-14 → `context/archive/2026-11-14-run-export/`. Lesson: a formatter's named return type doesn't strip extra fields from a spread object at runtime — a `{...row}` JSON export leaked userId/seed/savedState outside the documented contract until caught in impl-review; build the output from an explicit field list, same discipline the CSV branch already used.
 - **S-12: User selects two or more completed runs and compares their scores and four-factor breakdowns side by side.** — Archived 2026-11-14 → `context/archive/2026-11-14-compare-runs-side-by-side/`. Lesson: —.
