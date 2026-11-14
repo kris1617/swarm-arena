@@ -16,8 +16,10 @@ import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import { CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
-const CANVAS_WIDTH = 600;
-const CANVAS_HEIGHT = 400;
+// Exported for ServerRunViewer (S-07) to match the staging canvas's exact
+// dimensions rather than duplicating the numbers.
+export const CANVAS_WIDTH = 600;
+export const CANVAS_HEIGHT = 400;
 // createInitialPopulation spreads boids over a 0-200 square; scale that up
 // and center it so the initial frame isn't tiny in a 600x400 canvas. Boids
 // stay within that range indefinitely — stepBoids wraps x/y/z toroidally,
@@ -110,7 +112,9 @@ export function colorToCss({
 	return `rgb(${toChannel(r)}, ${toChannel(g)}, ${toChannel(b)})`;
 }
 
-function drawScene(
+// Exported for ServerRunViewer (S-07) to reuse unchanged — already pure
+// given a canvas context + boids/predators arrays.
+export function drawScene(
 	ctx: CanvasRenderingContext2D,
 	boids: BoidState[],
 	predators: PredatorState[],

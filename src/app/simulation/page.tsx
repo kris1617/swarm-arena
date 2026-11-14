@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+import { ServerRunViewer } from "~/app/simulation/_components/server-run-viewer";
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -52,6 +52,8 @@ export default function SimulationPage() {
 	const [serverRunConfirmation, setServerRunConfirmation] = useState<{
 		runId: number;
 	} | null>(null);
+	// S-07: which server run (if any) the viewer below is currently watching.
+	const [viewingRunId, setViewingRunId] = useState<number | null>(null);
 
 	// Shared by both the staging "Start" button and the "Start on server"
 	// button — identical clamping, diverging only in which mutation receives
@@ -121,11 +123,26 @@ export default function SimulationPage() {
 		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Flocking Simulation</h1>
 
-			{serverRunConfirmation ? (
-				<p className="bg-input text-foreground w-full max-w-xs rounded-2xl px-4 py-3 text-center">
-					Server run #{serverRunConfirmation.runId} started — it keeps running
-					even if you close this tab. Viewing it live is a future update.
-				</p>
+			{viewingRunId ? (
+				<ServerRunViewer
+					key={viewingRunId}
+					onClose={() => setViewingRunId(null)}
+					runId={viewingRunId}
+				/>
+			) : serverRunConfirmation ? (
+				<div className="bg-input text-foreground flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl px-4 py-3 text-center">
+					<p>
+						Server run #{serverRunConfirmation.runId} started — it keeps running
+						even if you close this tab.
+					</p>
+					<Button
+						className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
+						onClick={() => setViewingRunId(serverRunConfirmation.runId)}
+						type="button"
+					>
+						View live
+					</Button>
+				</div>
 			) : null}
 
 			{activeRun ? (
