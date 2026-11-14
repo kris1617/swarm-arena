@@ -105,6 +105,26 @@ describe("ServerRunViewer", () => {
 		expect(container.textContent).toContain("boom");
 	});
 
+	it("clears a stale error once new data arrives (impl-review F1)", () => {
+		act(() => {
+			root.render(<ServerRunViewer onClose={vi.fn()} runId={42} />);
+		});
+
+		act(() => {
+			capturedWatchOptions.onError?.({ message: "boom" });
+		});
+		expect(container.textContent).toContain("boom");
+
+		act(() => {
+			capturedWatchOptions.onData?.({
+				id: "0",
+				data: { boids: [], predators: [] },
+			});
+		});
+
+		expect(container.textContent).not.toContain("boom");
+	});
+
 	it("calls onClose exactly once when Stop viewing is clicked", () => {
 		const onClose = vi.fn();
 		act(() => {

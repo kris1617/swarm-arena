@@ -27,6 +27,12 @@ export function ServerRunViewer({ runId, onClose }: ServerRunViewerProps) {
 		{ runId },
 		{
 			onData: ({ data }) => {
+				// tRPC subscriptions auto-reconnect — a prior error can clear on
+				// its own once new data arrives again. Without this, a stale
+				// error message would linger under a canvas that's visibly
+				// updating again, misleading the user into thinking the view is
+				// still broken.
+				setViewError(null);
 				const ctx = canvasRef.current?.getContext("2d");
 				if (ctx) {
 					drawScene(ctx, data.boids, data.predators);
