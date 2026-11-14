@@ -1,10 +1,10 @@
 ---
 change_id: view-running-server-simulation
 title: View one running server simulation live
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T11:15:21Z
 ---
 
 ## Notes
