@@ -839,6 +839,110 @@ describe("simulationRouter.listRunning", () => {
 	});
 });
 
+describe("simulationRouter.listCompleted", () => {
+	it("returns only the caller's own stopped rows, not another user's, with score and stoppedAt", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [other] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!other) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(other.id);
+
+		const [ownRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.42,
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		await db.insert(simulationRuns).values({
+			userId: other.id,
+			seed: 2,
+			...VALID_START_INPUT,
+			status: "stopped",
+			score: 0.9,
+			stoppedAt: new Date(),
+		});
+		// Also owner's own running row — must not appear here.
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 3,
+			...VALID_START_INPUT,
+			status: "running",
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listCompleted();
+		expect(result).toHaveLength(1);
+		expect(result[0]?.id).toBe(ownRun?.id);
+		expect(result[0]?.score).toBe(0.42);
+		expect(result[0]?.stoppedAt).not.toBeNull();
+	});
+
+	// plan-review F1: startServer's catch block can set status: "stopped"
+	// with no score when a run fails to actually start.
+	it("includes a stopped row with a null score", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 1,
+			...VALID_START_INPUT,
+			status: "stopped",
+			stoppedAt: new Date(),
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listCompleted();
+		expect(result).toHaveLength(1);
+		expect(result[0]?.score).toBeNull();
+	});
+
+	it("rejects with UNAUTHORIZED when there is no session", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: null,
+		});
+
+		await expect(caller.simulation.listCompleted()).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 	it("seeds and returns the default ranges on first read", async () => {
 		const caller = createCaller({

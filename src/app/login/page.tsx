@@ -12,7 +12,7 @@ export default function LoginPage() {
 						// wherever signIn() was called from — i.e. this /login page
 						// itself — which middleware excludes from the gate, so you'd
 						// never actually land on the app after a successful sign-in.
-						await signIn("github", { redirectTo: "/" });
+						await signIn("github", { redirectTo: "/dashboard" });
 					}}
 				>
 					<button

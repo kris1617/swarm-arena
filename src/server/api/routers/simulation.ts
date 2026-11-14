@@ -449,6 +449,35 @@ export const simulationRouter = createTRPCRouter({
 			.orderBy(desc(simulationRuns.startedAt));
 	}),
 
+	// S-10 (MS-07): mirrors listRunning/listSaved but for finished runs,
+	// feeding the post-login dashboard's "Completed" section. `.limit(50)`
+	// bounds an otherwise-unbounded list — same posture as the sample-array
+	// caps elsewhere in this router.
+	listCompleted: protectedProcedure.query(async ({ ctx }) => {
+		const userId = ctx.session.user.id;
+		if (!userId) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+		return ctx.db
+			.select({
+				id: simulationRuns.id,
+				startedAt: simulationRuns.startedAt,
+				boidCount: simulationRuns.boidCount,
+				predatorCount: simulationRuns.predatorCount,
+				score: simulationRuns.score,
+				stoppedAt: simulationRuns.stoppedAt,
+			})
+			.from(simulationRuns)
+			.where(
+				and(
+					eq(simulationRuns.userId, userId),
+					eq(simulationRuns.status, "stopped"),
+				),
+			)
+			.orderBy(desc(simulationRuns.startedAt))
+			.limit(50);
+	}),
+
 	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable
 	// "saved" row — distinct from `stop`, which is terminal and scores
 	// immediately. Only server-owned runs have a live registry entry to
