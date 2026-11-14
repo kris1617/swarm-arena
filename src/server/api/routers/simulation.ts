@@ -1,14 +1,13 @@
 import { TRPCError, tracked } from "@trpc/server";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { db as dbSingleton } from "~/server/db";
 import { simulationRuns } from "~/server/db/schema";
 import { computeScore } from "~/server/simulation/boids";
-// S-05 (parallel-sim-switching): the client-side run-slot manager already
-// caps a single browser session at MAX_PARALLEL_RUNS, but that's UI-only —
-// a second tab or a direct API call would bypass it without this check.
+// Shared cap on how many simulations (staging or server-run) a user may
+// have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
 	startServerRun,
@@ -258,4 +257,28 @@ export const simulationRouter = createTRPCRouter({
 				yield tracked(String(eventId++), snapshot);
 			}
 		}),
+
+	// S-08: lets the client discover all of the caller's currently-running
+	// server simulations, for the list/switch UI.
+	listRunning: protectedProcedure.query(async ({ ctx }) => {
+		const userId = ctx.session.user.id;
+		if (!userId) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+		return ctx.db
+			.select({
+				id: simulationRuns.id,
+				startedAt: simulationRuns.startedAt,
+				boidCount: simulationRuns.boidCount,
+				predatorCount: simulationRuns.predatorCount,
+			})
+			.from(simulationRuns)
+			.where(
+				and(
+					eq(simulationRuns.userId, userId),
+					eq(simulationRuns.status, "running"),
+				),
+			)
+			.orderBy(desc(simulationRuns.startedAt));
+	}),
 });

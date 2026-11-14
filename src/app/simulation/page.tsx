@@ -45,15 +45,15 @@ export default function SimulationPage() {
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
 	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
-	// S-06: distinct from `activeRun` (the client-staged run rendered via
-	// SimulationCanvas below) — a server-owned run has nothing for this page
-	// to render; this just confirms it started. Independent of `activeRun` so
-	// starting a server run never hides the staging form.
-	const [serverRunConfirmation, setServerRunConfirmation] = useState<{
-		runId: number;
-	} | null>(null);
 	// S-07: which server run (if any) the viewer below is currently watching.
 	const [viewingRunId, setViewingRunId] = useState<number | null>(null);
+	// S-08: every currently-running server simulation this user has, for the
+	// list/switch panel below — polled rather than pushed, since the list
+	// itself changes rarely. Independent of `activeRun` so server runs never
+	// hide the staging form.
+	const runningRunsQuery = api.simulation.listRunning.useQuery(undefined, {
+		refetchInterval: 2000,
+	});
 
 	// Shared by both the staging "Start" button and the "Start on server"
 	// button — identical clamping, diverging only in which mutation receives
@@ -87,7 +87,9 @@ export default function SimulationPage() {
 
 	const startServerMutation = api.simulation.startServer.useMutation({
 		onSuccess: (data) => {
-			setServerRunConfirmation({ runId: data.runId });
+			// View the run just started immediately, rather than waiting for
+			// the list's next 2s poll to pick it up.
+			setViewingRunId(data.runId);
 		},
 	});
 
@@ -129,19 +131,29 @@ export default function SimulationPage() {
 					onClose={() => setViewingRunId(null)}
 					runId={viewingRunId}
 				/>
-			) : serverRunConfirmation ? (
+			) : null}
+
+			{runningRunsQuery.data && runningRunsQuery.data.length > 0 ? (
 				<div className="bg-input text-foreground flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl px-4 py-3 text-center">
 					<p>
-						Server run #{serverRunConfirmation.runId} started — it keeps running
-						even if you close this tab.
+						Running on server — it keeps running even if you close this tab.
 					</p>
-					<Button
-						className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
-						onClick={() => setViewingRunId(serverRunConfirmation.runId)}
-						type="button"
-					>
-						View live
-					</Button>
+					<div className="flex flex-wrap justify-center gap-2">
+						{runningRunsQuery.data.map((run) => (
+							<Button
+								className={
+									run.id === viewingRunId
+										? "bg-foreground/35 text-foreground h-auto rounded-full px-6 py-2 font-semibold"
+										: "bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
+								}
+								key={run.id}
+								onClick={() => setViewingRunId(run.id)}
+								type="button"
+							>
+								Run #{run.id}
+							</Button>
+						))}
+					</div>
 				</div>
 			) : null}
 
