@@ -22,15 +22,18 @@ milestone_status: open
 
 **M-1: First working simulation loop** — Status: open
 
-- **Intent:** Deliver the first end-to-end run of a boids/predator simulation — configure it, watch it, stop/resume it, and get a score — with the domain logic (genetics, predator-prey, scoring) built correctly rather than fast, since the project's main goal for this milestone is quality. Extended 2026-11-14 to add a second execution model: real simulations run server-side in the background (no rendering, no client-tab dependency), while a single client-side simulation stays available for parameter-tuning staging, exactly as today.
-- **Source materials:** `context/foundation/prd.md` (v1); user-described extension 2026-11-14 (scope anchors MS-01–MS-05 below — not yet reflected in `prd.md`, which should be updated to match once this scope lands).
-- **Done when:** F-01 through F-04, and S-01 through S-08, are all `done`. The nice-to-have FRs are explicitly allowed to carry into the next milestone — see Parked.
-- **Scope anchors:** US-01; FR-001 through FR-014, FR-018 (must-have); Access Control section; the three PRD Open Questions; plus the 2026-11-14 extension:
+- **Intent:** Deliver the first end-to-end run of a boids/predator simulation — configure it, watch it, stop/resume it, and get a score — with the domain logic (genetics, predator-prey, scoring) built correctly rather than fast, since the project's main goal for this milestone is quality. Extended 2026-11-14 to add a second execution model: real simulations run server-side in the background (no rendering, no client-tab dependency), while a single client-side simulation stays available for parameter-tuning staging, exactly as today. Extended again 2026-11-14 (same day) to add a post-login run dashboard, a per-run analysis view that draws on standard population/ecological analysis methods, and a correctness fix to the phase-quality scoring factor shipped in S-04.
+- **Source materials:** `context/foundation/prd.md` (v1); user-described extension 2026-11-14 (scope anchors MS-01–MS-05); second user-described extension 2026-11-14 (scope anchors MS-06–MS-08 below) — neither reflected in `prd.md` yet, which should be updated to match once this scope lands.
+- **Done when:** F-01 through F-05, and S-01 through S-11, are all `done`. The nice-to-have FRs are explicitly allowed to carry into the next milestone — see Parked.
+- **Scope anchors:** US-01; FR-001 through FR-014, FR-018 (must-have); Access Control section; the three PRD Open Questions; plus the 2026-11-14 extensions:
   - MS-01: Real (non-staging) simulations execute on the server, independent of any client connection, so they keep running in the background with no client tab needed.
   - MS-02: Server-side simulations run with no rendering step, removing the rendering-imposed limit on how many can run or how large they can be.
   - MS-03: A single client-side simulation remains available for staging/parameter-tuning, started and rendered entirely on the client exactly as today — unchanged by this extension.
   - MS-04: The user can view exactly one server-run simulation at a time, rendered live in the browser from server-pushed state (confirmed: SSE/WebSocket push, not polling).
   - MS-05: The existing client-driven "run several in parallel, switch which you view" feature (S-05) is retired in favor of server-side execution for running multiple simulations at once (confirmed: replace, not keep both).
+  - MS-06: The score's phase-quality factor is computed per completed lifecycle cycle (establishment→growth→overshoot→crash→recovery, repeating until the run ends), not as a single flat average plus a one-time yes/no resilience flag over the whole run — a population that completes several crash→recovery cycles must score meaningfully higher than one that barely survives a single cycle.
+  - MS-07: Right after logging in, the user lands on a dashboard listing their own simulation runs (running, saved, and completed), following standard run-dashboard conventions (status, start time, filters, a link into each run's detail) rather than inventing bespoke ones.
+  - MS-08: From a completed run, the user can open an analysis view presenting the run's population dynamics — adapted from standard, well-documented ecological/population-analysis methods rather than invented from scratch — so they can draw a concrete conclusion about what to change in the next staged run.
 
 ## Vision recap
 
@@ -58,6 +61,10 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-06 | start-server-run-simulation     | User starts a real (non-staging) simulation whose execution is owned by the server and keeps running after the browser tab is closed | F-03           | MS-01, US-01, FR-003, FR-013                            | done |
 | S-07 | view-running-server-simulation  | User picks one of their currently-running server simulations and watches it render live in the browser from pushed state | S-06, F-04     | MS-04, FR-004, FR-014                                   | done |
 | S-08 | server-run-list-and-switch      | User sees all their currently-running server simulations and switches which one is actively viewed, with the old client-driven switcher retired | S-07           | MS-05, FR-013, FR-014                                   | done |
+| S-09 | phase-quality-per-cycle-scoring | User's score correctly rewards every completed lifecycle resilience cycle, not just whether one happened anywhere in the run | —              | MS-06, FR-019, FR-010 (full)                            | ready |
+| F-05 | persist-run-history             | (foundation) A finished run's tick-level population history (phase history, food-ratio samples, gene snapshots) is persisted instead of discarded | —              | MS-08, FR-019, FR-010 (full)                            | ready |
+| S-10 | post-login-run-dashboard        | User lands on a dashboard of their own runs right after logging in, with standard status/filter/detail-link conventions | F-01           | MS-07, FR-013, FR-014                                   | ready |
+| S-11 | run-analysis-view               | User opens a completed run's analysis view (growth-curve comparison, per-cycle phase breakdown, diversity-index trend) to decide what to change next | F-05, S-09, S-10 | MS-08, FR-019, FR-010 (full)                          | proposed |
 
 ## Streams
 
@@ -66,6 +73,8 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | A      | Core simulation loop depth      | `F-01` → `F-02` → `S-01` → `S-02` → `S-03` → `S-04` | Carries the north star and the quality-focused domain work; the spine of this milestone. |
 | B      | Multi-run viewing (legacy)       | `S-05`                                   | Joins Stream A at `S-01` — shipped and done; its user-visible capability is re-delivered on the new architecture by Stream C (S-08) and its client-driven switcher UI is then retired. |
 | C      | Server-side execution            | `F-03` → `F-04` → `S-06` → `S-07` → `S-08` | 2026-11-14 extension: moves "real" simulation execution off the client and onto a server-owned process, removing the rendering-imposed limit on how many can run; the client-side staging simulation (S-01's single-run path) is explicitly unchanged. |
+| D      | Run visibility                   | `F-01` → `S-10`                          | 2026-11-14 (second) extension: a post-login dashboard of the user's own runs. Joins Stream A at `F-01`. |
+| E      | Scoring correctness & analysis    | `F-05` → `S-11`                          | Persists per-run history (no prerequisites — purely additive) then builds the analysis view on it; `S-11` also waits on `S-09` (the corrected per-cycle aggregation it displays) and `S-10` (Stream D, the dashboard to navigate from). |
 
 ## Baseline
 
@@ -79,6 +88,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Deploy / infra:** present — live in production at `https://swarmarena.hopto.org` (Docker + Caddy + GitHub Actions auto-deploy, per `infrastructure.md` / `deploy-plan.md`). `tech-stack.md` already names the reason this matters for F-03/F-04: a persistent container (not serverless) is required precisely for "an always-on simulation loop and any WebSocket/SSE push to the live view" — the deploy target was chosen anticipating this extension.
 - **Observability:** absent — no logging/error-tracking library found.
 - **2026-11-14 refresh — relevant to F-03/F-04 specifically:** simulation execution today is 100% client-side, `requestAnimationFrame`-driven (`src/app/simulation/_components/simulation-canvas.tsx`, `src/app/simulation/multi/_components/multi-simulation-stage.tsx`); no server-owned tick loop exists. `simulationRuns` (`src/server/db/schema.ts`) persists only run configuration and terminal fields (status/score/timestamps) — no live per-tick state. No push/subscription mechanism exists (`src/server/api/routers/simulation.ts` has only `start`/`stop` mutations; no tRPC subscription, SSE route, or WebSocket handler found). The existing `computeMultiRunTick` (`src/server/simulation/multi-run-lifecycle.ts`) already separates "tick every running slot" from "render only the active slot's output" — the closest in-repo precedent for the tick/render split F-03/F-04 need, even though it currently runs client-side only.
+- **2026-11-14 refresh (second) — relevant to S-09/F-05/S-10/S-11:** no dashboard or post-login landing page exists — `/simulation` is both the staging form and the only run-related page; there is no route a logged-in user is redirected to. `listRunning`/`listSaved` (`src/server/api/routers/simulation.ts`) already return the caller's own rows filtered by status, so a run-list dashboard is additive UI, not new backend capability. No run-analysis UI or endpoint exists anywhere. Confirmed via code inspection: `computeScore`'s callers (`stop` resolver, `server-run-registry.ts`'s `tick()`/`stopServerRun`) consume `phaseHistory`/`foodRatioSamples`/survivor genes only to compute the final score number — none of those arrays are persisted; `simulationRuns.score` is the only thing written back. An analysis view has nothing to read until F-05 persists them.
 
 ## Foundations
 
@@ -133,6 +143,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** —
 - **Risk:** Genuinely new infrastructure — no subscription/push mechanism (tRPC subscription, SSE, WebSocket) exists anywhere in the stack today, confirmed absent. Isolated as its own foundation rather than folded into S-07 because the push channel is reusable infrastructure, not view-specific logic.
 - **Status:** done
+
+### F-05: Persist per-run population history for analysis
+
+- **Outcome:** (foundation) When a run finishes, its tick-level population history — phase history, food-ratio samples, and genetic-diversity snapshots — is persisted alongside the score instead of being discarded, so a later analysis view has data to read.
+- **Change ID:** persist-run-history
+- **PRD refs:** MS-08 (2026-11-14 extension); FR-019, FR-010 (full)
+- **Unlocks:** S-11 (the analysis view has nothing to render without this)
+- **Prerequisites:** — (purely additive persistence of the raw per-tick arrays, which are unaffected by S-09's aggregation-formula fix — `phaseHistory`'s per-tick labels are the same regardless of how `computePhaseQuality` later summarizes them)
+- **Parallel with:** S-09, S-10
+- **Blockers:** —
+- **Unknowns:** — (storage shape — one JSON blob similar to `savedState`, vs. normalized per-tick rows — is implementer's call at `/10x-plan`, bounded by this project's declared small scale per `full-score-save-resume`'s own Performance Considerations precedent)
+- **Risk:** The sample arrays already exist in memory at score-time (`run.phaseHistory`, `run.foodRatioSamples`, survivor genes) — this is "stop discarding data already computed," not new computation, which keeps the risk contained to storage-size/schema shape, not simulation logic.
+- **Status:** ready
 
 ## Slices
 
@@ -233,6 +256,44 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Must not regress S-05's already-verified guarantee ("switching does not interrupt or measurably slow the others") — trivially preserved once the server, not a shared client loop, owns every run. The real risk is in the retirement half of this slice: confirm nothing else depends on `run-slots.ts` / `multi-simulation-stage.tsx` before deleting them.
 - **Status:** done
 
+### S-09: Correct the phase-quality score to summarize per completed cycle
+
+- **Outcome:** User's score correctly rewards every full crash→recovery resilience cycle completed during a run, not just whether one happened anywhere in the run — a population that weathers three crashes and recovers each time scores higher than one that barely survives a single cycle.
+- **Change ID:** phase-quality-per-cycle-scoring
+- **PRD refs:** MS-06 (2026-11-14 extension); FR-019, FR-010 (full)
+- **Prerequisites:** — (standalone correction to already-shipped S-04 scoring code; confirmed via code inspection, not a new unknown)
+- **Parallel with:** S-10, F-05
+- **Blockers:** —
+- **Unknowns:** — (the exact per-cycle aggregation formula — e.g. averaging each completed cycle's own quality score vs. a count-weighted resilience bonus — is `/10x-plan`-level tuning, not a blocking product unknown; the gap itself is confirmed, not in question: `computePhaseQuality` in `boids.ts` averages `PHASE_QUALITY_WEIGHTS[phase]` flatly across the *entire* tick history and applies a single yes/no "does at least one crash→recovery pair exist anywhere" resilience bonus, so a run with three full cycles scores identically to one with exactly one)
+- **Risk:** This changes the score's actual numeric meaning for every future run — isolated as its own slice, ahead of S-11, so the correctness fix lands and is verifiable independently of any dashboard/analysis UI work. Can run fully in parallel with F-05 (which persists raw per-tick data unaffected by this aggregation-formula fix) and S-10.
+- **Status:** ready
+
+### S-10: Post-login run dashboard
+
+- **Outcome:** Right after logging in, the user lands on a dashboard listing their own simulation runs — running, saved, and completed — with standard run-dashboard conventions (status, start time, filters, and a link into each run's detail).
+- **Change ID:** post-login-run-dashboard
+- **PRD refs:** MS-07 (2026-11-14 extension); FR-013, FR-014
+- **Prerequisites:** F-01
+- **Parallel with:** S-09, F-05
+- **Blockers:** —
+- **Unknowns:**
+  - Exact landing route, and whether this replaces or sits alongside today's `/simulation` staging page as the post-login default — Owner: user. Block: no (reasonable default: a new `/dashboard` route becomes the post-login redirect target; `/simulation` stays reachable from it for staging/starting new runs; refine at `/10x-plan`).
+- **Risk:** `listRunning`/`listSaved` and the `simulationRuns` table already hold everything this needs (status, score, timestamps) — additive UI over existing data, not new backend capability, which keeps the slice small and low-risk.
+- **Status:** ready
+
+### S-11: Run analysis view
+
+- **Outcome:** From a completed run, the user opens an analysis view presenting the run's population dynamics — a logistic-growth-curve comparison against the run's actual population trajectory, a phase/cycle breakdown of time spent in each lifecycle phase (summarized per completed cycle, matching S-09's fix), and a diversity-index-style summary of genetic diversity over time — so they can draw a concrete conclusion about what to change in the next staged run.
+- **Change ID:** run-analysis-view
+- **PRD refs:** MS-08 (2026-11-14 extension); FR-010 (full), FR-019
+- **Prerequisites:** F-05, S-09, S-10
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:**
+  - Which adapted-standard-analysis visualizations ship in v1 (growth-curve overlay, phase/cycle timeline, diversity-index trend — all three, or a subset) — Owner: user. Block: no (standard-methods research below grounds the options; `/10x-plan` scopes v1 from them).
+- **Risk:** The analysis math itself borrows directly from standard, well-documented population-ecology methods (logistic growth curve as the comparison baseline; Shannon/Simpson-style diversity indices adapted from species-diversity to gene-value diversity; survivorship-curve-style staging adapted to this sim's phase model) — not invented from scratch, which bounds the real risk to UI/visualization scope, not methodology.
+- **Status:** proposed
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -249,12 +310,17 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-06       | start-server-run-simulation        | Start a real simulation that keeps running on the server                | no                      | Waiting on F-03                                          |
 | S-07       | view-running-server-simulation     | View one running server simulation live via pushed state                | no                      | Waiting on S-06, F-04                                    |
 | S-08       | server-run-list-and-switch         | List/switch running server simulations; retire old client switcher      | no                      | Waiting on S-07                                          |
+| S-09       | phase-quality-per-cycle-scoring    | Correct phase-quality score to summarize per completed cycle            | yes                     | No prerequisites — standalone correction                 |
+| F-05       | persist-run-history                 | Persist per-run population history for analysis                        | yes                     | No prerequisites — can run parallel with S-09, S-10       |
+| S-10       | post-login-run-dashboard           | Post-login dashboard of the user's own runs                             | yes                     | Waiting on F-01 (done); can run parallel with S-09, F-05  |
+| S-11       | run-analysis-view                   | Per-run population-dynamics analysis view                               | no                      | Waiting on F-05, S-09, S-10                               |
 
 ## Open Roadmap Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Equal product of four factors, now including population-lifecycle-phase quality (FR-019). See PRD Open Questions #1 and Business Logic. No longer blocks S-04.
 2. **What export format(s) should the export feature support (CSV / JSON / image / other)?** — Owner: user. Block: — (gates the Parked export item, not any sequenced slice).
 3. **Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?** — Owner: user. Block: — (affects design of F-01/S-04, not blocking; current scope assumes parameter-governance-only).
+4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; reasonable default: forward-only, with old runs showing only their final score in the dashboard).
 
 ## Parked
 
