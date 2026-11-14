@@ -1,7 +1,7 @@
 ---
 change_id: post-run-optimization-suggestion
 title: Run-specific optimization suggestion on the analysis view
-status: implemented
+status: impl_reviewed
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
