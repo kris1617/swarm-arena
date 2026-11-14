@@ -4,12 +4,12 @@ version: 1
 status: draft
 created: 2026-11-09
 updated: 2026-11-14
-prd_version: 4
-main_goal: learn
+prd_version: 5
+main_goal: quality
 top_blocker: decisions
-milestone_id: insight-and-comparison
-milestone_seq: 2
-milestone_status: done
+milestone_id: modernization-and-polish
+milestone_seq: 3
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,20 +20,20 @@ milestone_status: done
 
 ## Milestone
 
-**M-2: Insight and comparison** — Status: done
+**M-3: Modernization and polish** — Status: open
 
-- **Intent:** Turn individual run scores into actionable insight by letting the user compare completed runs side by side and get heuristic parameter-change suggestions, closing the loop the PRD's Vision describes ("turning trial-and-error tuning into a measurable, resumable experimentation loop"). Main goal for this milestone is to learn/explore — the parameter-suggestion heuristic (FR-015) is the project's most novel, least-specified idea, and this milestone treats getting it right as more valuable than shipping the whole nice-to-have backlog fast.
-- **Source materials:** `context/foundation/prd.md` (v3) — the three remaining nice-to-have FRs M-1 did not cover.
-- **Done when:** S-12 through S-14 are all `done`. No new foundations — M-2 reuses F-05's persisted history; nothing in its scope needs a new cross-cutting enabler.
-- **Scope anchors:** FR-015 (parameter-change suggestion heuristic), FR-016 (side-by-side run comparison), FR-017 (export), US-01/US-03's implied "compare and act on past runs" follow-through, PRD Open Question #2 (export format).
+- **Intent:** Make the app look and feel like a real, modern application (branded login, a consistent design direction across every page, four reference/documentation pages), add two concrete capabilities the user asked for by name (a leaderboard, a run-specific post-run optimization suggestion), give the owner on-demand flexibility (temporary admin elevation), and port a proven performance optimization from the project's own prior Lua implementation (spatial-partitioning neighbor search). Main goal is quality — the user explicitly framed the current UI as not looking like "a common application UI," and the perf work is a proven port, not a guess, so both deserve doing right over doing fast.
+- **Source materials:** `context/foundation/prd.md` (v5) — a user-described scope round (2026-11-14, same day as M-2's close) covering FR-026 through FR-034.
+- **Done when:** F-06 and S-15 through S-23 are all `done`.
+- **Scope anchors:** FR-026 (leaderboard), FR-027 (post-run optimization suggestion), FR-029 (spatial-partitioning performance), FR-030 (temporary admin elevation), FR-031 (branded login), FR-032 (UI modernization), FR-033 (confirmed nav flow), FR-034 (reference/documentation pages). FR-028 (live in-run adjustment) is explicitly parked, not built this round — see Parked.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 is where "compared rather than guessed at" becomes literal — comparing runs side by side and, eventually, getting a suggested next parameter change.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal. M-3 is where the app stops looking like a prototype — polish, insight depth, performance, and the operational flexibility to tune the admin-governed parameter ranges on demand.
 
 ## North star
 
-**S-12: User compares completed runs' scores side by side** — the smallest end-to-end flow that proves M-2's core value: every completed run already has a score and persisted history (from M-1's F-05/S-11), so comparison needs no new data, only a new view — placed first because the suggestion heuristic (S-13) is more valuable once the user has already seen what "comparing runs" looks like.
+**S-15: User sees a properly branded Swarm Arena login page** — the smallest end-to-end slice that proves the new UI design foundation (F-06) actually works, and the first thing anyone sees, directly answering the user's own framing of the problem ("it doesn't look like a common application UI").
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -60,6 +60,16 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-12 | compare-runs-side-by-side       | User selects two or more completed runs and compares their scores (and four-factor breakdowns) side by side | F-05, S-11      | FR-016                                                 | done |
 | S-13 | parameter-suggestion-heuristic | User sees a heuristic-suggested next parameter change, correlated with improving their final score across past runs | F-05            | FR-015                                                 | done |
 | S-14 | run-export                      | User exports a run's parameters/score/history outside the app (JSON and CSV) | F-05            | FR-017                                                 | done |
+| F-06 | ui-design-system-foundation     | (foundation) A shared app shell (sidebar nav) and extended design tokens exist, following a shadcn-admin-dashboard structural pattern | —              | FR-032                                                 | proposed |
+| S-15 | branded-login-page              | User sees a properly branded Swarm Arena login page | F-06            | FR-031                                                 | proposed |
+| S-16 | dashboard-restyle               | User sees the post-login dashboard restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
+| S-17 | staging-live-view-restyle       | User sees the simulation staging form and live view restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
+| S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
+| S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
+| S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
+| S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | ready |
+| S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | ready |
+| S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
 
 ## Streams
 
@@ -71,10 +81,14 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | D      | Run visibility                   | `F-01` → `S-10`                          | 2026-11-14 (second) extension: a post-login dashboard of the user's own runs. Joins Stream A at `F-01`. |
 | E      | Scoring correctness & analysis    | `F-05` → `S-11`                          | Persists per-run history (no prerequisites — purely additive) then builds the analysis view on it; `S-11` also waits on `S-09` (the corrected per-cycle aggregation it displays) and `S-10` (Stream D, the dashboard to navigate from). |
 | F      | Insight and comparison (M-2)      | `S-11` → `S-12`, `F-05` → `S-13`, `F-05` → `S-14` | M-2's three items share only the F-05 history data, not each other — `S-12`/`S-13`/`S-14` can all run in parallel. S-12 done; S-13/S-14's Unknowns resolved 2026-11-14, both `ready`. |
+| G      | UI modernization (M-3)            | `F-06` → `S-15` → `S-16`, `S-17`, `S-18`, `S-19`, `S-20` | Carries M-3's north star (`S-15`). `S-16`–`S-20` all depend only on `F-06`, not on each other or on `S-15` — they can run in any order/parallel once the foundation lands; `S-15` is sequenced first by main-goal bias (quality: prove the foundation on the smallest page before the larger restyles), not a hard dependency. |
+| H      | Post-run insight (M-3)            | `S-21`                                   | Standalone — no foundation prerequisite; functionally independent of the UI restyle work, though sequencing it alongside `S-18` (analysis restyle) avoids touching the analysis page's layout twice. |
+| I      | Access flexibility (M-3)          | `S-22`                                   | Standalone — no foundation prerequisite; the elevation mechanism itself is a planning-level decision (PRD Open Question #6), not a roadmap-level blocker. |
+| J      | Engine performance (M-3)          | `S-23`                                   | Standalone — no foundation prerequisite; pure backend change to `boids.ts`'s neighbor search, no UI surface. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), and again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -85,6 +99,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Observability:** absent — no logging/error-tracking library found.
 - **2026-11-14 refresh — relevant to F-03/F-04 specifically:** simulation execution today is 100% client-side, `requestAnimationFrame`-driven (`src/app/simulation/_components/simulation-canvas.tsx`, `src/app/simulation/multi/_components/multi-simulation-stage.tsx`); no server-owned tick loop exists. `simulationRuns` (`src/server/db/schema.ts`) persists only run configuration and terminal fields (status/score/timestamps) — no live per-tick state. No push/subscription mechanism exists (`src/server/api/routers/simulation.ts` has only `start`/`stop` mutations; no tRPC subscription, SSE route, or WebSocket handler found). The existing `computeMultiRunTick` (`src/server/simulation/multi-run-lifecycle.ts`) already separates "tick every running slot" from "render only the active slot's output" — the closest in-repo precedent for the tick/render split F-03/F-04 need, even though it currently runs client-side only.
 - **2026-11-14 refresh (second) — relevant to S-09/F-05/S-10/S-11:** no dashboard or post-login landing page exists — `/simulation` is both the staging form and the only run-related page; there is no route a logged-in user is redirected to. `listRunning`/`listSaved` (`src/server/api/routers/simulation.ts`) already return the caller's own rows filtered by status, so a run-list dashboard is additive UI, not new backend capability. No run-analysis UI or endpoint exists anywhere. Confirmed via code inspection: `computeScore`'s callers (`stop` resolver, `server-run-registry.ts`'s `tick()`/`stopServerRun`) consume `phaseHistory`/`foodRatioSamples`/survivor genes only to compute the final score number — none of those arrays are persisted; `simulationRuns.score` is the only thing written back. An analysis view has nothing to read until F-05 persists them.
+- **2026-11-14 refresh (third) — relevant to M-3 (F-06, S-15–S-23):** the app uses shadcn/ui primitives (`Button`, `Input`, `Switch` in `src/components/ui/`) and a design-token system (`src/styles/globals.css`), but no shared app shell/sidebar-nav layout exists — every page (`login`, `dashboard`, `simulation`, `runs/[runId]`, `runs/compare`) is an independent `<main>` with its own ad hoc Tailwind classes, not a common layout. The login page (`src/app/login/page.tsx`) is generic/default-looking, not branded. No leaderboard, post-run-optimization-suggestion, admin-elevation, or reference/documentation page exists anywhere. `src/server/simulation/boids.ts`'s flocking-force calculation does a full pairwise scan (`for (const other of boids)` nested inside a per-boid loop) — confirmed O(N²), the exact pattern the user's prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`) replaced with a spatial-hash grid, per that project's own `docs/ARCHITEKTURA.md` ("Siatka Haszu Przestrzennego... Optymalizacja wyszukiwania sąsiadów z O(N²) do O(N)"). `users.role` (schema.ts) already has the `admin`/`member` enum; no elevation/toggle mechanism exists to change it from the app itself today (only direct DB access).
 
 ## Foundations
 
@@ -152,6 +167,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** — (storage shape — one JSON blob similar to `savedState`, vs. normalized per-tick rows — is implementer's call at `/10x-plan`, bounded by this project's declared small scale per `full-score-save-resume`'s own Performance Considerations precedent)
 - **Risk:** The sample arrays already exist in memory at score-time (`run.phaseHistory`, `run.foodRatioSamples`, survivor genes) — this is "stop discarding data already computed," not new computation, which keeps the risk contained to storage-size/schema shape, not simulation logic.
 - **Status:** done
+
+### F-06: UI design-system foundation
+
+- **Outcome:** (foundation) A shared app shell (sidebar navigation) and an extended set of design tokens exist, following `next-shadcn-admin-dashboard`'s structural pattern (confirmed via web research as a Next.js App Router + shadcn/ui + Tailwind, MIT-licensed reference — adoptable incrementally since this app already uses shadcn/ui primitives), demonstrated end-to-end on the login page (S-15) before being applied to the rest of the app.
+- **Change ID:** ui-design-system-foundation
+- **PRD refs:** FR-032
+- **Unlocks:** S-15, S-16, S-17, S-18, S-19, S-20 — every page-level restyle or new page in M-3 consumes this shell/tokens instead of inventing its own.
+- **Prerequisites:** —
+- **Parallel with:** S-21, S-22, S-23
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** The main risk is scope creep into "redesign everything at once" — explicitly bounded to establishing the shell + token extensions and proving them on exactly one page (S-15) before any other page adopts them. Must not regress the existing design-token discipline (`AGENTS.md`: no literal colors/arbitrary Tailwind values) — extends `globals.css`'s tokens, doesn't bypass them.
+- **Status:** proposed
 
 ## Slices
 
@@ -326,6 +354,116 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low complexity — F-05 already persists everything a run-level export would need; CSV deliberately drops nested history arrays (phaseHistory, survivorGenes, per-tick samples) rather than awkwardly serializing them into a single cell — a format limitation, not an oversight.
 - **Status:** done
 
+### S-15: Branded login page
+
+- **Outcome:** User sees a properly branded Swarm Arena login page, replacing today's generic/default-looking screen.
+- **Change ID:** branded-login-page
+- **PRD refs:** FR-031
+- **Prerequisites:** F-06
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — smallest page in the app, first real use of F-06's shell/tokens; proves the foundation before the larger restyles (S-16–S-18) commit to the same pattern.
+- **Status:** proposed
+
+### S-16: Dashboard restyle
+
+- **Outcome:** User sees the post-login dashboard restyled with the new design direction, with no change to its existing Running/Saved/Completed functionality.
+- **Change ID:** dashboard-restyle
+- **PRD refs:** FR-032, FR-033
+- **Prerequisites:** F-06
+- **Parallel with:** S-17, S-18, S-19, S-20
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Must not regress existing polling/filter/checkbox-selection behavior (S-10, S-12) while restyling — a pure visual change, no new data or logic.
+- **Status:** proposed
+
+### S-17: Staging and live view restyle
+
+- **Outcome:** User sees the simulation staging form and live view restyled with the new design direction, with no change to existing form state or live-rendering behavior.
+- **Change ID:** staging-live-view-restyle
+- **PRD refs:** FR-032, FR-033
+- **Prerequisites:** F-06
+- **Parallel with:** S-16, S-18, S-19, S-20
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** The largest, most stateful existing page (13 form fields, live canvas, suggestion card from S-13) — restyle carefully to avoid breaking any existing `useState`/query wiring.
+- **Status:** proposed
+
+### S-18: Analysis and comparison restyle
+
+- **Outcome:** User sees the run-analysis and run-comparison pages restyled with the new design direction, with no change to existing chart/table behavior.
+- **Change ID:** analysis-comparison-restyle
+- **PRD refs:** FR-032, FR-033
+- **Prerequisites:** F-06
+- **Parallel with:** S-16, S-17, S-19, S-20
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — both pages are already narrowly scoped (Recharts + a few stat sections); restyle is additive CSS/layout, not a logic change.
+- **Status:** proposed
+
+### S-19: Leaderboard
+
+- **Outcome:** User sees a leaderboard of their own completed runs, ranked by score, highest first.
+- **Change ID:** leaderboard
+- **PRD refs:** FR-026
+- **Prerequisites:** F-06
+- **Parallel with:** S-16, S-17, S-18, S-20
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — net-new page, built directly on F-06's shell with no prior page to preserve; reuses the same ownership-scoped query pattern every other run-listing query in this router already follows.
+- **Status:** proposed
+
+### S-20: Reference and documentation pages
+
+- **Outcome:** User reads four reference pages — the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics — separated from the functional app pages, not interleaved with them.
+- **Change ID:** reference-documentation-pages
+- **PRD refs:** FR-034
+- **Prerequisites:** F-06
+- **Parallel with:** S-16, S-17, S-18, S-19
+- **Blockers:** —
+- **Unknowns:**
+  - Who writes the actual descriptive copy for each of the four pages — the implementer drafting from the PRD's own Business Logic/FR text, or the user reviewing/rewriting afterward? — Owner: user. Block: no — a reasonable first draft is derivable directly from this PRD's existing Business Logic section (population lifecycle, score factors) and FR-002's parameter list; the user can revise content after it ships.
+- **Risk:** Low — static content pages, no new data model; shares one simple layout pattern across all four.
+- **Status:** proposed
+
+### S-21: Post-run optimization suggestion
+
+- **Outcome:** User sees a run-specific optimization suggestion on a completed run's analysis view, derived from that single run's own phase/resource history — distinct from S-13's cross-run suggestion.
+- **Change ID:** post-run-optimization-suggestion
+- **PRD refs:** FR-027
+- **Prerequisites:** —
+- **Parallel with:** F-06, S-18, S-19, S-20, S-22, S-23
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — reuses the same persisted `history` (phaseHistory, foodRatioSamples) S-11/S-13 already read; the new logic is "reason about one run's own trajectory" rather than "correlate across runs," a narrower, more constrained problem than S-13's. Sequencing alongside S-18 (analysis restyle) avoids touching that page's layout twice, though it is not a hard dependency.
+- **Status:** ready
+
+### S-22: Temporary admin elevation
+
+- **Outcome:** User temporarily elevates their own account (or another account) to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then reverts — the elevation is reversible, not a permanent role change.
+- **Change ID:** temporary-admin-elevation
+- **PRD refs:** FR-030
+- **Prerequisites:** —
+- **Parallel with:** F-06, S-18, S-19, S-20, S-21, S-23
+- **Blockers:** —
+- **Unknowns:**
+  - Exact elevation mechanism (self-service toggle, time-boxed grant, or other) — Owner: user. Block: no — PRD Open Question #6 explicitly defers this to `/10x-plan` as a planning-level decision; the product-level requirement (elevation exists and is reversible) is already fixed.
+- **Risk:** `users.role` already has the `admin`/`member` enum (schema.ts) — this is a new UI/mutation path to flip it temporarily, not a new data model.
+- **Status:** ready
+
+### S-23: Spatial-hash performance optimization
+
+- **Outcome:** Boid/predator flocking-force calculations use spatial partitioning (a grid-based neighbor search) instead of a full pairwise scan, reducing complexity from O(N²) to O(N) per tick — speeding up both calculation time and the resulting render frame rate at higher agent counts.
+- **Change ID:** spatial-hash-performance-optimization
+- **PRD refs:** FR-029
+- **Prerequisites:** —
+- **Parallel with:** F-06, S-18, S-19, S-20, S-21, S-22
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Confirmed O(N²) today (`boids.ts`'s nested `for (const other of boids)` scan) — the technique being ported is already proven in this project's own prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`, documented in that project's own `docs/ARCHITEKTURA.md`), not an invented approach. Must produce identical scores/behavior to the pre-optimization scan for the same seed/parameters (determinism NFR) — any deviation is a correctness bug, not an accepted tradeoff; verification needs a deliberate before/after comparison on a fixed seed, not just "it still runs."
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -349,6 +487,16 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-12       | compare-runs-side-by-side           | Compare completed runs' scores side by side                             | yes                     | No new unknowns; waiting on F-05, S-11 (both done) — M-2 north star |
 | S-13       | parameter-suggestion-heuristic      | Heuristic next-parameter suggestion correlated with final score         | yes                     | Heuristic design resolved 2026-11-14; can run parallel with S-12, S-14 |
 | S-14       | run-export                          | Export a run's parameters/score/history outside the app (JSON + CSV)    | yes                     | Export formats resolved 2026-11-14; can run parallel with S-12, S-13 |
+| F-06       | ui-design-system-foundation         | Shared app shell + extended design tokens, shadcn-admin-dashboard pattern | yes                   | No prerequisites — M-3 north-star foundation |
+| S-15       | branded-login-page                  | Branded Swarm Arena login page                                          | no                      | Waiting on F-06 — M-3 north star |
+| S-16       | dashboard-restyle                   | Restyle the post-login dashboard                                        | no                      | Waiting on F-06; can run parallel with S-17–S-20 |
+| S-17       | staging-live-view-restyle           | Restyle the simulation staging form and live view                       | no                      | Waiting on F-06; can run parallel with S-16, S-18–S-20 |
+| S-18       | analysis-comparison-restyle         | Restyle the run-analysis and run-comparison pages                       | no                      | Waiting on F-06; can run parallel with S-16, S-17, S-19, S-20 |
+| S-19       | leaderboard                         | Leaderboard of the user's completed runs ranked by score                | no                      | Waiting on F-06; can run parallel with S-16–S-18, S-20 |
+| S-20       | reference-documentation-pages       | Storyline/parameters/population-lifecycle/metrics reference pages       | no                      | Waiting on F-06; can run parallel with S-16–S-19 |
+| S-21       | post-run-optimization-suggestion    | Run-specific post-run optimization suggestion on the analysis view      | yes                     | No prerequisites — can run parallel with everything else in M-3 |
+| S-22       | temporary-admin-elevation           | Reversible, temporary elevation to admin                                | yes                     | No prerequisites — elevation mechanism deferred to `/10x-plan` |
+| S-23       | spatial-hash-performance-optimization | Spatial-partitioning neighbor search for flocking calculations        | yes                     | No prerequisites — ported from the project's own prior Lua implementation |
 
 ## Open Roadmap Questions
 
@@ -357,12 +505,16 @@ Foundations below assume these are present and do NOT re-scaffold them.
 3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14** (see PRD Open Questions #3) — every FR added since stays within per-user data isolation; not blocking.
 4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; resolved by default: forward-only, with old runs showing only their final score in the dashboard).
 5. ~~What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?~~ — **Resolved 2026-11-14.** Optimizes toward the final combined score, correlating each of the 13 admin-ranged parameters against the user's own past-run scores; suggests the single most-correlated one with a rationale and a confidence qualifier (minimum 3 varied runs). See PRD Open Questions #5. No longer blocks S-13.
+6. **What exact mechanism should temporary admin elevation (FR-030/S-22) use — a self-service toggle, a time-boxed grant, or something else?** — Owner: user. Block: — (not blocking; deferred to `/10x-plan` per PRD Open Question #6, product-level requirement already fixed).
+7. **Beyond the `next-shadcn-admin-dashboard` structural reference, which specific pages get restyled first, and in what order?** — Owner: roadmap (this decomposition). Resolved for sequencing purposes: `S-15` (login) first as the north star, then `S-16`–`S-20` in any order/parallel — see Streams row G. Per PRD Open Question #7.
 
 ## Parked
 
 - **Shared/collaborative simulations across users** — Why parked: explicit PRD Non-Goal — admin/member are access roles, not co-editing roles; a run belongs to the user who started it.
 - **Client-driven parallel rendering of multiple simulations at once** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — retired in favor of server-owned execution; the client renders at most one server-run simulation live at a time.
 - **Diversity-index trend over time in the analysis view** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.
+- **Live, in-run parameter adjustment** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-028) — the live simulation engine has no live-parameter-update path today; materially larger architectural change than the post-run suggestion (S-21), which ships instead. Revisit as its own future milestone.
+- **Full UI rewrite onto a new template** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-032) — F-06 adopts a modern design direction incrementally on the existing shadcn/ui layer, not a wholesale replacement.
 
 (FR-015, FR-016, and FR-017 — previously parked here as nice-to-have — are promoted into M-2's slices S-13, S-12, and S-14 respectively; see `## Slices`.)
 
