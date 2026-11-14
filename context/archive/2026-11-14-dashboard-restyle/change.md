@@ -1,10 +1,10 @@
 ---
 change_id: dashboard-restyle
 title: Restyle the post-login dashboard onto the F-06 design-system contract
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T19:39:07Z
 ---
 
 ## Notes

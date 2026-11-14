@@ -62,7 +62,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-14 | run-export                      | User exports a run's parameters/score/history outside the app (JSON and CSV) | F-05            | FR-017                                                 | done |
 | F-06 | ui-design-system-foundation     | (foundation) A shared app shell (sidebar nav) and extended design tokens exist, following a shadcn-admin-dashboard structural pattern | —              | FR-032                                                 | done |
 | S-15 | branded-login-page              | User sees a properly branded Swarm Arena login page | F-06            | FR-031                                                 | done |
-| S-16 | dashboard-restyle               | User sees the post-login dashboard restyled with the new design direction | F-06            | FR-032, FR-033                                         | in-progress |
+| S-16 | dashboard-restyle               | User sees the post-login dashboard restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-17 | staging-live-view-restyle       | User sees the simulation staging form and live view restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
 | S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | proposed |
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
@@ -376,7 +376,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Must not regress existing polling/filter/checkbox-selection behavior (S-10, S-12) while restyling — a pure visual change, no new data or logic.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-17: Staging and live view restyle
 
@@ -525,6 +525,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-16: User sees the post-login dashboard restyled with the new design direction, with no change to its existing Running/Saved/Completed functionality.** — Archived 2026-11-14 → `context/archive/2026-11-14-dashboard-restyle/`. Lesson: an `isLoading` state and a `<main>`/landmark fix both shipped cleanly, but impl-review still caught a missing `isError` branch the plan itself had reasoned away as N/A — the 7-state matrix's "error" cell deserves a second look whenever a view's plan dismisses it without checking the underlying query's actual failure mode.
 - **S-15: User sees a properly branded Swarm Arena login page — the smallest end-to-end slice that proves the new UI design foundation (F-06) actually works.** — Archived 2026-11-14 → `context/archive/2026-11-14-branded-login-page/`. Lesson: —.
 - **F-06: (foundation) A shared app shell (sidebar navigation) and an extended set of design tokens exist, following `next-shadcn-admin-dashboard`'s structural pattern, demonstrated end-to-end on the login page (S-15) before being applied to the rest of the app.** — Archived 2026-11-14 → `context/archive/2026-11-14-ui-design-system-foundation/`. Lesson: —.
 - **S-13: User sees a heuristic-suggested next parameter change — the single admin-ranged parameter most correlated with improving their final score across their own past runs — with a one-line rationale and a confidence qualifier.** — Archived 2026-11-14 → `context/archive/2026-11-14-parameter-suggestion-heuristic/`. Lesson: —.
