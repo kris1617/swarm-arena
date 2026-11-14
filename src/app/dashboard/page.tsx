@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 
 type StatusFilter = "all" | "running" | "saved" | "completed";
@@ -49,6 +51,9 @@ export default function DashboardPage() {
 		refetchInterval: 2000,
 	});
 
+	const isLoading =
+		runningQuery.isPending || savedQuery.isPending || completedQuery.isPending;
+
 	const isEmpty =
 		(runningQuery.data?.length ?? 0) === 0 &&
 		(savedQuery.data?.length ?? 0) === 0 &&
@@ -59,7 +64,7 @@ export default function DashboardPage() {
 	const showCompleted = filter === "all" || filter === "completed";
 
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Your Simulations</h1>
 
 			<div className="flex flex-wrap justify-center gap-2">
@@ -79,15 +84,20 @@ export default function DashboardPage() {
 				))}
 			</div>
 
-			{isEmpty ? (
+			{isLoading ? (
+				<div className="flex w-full max-w-2xl flex-col gap-6">
+					<Skeleton className="h-24 w-full rounded-2xl" />
+					<Skeleton className="h-24 w-full rounded-2xl" />
+				</div>
+			) : isEmpty ? (
 				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
 					<p>You haven&apos;t started any simulations yet.</p>
-					<Link
-						className="bg-background text-foreground hover:bg-foreground/15 rounded-full px-6 py-2 font-semibold"
-						href="/simulation"
+					<Button
+						asChild
+						className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
 					>
-						Start a simulation
-					</Link>
+						<Link href="/simulation">Start a simulation</Link>
+					</Button>
 				</div>
 			) : (
 				<div className="flex w-full max-w-2xl flex-col gap-6">
@@ -103,12 +113,12 @@ export default function DashboardPage() {
 										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
 										predators — started {formatDate(run.startedAt)}
 									</span>
-									<Link
-										className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-										href="/simulation"
+									<Button
+										asChild
+										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
 									>
-										View
-									</Link>
+										<Link href="/simulation">View</Link>
+									</Button>
 								</div>
 							))}
 						</section>
@@ -126,12 +136,12 @@ export default function DashboardPage() {
 										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
 										predators — started {formatDate(run.startedAt)}
 									</span>
-									<Link
-										className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-										href="/simulation"
+									<Button
+										asChild
+										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
 									>
-										View
-									</Link>
+										<Link href="/simulation">View</Link>
+									</Button>
 								</div>
 							))}
 						</section>
@@ -150,13 +160,11 @@ export default function DashboardPage() {
 										className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
 										key={run.id}
 									>
-										<input
+										<Checkbox
 											aria-label={`Select run #${run.id} for comparison`}
 											checked={isSelected}
-											className="size-4 shrink-0"
 											disabled={selectionDisabled}
-											onChange={() => toggleSelected(run.id)}
-											type="checkbox"
+											onCheckedChange={() => toggleSelected(run.id)}
 										/>
 										<span>
 											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
@@ -170,23 +178,27 @@ export default function DashboardPage() {
 												: `Score: ${run.score.toFixed(2)}`}
 										</span>
 										{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
-										<Link
-											className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-											href={`/runs/${run.id}`}
+										<Button
+											asChild
+											className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
 										>
-											View analysis
-										</Link>
+											<Link href={`/runs/${run.id}`}>View analysis</Link>
+										</Button>
 									</div>
 								);
 							})}
 							{/* S-12: enabled only for 2–4 selected completed runs. */}
 							{canCompare ? (
-								<Link
-									className="bg-foreground/35 text-foreground self-start rounded-full px-6 py-2 font-semibold"
-									href={`/runs/compare?ids=${[...selectedIds].join(",")}`}
+								<Button
+									asChild
+									className="bg-foreground/35 text-foreground h-auto self-start rounded-full px-6 py-2 font-semibold"
 								>
-									Compare selected
-								</Link>
+									<Link
+										href={`/runs/compare?ids=${[...selectedIds].join(",")}`}
+									>
+										Compare selected
+									</Link>
+								</Button>
 							) : (
 								<Button
 									className="h-auto self-start rounded-full px-6 py-2 font-semibold"
@@ -201,12 +213,12 @@ export default function DashboardPage() {
 				</div>
 			)}
 
-			<Link
-				className="bg-input text-foreground hover:bg-foreground/35 rounded-full px-10 py-3 font-semibold"
-				href="/simulation"
+			<Button
+				asChild
+				className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 			>
-				Start a new simulation
-			</Link>
-		</main>
+				<Link href="/simulation">Start a new simulation</Link>
+			</Button>
+		</div>
 	);
 }

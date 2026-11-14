@@ -188,25 +188,25 @@ None — no schema or data change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — cdddbee
+- [x] 1.2 Linting passes: `npm run check` — cdddbee
+- [x] 1.3 Full suite still passes: `npm test` — cdddbee
 
 ### Phase 2: Apply the four fixes to the dashboard view
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on dashboard/page.tsx still returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 Hardcoded-value scan on dashboard/page.tsx still returns zero hits
 
 #### Manual
 
-- [ ] 2.5 Visible focus ring on all five previously focus-blind links
-- [ ] 2.6 Comparison checkbox renders as themed Checkbox, same behavior
-- [ ] 2.7 Exactly one `main` landmark on the dashboard page
-- [ ] 2.8 Loading skeleton shown instead of false empty state
+- [x] 2.5 Visible focus ring on all five previously focus-blind links
+- [x] 2.6 Comparison checkbox renders as themed Checkbox, same behavior
+- [x] 2.7 Exactly one `main` landmark on the dashboard page
+- [x] 2.8 Loading skeleton shown instead of false empty state
 
 ### Phase 3: States verification pass
 
