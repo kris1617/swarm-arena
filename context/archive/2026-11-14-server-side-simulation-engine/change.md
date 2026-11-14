@@ -1,10 +1,10 @@
 ---
 change_id: server-side-simulation-engine
 title: Server-owned simulation execution engine
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T10:30:22Z
 ---
 
 ## Notes
