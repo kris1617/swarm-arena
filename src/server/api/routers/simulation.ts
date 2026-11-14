@@ -375,6 +375,11 @@ export const simulationRouter = createTRPCRouter({
 						foodRatioSamples: input.foodRatioSamples,
 						survivorGenes: input.survivingBoidGenes,
 						populationCountSamples: input.populationCountSamples,
+						// compare-runs-side-by-side Phase 1: the survival
+						// factor, matching server-run-registry.ts's two write
+						// sites — reuses the same value already computed for
+						// computeScore's first argument above.
+						elapsedSeconds: clampedElapsedTicks,
 					},
 				})
 				.where(
@@ -549,6 +554,107 @@ export const simulationRouter = createTRPCRouter({
 					? computeGeneticDiversity(history.survivorGenes)
 					: 0,
 			};
+		}),
+
+	// compare-runs-side-by-side Phase 1: fetches 2-4 of the caller's own
+	// completed runs for the comparison view. Unlike getRunAnalysis (one
+	// run, hard-fails on any gate), a bad id here (not found / not owned /
+	// not completed) must not block the other N-1 runs, so each row is
+	// resolved independently and a failure becomes a per-row `error`
+	// marker in the result instead of a thrown TRPCError.
+	getRunsComparison: protectedProcedure
+		.input(z.object({ runIds: z.array(z.number()).min(2).max(4) }))
+		.query(async ({ ctx, input }) => {
+			const results: Array<
+				| {
+						runId: number;
+						error: "not-found" | "forbidden" | "not-completed";
+				  }
+				| {
+						runId: number;
+						score: number | null;
+						startedAt: Date;
+						stoppedAt: Date | null;
+						parameters: {
+							boidCount: number;
+							predatorCount: number;
+							foodStockInitial: number;
+							foodRegenRate: number;
+							protectionThreshold: number;
+						};
+						breakdown: {
+							survival: number;
+							resourceManagement: number;
+							geneticDiversity: number;
+							phaseQuality: number;
+						} | null;
+				  }
+			> = [];
+
+			for (const runId of input.runIds) {
+				const run = await ctx.db.query.simulationRuns.findFirst({
+					where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+				});
+
+				if (!run) {
+					results.push({ runId, error: "not-found" });
+					continue;
+				}
+				if (run.userId !== ctx.session.user.id) {
+					results.push({ runId, error: "forbidden" });
+					continue;
+				}
+				if (run.status !== "stopped") {
+					results.push({ runId, error: "not-completed" });
+					continue;
+				}
+
+				// `history` is a schema-less JSON column — same guarded-cast
+				// posture as getRunAnalysis's, plus a check for
+				// `elapsedSeconds` specifically: it's the one field this
+				// phase newly adds, so it's the one field guaranteed absent
+				// on every row that predates this change.
+				const rawHistory = run.history as {
+					phaseHistory: PopulationPhase[];
+					foodRatioSamples: number[];
+					survivorGenes: BoidGenes[];
+					elapsedSeconds?: number;
+				} | null;
+
+				const breakdown =
+					rawHistory &&
+					Array.isArray(rawHistory.phaseHistory) &&
+					Array.isArray(rawHistory.survivorGenes) &&
+					typeof rawHistory.elapsedSeconds === "number"
+						? {
+								survival: rawHistory.elapsedSeconds,
+								resourceManagement: computeResourceManagement(
+									rawHistory.foodRatioSamples,
+								),
+								geneticDiversity: computeGeneticDiversity(
+									rawHistory.survivorGenes,
+								),
+								phaseQuality: computePhaseQuality(rawHistory.phaseHistory),
+							}
+						: null;
+
+				results.push({
+					runId,
+					score: run.score,
+					startedAt: run.startedAt,
+					stoppedAt: run.stoppedAt,
+					parameters: {
+						boidCount: run.boidCount,
+						predatorCount: run.predatorCount,
+						foodStockInitial: run.foodStockInitial,
+						foodRegenRate: run.foodRegenRate,
+						protectionThreshold: run.protectionThreshold,
+					},
+					breakdown,
+				});
+			}
+
+			return results;
 		}),
 
 	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable

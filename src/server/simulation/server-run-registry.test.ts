@@ -129,6 +129,12 @@ describe("server-run-registry", () => {
 			(row?.history as { populationCountSamples?: number[] } | null)
 				?.populationCountSamples?.length,
 		).toBeGreaterThan(0);
+		// compare-runs-side-by-side Phase 1: the survival factor must be
+		// persisted alongside the other history fields — the tick loop's
+		// own `shouldStop` write site.
+		expect(
+			(row?.history as { elapsedSeconds?: number } | null)?.elapsedSeconds,
+		).toBeGreaterThan(0);
 		activeRunIds.length = 0; // already finished; nothing left for afterEach to stop
 	});
 
@@ -161,6 +167,10 @@ describe("server-run-registry", () => {
 		expect(
 			(row?.history as { populationCountSamples?: number[] } | null)
 				?.populationCountSamples?.length,
+		).toBeGreaterThan(0);
+		// compare-runs-side-by-side Phase 1: stopServerRun's own write site.
+		expect(
+			(row?.history as { elapsedSeconds?: number } | null)?.elapsedSeconds,
 		).toBeGreaterThan(0);
 		activeRunIds.length = 0;
 	});

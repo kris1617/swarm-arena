@@ -372,6 +372,9 @@ describe("simulationRouter.stop authorization", () => {
 			survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
 			// S-11 (MS-08): round-trips the same way as its three siblings.
 			populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+			// compare-runs-side-by-side Phase 1: the client-staged path's
+			// survival factor, sent over the wire as `elapsedTicks`.
+			elapsedSeconds: 1,
 		});
 	});
 
@@ -1171,6 +1174,274 @@ describe("simulationRouter.getRunAnalysis", () => {
 		expect(result.completedCycles).toEqual([]);
 		expect(result.finalGeneticDiversity).toBe(0);
 		expect(result.history).toBeNull();
+	});
+});
+
+describe("simulationRouter.getRunsComparison", () => {
+	async function insertOwnerAndCaller() {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: {
+				user: { id: owner.id, role: "member" as const },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		return { ownerId: owner.id, caller };
+	}
+
+	async function insertStoppedRun(
+		ownerId: string,
+		overrides: {
+			score?: number | null;
+			history?: unknown;
+		} = {},
+	) {
+		const { score = 0.5, history = null } = overrides;
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: ownerId,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score,
+				stoppedAt: new Date(),
+				history,
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+		return run.id;
+	}
+
+	it("rejects fewer than 2 runIds at the zod boundary", async () => {
+		const { caller } = await insertOwnerAndCaller();
+
+		await expect(
+			caller.simulation.getRunsComparison({ runIds: [1] }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects more than 4 runIds at the zod boundary", async () => {
+		const { caller } = await insertOwnerAndCaller();
+
+		await expect(
+			caller.simulation.getRunsComparison({ runIds: [1, 2, 3, 4, 5] }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("returns a full breakdown for a run with full persisted history", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const twoCycles = ["crash", "crash", "recovery", "recovery"] as const;
+
+		const runId = await insertStoppedRun(ownerId, {
+			score: 0.7,
+			history: {
+				phaseHistory: twoCycles,
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 42,
+			},
+		});
+		const otherRunId = await insertStoppedRun(ownerId, {
+			score: 0.3,
+			history: {
+				phaseHistory: twoCycles,
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 10,
+			},
+		});
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [runId, otherRunId],
+		});
+
+		expect(result).toHaveLength(2);
+		const row = result.find((r) => r.runId === runId);
+		expect(row).toMatchObject({
+			runId,
+			score: 0.7,
+			parameters: {
+				boidCount: VALID_START_INPUT.boidCount,
+				predatorCount: VALID_START_INPUT.predatorCount,
+				foodStockInitial: VALID_START_INPUT.foodStockInitial,
+				foodRegenRate: VALID_START_INPUT.foodRegenRate,
+				protectionThreshold: VALID_START_INPUT.protectionThreshold,
+			},
+			breakdown: {
+				survival: 42,
+				// single surviving gene sample -> no variance
+				geneticDiversity: 0,
+				resourceManagement: expect.any(Number),
+				phaseQuality: expect.any(Number),
+			},
+		});
+	});
+
+	it("returns a null breakdown for a run whose history predates elapsedSeconds", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const fullRunId = await insertStoppedRun(ownerId, {
+			score: 0.6,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 5,
+			},
+		});
+		// Pre-this-change history: every field this plan's predecessors
+		// added, but no `elapsedSeconds`.
+		const legacyRunId = await insertStoppedRun(ownerId, {
+			score: 0.4,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+			},
+		});
+		// Predates F-05 entirely: no history at all.
+		const historylessRunId = await insertStoppedRun(ownerId, {
+			score: 0.2,
+			history: null,
+		});
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [fullRunId, legacyRunId, historylessRunId],
+		});
+
+		expect(result).toHaveLength(3);
+		expect(result.find((r) => r.runId === legacyRunId)).toMatchObject({
+			runId: legacyRunId,
+			score: 0.4,
+			breakdown: null,
+		});
+		expect(result.find((r) => r.runId === historylessRunId)).toMatchObject({
+			runId: historylessRunId,
+			score: 0.2,
+			breakdown: null,
+		});
+		const fullRow = result.find((r) => r.runId === fullRunId);
+		expect(
+			fullRow && "breakdown" in fullRow ? fullRow.breakdown : null,
+		).not.toBeNull();
+	});
+
+	it("returns a null breakdown instead of throwing for a malformed survivorGenes field", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const malformedRunId = await insertStoppedRun(ownerId, {
+			score: 0.3,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: "not-an-array",
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 5,
+			},
+		});
+		const fullRunId = await insertStoppedRun(ownerId, {
+			score: 0.6,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 5,
+			},
+		});
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [malformedRunId, fullRunId],
+		});
+
+		expect(result.find((r) => r.runId === malformedRunId)).toMatchObject({
+			runId: malformedRunId,
+			score: 0.3,
+			breakdown: null,
+		});
+		const fullRow = result.find((r) => r.runId === fullRunId);
+		expect(
+			fullRow && "breakdown" in fullRow ? fullRow.breakdown : null,
+		).not.toBeNull();
+	});
+
+	it("drops a non-existent runId with a not-found error marker, without failing the whole query", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+		const runId = await insertStoppedRun(ownerId);
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [runId, 999_999],
+		});
+
+		expect(result).toHaveLength(2);
+		expect(result.find((r) => r.runId === 999_999)).toMatchObject({
+			runId: 999_999,
+			error: "not-found",
+		});
+		expect(result.find((r) => r.runId === runId)).toMatchObject({ runId });
+	});
+
+	it("drops a run the caller doesn't own with a forbidden error marker", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+		const { ownerId: otherOwnerId } = await insertOwnerAndCaller();
+		const ownRunId = await insertStoppedRun(ownerId);
+		const othersRunId = await insertStoppedRun(otherOwnerId);
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [ownRunId, othersRunId],
+		});
+
+		expect(result).toHaveLength(2);
+		expect(result.find((r) => r.runId === othersRunId)).toMatchObject({
+			runId: othersRunId,
+			error: "forbidden",
+		});
+		expect(result.find((r) => r.runId === ownRunId)).toMatchObject({
+			runId: ownRunId,
+		});
+	});
+
+	it("drops a non-completed run with a not-completed error marker", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+		const completedRunId = await insertStoppedRun(ownerId);
+		const [runningRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: ownerId,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "running",
+			})
+			.returning({ id: simulationRuns.id });
+		if (!runningRun) throw new Error("failed to insert fixture run");
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [completedRunId, runningRun.id],
+		});
+
+		expect(result).toHaveLength(2);
+		expect(result.find((r) => r.runId === runningRun.id)).toMatchObject({
+			runId: runningRun.id,
+			error: "not-completed",
+		});
 	});
 });
 

@@ -115,6 +115,11 @@ async function finishRun(
 			// S-11 (MS-08): the run-analysis-view's population-over-time chart
 			// needs this time series — added alongside the other three.
 			populationCountSamples: number[];
+			// compare-runs-side-by-side Phase 1: the survival factor
+			// (computeScore's first argument), never persisted before —
+			// without it the score can't be decomposed back into its four
+			// factors for the comparison view.
+			elapsedSeconds: number;
 		} | null;
 	},
 ): Promise<void> {
@@ -208,6 +213,7 @@ function tick(runId: number): void {
 					foodRatioSamples: run.foodRatioSamples,
 					survivorGenes: run.boids.map((b) => b.genes),
 					populationCountSamples: run.populationCountSamples,
+					elapsedSeconds: run.elapsedSeconds,
 				},
 			});
 		}
@@ -300,6 +306,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 			foodRatioSamples: run.foodRatioSamples,
 			survivorGenes: run.boids.map((b) => b.genes),
 			populationCountSamples: run.populationCountSamples,
+			elapsedSeconds: run.elapsedSeconds,
 		},
 	});
 }
