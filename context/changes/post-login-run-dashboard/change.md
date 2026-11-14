@@ -1,7 +1,7 @@
 ---
 change_id: post-login-run-dashboard
 title: Post-login dashboard listing the user's own simulation runs
-status: implemented
+status: impl_reviewed
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
