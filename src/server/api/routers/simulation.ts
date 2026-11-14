@@ -1,4 +1,4 @@
-import { TRPCError } from "@trpc/server";
+import { TRPCError, tracked } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { computeScore } from "~/server/simulation/boids";
 // caps a single browser session at MAX_PARALLEL_RUNS, but that's UI-only —
 // a second tab or a direct API call would bypass it without this check.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
+import { watchServerRun } from "~/server/simulation/server-run-registry";
 
 export const simulationRouter = createTRPCRouter({
 	start: protectedProcedure
@@ -177,5 +178,22 @@ export const simulationRouter = createTRPCRouter({
 			}
 
 			return { score };
+		}),
+
+	watch: protectedProcedure
+		.input(z.object({ runId: z.number() }))
+		.subscription(async function* ({ input, ctx, signal }) {
+			const userId = ctx.session.user.id;
+			if (!userId) {
+				throw new TRPCError({ code: "UNAUTHORIZED" });
+			}
+			let eventId = 0;
+			for await (const snapshot of watchServerRun({
+				runId: input.runId,
+				userId,
+				signal,
+			})) {
+				yield tracked(String(eventId++), snapshot);
+			}
 		}),
 });

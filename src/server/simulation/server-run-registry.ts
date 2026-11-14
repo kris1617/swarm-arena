@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
@@ -17,6 +18,11 @@ import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 // `elapsedSeconds` meaning wall-clock seconds, same as the client-driven
 // staging path, rather than introducing a "simulation speed" concept.
 const TICK_INTERVAL_MS = 16;
+
+// Coarser than TICK_INTERVAL_MS — a human watching a canvas doesn't need
+// 60fps state pushes, and a coarser cadence means far less serialization
+// work per viewer (F-04).
+const WATCH_INTERVAL_MS = 150;
 
 export type ServerRunParams = {
 	runId: number;
@@ -240,4 +246,43 @@ export async function stopServerRun(runId: number): Promise<void> {
 	}
 	const score = computeScore(run.cohesionSamples, run.elapsedSeconds);
 	await finishRun(runId, { score });
+}
+
+// Plain, exported async generator — the testable core of F-04's live view
+// channel. Deliberately NOT a tRPC procedure: tRPC's own types forbid
+// invoking a `.subscription()` procedure via `createCaller`
+// (`.subscription(...)`'s return type is `TCaller extends true ? TypeError<'Not implemented'> : ...`),
+// so this logic lives here as a plain function callable directly from
+// tests, with the `simulationRouter.watch` procedure as a thin delegate
+// that only adds tRPC's `tracked()` SSE envelope — a transport concern that
+// has no place in this testable core.
+export async function* watchServerRun(opts: {
+	runId: number;
+	userId: string;
+	signal?: AbortSignal;
+}): AsyncGenerator<LiveRunSnapshot, void, unknown> {
+	const row = await db.query.simulationRuns.findFirst({
+		where: (t, { eq: eqFn }) => eqFn(t.id, opts.runId),
+	});
+	if (!row) {
+		throw new TRPCError({ code: "BAD_REQUEST" });
+	}
+	if (row.userId !== opts.userId) {
+		throw new TRPCError({ code: "FORBIDDEN" });
+	}
+	if (!isServerRunActive(opts.runId)) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "Run is not an active server-run simulation",
+		});
+	}
+
+	while (!opts.signal?.aborted) {
+		const snapshot = getLiveRunState(opts.runId);
+		if (!snapshot) {
+			return;
+		}
+		yield snapshot;
+		await new Promise((resolve) => setTimeout(resolve, WATCH_INTERVAL_MS));
+	}
 }

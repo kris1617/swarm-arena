@@ -1,3 +1,4 @@
+import type { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +9,7 @@ import {
 	type ServerRunParams,
 	startServerRun,
 	stopServerRun,
+	watchServerRun,
 } from "~/server/simulation/server-run-registry";
 import * as singleRunLifecycle from "~/server/simulation/single-run-lifecycle";
 
@@ -69,7 +71,7 @@ async function insertOwnedRunningRun(seed: number) {
 	if (!run) {
 		throw new Error("failed to insert fixture run");
 	}
-	return run.id;
+	return { ownerId: owner.id, runId: run.id };
 }
 
 afterEach(async () => {
@@ -90,7 +92,7 @@ afterEach(async () => {
 describe("server-run-registry", () => {
 	it("ticks a run to natural completion and writes a scored, stopped row with no client involved", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(1);
+		const { runId } = await insertOwnedRunningRun(1);
 		activeRunIds.push(runId);
 
 		startServerRun({ runId, seed: 1, ...BASE_PARAMS });
@@ -114,7 +116,7 @@ describe("server-run-registry", () => {
 
 	it("stopServerRun ends the run early with a score from the partial cohesion history", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(2);
+		const { runId } = await insertOwnedRunningRun(2);
 		activeRunIds.push(runId);
 
 		startServerRun({
@@ -142,7 +144,7 @@ describe("server-run-registry", () => {
 
 	it("getLiveRunState returns undefined once a run has stopped", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(3);
+		const { runId } = await insertOwnedRunningRun(3);
 		activeRunIds.push(runId);
 
 		startServerRun({ runId, seed: 3, ...BASE_PARAMS });
@@ -155,7 +157,7 @@ describe("server-run-registry", () => {
 
 	it("a tick that throws stops the run and leaves score null, without crashing", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(5);
+		const { runId } = await insertOwnedRunningRun(5);
 		activeRunIds.push(runId);
 		const consoleErrorSpy = vi
 			.spyOn(console, "error")
@@ -185,7 +187,7 @@ describe("server-run-registry", () => {
 
 	it("a DB write failure in finishRun is caught and logged, not an unhandled rejection", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(6);
+		const { runId } = await insertOwnedRunningRun(6);
 		activeRunIds.push(runId);
 		const consoleErrorSpy = vi
 			.spyOn(console, "error")
@@ -209,7 +211,7 @@ describe("server-run-registry", () => {
 
 	it("stops the run on a population wipe (zero boids) without crashing", async () => {
 		vi.useFakeTimers();
-		const runId = await insertOwnedRunningRun(4);
+		const { runId } = await insertOwnedRunningRun(4);
 		activeRunIds.push(runId);
 
 		// boidCount: 0 + predatorCount: 0 means the first tick's `nextBoids`
@@ -232,6 +234,99 @@ describe("server-run-registry", () => {
 			where: (t, { eq }) => eq(t.id, runId),
 		});
 		expect(row?.status).toBe("stopped");
+		activeRunIds.length = 0;
+	});
+});
+
+describe("watchServerRun", () => {
+	it("rejects with FORBIDDEN when userId doesn't match the run's owner", async () => {
+		const { runId } = await insertOwnedRunningRun(7);
+		activeRunIds.push(runId);
+
+		await expect(
+			watchServerRun({ runId, userId: "not-the-owner" }).next(),
+		).rejects.toMatchObject({ code: "FORBIDDEN" } satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST when the runId doesn't exist", async () => {
+		await expect(
+			watchServerRun({ runId: 999_999, userId: "whoever" }).next(),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST when the run exists but isn't an active server run", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun(8);
+		// Deliberately never calling startServerRun — the row exists but
+		// nothing is ticking it.
+		await expect(
+			watchServerRun({ runId, userId: ownerId }).next(),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("yields snapshots with non-decreasing elapsedSeconds, then ends the stream on stop", async () => {
+		vi.useFakeTimers();
+		const { ownerId, runId } = await insertOwnedRunningRun(9);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 9,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+
+		const iterator = watchServerRun({ runId, userId: ownerId });
+		let previousElapsed = -1;
+		for (let i = 0; i < 3; i++) {
+			const nextPromise = iterator.next();
+			await vi.advanceTimersByTimeAsync(150);
+			const { value, done } = await nextPromise;
+			expect(done).toBeFalsy();
+			expect(value?.elapsedSeconds).toBeGreaterThanOrEqual(previousElapsed);
+			previousElapsed = value?.elapsedSeconds ?? previousElapsed;
+		}
+
+		await stopServerRun(runId);
+		const finalPromise = iterator.next();
+		await vi.advanceTimersByTimeAsync(150);
+		const final = await finalPromise;
+		expect(final.done).toBe(true);
+
+		activeRunIds.length = 0;
+	});
+
+	it("ends the stream after at most one yield when the signal is already aborted", async () => {
+		vi.useFakeTimers();
+		const { ownerId, runId } = await insertOwnedRunningRun(10);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 10,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+
+		const controller = new AbortController();
+		controller.abort();
+		const iterator = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: controller.signal,
+		});
+
+		const results: { done?: boolean }[] = [];
+		for (let i = 0; i < 2; i++) {
+			results.push(await iterator.next());
+			if (results.at(-1)?.done) {
+				break;
+			}
+		}
+		expect(results.at(-1)?.done).toBe(true);
+
+		await stopServerRun(runId);
 		activeRunIds.length = 0;
 	});
 });
