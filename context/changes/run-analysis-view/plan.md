@@ -324,13 +324,13 @@ and the values written into it change.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — d0cf583
+- [x] 3.2 Linting passes: `npm run check` — d0cf583
+- [x] 3.3 Full suite still passes: `npm test` — d0cf583
 
 #### Manual
 
-- [x] 3.4 Completed run with full data shows internally-consistent population chart, phase breakdown, cycle list, and diversity value
-- [x] 3.5 Pre-Phase-1 run (no populationCountSamples) shows "no population data" instead of crashing, while other sections still render
-- [x] 3.6 Dashboard's "View analysis" link navigates to the correct run
-- [x] 3.7 Visiting another user's run analysis page is rejected (FORBIDDEN)
+- [x] 3.4 Completed run with full data shows internally-consistent population chart, phase breakdown, cycle list, and diversity value — d0cf583
+- [x] 3.5 Pre-Phase-1 run (no populationCountSamples) shows "no population data" instead of crashing, while other sections still render — d0cf583
+- [x] 3.6 Dashboard's "View analysis" link navigates to the correct run — d0cf583
+- [x] 3.7 Visiting another user's run analysis page is rejected (FORBIDDEN) — d0cf583

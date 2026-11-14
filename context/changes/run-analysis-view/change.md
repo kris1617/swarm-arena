@@ -1,7 +1,7 @@
 ---
 change_id: run-analysis-view
 title: Per-run population-dynamics analysis view
-status: implementing
+status: implemented
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
