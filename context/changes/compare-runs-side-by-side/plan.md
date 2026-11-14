@@ -214,24 +214,24 @@ None — `history` is a schema-less JSON column (`d.text({ mode: "json" })`); ad
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 1e55282
+- [x] 1.2 Linting passes: `npm run check` — 1e55282
+- [x] 1.3 New/updated tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts` — 1e55282
+- [x] 1.4 Full suite still passes: `npm test` — 1e55282
 
 ### Phase 2: Dashboard selection UI
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 2.4 Checking 1 run leaves "Compare selected" disabled; checking 2–4 enables it; checking a 5th is prevented or the 5th checkbox is disabled
-- [ ] 2.5 Clicking "Compare selected" with 2 runs checked navigates to `/runs/compare?ids=<those two ids>`
-- [ ] 2.6 Unchecking a run removes it from the pending selection without affecting Running/Saved sections
+- [x] 2.4 Checking 1 run leaves "Compare selected" disabled; checking 2–4 enables it; checking a 5th is prevented or the 5th checkbox is disabled
+- [x] 2.5 Clicking "Compare selected" with 2 runs checked navigates to `/runs/compare?ids=<those two ids>`
+- [x] 2.6 Unchecking a run removes it from the pending selection without affecting Running/Saved sections
 
 ### Phase 3: Comparison view
 

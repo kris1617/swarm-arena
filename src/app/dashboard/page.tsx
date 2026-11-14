@@ -20,6 +20,23 @@ function formatDate(value: Date | string): string {
 
 export default function DashboardPage() {
 	const [filter, setFilter] = useState<StatusFilter>("all");
+	// S-12: pending selection for "compare completed runs" — scoped to the
+	// Completed section only, never touched by Running/Saved.
+	const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+	function toggleSelected(runId: number) {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(runId)) {
+				next.delete(runId);
+			} else {
+				next.add(runId);
+			}
+			return next;
+		});
+	}
+
+	const canCompare = selectedIds.size >= 2 && selectedIds.size <= 4;
 
 	// S-10 (MS-07): same polling cadence as /simulation's own run lists.
 	const runningQuery = api.simulation.listRunning.useQuery(undefined, {
@@ -125,31 +142,60 @@ export default function DashboardPage() {
 					completedQuery.data.length > 0 ? (
 						<section className="bg-input text-foreground flex flex-col gap-2 rounded-2xl px-4 py-3">
 							<h2 className="font-semibold">Completed</h2>
-							{completedQuery.data.map((run) => (
-								<div
-									className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
-									key={run.id}
-								>
-									<span>
-										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
-										predators — started {formatDate(run.startedAt)}
-									</span>
-									{/* plan-review F1: score is nullable — a run that failed
-									to start lands here with no score. */}
-									<span className="font-semibold">
-										{run.score === null
-											? "—"
-											: `Score: ${run.score.toFixed(2)}`}
-									</span>
-									{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
-									<Link
-										className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
-										href={`/runs/${run.id}`}
+							{completedQuery.data.map((run) => {
+								const isSelected = selectedIds.has(run.id);
+								const selectionDisabled = !isSelected && selectedIds.size >= 4;
+								return (
+									<div
+										className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
+										key={run.id}
 									>
-										View analysis
-									</Link>
-								</div>
-							))}
+										<input
+											aria-label={`Select run #${run.id} for comparison`}
+											checked={isSelected}
+											className="size-4 shrink-0"
+											disabled={selectionDisabled}
+											onChange={() => toggleSelected(run.id)}
+											type="checkbox"
+										/>
+										<span>
+											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
+											predators — started {formatDate(run.startedAt)}
+										</span>
+										{/* plan-review F1: score is nullable — a run that failed
+										to start lands here with no score. */}
+										<span className="font-semibold">
+											{run.score === null
+												? "—"
+												: `Score: ${run.score.toFixed(2)}`}
+										</span>
+										{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
+										<Link
+											className="hover:bg-foreground/15 rounded-full px-4 py-1 font-semibold"
+											href={`/runs/${run.id}`}
+										>
+											View analysis
+										</Link>
+									</div>
+								);
+							})}
+							{/* S-12: enabled only for 2–4 selected completed runs. */}
+							{canCompare ? (
+								<Link
+									className="bg-foreground/35 text-foreground self-start rounded-full px-6 py-2 font-semibold"
+									href={`/runs/compare?ids=${[...selectedIds].join(",")}`}
+								>
+									Compare selected
+								</Link>
+							) : (
+								<Button
+									className="h-auto self-start rounded-full px-6 py-2 font-semibold"
+									disabled
+									type="button"
+								>
+									Compare selected
+								</Button>
+							)}
 						</section>
 					) : null}
 				</div>
