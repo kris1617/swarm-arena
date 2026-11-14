@@ -9,7 +9,7 @@ main_goal: learn
 top_blocker: decisions
 milestone_id: insight-and-comparison
 milestone_seq: 2
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-2: Insight and comparison** — Status: open
+**M-2: Insight and comparison** — Status: done
 
 - **Intent:** Turn individual run scores into actionable insight by letting the user compare completed runs side by side and get heuristic parameter-change suggestions, closing the loop the PRD's Vision describes ("turning trial-and-error tuning into a measurable, resumable experimentation loop"). Main goal for this milestone is to learn/explore — the parameter-suggestion heuristic (FR-015) is the project's most novel, least-specified idea, and this milestone treats getting it right as more valuable than shipping the whole nice-to-have backlog fast.
 - **Source materials:** `context/foundation/prd.md` (v3) — the three remaining nice-to-have FRs M-1 did not cover.
@@ -369,6 +369,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ## Milestone History
 
 - **M-1: First working simulation loop** (`first-working-simulation-loop`) — closed 2026-11-14. Delivered the first end-to-end boids/predator simulation loop (configure, run, stop/resume, score) plus server-owned execution, a post-login run dashboard, and a per-run population-dynamics analysis view; all 5 foundations and 11 slices done.
+- **M-2: Insight and comparison** (`insight-and-comparison`) — closed 2026-11-14. Delivered the three remaining nice-to-have FRs M-1 deferred: side-by-side run comparison, a score-correlated parameter-change suggestion, and JSON/CSV run export; all 3 slices done. Every FR in the PRD (v4) is now implemented.
 
 ## Done
 
