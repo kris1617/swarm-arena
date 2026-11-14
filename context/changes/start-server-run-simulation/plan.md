@@ -245,12 +245,12 @@ None — no schema change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Updated/new tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — c02a9c5
+- [x] 1.2 Linting passes: `npm run check` — c02a9c5
+- [x] 1.3 Updated/new tests pass: `npx vitest run src/server/api/routers/simulation.test.ts` — c02a9c5
+- [x] 1.4 Full suite still passes: `npm test` — c02a9c5
 
 #### Manual
 
-- [x] 1.5 "Start on server" shows confirmation; existing staging "Start" still works unchanged
-- [x] 1.6 A server-started run reaches `status: "stopped"` with a score even if the tab closes immediately
+- [x] 1.5 "Start on server" shows confirmation; existing staging "Start" still works unchanged — c02a9c5
+- [x] 1.6 A server-started run reaches `status: "stopped"` with a score even if the tab closes immediately — c02a9c5

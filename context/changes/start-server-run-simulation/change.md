@@ -1,7 +1,7 @@
 ---
 change_id: start-server-run-simulation
 title: Start a real simulation that keeps running on the server
-status: implementing
+status: implemented
 created: 2026-11-14
 updated: 2026-11-14
 archived_at: null
