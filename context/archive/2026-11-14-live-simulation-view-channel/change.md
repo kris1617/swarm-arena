@@ -1,10 +1,10 @@
 ---
 change_id: live-simulation-view-channel
 title: Live simulation-view channel (server push)
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T10:45:48Z
 ---
 
 ## Notes
