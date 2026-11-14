@@ -67,7 +67,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
-| S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | ready |
+| S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | in-progress |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | ready |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
 
@@ -437,7 +437,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — reuses the same persisted `history` (phaseHistory, foodRatioSamples) S-11/S-13 already read; the new logic is "reason about one run's own trajectory" rather than "correlate across runs," a narrower, more constrained problem than S-13's. Sequencing alongside S-18 (analysis restyle) avoids touching that page's layout twice, though it is not a hard dependency.
-- **Status:** ready
+- **Status:** in-progress
 
 ### S-22: Temporary admin elevation
 

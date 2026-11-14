@@ -29,6 +29,7 @@ import {
 	type SuggestionInputRow,
 	suggestParameterChange,
 } from "~/server/simulation/parameter-suggestion";
+import { suggestRunOptimization } from "~/server/simulation/run-optimization-suggestion";
 // Shared cap on how many simulations (staging or server-run) a user may
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
@@ -603,6 +604,9 @@ export const simulationRouter = createTRPCRouter({
 				stoppedAt: run.stoppedAt,
 				boidCount: run.boidCount,
 				predatorCount: run.predatorCount,
+				foodStockInitial: run.foodStockInitial,
+				foodRegenRate: run.foodRegenRate,
+				protectionThreshold: run.protectionThreshold,
 				history,
 				completedCycles: history
 					? segmentCompletedCycles(history.phaseHistory)
@@ -610,6 +614,14 @@ export const simulationRouter = createTRPCRouter({
 				finalGeneticDiversity: history
 					? computeGeneticDiversity(history.survivorGenes)
 					: 0,
+				runOptimizationSuggestion: history
+					? suggestRunOptimization({
+							phaseHistory: history.phaseHistory,
+							predatorCount: run.predatorCount,
+							foodStockInitial: run.foodStockInitial,
+							foodRegenRate: run.foodRegenRate,
+						})
+					: ({ status: "insufficient-data" } as const),
 			};
 		}),
 
