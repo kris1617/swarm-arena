@@ -129,6 +129,12 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// `status: "saved"`. Shape matches `ServerRunSnapshot` in
 	// server-run-registry.ts.
 	savedState: d.text({ mode: "json" }),
+	// F-05 (MS-08): the finished run's tick-level population history —
+	// null until a terminal stop writes it (not populated on the
+	// tick-error path, where the run's own state may be unreliable; not
+	// backfilled for rows that stopped before this column existed).
+	// Shape: `{ phaseHistory, foodRatioSamples, survivorGenes }`.
+	history: d.text({ mode: "json" }),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config

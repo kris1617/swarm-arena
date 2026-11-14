@@ -358,6 +358,17 @@ describe("simulationRouter.stop authorization", () => {
 		// covered by boids.test.ts's computeScore/computeGeneticDiversity
 		// suites.
 		expect(result).toMatchObject({ score: 0 });
+
+		// F-05 (MS-08): the row's history is persisted alongside the score,
+		// matching exactly what was sent over the wire.
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.history).toMatchObject({
+			phaseHistory: VALID_STOP_EXTRAS.phaseHistory,
+			foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+			survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+		});
 	});
 
 	it("rejects with UNAUTHORIZED when there is no session", async () => {

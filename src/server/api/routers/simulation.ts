@@ -358,6 +358,13 @@ export const simulationRouter = createTRPCRouter({
 					status: "stopped",
 					score,
 					stoppedAt: new Date(),
+					// F-05 (MS-08): persist alongside the score instead of
+					// discarding — matches server-run-registry.ts's finishRun.
+					history: {
+						phaseHistory: input.phaseHistory,
+						foodRatioSamples: input.foodRatioSamples,
+						survivorGenes: input.survivingBoidGenes,
+					},
 				})
 				.where(
 					and(

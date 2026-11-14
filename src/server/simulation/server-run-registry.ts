@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "~/server/db";
 import { simulationRuns } from "~/server/db/schema";
 import {
+	type BoidGenes,
 	type BoidState,
 	computeGeneticDiversity,
 	computePhaseQuality,
@@ -103,7 +104,16 @@ export function isServerRunActive(runId: number): boolean {
 
 async function finishRun(
 	runId: number,
-	outcome: { score: number | null },
+	outcome: {
+		score: number | null;
+		// F-05 (MS-08): omitted (defaults to null via `?? null`) on the
+		// tick-error path, where the run's own state may be unreliable.
+		history?: {
+			phaseHistory: PopulationPhase[];
+			foodRatioSamples: number[];
+			survivorGenes: BoidGenes[];
+		} | null;
+	},
 ): Promise<void> {
 	const run = registry.get(runId);
 	if (run) {
@@ -117,6 +127,7 @@ async function finishRun(
 				status: "stopped",
 				score: outcome.score,
 				stoppedAt: new Date(),
+				history: outcome.history ?? null,
 			})
 			.where(eq(simulationRuns.id, runId));
 	} catch (error) {
@@ -187,7 +198,14 @@ function tick(runId: number): void {
 				computeGeneticDiversity(run.boids.map((b) => b.genes)),
 				computePhaseQuality(run.phaseHistory),
 			);
-			void finishRun(runId, { score });
+			void finishRun(runId, {
+				score,
+				history: {
+					phaseHistory: run.phaseHistory,
+					foodRatioSamples: run.foodRatioSamples,
+					survivorGenes: run.boids.map((b) => b.genes),
+				},
+			});
 		}
 	} catch (error) {
 		// Mirrors simulation-canvas.tsx's tick-error rule: the tick's own state
@@ -271,7 +289,14 @@ export async function stopServerRun(runId: number): Promise<void> {
 		computeGeneticDiversity(run.boids.map((b) => b.genes)),
 		computePhaseQuality(run.phaseHistory),
 	);
-	await finishRun(runId, { score });
+	await finishRun(runId, {
+		score,
+		history: {
+			phaseHistory: run.phaseHistory,
+			foodRatioSamples: run.foodRatioSamples,
+			survivorGenes: run.boids.map((b) => b.genes),
+		},
+	});
 }
 
 // S-04 Phase 4 (FR-012): everything needed to reconstruct an identical

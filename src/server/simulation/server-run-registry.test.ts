@@ -115,6 +115,13 @@ describe("server-run-registry", () => {
 		});
 		expect(row?.status).toBe("stopped");
 		expect(row?.score).not.toBeNull();
+		// F-05 (MS-08): the tick-level history is persisted alongside the
+		// score instead of being discarded.
+		expect(row?.history).toMatchObject({
+			phaseHistory: expect.any(Array),
+			foodRatioSamples: expect.any(Array),
+			survivorGenes: expect.any(Array),
+		});
 		activeRunIds.length = 0; // already finished; nothing left for afterEach to stop
 	});
 
@@ -139,6 +146,11 @@ describe("server-run-registry", () => {
 		});
 		expect(row?.status).toBe("stopped");
 		expect(row?.score).not.toBeNull();
+		expect(row?.history).toMatchObject({
+			phaseHistory: expect.any(Array),
+			foodRatioSamples: expect.any(Array),
+			survivorGenes: expect.any(Array),
+		});
 		activeRunIds.length = 0;
 	});
 
@@ -182,6 +194,9 @@ describe("server-run-registry", () => {
 		});
 		expect(row?.status).toBe("stopped");
 		expect(row?.score).toBeNull();
+		// F-05 (MS-08): no history on the tick-error path — the run's own
+		// state may be unreliable at that point, same posture as `score`.
+		expect(row?.history).toBeNull();
 		expect(consoleErrorSpy).toHaveBeenCalled();
 
 		tickSpy.mockRestore();
