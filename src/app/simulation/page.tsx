@@ -6,11 +6,8 @@ import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
+import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import { api } from "~/trpc/react";
-
-// FR-018 object-count guardrail for this slice (S-01): a hardcoded client
-// cap. S-04's admin-configurable cap is a separate, later change.
-const MAX_BOID_COUNT = 500;
 
 type ActiveRun = {
 	runId: number;
@@ -44,6 +41,13 @@ export default function SimulationPage() {
 	const [energyThreshold, setEnergyThreshold] = useState(50);
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
+	// S-04 (FR-002 full): admin-configured bounds, replacing the hardcoded
+	// MAX_BOID_COUNT this form used before. Falls back to the same defaults
+	// the admin-settings table seeds on first read, so the form isn't
+	// broken on first paint before the query resolves.
+	const rangesQuery = api.simulation.getParameterRanges.useQuery();
+	const ranges = rangesQuery.data?.parameterRanges ?? DEFAULT_PARAMETER_RANGES;
+	const maxObjectCount = rangesQuery.data?.maxObjectCount ?? 500;
 	const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
 	// S-07: which server run (if any) the viewer below is currently watching.
 	const [viewingRunId, setViewingRunId] = useState<number | null>(null);
@@ -87,31 +91,70 @@ export default function SimulationPage() {
 
 	// Shared by both the staging "Start" button and the "Start on server"
 	// button — identical clamping, diverging only in which mutation receives
-	// the result and what happens on success.
+	// the result and what happens on success. Clamps against the
+	// admin-configured ranges (S-04/FR-002 full) instead of hardcoded
+	// bounds.
 	function buildStartInput() {
 		return {
-			boidCount: Math.min(Math.max(1, Math.round(boidCount)), MAX_BOID_COUNT),
-			separationWeight,
-			alignmentWeight,
-			cohesionWeight,
-			maxDurationSeconds,
-			// Clamped against the same 500 ceiling used server-side for the
-			// combined FR-018 boid+predator object-count cap.
+			boidCount: Math.min(
+				Math.max(ranges.boidCount.min, Math.round(boidCount)),
+				ranges.boidCount.max,
+			),
+			separationWeight: Math.min(
+				Math.max(ranges.separationWeight.min, separationWeight),
+				ranges.separationWeight.max,
+			),
+			alignmentWeight: Math.min(
+				Math.max(ranges.alignmentWeight.min, alignmentWeight),
+				ranges.alignmentWeight.max,
+			),
+			cohesionWeight: Math.min(
+				Math.max(ranges.cohesionWeight.min, cohesionWeight),
+				ranges.cohesionWeight.max,
+			),
+			maxDurationSeconds: Math.min(
+				Math.max(ranges.maxDurationSeconds.min, maxDurationSeconds),
+				ranges.maxDurationSeconds.max,
+			),
+			// Also clamped against the admin-configured combined FR-018
+			// boid+predator object-count cap, same as server-side.
 			predatorCount: Math.min(
-				Math.max(0, Math.round(predatorCount)),
-				MAX_BOID_COUNT,
+				Math.max(ranges.predatorCount.min, Math.round(predatorCount)),
+				ranges.predatorCount.max,
+				maxObjectCount,
 			),
 			protectionThreshold: Math.min(
-				Math.max(0, Math.round(protectionThreshold)),
-				MAX_BOID_COUNT,
+				Math.max(
+					ranges.protectionThreshold.min,
+					Math.round(protectionThreshold),
+				),
+				ranges.protectionThreshold.max,
 			),
-			foodStockInitial: Math.max(0.1, foodStockInitial),
-			foodRegenRate: Math.max(0, foodRegenRate),
-			flockCount: Math.min(Math.max(2, Math.round(flockCount)), 4),
+			foodStockInitial: Math.min(
+				Math.max(ranges.foodStockInitial.min, foodStockInitial),
+				ranges.foodStockInitial.max,
+			),
+			foodRegenRate: Math.min(
+				Math.max(ranges.foodRegenRate.min, foodRegenRate),
+				ranges.foodRegenRate.max,
+			),
+			flockCount: Math.min(
+				Math.max(ranges.flockCount.min, Math.round(flockCount)),
+				ranges.flockCount.max,
+			),
 			crossbreedingEnabled,
-			energyThreshold: Math.max(0.1, energyThreshold),
-			mutationChance: Math.min(Math.max(0, mutationChance), 1),
-			mutationMagnitude: Math.min(Math.max(0, mutationMagnitude), 1),
+			energyThreshold: Math.min(
+				Math.max(ranges.energyThreshold.min, energyThreshold),
+				ranges.energyThreshold.max,
+			),
+			mutationChance: Math.min(
+				Math.max(ranges.mutationChance.min, mutationChance),
+				ranges.mutationChance.max,
+			),
+			mutationMagnitude: Math.min(
+				Math.max(ranges.mutationMagnitude.min, mutationMagnitude),
+				ranges.mutationMagnitude.max,
+			),
 		};
 	}
 
@@ -215,12 +258,12 @@ export default function SimulationPage() {
 					}}
 				>
 					<label className="flex flex-col gap-1" htmlFor="boid-count">
-						Boid count (1-{MAX_BOID_COUNT})
+						Boid count ({ranges.boidCount.min}-{ranges.boidCount.max})
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="boid-count"
-							max={MAX_BOID_COUNT}
-							min={1}
+							max={ranges.boidCount.max}
+							min={ranges.boidCount.min}
 							onChange={(e) => setBoidCount(Number(e.target.value))}
 							type="number"
 							value={boidCount}
@@ -231,6 +274,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="separation-weight"
+							max={ranges.separationWeight.max}
+							min={ranges.separationWeight.min}
 							onChange={(e) => setSeparationWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
@@ -242,6 +287,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="alignment-weight"
+							max={ranges.alignmentWeight.max}
+							min={ranges.alignmentWeight.min}
 							onChange={(e) => setAlignmentWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
@@ -253,6 +300,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="cohesion-weight"
+							max={ranges.cohesionWeight.max}
+							min={ranges.cohesionWeight.min}
 							onChange={(e) => setCohesionWeight(Number(e.target.value))}
 							step="0.1"
 							type="number"
@@ -264,31 +313,34 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="max-duration-seconds"
-							min={1}
+							max={ranges.maxDurationSeconds.max}
+							min={ranges.maxDurationSeconds.min}
 							onChange={(e) => setMaxDurationSeconds(Number(e.target.value))}
 							type="number"
 							value={maxDurationSeconds}
 						/>
 					</label>
 					<label className="flex flex-col gap-1" htmlFor="predator-count">
-						Predator count (0-{MAX_BOID_COUNT})
+						Predator count ({ranges.predatorCount.min}-
+						{ranges.predatorCount.max})
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="predator-count"
-							max={MAX_BOID_COUNT}
-							min={0}
+							max={ranges.predatorCount.max}
+							min={ranges.predatorCount.min}
 							onChange={(e) => setPredatorCount(Number(e.target.value))}
 							type="number"
 							value={predatorCount}
 						/>
 					</label>
 					<label className="flex flex-col gap-1" htmlFor="protection-threshold">
-						Protection threshold (0-{MAX_BOID_COUNT})
+						Protection threshold ({ranges.protectionThreshold.min}-
+						{ranges.protectionThreshold.max})
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="protection-threshold"
-							max={MAX_BOID_COUNT}
-							min={0}
+							max={ranges.protectionThreshold.max}
+							min={ranges.protectionThreshold.min}
 							onChange={(e) => setProtectionThreshold(Number(e.target.value))}
 							type="number"
 							value={protectionThreshold}
@@ -299,7 +351,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="food-stock-initial"
-							min={0}
+							max={ranges.foodStockInitial.max}
+							min={ranges.foodStockInitial.min}
 							onChange={(e) => setFoodStockInitial(Number(e.target.value))}
 							step="0.1"
 							type="number"
@@ -311,7 +364,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="food-regen-rate"
-							min={0}
+							max={ranges.foodRegenRate.max}
+							min={ranges.foodRegenRate.min}
 							onChange={(e) => setFoodRegenRate(Number(e.target.value))}
 							step="0.1"
 							type="number"
@@ -319,12 +373,12 @@ export default function SimulationPage() {
 						/>
 					</label>
 					<label className="flex flex-col gap-1" htmlFor="flock-count">
-						Flock count (2-4)
+						Flock count ({ranges.flockCount.min}-{ranges.flockCount.max})
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="flock-count"
-							max={4}
-							min={2}
+							max={ranges.flockCount.max}
+							min={ranges.flockCount.min}
 							onChange={(e) => setFlockCount(Number(e.target.value))}
 							type="number"
 							value={flockCount}
@@ -346,7 +400,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="energy-threshold"
-							min={0}
+							max={ranges.energyThreshold.max}
+							min={ranges.energyThreshold.min}
 							onChange={(e) => setEnergyThreshold(Number(e.target.value))}
 							step="1"
 							type="number"
@@ -358,8 +413,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="mutation-chance"
-							max={1}
-							min={0}
+							max={ranges.mutationChance.max}
+							min={ranges.mutationChance.min}
 							onChange={(e) => setMutationChance(Number(e.target.value))}
 							step="0.05"
 							type="number"
@@ -371,8 +426,8 @@ export default function SimulationPage() {
 						<Input
 							className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
 							id="mutation-magnitude"
-							max={1}
-							min={0}
+							max={ranges.mutationMagnitude.max}
+							min={ranges.mutationMagnitude.min}
 							onChange={(e) => setMutationMagnitude(Number(e.target.value))}
 							step="0.05"
 							type="number"

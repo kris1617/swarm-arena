@@ -125,3 +125,20 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 		.notNull(),
 	stoppedAt: d.integer({ mode: "timestamp" }),
 }));
+
+// S-04 (FR-002 full, FR-018 full): the one global, admin-editable config
+// row. `id` is always `1` — a singleton enforced at the application layer
+// (always upsert/read that fixed id), not a DB-level constraint, since
+// SQLite has no native "exactly one row" check short of a trigger this
+// project doesn't need.
+export const adminSettings = createTable("admin_settings", (d) => ({
+	id: d.integer({ mode: "number" }).primaryKey(),
+	// JSON-mode TEXT column (Drizzle auto-serializes/deserializes) — see
+	// `~/server/simulation/parameter-ranges.ts`'s `ParameterRanges` type for
+	// the exact shape. One {min,max,default} triple per ranged simulation
+	// parameter `start`/`startServer` validate against.
+	parameterRanges: d.text({ mode: "json" }).notNull(),
+	// FR-018's combined boid+predator object-count cap — previously
+	// hardcoded to 500 in simulation.ts's zod schema.
+	maxObjectCount: d.integer().notNull().default(500),
+}));

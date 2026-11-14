@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
-import { simulationRuns, users } from "~/server/db/schema";
+import { adminSettings, simulationRuns, users } from "~/server/db/schema";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import * as serverRunRegistry from "~/server/simulation/server-run-registry";
 import {
@@ -31,9 +31,12 @@ const VALID_START_INPUT = {
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
 // augmentation in ~/server/auth/config.ts) — just enough for
-// `protectedProcedure`'s middleware to pass, so the FR-018 combined-cap
-// `.refine()` on `start`'s input schema is reachable without touching the
-// database (invalid input is rejected before the resolver body runs).
+// `protectedProcedure`'s middleware to pass. The FR-018 combined-cap check
+// (S-04: now a runtime check against `adminSettings.maxObjectCount`
+// inside `insertRunningSimulation`, not a static zod `.refine()`) does
+// read the DB to fetch/seed `adminSettings` — but never reaches a FK on
+// this fabricated session's userId, since `adminSettings` has no such
+// reference.
 const SESSION = {
 	user: { id: "test-user-id", role: "member" as const },
 	expires: new Date(Date.now() + 60_000).toISOString(),
@@ -99,6 +102,11 @@ async function insertOwnedRunningRun() {
 }
 
 afterEach(async () => {
+	// Reset the admin-settings singleton so a test that edits ranges can't
+	// leak state into a later test — `getOrSeedAdminSettings` reseeds the
+	// default row on next read.
+	await db.delete(adminSettings);
+
 	for (const runId of trackedServerRunIds) {
 		await stopServerRun(runId);
 	}
@@ -707,6 +715,99 @@ describe("simulationRouter.listRunning", () => {
 
 		await expect(caller.simulation.listRunning()).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
+describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
+	it("seeds and returns the default ranges on first read", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		const result = await caller.simulation.getParameterRanges();
+		expect(result.maxObjectCount).toBe(500);
+		expect(result.parameterRanges.boidCount).toEqual({
+			min: 1,
+			max: 500,
+			default: 100,
+		});
+	});
+
+	it("rejects updateParameterRanges from a non-admin member", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.updateParameterRanges({
+				parameterRanges: (await caller.simulation.getParameterRanges())
+					.parameterRanges,
+				maxObjectCount: 500,
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("lets an admin update ranges, and start enforces the new bound", async () => {
+		const adminSession = {
+			user: { id: "test-admin-id", role: "admin" as const },
+			expires: new Date(Date.now() + 60_000).toISOString(),
+		};
+		const adminCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: adminSession,
+		});
+
+		const current = await adminCaller.simulation.getParameterRanges();
+		await adminCaller.simulation.updateParameterRanges({
+			parameterRanges: {
+				...current.parameterRanges,
+				boidCount: { min: 1, max: 20, default: 10 },
+			},
+			maxObjectCount: current.maxObjectCount,
+		});
+
+		const memberCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: SESSION,
+		});
+		await expect(
+			memberCaller.simulation.start({ ...VALID_START_INPUT, boidCount: 50 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects an update where a range violates min <= default <= max", async () => {
+		const adminSession = {
+			user: { id: "test-admin-id-2", role: "admin" as const },
+			expires: new Date(Date.now() + 60_000).toISOString(),
+		};
+		const adminCaller = createCaller({
+			db,
+			headers: new Headers(),
+			session: adminSession,
+		});
+		const current = await adminCaller.simulation.getParameterRanges();
+
+		await expect(
+			adminCaller.simulation.updateParameterRanges({
+				parameterRanges: {
+					...current.parameterRanges,
+					boidCount: { min: 100, max: 50, default: 10 },
+				},
+				maxObjectCount: current.maxObjectCount,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
 	});
 });

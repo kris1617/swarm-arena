@@ -2,10 +2,20 @@ import { TRPCError, tracked } from "@trpc/server";
 import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	protectedProcedure,
+} from "~/server/api/trpc";
 import type { db as dbSingleton } from "~/server/db";
-import { simulationRuns } from "~/server/db/schema";
+import { adminSettings, simulationRuns } from "~/server/db/schema";
 import { computeScore } from "~/server/simulation/boids";
+import {
+	DEFAULT_MAX_OBJECT_COUNT,
+	DEFAULT_PARAMETER_RANGES,
+	type ParameterRanges,
+	RANGED_PARAMETER_NAMES,
+} from "~/server/simulation/parameter-ranges";
 // Shared cap on how many simulations (staging or server-run) a user may
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
@@ -14,29 +24,81 @@ import {
 	watchServerRun,
 } from "~/server/simulation/server-run-registry";
 
-const startInputSchema = z
-	.object({
-		boidCount: z.number().int().positive().max(500),
-		separationWeight: z.number().finite(),
-		alignmentWeight: z.number().finite(),
-		cohesionWeight: z.number().finite(),
-		// .max(600) (10 min) closes an unbounded-run resource surface —
-		// matches the spirit of boidCount's own .max(500).
-		maxDurationSeconds: z.number().int().positive().max(600),
-		predatorCount: z.number().int().nonnegative().max(500),
-		protectionThreshold: z.number().int().nonnegative().max(500),
-		foodStockInitial: z.number().finite().positive(),
-		foodRegenRate: z.number().finite().nonnegative(),
-		flockCount: z.number().int().min(2).max(4),
-		crossbreedingEnabled: z.boolean(),
-		energyThreshold: z.number().finite().positive(),
-		mutationChance: z.number().min(0).max(1),
-		mutationMagnitude: z.number().min(0).max(1),
-	})
-	.refine((input) => input.boidCount + input.predatorCount <= 500, {
-		message: "boidCount + predatorCount must not exceed 500",
-		path: ["predatorCount"],
+// S-04 (FR-002 full): only basic type/sign sanity stays static here — the
+// actual numeric ceilings are now admin-configurable (see
+// `checkAgainstAdminRanges` below), not hardcoded. The pre-S-04 combined
+// boid+predator cap (`.refine(... <= 500)`) moved into that same runtime
+// check, against `adminSettings.maxObjectCount`, for the same reason: it
+// can no longer be a static zod literal.
+const startInputSchema = z.object({
+	boidCount: z.number().int().positive(),
+	separationWeight: z.number().finite(),
+	alignmentWeight: z.number().finite(),
+	cohesionWeight: z.number().finite(),
+	maxDurationSeconds: z.number().int().positive(),
+	predatorCount: z.number().int().nonnegative(),
+	protectionThreshold: z.number().int().nonnegative(),
+	foodStockInitial: z.number().finite().positive(),
+	foodRegenRate: z.number().finite().nonnegative(),
+	flockCount: z.number().int().min(2).max(4),
+	crossbreedingEnabled: z.boolean(),
+	energyThreshold: z.number().finite().positive(),
+	mutationChance: z.number().min(0).max(1),
+	mutationMagnitude: z.number().min(0).max(1),
+});
+
+// Singleton row id for `adminSettings` — see schema.ts's comment on the
+// table for why this is an application-layer convention, not a DB
+// constraint.
+const ADMIN_SETTINGS_ID = 1;
+
+async function getOrSeedAdminSettings(
+	db: typeof dbSingleton,
+): Promise<{ parameterRanges: ParameterRanges; maxObjectCount: number }> {
+	const existing = await db.query.adminSettings.findFirst({
+		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
 	});
+	if (existing) {
+		return {
+			parameterRanges: existing.parameterRanges as ParameterRanges,
+			maxObjectCount: existing.maxObjectCount,
+		};
+	}
+	// First-run seed: insert the default row matching the pre-S-04 hardcoded
+	// bounds exactly, so nothing changes in practice until an admin edits it.
+	await db.insert(adminSettings).values({
+		id: ADMIN_SETTINGS_ID,
+		parameterRanges: DEFAULT_PARAMETER_RANGES,
+		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+	});
+	return {
+		parameterRanges: DEFAULT_PARAMETER_RANGES,
+		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+	};
+}
+
+function checkAgainstAdminRanges(
+	input: z.infer<typeof startInputSchema>,
+	ranges: ParameterRanges,
+	maxObjectCount: number,
+): void {
+	for (const name of RANGED_PARAMETER_NAMES) {
+		const value = input[name];
+		const range = ranges[name];
+		if (value < range.min || value > range.max) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: `${name} must be between ${range.min} and ${range.max}`,
+			});
+		}
+	}
+	if (input.boidCount + input.predatorCount > maxObjectCount) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `boidCount + predatorCount must not exceed ${maxObjectCount}`,
+		});
+	}
+}
 
 // Shared by `start` and `startServer` — both need identical validation,
 // capacity-check, and insert behavior; only what ticks the row afterward
@@ -53,6 +115,9 @@ async function insertRunningSimulation(
 	userId: string,
 	input: z.infer<typeof startInputSchema>,
 ): Promise<{ runId: number; seed: number }> {
+	const { parameterRanges, maxObjectCount } = await getOrSeedAdminSettings(db);
+	checkAgainstAdminRanges(input, parameterRanges, maxObjectCount);
+
 	const [runningCountRow] = await db
 		.select({ runningCount: count() })
 		.from(simulationRuns)
@@ -281,4 +346,52 @@ export const simulationRouter = createTRPCRouter({
 			)
 			.orderBy(desc(simulationRuns.startedAt));
 	}),
+
+	// S-04 (FR-002 full): any logged-in user can read the current ranges
+	// (needed to render the start form's bounds); only an admin can change
+	// them. First real usage of `adminProcedure` anywhere in this codebase.
+	getParameterRanges: protectedProcedure.query(async ({ ctx }) => {
+		return getOrSeedAdminSettings(ctx.db);
+	}),
+
+	updateParameterRanges: adminProcedure
+		.input(
+			z.object({
+				parameterRanges: z.record(
+					z.enum(RANGED_PARAMETER_NAMES),
+					z.object({
+						min: z.number().finite(),
+						max: z.number().finite(),
+						default: z.number().finite(),
+					}),
+				),
+				maxObjectCount: z.number().int().positive(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			for (const name of RANGED_PARAMETER_NAMES) {
+				const range = input.parameterRanges[name];
+				if (!range || range.min > range.default || range.default > range.max) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: `${name}: range must satisfy min <= default <= max`,
+					});
+				}
+			}
+			await ctx.db
+				.insert(adminSettings)
+				.values({
+					id: ADMIN_SETTINGS_ID,
+					parameterRanges: input.parameterRanges,
+					maxObjectCount: input.maxObjectCount,
+				})
+				.onConflictDoUpdate({
+					target: adminSettings.id,
+					set: {
+						parameterRanges: input.parameterRanges,
+						maxObjectCount: input.maxObjectCount,
+					},
+				});
+			return { ok: true };
+		}),
 });

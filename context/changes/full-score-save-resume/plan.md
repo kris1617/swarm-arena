@@ -610,15 +610,15 @@ populations.
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 New/updated tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 2.4 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 2.5 Lowering a range as admin is reflected and enforced on the member form/API
-- [ ] 2.6 Non-admin member is redirected/403'd from `/admin/settings`
+- [x] 2.5 Lowering a range as admin is reflected and enforced on the member form/API
+- [x] 2.6 Non-admin member is redirected/403'd from `/admin/settings`
 
 ### Phase 3: Resource management, real genetic diversity, population-lifecycle phases, new computeScore
 
