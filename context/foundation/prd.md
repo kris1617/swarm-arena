@@ -1,8 +1,9 @@
 ---
 project: "Swarm Arena"
-version: 1
+version: 2
 status: draft
 created: 2026-11-02
+updated: 2026-11-14
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -96,8 +97,10 @@ No secondary persona — single user, self-directed use.
 
 ### Ewaluacja i punktacja
 
-- FR-010: System oblicza punktację przebiegu symulacji na podstawie długości trwania cyklu (przeżycia), gospodarowania zasobami oraz różnorodności genetycznej populacji. Priority: must-have
-  > Socratic: Kontrargument rozważony: trzy składowe bez wag względnych nie dają jeszcze jednej porównywalnej liczby. Rozstrzygnięcie: FR stoi — reguła produktowa (co wpływa na wynik) jest ustalona; dokładna formuła/wagi to decyzja odłożona (patrz Open Questions).
+- FR-010: System oblicza punktację przebiegu symulacji jako iloczyn czterech czynników: długości trwania cyklu (przeżycia), gospodarowania zasobami, różnorodności genetycznej populacji oraz jakości etapu cyklu życiowego populacji (FR-019). Priority: must-have
+  > Socratic: Kontrargument rozważony: cztery składowe bez wag względnych nie dają jeszcze jednej porównywalnej liczby. Rozstrzygnięcie (2026-11-14, Open Question #1 zamknięte): iloczyn czterech równoważnych czynników — każdy słaby czynnik proporcjonalnie obniża cały wynik, zamiast wagi addytywne wymagające arbitralnego podziału punktów. Dokładne wagi jakości poszczególnych etapów cyklu życiowego (FR-019) to decyzja planistyczna (`/10x-plan`), nie produktowa — produktowa reguła (iloczyn czterech czynników, czynnik etapu nagradza zarówno zdrowe etapy, jak i odbudowę po załamaniu) jest ustalona tutaj.
+- FR-019: Jakość etapu cyklu życiowego populacji boidów (ustanowienie / wzrost / przekroczenie / załamanie / odbudowa — sklasyfikowany na podstawie trendu liczebności i dostępności jedzenia w czasie) jest czwartym czynnikiem punktacji (FR-010): nagradza zarówno osiąganie i utrzymywanie zdrowych etapów (wzrost, odbudowa), jak i odbudowę po załamaniu (odporność) — nie tylko unikanie załamania. Priority: must-have
+  > Socratic: Kontrargument rozważony: samo unikanie załamania nagradzałoby stagnację ponad aktywny, zdrowy wzrost; samo nagradzanie wzrostu nie doceniłoby odporności (powrotu po załamaniu). Rozstrzygnięcie: oba efekty połączone — jakość etapu to średnia ważona czasem + premia za rzeczywiste przejście załamanie→odbudowa.
 
 ### Zapis, wznowienie i wielość symulacji
 
@@ -133,11 +136,23 @@ No secondary persona — single user, self-directed use.
 
 ## Business Logic
 
-Each simulation run is scored by combining how long the population survived, how efficiently it managed available food, and how genetically diverse the surviving population remained — and that score history drives heuristic suggestions for parameter changes that improve population stability.
+Each simulation run is scored as the **product of four factors**: how long the population survived, how efficiently it managed available food, how genetically diverse the surviving population remained, and the quality of the population's lifecycle-phase history over the run — and that score history drives heuristic suggestions for parameter changes that improve population stability.
 
-The rule consumes two kinds of user-facing input: the parameters the user configured for the run (population sizes, food amount and respawn rate, predator protection threshold, lifespans, crossbreeding on/off) and the run's observed outcome (how long it lasted, how food availability tracked consumption, and the genetic spread across survivors at the end). Its output is a single run score broken into the three measured dimensions, plus — when enough run history exists — a suggested next parameter change aimed at improving population stability.
+**Population lifecycle phases (resolved 2026-11-14, closing Open Question #1).** The boid population's state is classified tick-by-tick into one of five phases, using the boom-bust/irruptive-growth model from population ecology (chosen over the simpler logistic-growth-curve model because logistic growth has no crash phase, and this simulation's finite food + starvation + predation can genuinely crash a population):
 
-The user encounters this at the end of a run (whether it ended naturally or was stopped): they see the score and its three-part breakdown. When they've run several variants, the score is what lets them say one configuration genuinely outperformed another, rather than guessing from watching the animation.
+- **Establishment** — early ticks, population still small, no clear trend yet.
+- **Growth** — population rising, food availability high, reproduction outpacing deaths.
+- **Overshoot** — population elevated while food availability is dropping — the lag between resource depletion and the death-rate response catching up.
+- **Crash** — population declining sharply alongside low food availability (starvation and/or predation driving the die-off).
+- **Recovery** — population stabilizing or growing again after a Crash, as food availability recovers.
+
+Classification is signal-based, not population-size-based alone: it combines the population's recent trend (rising/falling over a short rolling window) with the food-availability ratio (current food stock relative to the configured initial stock) — matching how population ecology sources classify these phases (via birth/death-rate balance and resource-relative population, not raw headcount).
+
+The fourth score factor — **phase quality** — rewards two distinct things, combined: (1) a time-weighted average of per-phase quality, so a run that spends more of its duration in healthy phases (Growth, Recovery) scores higher than one that spends most of it in Crash; and (2) a resilience bonus specifically for completing a Crash → Recovery transition — a run that crashes but genuinely bounces back scores better than one that either never crashes (and so never demonstrates resilience) or crashes and stays crashed. The exact per-phase quality values and the resilience bonus's magnitude are a planning-level decision (`/10x-plan`), not a product-level one — the product rule fixed here is which two things the factor rewards and that it covers the whole run's phase history, not just the end state.
+
+The rule consumes two kinds of user-facing input: the parameters the user configured for the run (population sizes, food amount and respawn rate, predator protection threshold, lifespans, crossbreeding on/off) and the run's observed outcome (how long it lasted, how food availability tracked consumption, the genetic spread across survivors at the end, and the population's lifecycle-phase history over the run). Its output is a single run score broken into the four measured dimensions, plus — when enough run history exists — a suggested next parameter change aimed at improving population stability.
+
+The user encounters this at the end of a run (whether it ended naturally or was stopped): they see the score and its four-part breakdown. When they've run several variants, the score is what lets them say one configuration genuinely outperformed another, rather than guessing from watching the animation.
 
 ## Access Control
 
@@ -151,6 +166,6 @@ Role → capability split: `admin` defines the available parameter ranges and de
 
 ## Open Questions
 
-1. **What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?** — Owner: user. Not yet resolved; FR-010 stands as a product rule, exact formula deferred. Blocks FR-016 (run comparison) from being meaningful until resolved.
+1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Formula: equal product of four factors — cycle length (survival) × resource management × genetic diversity × population-lifecycle-phase quality (FR-010, FR-019; see Business Logic for the phase model and what the fourth factor rewards). The exact per-phase quality values and resilience-bonus magnitude are deferred to `/10x-plan` as planning-level tuning, not a product open question — the product rule (equal multiplicative product; phase factor rewards both sustained health and Crash→Recovery resilience) is fixed. Unblocks FR-016 (run comparison).
 2. **What export format(s) should FR-017 support (CSV / JSON / image / other)?** — Owner: user. Not yet resolved; nice-to-have, not MVP-blocking.
 3. **Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?** — Owner: user. Not yet resolved; affects whether multi-user data isolation needs to be designed now or can stay implicit.
