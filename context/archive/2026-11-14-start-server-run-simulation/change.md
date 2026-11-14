@@ -1,10 +1,10 @@
 ---
 change_id: start-server-run-simulation
 title: Start a real simulation that keeps running on the server
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T10:59:41Z
 ---
 
 ## Notes
