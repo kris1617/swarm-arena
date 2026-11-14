@@ -281,11 +281,11 @@ None — no schema change.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New test file passes: `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 9bf0e66
+- [x] 1.2 Linting passes: `npm run check` — 9bf0e66
+- [x] 1.3 New test file passes: `npx vitest run src/server/simulation/server-run-registry.test.ts` — 9bf0e66
+- [x] 1.4 Full suite still passes: `npm test` — 9bf0e66
 
 #### Manual
 
-- [x] 1.5 Real wall-clock run via direct function call (no browser) ends with `status: "stopped"` and a non-null score
+- [x] 1.5 Real wall-clock run via direct function call (no browser) ends with `status: "stopped"` and a non-null score — 9bf0e66
