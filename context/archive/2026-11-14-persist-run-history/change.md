@@ -1,10 +1,10 @@
 ---
 change_id: persist-run-history
 title: Persist per-run population history instead of discarding it
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T14:41:51Z
 ---
 
 ## Notes
