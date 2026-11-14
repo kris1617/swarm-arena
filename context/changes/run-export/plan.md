@@ -171,14 +171,14 @@ None — no schema change; this is a read-only export of existing columns.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — ff46dbe
+- [x] 2.2 Linting passes: `npm run check` — ff46dbe
+- [x] 2.3 Full suite still passes: `npm test` — ff46dbe
 
 #### Manual
 
-- [x] 2.4 Visiting a completed run's analysis page shows both export links
-- [x] 2.5 Clicking "Export JSON" downloads a `run-<id>.json` file containing the run's parameters, score, and history
-- [x] 2.6 Clicking "Export CSV" downloads a `run-<id>.csv` file with a header row and one data row of parameters + score, no nested history fields
-- [x] 2.7 Requesting the export route for another user's run returns an error (not a file)
-- [x] 2.8 Requesting the export route for a still-running run returns an error (not a file)
+- [x] 2.4 Visiting a completed run's analysis page shows both export links — ff46dbe
+- [x] 2.5 Clicking "Export JSON" downloads a `run-<id>.json` file containing the run's parameters, score, and history — ff46dbe
+- [x] 2.6 Clicking "Export CSV" downloads a `run-<id>.csv` file with a header row and one data row of parameters + score, no nested history fields — ff46dbe
+- [x] 2.7 Requesting the export route for another user's run returns an error (not a file) — ff46dbe
+- [x] 2.8 Requesting the export route for a still-running run returns an error (not a file) — ff46dbe
