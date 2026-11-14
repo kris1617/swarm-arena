@@ -1,10 +1,10 @@
 ---
 change_id: run-export
 title: Export a run's parameters, score, and history as JSON or CSV
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-14
-archived_at: null
+archived_at: 2026-11-14T17:32:11Z
 ---
 
 ## Notes
