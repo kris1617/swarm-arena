@@ -164,14 +164,14 @@ None — no schema change; `getRunAnalysis` reads existing columns it simply was
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx still returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck` — 9261368
+- [x] 2.2 Linting passes: `npm run check` — 9261368
+- [x] 2.3 Full suite still passes: `npm test` — 9261368
+- [x] 2.4 Hardcoded-value scan on runs/[runId]/page.tsx still returns zero hits — 9261368
 
 #### Manual
 
-- [x] 2.5 Crash-dominant run shows the crash-specific rationale (unit-tested; live browser verification instead produced an overshoot-dominant run — same code path family, screenshotted — a true crash-dominant run proved harder to engineer live within a short test duration)
-- [x] 2.6 Growth/recovery-dominant run shows the healthy-run message (browser-verified on run #5660, screenshotted)
-- [x] 2.7 Insufficient-data run shows the fallback message (unit-tested only, not separately screenshotted live)
-- [x] 2.8 Card placement and no visual regression to other sections (browser-verified, desktop + mobile, screenshotted)
+- [x] 2.5 Crash-dominant run shows the crash-specific rationale (unit-tested; live browser verification instead produced an overshoot-dominant run — same code path family, screenshotted — a true crash-dominant run proved harder to engineer live within a short test duration) — 9261368
+- [x] 2.6 Growth/recovery-dominant run shows the healthy-run message (browser-verified on run #5660, screenshotted) — 9261368
+- [x] 2.7 Insufficient-data run shows the fallback message (unit-tested only, not separately screenshotted live) — 9261368
+- [x] 2.8 Card placement and no visual regression to other sections (browser-verified, desktop + mobile, screenshotted) — 9261368
