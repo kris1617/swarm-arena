@@ -237,13 +237,13 @@ None — `history` is a schema-less JSON column (`d.text({ mode: "json" })`); ad
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 28df649
+- [x] 3.2 Linting passes: `npm run check` — 28df649
+- [x] 3.3 Full suite still passes: `npm test` — 28df649
 
 #### Manual
 
-- [x] 3.4 Comparing 2 completed runs with full persisted history (post-Phase-1) shows matching scores/factors in both the table and the bar chart
-- [x] 3.5 Comparing a run with full history against one with `history: null` (or pre-Phase-1) shows `—` for that run's breakdown cells/survival factor, without crashing, and the chart omits that run's missing bars
-- [x] 3.6 Visiting `/runs/compare?ids=<id>` with only 1 id, another user's id, or a non-completed run's id renders the appropriate fallback/dropped-row behavior instead of crashing
-- [x] 3.7 Navigating from the dashboard's "Compare selected" button round-trips correctly with the exact selected run IDs
+- [x] 3.4 Comparing 2 completed runs with full persisted history (post-Phase-1) shows matching scores/factors in both the table and the bar chart — 28df649
+- [x] 3.5 Comparing a run with full history against one with `history: null` (or pre-Phase-1) shows `—` for that run's breakdown cells/survival factor, without crashing, and the chart omits that run's missing bars — 28df649
+- [x] 3.6 Visiting `/runs/compare?ids=<id>` with only 1 id, another user's id, or a non-completed run's id renders the appropriate fallback/dropped-row behavior instead of crashing — 28df649
+- [x] 3.7 Navigating from the dashboard's "Compare selected" button round-trips correctly with the exact selected run IDs — 28df649
