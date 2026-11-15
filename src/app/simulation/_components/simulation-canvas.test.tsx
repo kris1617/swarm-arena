@@ -450,6 +450,117 @@ describe("SimulationCanvas live-edit panel", () => {
 		container.remove();
 	});
 
+	// live-crossbreeding-toggle Phase 3: the client-staged panel's own
+	// crossbreedingEnabled Switch, mirroring server-run-viewer.tsx's Phase 2
+	// Switch for the same field — covers the Switch's presence under the
+	// right heading, that toggling it reaches computeSingleRunTick's real
+	// boolean argument via the ref (same mechanism as the numeric fields'
+	// Apply flow), and that it records a 0/1-valued parameterChanges entry.
+	it("renders a Switch for crossbreedingEnabled under 'Affects future offspring only'", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		const futureHeading = Array.from(container.querySelectorAll("p")).find(
+			(p) => p.textContent === "Affects future offspring only",
+		);
+		const section = futureHeading?.nextElementSibling;
+		const toggle = section?.querySelector<HTMLElement>(
+			"#live-param-crossbreedingEnabled",
+		);
+		expect(toggle).not.toBeNull();
+		expect(toggle?.getAttribute("role")).toBe("switch");
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("toggling crossbreedingEnabled reaches computeSingleRunTick as a real boolean", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		const toggle = container.querySelector<HTMLElement>(
+			"#live-param-crossbreedingEnabled",
+		);
+		if (!toggle) {
+			throw new Error("crossbreedingEnabled toggle not found");
+		}
+		act(() => {
+			toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		const rafCallback = rafMock.mock.calls[0]?.[0] as
+			| ((timestamp: number) => void)
+			| undefined;
+		act(() => {
+			rafCallback?.(16);
+		});
+
+		const lastCall = vi.mocked(computeSingleRunTick).mock.calls.at(-1);
+		expect(lastCall?.[2]?.crossbreedingEnabled).toBe(false);
+		expect(typeof lastCall?.[2]?.crossbreedingEnabled).toBe("boolean");
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("records a 0/1-valued parameterChanges entry when crossbreedingEnabled is toggled", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		const toggle = container.querySelector<HTMLElement>(
+			"#live-param-crossbreedingEnabled",
+		);
+		if (!toggle) {
+			throw new Error("crossbreedingEnabled toggle not found");
+		}
+		act(() => {
+			toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		const stopButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent === "Stop",
+		);
+		act(() => {
+			stopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		expect(capturedStopMutate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parameterChanges: [
+					expect.objectContaining({
+						field: "crossbreedingEnabled",
+						oldValue: 1,
+						newValue: 0,
+					}),
+				],
+			}),
+		);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
 	it("sends an empty parameterChanges array when no edits were made", () => {
 		const container = document.createElement("div");
 		document.body.appendChild(container);

@@ -249,26 +249,26 @@ None — `crossbreedingEnabled` becomes a new optional key in `LiveAdjustablePar
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [x] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 05e61e8
+- [x] 2.2 Linting passes: `npm run check` — 05e61e8
+- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx` — 05e61e8
+- [x] 2.4 Full suite passes: `npm test` — 05e61e8
 
 #### Manual
 
-- [x] 2.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
-- [x] 2.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
+- [x] 2.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only" — 05e61e8
+- [x] 2.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run — 05e61e8
 
 ### Phase 3: Client-staged panel
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
+- [x] 3.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 3.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
-- [ ] 3.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
+- [x] 3.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
+- [x] 3.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
