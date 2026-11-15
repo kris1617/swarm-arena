@@ -295,8 +295,10 @@ describe("server-run-registry", () => {
 });
 
 describe("applyLiveParams", () => {
-	it("returns false for an unregistered runId", () => {
-		expect(applyLiveParams(999_999, { separationWeight: 5 })).toBe(false);
+	it("returns not-found for an unregistered runId", () => {
+		expect(applyLiveParams(999_999, { separationWeight: 5 })).toEqual({
+			status: "not-found",
+		});
 	});
 
 	it("patches run.params and appends a changelog entry with the correct tick/field/oldValue/newValue", async () => {
@@ -316,7 +318,7 @@ describe("applyLiveParams", () => {
 			foodRegenRate: 42,
 		});
 
-		expect(applied).toBe(true);
+		expect(applied).toEqual({ status: "applied" });
 		const state = getLiveRunState(runId);
 		expect(state?.liveParams.separationWeight).toBe(7);
 		expect(state?.liveParams.foodRegenRate).toBe(42);
@@ -345,6 +347,43 @@ describe("applyLiveParams", () => {
 			oldValue: BASE_PARAMS.foodRegenRate,
 			newValue: 42,
 		});
+		activeRunIds.length = 0;
+	});
+
+	// impl-review (live-parameter-adjustment, F1): the client's own 500ms
+	// Apply cooldown is UI-only — this is the real gate against a direct
+	// caller pushing unbounded parameterChanges entries.
+	it("throttles a second call within PARAM_UPDATE_THROTTLE_MS of the first", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(23);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 23,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		expect(applyLiveParams(runId, { separationWeight: 2 })).toEqual({
+			status: "applied",
+		});
+		// Immediately retrying, no time advanced — must be throttled, not applied.
+		const second = applyLiveParams(runId, { separationWeight: 3 });
+		expect(second.status).toBe("throttled");
+		if (second.status === "throttled") {
+			expect(second.retryAfterMs).toBeGreaterThan(0);
+		}
+		// The throttled call must not have changed params or logged a change.
+		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(2);
+
+		await vi.advanceTimersByTimeAsync(500);
+		expect(applyLiveParams(runId, { separationWeight: 4 })).toEqual({
+			status: "applied",
+		});
+		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(4);
+
+		await stopServerRun(runId);
 		activeRunIds.length = 0;
 	});
 });
@@ -425,7 +464,9 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		// If the resumed run crashed on a missing parameterChanges array, a
 		// live edit's `.push` below would throw inside applyLiveParams.
 		expect(getLiveRunState(runId)).toBeDefined();
-		expect(applyLiveParams(runId, { separationWeight: 3 })).toBe(true);
+		expect(applyLiveParams(runId, { separationWeight: 3 })).toEqual({
+			status: "applied",
+		});
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;

@@ -2660,6 +2660,22 @@ describe("simulationRouter.updateRunParams", () => {
 		expect(result.warnings.length).toBeGreaterThan(0);
 	});
 
+	// impl-review F1: the client's own Apply cooldown is UI-only; this is
+	// the real server-side gate against unbounded parameterChanges growth.
+	it("rejects a second call within the throttle window with TOO_MANY_REQUESTS", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await caller.simulation.updateRunParams({ runId, separationWeight: 2 });
+
+		await expect(
+			caller.simulation.updateRunParams({ runId, separationWeight: 3 }),
+		).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		} satisfies Partial<TRPCError>);
+	});
+
 	it("rejects with FORBIDDEN for a non-owner", async () => {
 		const { caller } = await insertOwnerAndCaller();
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);

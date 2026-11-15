@@ -933,11 +933,21 @@ export const simulationRouter = createTRPCRouter({
 			}
 			const { parameterRanges } = await getOrSeedAdminSettings(ctx.db);
 			const warnings = checkLiveParamRangesSoft(patch, parameterRanges);
-			const applied = applyLiveParams(runId, patch);
-			if (!applied) {
+			const result = applyLiveParams(runId, patch);
+			if (result.status === "not-found") {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "Run is no longer active",
+				});
+			}
+			// impl-review (live-parameter-adjustment, F1): the client's own
+			// Apply cooldown is UI-only and doesn't stop a direct call from
+			// pushing unbounded `parameterChanges` entries — this is the real
+			// gate. A well-behaved client never hits it in practice.
+			if (result.status === "throttled") {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: `Try again in ${result.retryAfterMs}ms`,
 				});
 			}
 			return { ok: true, warnings };

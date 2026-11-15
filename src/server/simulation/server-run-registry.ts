@@ -89,6 +89,13 @@ type LiveRun = {
 	// `params` while this run was ticking — not a per-tick sample, only grows
 	// when `applyLiveParams` is called.
 	parameterChanges: ParameterChangeEntry[];
+	// live-parameter-adjustment (S-27), impl-review F1: last time
+	// `applyLiveParams` actually applied a patch for this run, used to
+	// server-side-throttle calls — the client's own 500ms Apply cooldown
+	// (server-run-viewer.tsx) is UI-only and doesn't stop a direct tRPC call
+	// (or a modified client) from pushing unbounded `parameterChanges`
+	// entries for a run's entire duration.
+	lastParamUpdateAt: number | null;
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
@@ -141,6 +148,18 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 	};
 }
 
+// live-parameter-adjustment (S-27), impl-review F1: minimum time between
+// two applied patches for the same run — matches the client's own Apply
+// cooldown (server-run-viewer.tsx's APPLY_COOLDOWN_MS) so a well-behaved
+// client never actually hits this server-side floor; it exists only to
+// bound a direct/malicious caller, not to shape normal UI behavior.
+const PARAM_UPDATE_THROTTLE_MS = 500;
+
+export type ApplyLiveParamsResult =
+	| { status: "applied" }
+	| { status: "not-found" }
+	| { status: "throttled"; retryAfterMs: number };
+
 // live-parameter-adjustment (S-27): the single place that patches a running
 // `LiveRun.params` and appends changelog entries — exported so the
 // `updateRunParams` tRPC mutation can call it, and so tests can call it
@@ -150,10 +169,23 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 // on `LiveRun`'s module-state `Map`: a plain object reassignment cannot
 // interleave with a `tick()` callback mid-write in Node's single-threaded
 // event loop.
-export function applyLiveParams(runId: number, patch: LiveParamPatch): boolean {
+export function applyLiveParams(
+	runId: number,
+	patch: LiveParamPatch,
+): ApplyLiveParamsResult {
 	const run = registry.get(runId);
 	if (!run) {
-		return false;
+		return { status: "not-found" };
+	}
+	const now = Date.now();
+	if (run.lastParamUpdateAt !== null) {
+		const elapsed = now - run.lastParamUpdateAt;
+		if (elapsed < PARAM_UPDATE_THROTTLE_MS) {
+			return {
+				status: "throttled",
+				retryAfterMs: PARAM_UPDATE_THROTTLE_MS - elapsed,
+			};
+		}
 	}
 	const tick = run.populationCountSamples.length;
 	for (const [field, newValue] of Object.entries(patch) as [
@@ -168,7 +200,8 @@ export function applyLiveParams(runId: number, patch: LiveParamPatch): boolean {
 		});
 	}
 	run.params = { ...run.params, ...patch };
-	return true;
+	run.lastParamUpdateAt = now;
+	return { status: "applied" };
 }
 
 export function isServerRunActive(runId: number): boolean {
@@ -370,6 +403,7 @@ export function startServerRun(params: ServerRunParams): void {
 		populationCountSamples: [],
 		populationDensitySamples: [],
 		parameterChanges: [],
+		lastParamUpdateAt: null,
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: null,
@@ -510,6 +544,10 @@ export function resumeServerRun(
 		// `undefined` and `applyLiveParams`'s `.push` on a later live edit
 		// would throw.
 		parameterChanges: snapshot.parameterChanges ?? [],
+		// live-parameter-adjustment (S-27), impl-review F1: deliberately not
+		// carried through the snapshot — a resumed run's first live edit is
+		// never throttled against activity from before the pause.
+		lastParamUpdateAt: null,
 		phaseHistory: snapshot.phaseHistory,
 		elapsedSeconds: snapshot.elapsedSeconds,
 		lastTimestamp: snapshot.lastTimestamp,
