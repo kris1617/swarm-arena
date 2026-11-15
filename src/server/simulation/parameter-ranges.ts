@@ -61,6 +61,32 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;
 
+// live-parameter-adjustment (S-27): a soft (non-throwing) counterpart to
+// `checkAgainstAdminRanges` in simulation.ts — a live edit may exceed the
+// admin-configured range; it still applies, just with a warning per
+// out-of-range field instead of a rejection. Relocated here (rather than
+// kept server-router-local) so a client component can call the identical
+// range comparison without pulling in server-only dependencies —
+// client-staged-live-parameter-parity.
+export function checkLiveParamRangesSoft(
+	patch: Partial<Record<RangedParameterName, number>>,
+	ranges: ParameterRanges,
+): string[] {
+	const warnings: string[] = [];
+	for (const [field, value] of Object.entries(patch) as [
+		RangedParameterName,
+		number,
+	][]) {
+		const range = ranges[field];
+		if (value < range.min || value > range.max) {
+			warnings.push(
+				`${field} (${value}) is outside the configured range ${range.min}-${range.max}`,
+			);
+		}
+	}
+	return warnings;
+}
+
 // F-07: caps the SUM of boidCount+predatorCount across every one of a
 // user's currently-ticking server-owned runs at once — distinct from
 // DEFAULT_MAX_OBJECT_COUNT, which only bounds a single run.

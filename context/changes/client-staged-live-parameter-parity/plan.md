@@ -180,10 +180,10 @@ None — `parameterChanges` is a new optional key in a schema-less JSON `history
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 1.4 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run check`
+- [x] 1.3 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 1.4 Full suite passes: `npm test`
 
 ### Phase 2: Client-staged live-adjust mechanism
 

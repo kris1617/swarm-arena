@@ -20,12 +20,12 @@ import {
 	segmentCompletedCycles,
 } from "~/server/simulation/boids";
 import {
+	checkLiveParamRangesSoft,
 	DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	DEFAULT_MAX_OBJECT_COUNT,
 	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
-	type RangedParameterName,
 } from "~/server/simulation/parameter-ranges";
 import {
 	type ParameterSuggestion,
@@ -39,7 +39,6 @@ import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
 	applyLiveParams,
 	isServerRunActive,
-	type LiveParamPatch,
 	resumeServerRun,
 	type ServerRunSnapshot,
 	snapshotServerRun,
@@ -171,29 +170,6 @@ function checkAgainstAdminRanges(
 			message: `boidCount + predatorCount must not exceed ${maxObjectCount}`,
 		});
 	}
-}
-
-// live-parameter-adjustment (S-27): a soft (non-throwing) counterpart to
-// `checkAgainstAdminRanges` — a live edit may exceed the admin-configured
-// range; it still applies, just with a warning per out-of-range field
-// instead of a rejection (decision 1 in plan.md's Overview).
-function checkLiveParamRangesSoft(
-	patch: LiveParamPatch,
-	ranges: ParameterRanges,
-): string[] {
-	const warnings: string[] = [];
-	for (const [field, value] of Object.entries(patch) as [
-		RangedParameterName,
-		number,
-	][]) {
-		const range = ranges[field];
-		if (value < range.min || value > range.max) {
-			warnings.push(
-				`${field} (${value}) is outside the configured range ${range.min}-${range.max}`,
-			);
-		}
-	}
-	return warnings;
 }
 
 // Shared by `start` and `startServer` — both need identical validation,
