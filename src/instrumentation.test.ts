@@ -1,6 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { onRequestError } from "./instrumentation";
+// Mocked so this test never pulls in the real retry-worker module (which
+// imports ~/server/db/~/env) — only that `register()` dynamically imports
+// and calls `startFeedbackRetryWorker` is under test here.
+vi.mock("~/server/feedback/retry-worker", () => ({
+	startFeedbackRetryWorker: vi.fn(),
+}));
+
+import { startFeedbackRetryWorker } from "~/server/feedback/retry-worker";
+import { onRequestError, register } from "./instrumentation";
+
+const mockedStartFeedbackRetryWorker = vi.mocked(startFeedbackRetryWorker);
+
+describe("register", () => {
+	afterEach(() => {
+		mockedStartFeedbackRetryWorker.mockReset();
+	});
+
+	it("starts the feedback retry worker", async () => {
+		await register();
+
+		expect(mockedStartFeedbackRetryWorker).toHaveBeenCalledTimes(1);
+	});
+});
 
 describe("onRequestError", () => {
 	afterEach(() => {
