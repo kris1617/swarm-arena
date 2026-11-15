@@ -442,6 +442,61 @@ describe("simulationRouter.stop authorization", () => {
 		expect(row?.history).toMatchObject({ parameterChanges });
 	});
 
+	// genetic-diversity-trend Phase 1: the client-staged path's own copy of
+	// the sample array, accepted by `stop`'s input schema and persisted into
+	// history verbatim — mirrors the parameterChanges test above.
+	it("accepts and persists a geneticDiversitySamples array into history", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await caller.simulation.stop({
+			runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			...VALID_STOP_EXTRAS,
+			geneticDiversitySamples: [0.25],
+		});
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.history).toMatchObject({ geneticDiversitySamples: [0.25] });
+	});
+
+	// Backward-compatible with a stop payload built before this field
+	// existed (the schema marks it `.optional()` for exactly this reason).
+	it("still succeeds when geneticDiversitySamples is omitted", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.stop({
+			runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			...VALID_STOP_EXTRAS,
+		});
+
+		expect(result).toMatchObject({ score: 0 });
+	});
+
 	// Backward-compatible with a run that had no live edits — the panel's
 	// Apply handler was never clicked, so the changelog stays empty.
 	it("still succeeds when parameterChanges is an empty array", async () => {

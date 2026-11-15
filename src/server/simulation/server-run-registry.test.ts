@@ -147,7 +147,46 @@ describe("server-run-registry", () => {
 			(row?.history as { parameterChanges?: unknown[] } | null)
 				?.parameterChanges,
 		).toEqual([]);
+		// genetic-diversity-trend Phase 1: persisted alongside its siblings,
+		// one entry per tick, same non-empty check as populationCountSamples
+		// above.
+		expect(
+			(row?.history as { geneticDiversitySamples?: number[] } | null)
+				?.geneticDiversitySamples?.length,
+		).toBeGreaterThan(0);
 		activeRunIds.length = 0; // already finished; nothing left for afterEach to stop
+	});
+
+	// genetic-diversity-trend Phase 1: the persisted array must be the exact
+	// live array at the point of finishing, not a stale/truncated copy —
+	// spies on the shared tick core (pass-through, same posture as the
+	// "a tick that throws" test below) to capture the final tick's own
+	// result for comparison.
+	it("persists geneticDiversitySamples at completion matching the live array at the point of finishing", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(50);
+		activeRunIds.push(runId);
+		const tickSpy = vi.spyOn(singleRunLifecycle, "computeSingleRunTick");
+
+		startServerRun({ runId, seed: 50, ...BASE_PARAMS });
+		await vi.advanceTimersByTimeAsync(3000);
+		await vi.advanceTimersByTimeAsync(0);
+
+		const lastCall = tickSpy.mock.results.at(-1);
+		if (lastCall?.type !== "return") {
+			throw new Error("expected computeSingleRunTick's last call to return");
+		}
+		const liveGeneticDiversitySamples = lastCall.value.geneticDiversitySamples;
+		expect(liveGeneticDiversitySamples.length).toBeGreaterThan(0);
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		expect(
+			(row?.history as { geneticDiversitySamples?: number[] } | null)
+				?.geneticDiversitySamples,
+		).toEqual(liveGeneticDiversitySamples);
+		activeRunIds.length = 0;
 	});
 
 	it("stopServerRun ends the run early with a score from the partial cohesion history", async () => {
@@ -763,6 +802,43 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// genetic-diversity-trend Phase 1: same round-trip shape as the
+	// parameterChanges test above — tick a stretch, snapshot, confirm the
+	// array is non-empty on the snapshot, resume, tick more, confirm the
+	// persisted history carries it through (length only grew, never reset).
+	it("geneticDiversitySamples survives a snapshot/resume round-trip", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(23);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 23,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		expect(snapshot.geneticDiversitySamples.length).toBeGreaterThan(0);
+		const samplesAtPause = snapshot.geneticDiversitySamples.length;
+
+		resumeServerRun(runId, snapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const persisted = (
+			row?.history as { geneticDiversitySamples?: number[] } | null
+		)?.geneticDiversitySamples;
+		expect(persisted?.length).toBeGreaterThan(samplesAtPause);
+		activeRunIds.length = 0;
+	});
+
 	// Mirrors the `populationDensitySamples`-missing-from-legacy-snapshot
 	// regression test below: a `savedState` row written before this field
 	// existed has no `parameterChanges` key, so `resumeServerRun` must not
@@ -911,6 +987,48 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// genetic-diversity-trend Phase 1 (lessons.md's S-25 resume-path rule):
+	// same regression shape as the populationDensitySamples test above — a
+	// `savedState` row written before this field existed has no
+	// `geneticDiversitySamples` key, so `resumeServerRun` must not crash
+	// when reconstructing it, and a subsequent tick must succeed rather
+	// than crashing.
+	it("resuming a snapshot missing geneticDiversitySamples (pre-change data) does not crash the run", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(14);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 14,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		// Simulate a pre-change saved row: strip the field entirely rather
+		// than setting it to `undefined`, matching what a real pre-change
+		// JSON blob actually looks like (the key is simply absent, not
+		// present-as-undefined).
+		const legacySnapshot = { ...snapshot } as Partial<ServerRunSnapshot>;
+		legacySnapshot.geneticDiversitySamples = undefined;
+		delete (legacySnapshot as Record<string, unknown>).geneticDiversitySamples;
+
+		resumeServerRun(runId, legacySnapshot as ServerRunSnapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		// If the resumed tick had thrown, tick()'s catch block would have
+		// called finishRun and removed the run from the live registry.
+		expect(getLiveRunState(runId)).toBeDefined();
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
 	// The test above proves continuity when no rng-driven branch (reproduction)
 	// fires in the window — it would pass even if resumeServerRun forgot to
 	// restore the RNG's state, since plain movement never calls `rng()`. This
@@ -1003,6 +1121,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 			foodRatioSamples: [],
 			populationCountSamples: [],
 			populationDensitySamples: [],
+			geneticDiversitySamples: [],
 			parameterChanges: [],
 			phaseHistory: [],
 			elapsedSeconds: 0,

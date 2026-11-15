@@ -91,6 +91,9 @@ type LiveRun = {
 	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
 	// 5th scoring factor.
 	populationDensitySamples: number[];
+	// genetic-diversity-trend Phase 1: one per-tick genetic-diversity sample,
+	// threaded through the same shared tick core as the other sample arrays.
+	geneticDiversitySamples: number[];
 	// live-parameter-adjustment (S-27): changelog of live edits applied to
 	// `params` while this run was ticking — not a per-tick sample, only grows
 	// when `applyLiveParams` is called.
@@ -382,6 +385,9 @@ async function finishRun(
 			// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding
 			// the 5th scoring factor, persisted alongside its siblings.
 			populationDensitySamples: number[];
+			// genetic-diversity-trend Phase 1: one per-tick genetic-diversity
+			// sample, persisted alongside its siblings.
+			geneticDiversitySamples: number[];
 			// live-parameter-adjustment (S-27): the changelog of live edits
 			// applied while this run was ticking — mirrors the exact threading
 			// pattern populationDensitySamples (S-25) established.
@@ -442,6 +448,7 @@ function tick(runId: number): void {
 				foodRatioSamples: run.foodRatioSamples,
 				populationCountSamples: run.populationCountSamples,
 				populationDensitySamples: run.populationDensitySamples,
+				geneticDiversitySamples: run.geneticDiversitySamples,
 				phaseHistory: run.phaseHistory,
 				elapsedSeconds: run.elapsedSeconds,
 				lastTimestamp: run.lastTimestamp,
@@ -472,6 +479,7 @@ function tick(runId: number): void {
 		run.foodRatioSamples = result.foodRatioSamples;
 		run.populationCountSamples = result.populationCountSamples;
 		run.populationDensitySamples = result.populationDensitySamples;
+		run.geneticDiversitySamples = result.geneticDiversitySamples;
 		run.phaseHistory = result.phaseHistory;
 		run.elapsedSeconds = result.elapsedSeconds;
 		run.lastTimestamp = result.lastTimestamp;
@@ -493,6 +501,7 @@ function tick(runId: number): void {
 					survivorGenes: run.boids.map((b) => b.genes),
 					populationCountSamples: run.populationCountSamples,
 					populationDensitySamples: run.populationDensitySamples,
+					geneticDiversitySamples: run.geneticDiversitySamples,
 					parameterChanges: run.parameterChanges,
 					elapsedSeconds: run.elapsedSeconds,
 				},
@@ -560,6 +569,7 @@ export function startServerRun(params: ServerRunParams): void {
 		foodRatioSamples: [],
 		populationCountSamples: [],
 		populationDensitySamples: [],
+		geneticDiversitySamples: [],
 		parameterChanges: [],
 		lastParamUpdateAt: null,
 		phaseHistory: [],
@@ -599,6 +609,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 			survivorGenes: run.boids.map((b) => b.genes),
 			populationCountSamples: run.populationCountSamples,
 			populationDensitySamples: run.populationDensitySamples,
+			geneticDiversitySamples: run.geneticDiversitySamples,
 			parameterChanges: run.parameterChanges,
 			elapsedSeconds: run.elapsedSeconds,
 		},
@@ -617,6 +628,7 @@ export type ServerRunSnapshot = {
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
+	geneticDiversitySamples: number[];
 	parameterChanges: ParameterChangeEntry[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
@@ -647,6 +659,7 @@ export function snapshotServerRun(
 		foodRatioSamples: run.foodRatioSamples,
 		populationCountSamples: run.populationCountSamples,
 		populationDensitySamples: run.populationDensitySamples,
+		geneticDiversitySamples: run.geneticDiversitySamples,
 		parameterChanges: run.parameterChanges,
 		phaseHistory: run.phaseHistory,
 		elapsedSeconds: run.elapsedSeconds,
@@ -695,6 +708,15 @@ export function resumeServerRun(
 		// (single-run-lifecycle.ts) throws, silently killing the resumed run
 		// with a null score via `tick()`'s catch block.
 		populationDensitySamples: snapshot.populationDensitySamples ?? [],
+		// genetic-diversity-trend Phase 1 (lessons.md's S-25 resume-path
+		// rule): same `?? []` fallback, same reason — a `savedState` row
+		// written before this field existed has no `geneticDiversitySamples`
+		// key despite `ServerRunSnapshot`'s type claiming otherwise. Without
+		// this fallback, the next tick's
+		// `[...state.geneticDiversitySamples, ...]` spread
+		// (single-run-lifecycle.ts) throws, silently killing the resumed run
+		// with a null score via `tick()`'s catch block.
+		geneticDiversitySamples: snapshot.geneticDiversitySamples ?? [],
 		// live-parameter-adjustment (S-27): same `?? []` fallback, same
 		// reason — a `savedState` row written before this field existed has
 		// no `parameterChanges` key despite `ServerRunSnapshot`'s type

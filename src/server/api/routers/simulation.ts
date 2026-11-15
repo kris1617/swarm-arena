@@ -470,6 +470,15 @@ export const simulationRouter = createTRPCRouter({
 				// feeding the 5th scoring factor — same bound posture as every
 				// sibling sample-array field.
 				populationDensitySamples: z.array(z.number().min(0)).min(1).max(50_000),
+				// genetic-diversity-trend Phase 1: the client-staged path's own
+				// per-tick genetic-diversity sample array — optional (unlike its
+				// siblings above) so a caller/test fixture built before this field
+				// existed still validates.
+				geneticDiversitySamples: z
+					.array(z.number().min(0).max(1))
+					.min(1)
+					.max(50_000)
+					.optional(),
 				// client-staged-live-parameter-parity Phase 3: the client-staged
 				// path's own changelog of applied live edits, matching the
 				// server-owned path's `ParameterChangeEntry` shape
@@ -553,6 +562,7 @@ export const simulationRouter = createTRPCRouter({
 						survivorGenes: input.survivingBoidGenes,
 						populationCountSamples: input.populationCountSamples,
 						populationDensitySamples: input.populationDensitySamples,
+						geneticDiversitySamples: input.geneticDiversitySamples,
 						// compare-runs-side-by-side Phase 1: the survival
 						// factor, matching server-run-registry.ts's two write
 						// sites — reuses the same value already computed for

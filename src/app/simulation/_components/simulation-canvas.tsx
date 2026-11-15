@@ -382,6 +382,10 @@ export function SimulationCanvas({
 	// 5th scoring factor — threaded through the same shared tick core as
 	// the other sample arrays.
 	const populationDensitySamplesRef = useRef<number[]>([]);
+	// genetic-diversity-trend Phase 1: threaded through the same shared tick
+	// core as the other sample arrays — the client-staged path's own copy
+	// since it never calls into server-run-registry.ts.
+	const geneticDiversitySamplesRef = useRef<number[]>([]);
 	const phaseHistoryRef = useRef<PopulationPhase[]>([]);
 	const elapsedSecondsRef = useRef(0);
 	const rafIdRef = useRef<number>(0);
@@ -725,6 +729,10 @@ export function SimulationCanvas({
 				populationDensitySamplesRef.current.length > 0
 					? populationDensitySamplesRef.current
 					: [0],
+			geneticDiversitySamples:
+				geneticDiversitySamplesRef.current.length > 0
+					? geneticDiversitySamplesRef.current
+					: [0],
 			// client-staged-live-parameter-parity Phase 3: the applied-edits
 			// changelog — `[]` is a legitimate value (the user may never have
 			// touched the live-edit panel), unlike the sample arrays above
@@ -794,6 +802,7 @@ export function SimulationCanvas({
 						foodRatioSamples: foodRatioSamplesRef.current,
 						populationCountSamples: populationCountSamplesRef.current,
 						populationDensitySamples: populationDensitySamplesRef.current,
+						geneticDiversitySamples: geneticDiversitySamplesRef.current,
 						phaseHistory: phaseHistoryRef.current,
 						elapsedSeconds: elapsedSecondsRef.current,
 						lastTimestamp: lastTimestampRef.current,
@@ -820,6 +829,7 @@ export function SimulationCanvas({
 				foodRatioSamplesRef.current = result.foodRatioSamples;
 				populationCountSamplesRef.current = result.populationCountSamples;
 				populationDensitySamplesRef.current = result.populationDensitySamples;
+				geneticDiversitySamplesRef.current = result.geneticDiversitySamples;
 				phaseHistoryRef.current = result.phaseHistory;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;

@@ -2,6 +2,7 @@ import {
 	type BoidState,
 	classifyPopulationPhase,
 	computeCohesion,
+	computeGeneticDiversity,
 	type PopulationPhase,
 	type PredatorState,
 	runTick,
@@ -35,6 +36,10 @@ export function computeSingleRunTick(
 		// same shared tick core as the other sample arrays so both execution
 		// paths collect it identically.
 		populationDensitySamples: number[];
+		// genetic-diversity-trend Phase 1: one computed value per tick,
+		// threaded through the same shared tick core as the other sample
+		// arrays so both execution paths collect it identically.
+		geneticDiversitySamples: number[];
 		phaseHistory: PopulationPhase[];
 		elapsedSeconds: number;
 		lastTimestamp: number | null;
@@ -67,6 +72,7 @@ export function computeSingleRunTick(
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
+	geneticDiversitySamples: number[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number;
@@ -138,6 +144,13 @@ export function computeSingleRunTick(
 		...state.populationDensitySamples,
 		rawDensity,
 	];
+	// genetic-diversity-trend Phase 1: one per-tick sample, computed from the
+	// tick's resulting boid population's genes — same `nextBoids` array the
+	// other per-tick computations above already read.
+	const nextGeneticDiversitySamples = [
+		...state.geneticDiversitySamples,
+		computeGeneticDiversity(nextBoids.map((b) => b.genes)),
+	];
 	const phaseHistoryWindow = nextPopulationCountSamples.map(
 		(populationCount, index) => ({
 			populationCount,
@@ -163,6 +176,7 @@ export function computeSingleRunTick(
 		foodRatioSamples: nextFoodRatioSamples,
 		populationCountSamples: nextPopulationCountSamples,
 		populationDensitySamples: nextPopulationDensitySamples,
+		geneticDiversitySamples: nextGeneticDiversitySamples,
 		phaseHistory: nextPhaseHistory,
 		elapsedSeconds: nextElapsedSeconds,
 		lastTimestamp: timestamp,

@@ -137,6 +137,7 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 	beforeEach(() => {
 		capturedCallback = undefined;
 		capturedStopOptions = {};
+		capturedStopMutate = vi.fn();
 
 		// Record calls but never actually schedule a real callback — the test
 		// advances ticks manually by invoking the captured callback itself.
@@ -179,6 +180,47 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 		// The one tick just processed schedules exactly one more frame: two
 		// total, not three or more (which would indicate a double-step).
 		expect(rafMock).toHaveBeenCalledTimes(2);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	// genetic-diversity-trend Phase 1: the client-staged path's own copy of
+	// the sample array, sourced from computeSingleRunTick's real result and
+	// sent in the stop payload — mirrors how the other 4 sample refs are
+	// already exercised via the RAF-driven tick above.
+	it("includes geneticDiversitySamples sourced from computeSingleRunTick in the stop payload", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		act(() => {
+			capturedCallback?.(16);
+		});
+
+		const stopButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent === "Stop",
+		);
+		act(() => {
+			stopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		const lastResult = vi.mocked(computeSingleRunTick).mock.results.at(-1);
+		if (lastResult?.type !== "return") {
+			throw new Error("expected computeSingleRunTick's last call to return");
+		}
+		expect(lastResult.value.geneticDiversitySamples.length).toBeGreaterThan(0);
+		expect(capturedStopMutate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				geneticDiversitySamples: lastResult.value.geneticDiversitySamples,
+			}),
+		);
 
 		act(() => {
 			root.unmount();

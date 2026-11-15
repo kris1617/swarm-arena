@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { BoidGenes, BoidState } from "~/server/simulation/boids";
+import {
+	type BoidGenes,
+	type BoidState,
+	computeGeneticDiversity,
+} from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import {
 	computeSingleRunTick,
@@ -74,6 +78,11 @@ function buildState(
 		// default is fine for every pre-existing test here, none of which
 		// assert on area-population-density state.
 		populationDensitySamples: [],
+		// genetic-diversity-trend Phase 1: threaded alongside
+		// populationDensitySamples — empty default is fine for every
+		// pre-existing test here, none of which assert on genetic-diversity
+		// state.
+		geneticDiversitySamples: [],
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: 0,
@@ -122,6 +131,34 @@ describe("computeSingleRunTick", () => {
 		expect(secondResult.populationDensitySamples).toHaveLength(2);
 		expect(secondResult.populationDensitySamples[1]).toBe(
 			(secondResult.boids.length + secondResult.predators.length) / volume,
+		);
+	});
+
+	// genetic-diversity-trend Phase 1: one computed value per tick, matching
+	// `computeGeneticDiversity` called directly on the tick's resulting
+	// boid genes — acceptable here since it's testing that two call sites
+	// agree on the shared pure function, not mirroring a sort/comparison
+	// implementation the way a vibe-test would.
+	it("appends one genetic-diversity sample per tick, computed from the tick's resulting boid genes", () => {
+		let state = buildState({
+			boids: [
+				buildBoid({ genes: { ...GENES, maxSpeed: 40 } }),
+				buildBoid({ genes: { ...GENES, maxSpeed: 60 } }),
+			],
+			lastTimestamp: 0,
+		});
+
+		const firstResult = computeSingleRunTick(state, 50, PARAMS);
+		expect(firstResult.geneticDiversitySamples).toHaveLength(1);
+		expect(firstResult.geneticDiversitySamples[0]).toBe(
+			computeGeneticDiversity(firstResult.boids.map((b) => b.genes)),
+		);
+
+		state = firstResult;
+		const secondResult = computeSingleRunTick(state, 100, PARAMS);
+		expect(secondResult.geneticDiversitySamples).toHaveLength(2);
+		expect(secondResult.geneticDiversitySamples[1]).toBe(
+			computeGeneticDiversity(secondResult.boids.map((b) => b.genes)),
 		);
 	});
 
