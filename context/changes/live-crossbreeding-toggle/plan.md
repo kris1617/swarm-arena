@@ -9,6 +9,7 @@ Add `crossbreedingEnabled` as a 6th live-adjustable field on both the server-own
 - `crossbreedingEnabled` is already read fresh from `run.params.crossbreedingEnabled` every tick on the server-owned path (`server-run-registry.ts:298`) and consumed at the reproduction-eligibility check in `boids.ts:892` — confirmed via direct code inspection, the same proven-safe read pattern S-27/S-31's 5 fields use.
 - On the client-staged path, `crossbreedingEnabled` is still a plain destructured prop, closed over by the mount effect and read at `simulation-canvas.tsx:756` inside the `tick()`'s `computeSingleRunTick` call — the exact same "closed-over, not ref'd" state the 5 numeric fields were in before S-28 gave them the ref treatment.
 - `RANGED_PARAMETER_NAMES` (`parameter-ranges.ts:6-21`) explicitly excludes `crossbreedingEnabled` today, with a comment noting it's "a boolean toggle, not a ranged numeric parameter." `checkLiveParamRangesSoft`'s signature is `(patch: Partial<Record<RangedParameterName, number>>, ranges: ParameterRanges): string[]` — it assumes every value is a number.
+- **Plan-review F1**: `checkAgainstAdminRanges` (`simulation.ts:152-166`, used by `start`/`startServer`, not `updateRunParams`) also loops `RANGED_PARAMETER_NAMES` and does `value < range.min || value > range.max`. `startInputSchema` already has `crossbreedingEnabled: z.boolean()` — once this field joins `RANGED_PARAMETER_NAMES`, `value`'s type becomes a union including `boolean`, and `<`/`>` against a boolean operand is a genuine TypeScript compile error. This is a third coercion-adjacent site the plan's original draft missed, now covered by Phase 1 item 6 below.
 - `LiveAdjustableParams` (`server-run-registry.ts:58-65`) is `Pick<ServerRunParams, "foodRegenRate" | "protectionThreshold" | "energyThreshold" | "mutationChance" | "mutationMagnitude">`. `Pick` preserves each field's own type from `ServerRunParams` — adding `"crossbreedingEnabled"` to this union gives it type `boolean` with zero extra typing needed; `LiveParamPatch = Partial<LiveAdjustableParams>` and `applyLiveParams(runId, patch: LiveParamPatch)` both already accept a mixed-type patch object without any signature change.
 - `ParameterChangeEntry` (`server-run-registry.ts:69-74`) types `oldValue`/`newValue` as `number`. `applyLiveParams`'s changelog-append loop (`server-run-registry.ts:190-201`) builds these generically for every field in the patch — this is the one place a boolean value needs coercing to `0`/`1` before being pushed, and the coercion should be generic (`typeof value === "boolean" ? Number(value) : value`), not a hardcoded check for this field's name, so it holds for any future boolean live field too.
 - `updateRunParams`'s `checkLiveParamRangesSoft(patch, parameterRanges)` call (`simulation.ts:935`) passes the router's zod-typed `patch` object directly. Once the schema adds `crossbreedingEnabled: z.boolean().optional()`, that object genuinely contains a `boolean` value for this key — `checkLiveParamRangesSoft` itself must NOT change (per this slice's own decision), so the call site must build a converted copy (same generic `typeof value === "boolean" ? Number(value) : value` mapping) to pass in, leaving `patch` itself (passed to `applyLiveParams`) untouched.
@@ -84,6 +85,22 @@ Make the backend accept `crossbreedingEnabled` as a live-adjustable field, with 
 
 **Contract**: Add `crossbreedingEnabled: z.boolean().optional()` to the input schema (lines 902-909). At the `checkLiveParamRangesSoft(patch, parameterRanges)` call (line 935), pass a converted copy instead of `patch` directly — build it via a generic `Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, typeof v === "boolean" ? Number(v) : v]))` — and continue passing the original, unconverted `patch` to `applyLiveParams(runId, patch)` (line 936) unchanged.
 
+#### 6. `checkAgainstAdminRanges`'s boolean-skip (plan-review F1)
+
+**File**: `src/server/api/routers/simulation.ts`
+
+**Intent**: Prevent a TypeScript compile error once `crossbreedingEnabled` joins `RANGED_PARAMETER_NAMES` — this function (used by `start`/`startServer`, not `updateRunParams`) also iterates the full name list and compares each value against its range with `<`/`>`, which is invalid once one of those values can be `boolean`.
+
+**Contract**: In `checkAgainstAdminRanges`'s loop (lines 152-166), add a generic (not field-name-specific) skip at the top: `if (typeof value === "boolean") continue;` — booleans have no meaningful admin-configurable range to validate against, consistent with this slice's own "generic coercion, not field-specific branching" approach everywhere else.
+
+#### 7. Exclude `crossbreedingEnabled` from the admin-settings numeric editor (plan-review F3)
+
+**File**: `src/app/admin/settings/_components/admin-settings-form.tsx`
+
+**Intent**: Avoid rendering a nonsensical "Min/Max/Default" numeric editor for a boolean toggle in the admin settings page — this page iterates `RANGED_PARAMETER_NAMES` directly (line 64), so once the field joins that list it would otherwise appear there unprompted.
+
+**Contract**: At the `RANGED_PARAMETER_NAMES.map((name) => ...)` call (line 64), filter to `RANGED_PARAMETER_NAMES.filter((name) => name !== "crossbreedingEnabled")` before mapping — a one-line, narrowly-scoped exclusion, not a redesign of this form.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -91,12 +108,13 @@ Make the backend accept `crossbreedingEnabled` as a live-adjustable field, with 
 - Type checking passes: `npm run typecheck`
 - Linting passes: `npm run check`
 - `npx vitest run src/server/simulation/server-run-registry.test.ts` — add a test confirming `applyLiveParams` with a `crossbreedingEnabled` patch appends a changelog entry with `oldValue`/`newValue` as `0`/`1` (not `true`/`false`), while `getLiveRunState`'s `liveParams.crossbreedingEnabled` reads back as a genuine boolean.
-- `npx vitest run src/server/api/routers/simulation.test.ts` — add a test confirming `updateRunParams` accepts `crossbreedingEnabled: true`/`false`, applies it, and returns `warnings: []` (a valid boolean never trips the degenerate 0-1 range).
+- `npx vitest run src/server/api/routers/simulation.test.ts` — add a test confirming `updateRunParams` accepts `crossbreedingEnabled: true`/`false`, applies it, and returns `warnings: []` (a valid boolean never trips the degenerate 0-1 range); add a test confirming `start`/`startServer` still accept `crossbreedingEnabled: true`/`false` without throwing (plan-review F1's fix doesn't regress the existing admin-range check for this field).
+- `npx vitest run src/server/simulation/parameter-ranges.test.ts` — update the "exactly one entry per RANGED_PARAMETER_NAMES" test's expected field list to include `crossbreedingEnabled` (plan-review F2).
 - Full suite passes: `npm test`
 
 #### Manual Verification:
 
-- None — covered entirely by the automated tests above; the actual behavior change (reproduction eligibility) is verified end-to-end in Phases 2/3's manual steps.
+- Open the admin settings page; confirm `crossbreedingEnabled` does NOT appear as a Min/Max/Default numeric editor (plan-review F3) — every other ranged field still does.
 
 ## Phase 2: Server-owned panel
 
@@ -220,7 +238,12 @@ None — `crossbreedingEnabled` becomes a new optional key in `LiveAdjustablePar
 - [ ] 1.2 Linting passes: `npm run check`
 - [ ] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
 - [ ] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 1.5 Full suite passes: `npm test`
+- [ ] 1.5 `npx vitest run src/server/simulation/parameter-ranges.test.ts`
+- [ ] 1.6 Full suite passes: `npm test`
+
+#### Manual
+
+- [ ] 1.7 Admin settings page does not show crossbreedingEnabled as a numeric editor
 
 ### Phase 2: Server-owned panel
 
