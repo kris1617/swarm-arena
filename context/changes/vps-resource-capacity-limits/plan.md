@@ -177,16 +177,16 @@ New `admin_settings.maxConcurrentObjectCount` column — standard Drizzle migrat
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 New tests cover aggregate-ceiling rejection, success under ceiling, client-staged exclusion, resume enforcement
-- [x] 1.5 Derived default for `maxConcurrentObjectCount` is documented with its derivation, not a bare number
+- [x] 1.1 Type checking passes: `npm run typecheck` — f33a28e
+- [x] 1.2 Linting passes: `npm run check` — f33a28e
+- [x] 1.3 Full suite still passes: `npm test` — f33a28e
+- [x] 1.4 New tests cover aggregate-ceiling rejection, success under ceiling, client-staged exclusion, resume enforcement — f33a28e
+- [x] 1.5 Derived default for `maxConcurrentObjectCount` is documented with its derivation, not a bare number — f33a28e
 
 #### Manual
 
-- [x] 1.6 Server-owned runs crossing the aggregate ceiling are rejected with a clear message
-- [x] 1.7 Client-staged runs are confirmed unaffected regardless of size
+- [x] 1.6 Server-owned runs crossing the aggregate ceiling are rejected with a clear message — f33a28e
+- [x] 1.7 Client-staged runs are confirmed unaffected regardless of size — f33a28e
 
 ### Phase 2: Container defense-in-depth + capacity policy documentation
 
