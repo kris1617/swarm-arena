@@ -16,6 +16,7 @@ import {
 	type FlockWeights,
 	type PopulationPhase,
 	type PredatorState,
+	type WorldSize,
 } from "~/server/simulation/boids";
 import { createRng, type Rng } from "~/server/simulation/rng";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
@@ -69,7 +70,11 @@ export type LiveParamPatch = Partial<LiveAdjustableParams>;
 
 export type ParameterChangeEntry = {
 	tick: number;
-	field: keyof LiveAdjustableParams;
+	// live-boid-count-adjustment Phase 1: widened to also record a population-
+	// count change (`adjustLivePopulation`'s changelog entry), alongside the
+	// existing scalar `LiveAdjustableParams` fields `applyLiveParams` writes —
+	// `LiveAdjustableParams`/`applyLiveParams` themselves stay untouched.
+	field: keyof LiveAdjustableParams | "boidCount" | "predatorCount";
 	oldValue: number;
 	newValue: number;
 };
@@ -204,6 +209,148 @@ export function applyLiveParams(
 	}
 	run.params = { ...run.params, ...patch };
 	run.lastParamUpdateAt = now;
+	return { status: "applied" };
+}
+
+// live-boid-count-adjustment Phase 1: grows a freshly-generated batch toward
+// the existing array's centroid (or the world center when the array is
+// currently empty) so a population bump doesn't spawn visibly isolated from
+// the rest of the flock — mutates `generated` in place, called before it's
+// appended to the live array.
+function clusterNewIndividuals<T extends { x: number; y: number; z: number }>(
+	generated: T[],
+	current: readonly { x: number; y: number; z: number }[],
+	worldSize: WorldSize,
+): void {
+	const centroid =
+		current.length > 0
+			? {
+					x: current.reduce((s, b) => s + b.x, 0) / current.length,
+					y: current.reduce((s, b) => s + b.y, 0) / current.length,
+					z: current.reduce((s, b) => s + b.z, 0) / current.length,
+				}
+			: { x: worldSize.x / 2, y: worldSize.y / 2, z: worldSize.z / 2 };
+	for (const individual of generated) {
+		individual.x = (individual.x + centroid.x) / 2;
+		individual.y = (individual.y + centroid.y) / 2;
+		individual.z = (individual.z + centroid.z) / 2;
+	}
+}
+
+// live-boid-count-adjustment Phase 1: removes the `removeCount` lowest-energy
+// individuals — same filter-by-membership idiom `applyPredation` (boids.ts)
+// already uses, so a shrink removes the weakest individuals rather than an
+// arbitrary subset.
+function removeLowestEnergy<T extends { energy: number }>(
+	current: T[],
+	removeCount: number,
+): T[] {
+	const sorted = [...current].sort((a, b) => a.energy - b.energy);
+	const toRemove = new Set(sorted.slice(0, removeCount));
+	return current.filter((individual) => !toRemove.has(individual));
+}
+
+// live-boid-count-adjustment Phase 1: the single place that grows or shrinks
+// a run's live `boids`/`predators` array by a signed delta — sibling to
+// `applyLiveParams`, sharing its throttle/changelog pattern (same
+// not-found/throttled checks, same `lastParamUpdateAt` update on success) so
+// a direct/malicious caller can't bypass the 500ms floor by alternating
+// between the two mutations. Exported so the router procedure can call it
+// and so tests can call it directly, same testable-core pattern as
+// `applyLiveParams`/`watchServerRun`.
+export function adjustLivePopulation(
+	runId: number,
+	kind: "boid" | "predator",
+	delta: number,
+): ApplyLiveParamsResult {
+	const run = registry.get(runId);
+	if (!run) {
+		return { status: "not-found" };
+	}
+	const now = Date.now();
+	if (run.lastParamUpdateAt !== null) {
+		const elapsed = now - run.lastParamUpdateAt;
+		if (elapsed < PARAM_UPDATE_THROTTLE_MS) {
+			return {
+				status: "throttled",
+				retryAfterMs: PARAM_UPDATE_THROTTLE_MS - elapsed,
+			};
+		}
+	}
+
+	// Same derivation startServerRun uses (lines ~365-380) — growth needs to
+	// generate new individuals exactly as the initial population was seeded.
+	const maxLifespan = Math.max(60, run.params.maxDurationSeconds);
+	const flockWeights: FlockWeights[] = Array.from(
+		{ length: run.params.flockCount },
+		() => ({
+			separation: run.params.separationWeight,
+			alignment: run.params.alignmentWeight,
+			cohesion: run.params.cohesionWeight,
+		}),
+	);
+	const worldSize = {
+		x: run.params.xyArea,
+		y: run.params.xyArea,
+		z: run.params.zDepth,
+	};
+
+	const oldCount = kind === "boid" ? run.boids.length : run.predators.length;
+	let newCount: number;
+
+	if (kind === "boid") {
+		if (delta > 0) {
+			const generated = createInitialPopulation(
+				delta,
+				run.rng,
+				maxLifespan,
+				run.params.flockCount,
+				flockWeights,
+				worldSize,
+			);
+			clusterNewIndividuals(generated, run.boids, worldSize);
+			run.boids = [...run.boids, ...generated];
+		} else if (delta < 0) {
+			run.boids = removeLowestEnergy(
+				run.boids,
+				Math.min(run.boids.length, -delta),
+			);
+		}
+		newCount = run.boids.length;
+	} else {
+		if (delta > 0) {
+			const generated = createInitialPredators(
+				delta,
+				run.rng,
+				maxLifespan,
+				run.params.flockCount,
+				flockWeights,
+				worldSize,
+			);
+			clusterNewIndividuals(generated, run.predators, worldSize);
+			run.predators = [...run.predators, ...generated];
+		} else if (delta < 0) {
+			run.predators = removeLowestEnergy(
+				run.predators,
+				Math.min(run.predators.length, -delta),
+			);
+		}
+		newCount = run.predators.length;
+	}
+
+	const tick = run.populationCountSamples.length;
+	run.parameterChanges.push({
+		tick,
+		field: kind === "boid" ? "boidCount" : "predatorCount",
+		oldValue: oldCount,
+		newValue: newCount,
+	});
+	run.params =
+		kind === "boid"
+			? { ...run.params, boidCount: newCount }
+			: { ...run.params, predatorCount: newCount };
+	run.lastParamUpdateAt = now;
+
 	return { status: "applied" };
 }
 

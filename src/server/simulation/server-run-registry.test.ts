@@ -6,6 +6,7 @@ import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
 import type { BoidGenes, BoidState } from "~/server/simulation/boids";
 import {
+	adjustLivePopulation,
 	applyLiveParams,
 	getLiveRunState,
 	type ParameterChangeEntry,
@@ -423,6 +424,262 @@ describe("applyLiveParams", () => {
 			status: "applied",
 		});
 		expect(getLiveRunState(runId)?.liveParams.mutationMagnitude).toBe(4);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+});
+
+describe("adjustLivePopulation", () => {
+	it("returns not-found for an unregistered runId", () => {
+		expect(adjustLivePopulation(999_999, "boid", 3)).toEqual({
+			status: "not-found",
+		});
+	});
+
+	it("a positive delta appends exactly delta new boids clustered toward the pre-growth centroid", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(30);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 30,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const beforeCount = before.boids.length;
+		const centroid = {
+			x: before.boids.reduce((s, b) => s + b.x, 0) / before.boids.length,
+			y: before.boids.reduce((s, b) => s + b.y, 0) / before.boids.length,
+			z: before.boids.reduce((s, b) => s + b.z, 0) / before.boids.length,
+		};
+
+		const result = adjustLivePopulation(runId, "boid", 4);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		expect(after.boids).toHaveLength(beforeCount + 4);
+		const added = after.boids.slice(beforeCount);
+		expect(added).toHaveLength(4);
+		for (const boid of added) {
+			const distanceToCentroid = Math.hypot(
+				boid.x - centroid.x,
+				boid.y - centroid.y,
+				boid.z - centroid.z,
+			);
+			// A plain createInitialPopulation call places a boid uniformly at
+			// random across the whole world — on average far from any single
+			// point. Clustering halves the gap to the pre-growth centroid, so
+			// the added boid must land well inside the world's own diagonal.
+			const worldDiagonal = Math.hypot(
+				BASE_PARAMS.xyArea,
+				BASE_PARAMS.xyArea,
+				BASE_PARAMS.zDepth,
+			);
+			expect(distanceToCentroid).toBeLessThan(worldDiagonal / 2);
+		}
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("a positive delta on predators appends exactly delta new predators", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(31);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 31,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const beforeCount = before.predators.length;
+
+		const result = adjustLivePopulation(runId, "predator", 2);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		expect(after?.predators).toHaveLength(beforeCount + 2);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("a negative delta removes exactly |delta| of the lowest-energy boids", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(32);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 32,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		// `getLiveRunState` returns the live array by reference (not a clone),
+		// so mutating energies here directly sets up the registry's real
+		// state — giving each boid an unambiguous, distinct rank. Ticking
+		// alone (4 ticks, same dt, no food/predation pressure in this fixture)
+		// otherwise leaves every boid's energy identical, which would make
+		// any "lowest N" vs. "highest N" cull indistinguishable by energy.
+		const expectedLowest = new Set<BoidState>();
+		for (const [index, boid] of before.boids.entries()) {
+			boid.energy = index;
+			if (index < 3) {
+				expectedLowest.add(boid);
+			}
+		}
+
+		const result = adjustLivePopulation(runId, "boid", -3);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		expect(after.boids).toHaveLength(before.boids.length - 3);
+		// Exact-identity oracle (not a mirror of the production sort): the 3
+		// boids explicitly assigned the lowest energies above must be exactly
+		// the ones gone — this fails if the cull picks the highest-energy
+		// individuals instead, or any other subset.
+		for (const boid of expectedLowest) {
+			expect(after.boids).not.toContain(boid);
+		}
+		for (const boid of before.boids) {
+			if (!expectedLowest.has(boid)) {
+				expect(after.boids).toContain(boid);
+			}
+		}
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("appends a changelog entry with field boidCount/predatorCount and correct oldValue/newValue", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(33);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 33,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const beforeCount = getLiveRunState(runId)?.boids.length ?? 0;
+
+		adjustLivePopulation(runId, "boid", 5);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "boidCount",
+			oldValue: beforeCount,
+			newValue: beforeCount + 5,
+		});
+		activeRunIds.length = 0;
+	});
+
+	it("mirrors run.params.boidCount/predatorCount to the new array length", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(34);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 34,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		adjustLivePopulation(runId, "predator", 3);
+
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		expect(snapshot.params.predatorCount).toBe(snapshot.predators.length);
+		resumeServerRun(runId, snapshot);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("throttles a second adjustLivePopulation call within PARAM_UPDATE_THROTTLE_MS of a prior applyLiveParams call", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(35);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 35,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		expect(applyLiveParams(runId, { mutationMagnitude: 2 })).toEqual({
+			status: "applied",
+		});
+		const second = adjustLivePopulation(runId, "boid", 2);
+		expect(second.status).toBe("throttled");
+		if (second.status === "throttled") {
+			expect(second.retryAfterMs).toBeGreaterThan(0);
+		}
+
+		await vi.advanceTimersByTimeAsync(500);
+		expect(adjustLivePopulation(runId, "boid", 2)).toEqual({
+			status: "applied",
+		});
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("clamps a shrink larger than the current array to removing the whole array, resulting length 0", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(36);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 36,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const result = adjustLivePopulation(runId, "boid", -1000);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		expect(after?.boids).toHaveLength(0);
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
