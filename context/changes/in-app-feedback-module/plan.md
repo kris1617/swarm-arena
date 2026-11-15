@@ -272,11 +272,11 @@ New `feedback_reports` table, brand new with no pre-existing data — no backfil
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly: `npm run db:push`
-- [x] 1.2 Type checking passes: `npm run typecheck`
-- [x] 1.3 Linting passes: `npm run check`
-- [x] 1.4 Full suite still passes: `npm test`
-- [x] 1.5 New `github-client.test.ts` tests pass
+- [x] 1.1 Migration applies cleanly: `npm run db:push` — d27dd42
+- [x] 1.2 Type checking passes: `npm run typecheck` — d27dd42
+- [x] 1.3 Linting passes: `npm run check` — d27dd42
+- [x] 1.4 Full suite still passes: `npm test` — d27dd42
+- [x] 1.5 New `github-client.test.ts` tests pass — d27dd42
 
 ### Phase 2: Feedback router (rate limit + submit)
 
