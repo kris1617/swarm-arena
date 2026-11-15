@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: none
 milestone_id: genetic-diversity-trend
 milestone_seq: 7
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-7: Genetic-diversity trend** — Status: open
+**M-7: Genetic-diversity trend** — Status: done
 
 - **Intent:** Reverse one specific, narrowly-scoped PRD Non-Goal — the analysis view shows only a single final genetic-diversity value today; this milestone adds the per-tick trend the Non-Goal explicitly deferred, invoking its own "revisit if a future slice needs the same series" clause now that the user has asked for it directly.
 - **Source materials:** user description (2026-11-15, immediately after M-6's close) — reverses the Non-Goal at `prd.md`'s Non-Goals section ("No diversity-index trend over time in the analysis view (v1)"); the PRD text itself is left as the historical scoping record (same convention this roadmap already used for S-27 overriding the "No live, in-run parameter adjustment" Non-Goal without editing prd.md).
@@ -80,7 +80,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction | —              | MS-02                                                  | done |
 | S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count and predator count while it is actively running | —              | MS-03                                                  | done |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
-| S-32 | genetic-diversity-trend        | User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value | —              | FR-025, MS-01                                          | ready |
+| S-32 | genetic-diversity-trend        | User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value | —              | FR-025, MS-01                                          | done |
 
 ## Streams
 
@@ -614,10 +614,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** — (`computeGeneticDiversity` (`boids.ts:1266`) already takes exactly the per-tick input shape needed — `boids.map(b => b.genes)` — and the per-tick sample-array pattern this mirrors already exists three times over: `populationCountSamples`/`foodRatioSamples`/`populationDensitySamples`)
 - **Parallel with:** — (sole slice this milestone)
 - **Blockers:** —
-- **Unknowns:**
-  - Should the diversity-trend line share the existing population-count chart's Y-axis, or get its own — population is a count (tens to hundreds) and diversity is a 0-1 ratio, a large scale mismatch on one axis? — Owner: user/implementer during `/10x-plan`. Block: no.
+- **Unknowns:** — (resolved during planning: a separate chart below the population chart, not a shared/dual Y-axis)
 - **Risk:** Low — mirrors three existing precedents exactly (append-per-tick sample array, schema-less `history` JSON blob needs no migration, optional-field guarded read for backward compatibility with older runs lacking the series — same pattern `populationCountSamples?` already uses at `simulation.ts:811`).
-- **Status:** ready
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -695,9 +694,11 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-4: Area, camera, and ops limits** (`area-camera-and-ops-limits`) — closed 2026-11-15. Delivered VPS-measured capacity ceilings for area/object-count/concurrency (F-07), a configurable simulation area with a camera-limited render view (S-24), a new area-aware 5th score factor with backward-compatible run comparison and a formula-version marker (S-25), and an in-app GitHub-Issues-backed feedback module with a DB-backed retry queue (S-26); F-07 and all 3 slices (S-24–S-26) done.
 - **M-5: Live in-run parameter adjustment** (`live-in-run-parameter-adjustment`) — closed 2026-11-15. Delivered live mid-run tuning of a server-owned simulation's flocking weights, food regen rate, and protection threshold (soft-validated against admin ranges, server-side throttled), with a persisted change-log overlaid on the completed run's population chart; S-27 (the milestone's sole slice) done. Scoped to the server-owned execution path only — client-staged parity and population-shape parameter adjustment stay parked for a future milestone.
 - **M-6: Extended live tuning** (`extended-live-tuning`) — closed 2026-11-15. Delivered client-staged live-parameter parity (S-28), a live crossbreeding toggle on both execution paths (S-29, scope expanded from server-owned-only during planning), live boid-AND-predator count adjustment on the server-owned path (S-30, scope expanded from boid-only), and a correction to S-27's own live-adjustable field set (S-31); all 4 slices done. `flockCount` live-adjustment stays parked — investigated and found structurally invasive (every boid's `flockId`/color is set once at birth, never re-derived per tick).
+- **M-7: Genetic-diversity trend** (`genetic-diversity-trend`) — closed 2026-11-15. Delivered a per-tick genetic-diversity sample series across both execution paths and a new trend chart in the analysis view (S-32, the milestone's sole slice), reversing the PRD's own "No diversity-index trend over time" Non-Goal per its own revisit clause. Plan-review caught 2 critical gaps before implementation — the server-owned pause/resume snapshot path (the exact S-25 lesson bug class) and the client-staged execution path, both missing from the initial draft despite the Overview claiming both paths.
 
 ## Done
 
+- **S-32: User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the single final value.** — Archived 2026-11-15 → `context/archive/2026-11-15-genetic-diversity-trend/`. Lesson: —.
 - **S-30: User increases or decreases a running server-owned simulation's boid count AND predator count while it is actively running — both execution paths' object-shape, scope expanded during planning from boid-only, user's explicit choice, since `PredatorState` carries the identical energy/age shape `BoidState` does — and sees the population size change reflected in the live view.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-boid-count-adjustment/`. Lesson: —.
 - **S-29: User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-crossbreeding-toggle/`. Lesson: —.
 - **S-28: User changes a client-staged run's foodRegenRate, protectionThreshold, energyThreshold, mutationChance, and mutationMagnitude while it is actively running.** — Archived 2026-11-15 → `context/archive/2026-11-15-client-staged-live-parameter-parity/`. Lesson: —.
