@@ -147,10 +147,10 @@ None — no schema change; `score`, `status`, and `userId` already exist.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 New unit tests cover ownership scoping, score-descending order, startedAt tie-break, null-score exclusion, non-stopped exclusion, and the 50-row cap
+- [x] 1.1 Type checking passes: `npm run typecheck` — 2c55f8b
+- [x] 1.2 Linting passes: `npm run check` — 2c55f8b
+- [x] 1.3 Full suite still passes: `npm test` — 2c55f8b
+- [x] 1.4 New unit tests cover ownership scoping, score-descending order, startedAt tie-break, null-score exclusion, non-stopped exclusion, and the 50-row cap — 2c55f8b
 
 ### Phase 2: Leaderboard page + nav wiring
 
