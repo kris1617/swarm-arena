@@ -1,7 +1,7 @@
 ---
 change_id: testing-full-lifecycle-regression
 title: Full user-journey regression test (start/pause/resume/stop/compare/cleanup)
-status: in_progress
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 ---

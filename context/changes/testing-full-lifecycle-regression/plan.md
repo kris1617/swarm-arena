@@ -195,7 +195,7 @@ None.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 New test passes: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite passes with no regression: `npx vitest run`
+- [x] 1.1 Type checking passes: `npm run typecheck` — ae40d6b
+- [x] 1.2 Linting passes: `npm run check` — ae40d6b
+- [x] 1.3 New test passes: `npx vitest run src/server/api/routers/simulation.test.ts` — ae40d6b
+- [x] 1.4 Full suite passes with no regression: `npx vitest run` — ae40d6b
