@@ -282,10 +282,10 @@ New `feedback_reports` table, brand new with no pre-existing data — no backfil
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 New router tests pass (rate-limit rejection, immediate-send success, degrade-to-queued)
+- [x] 2.1 Type checking passes: `npm run typecheck` — 02c33b0
+- [x] 2.2 Linting passes: `npm run check` — 02c33b0
+- [x] 2.3 Full suite still passes: `npm test` — 02c33b0
+- [x] 2.4 New router tests pass (rate-limit rejection, immediate-send success, degrade-to-queued) — 02c33b0
 
 ### Phase 3: Background retry worker
 
