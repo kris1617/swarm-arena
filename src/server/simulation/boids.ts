@@ -1,3 +1,4 @@
+import { buildSpatialGrid } from "~/server/simulation/spatial-grid";
 import { BOID_FILL_COLOR, PREDATOR_FILL_COLOR } from "~/styles/theme-colors";
 
 export type FlockWeights = {
@@ -451,7 +452,28 @@ export function stepBoids(
 	dtSeconds: number,
 	predators: PredatorState[] = [],
 ): BoidState[] {
-	const stepped = boids.map((boid) => {
+	// Built once from this tick's starting positions, before any boid's new
+	// position is computed below — positions read through these grids are
+	// never mutated mid-map (the `.map()` callback only ever reads `boids`/
+	// `predators`, assembling a brand-new array), so a single snapshot grid
+	// is safe here, unlike `resolveOverlaps` below (see its own comment).
+	const boidGrid = buildSpatialGrid(
+		boids,
+		(b) => ({ x: b.x, y: b.y, z: b.z }),
+		NEIGHBOR_RADIUS,
+		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+	);
+	const predatorGrid =
+		predators.length > 0
+			? buildSpatialGrid(
+					predators,
+					(p) => ({ x: p.x, y: p.y, z: p.z }),
+					PREDATOR_DETECTION_RADIUS,
+					{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+				)
+			: null;
+
+	const stepped = boids.map((boid, boidIndex) => {
 		// Single O(n) pass per boid instead of two separate `.filter()` calls
 		// (each re-running `distance()` and allocating a throwaway array) —
 		// distance to each other boid is computed exactly once and reused for
@@ -472,8 +494,15 @@ export function stepBoids(
 		let sumDY = 0;
 		let sumDZ = 0;
 
-		for (const other of boids) {
-			if (other === boid) {
+		for (const otherIndex of boidGrid.queryRadius(
+			{ x: boid.x, y: boid.y, z: boid.z },
+			NEIGHBOR_RADIUS,
+		)) {
+			if (otherIndex === boidIndex) {
+				continue;
+			}
+			const other = boids[otherIndex];
+			if (!other) {
 				continue;
 			}
 			const dx = wrappedDelta(boid.x - other.x, INITIAL_AREA_SIZE);
@@ -557,7 +586,14 @@ export function stepBoids(
 		let nearestPredatorDx = 0;
 		let nearestPredatorDy = 0;
 		let nearestPredatorDz = 0;
-		for (const predator of predators) {
+		for (const predatorIndex of predatorGrid?.queryRadius(
+			{ x: boid.x, y: boid.y, z: boid.z },
+			PREDATOR_DETECTION_RADIUS,
+		) ?? []) {
+			const predator = predators[predatorIndex];
+			if (!predator) {
+				continue;
+			}
 			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
 			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
 			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);

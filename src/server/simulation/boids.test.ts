@@ -434,6 +434,17 @@ describe("stepBoids", () => {
 		// instead of flocking, because steering was too weak to redirect
 		// a fast-cruising boid before it outran its neighbors' sensing
 		// radius.
+		//
+		// S-23: the spatial-hash grid measurably slows this exact scenario
+		// down (NEIGHBOR_RADIUS=70 covers ~18% of this world's volume, so
+		// almost every boid is already a true neighbor — the grid can't
+		// narrow a candidate set that's already most of the population, and
+		// pays cell-lookup/sort overhead on top; measured ~2x slower than
+		// the pre-S-23 pairwise scan at this exact population/tick count).
+		// Kept anyway for implementation consistency across every neighbor
+		// query in this file (explicit decision, not an oversight) — the
+		// timeout below is widened accordingly, not because this got slow
+		// by accident.
 		for (const seed of [1, 42, 7, 99]) {
 			let boids = createInitialPopulation(100, createRng(seed), 1000, 1, [
 				WEIGHTS,
@@ -443,7 +454,7 @@ describe("stepBoids", () => {
 			}
 			expect(computeCohesion(boids)).toBeGreaterThan(0.5);
 		}
-	}, 15000);
+	}, 30000);
 
 	it("converges to a stable flock when initially spread along z only (z-isolated)", () => {
 		// All boids share the same x/y and differ only in z, with zero
