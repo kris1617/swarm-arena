@@ -1,7 +1,7 @@
 ---
 change_id: live-boid-count-adjustment
 title: Live-adjust boid and predator count on a running server-owned simulation
-status: implementing
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null

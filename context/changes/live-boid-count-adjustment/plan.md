@@ -231,14 +231,14 @@ None — no DB schema change. `boidCount`/`predatorCount` on `simulationRuns` re
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 5593ae3
+- [x] 3.2 Linting passes: `npm run check` — 5593ae3
+- [x] 3.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx` — 5593ae3
+- [x] 3.4 Full suite passes: `npm test` — 5593ae3
 
 #### Manual
 
-- [x] 3.5 Boid +10 spawns ~10 new boids clustered near the existing flock, visible in the live view
-- [x] 3.6 Boid -10 removes ~10 boids from the live view
-- [x] 3.7 Predator +10/-10 behaves the same as boid +10/-10
-- [x] 3.8 Exceeding maxObjectCount via repeated clicks warns but still applies
+- [x] 3.5 Boid +10 spawns ~10 new boids clustered near the existing flock, visible in the live view — 5593ae3
+- [x] 3.6 Boid -10 removes ~10 boids from the live view — 5593ae3
+- [x] 3.7 Predator +10/-10 behaves the same as boid +10/-10 — 5593ae3
+- [x] 3.8 Exceeding maxObjectCount via repeated clicks warns but still applies — 5593ae3
