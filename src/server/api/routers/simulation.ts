@@ -1,5 +1,5 @@
 import { TRPCError, tracked } from "@trpc/server";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -497,6 +497,37 @@ export const simulationRouter = createTRPCRouter({
 				),
 			)
 			.orderBy(desc(simulationRuns.startedAt))
+			.limit(50);
+	}),
+
+	// leaderboard Phase 1: mirrors listCompleted but ranked by score for the
+	// leaderboard page, scoped to the caller's own completed, scored runs —
+	// same ownership/status filter as listCompleted, plus an isNotNull(score)
+	// guard since a stopped run can have a null score (see listCompleted's
+	// "includes a stopped row with a null score" test).
+	listLeaderboard: protectedProcedure.query(async ({ ctx }) => {
+		const userId = ctx.session.user.id;
+		if (!userId) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+		return ctx.db
+			.select({
+				id: simulationRuns.id,
+				startedAt: simulationRuns.startedAt,
+				boidCount: simulationRuns.boidCount,
+				predatorCount: simulationRuns.predatorCount,
+				score: simulationRuns.score,
+				stoppedAt: simulationRuns.stoppedAt,
+			})
+			.from(simulationRuns)
+			.where(
+				and(
+					eq(simulationRuns.userId, userId),
+					eq(simulationRuns.status, "stopped"),
+					isNotNull(simulationRuns.score),
+				),
+			)
+			.orderBy(desc(simulationRuns.score), desc(simulationRuns.startedAt))
 			.limit(50);
 	}),
 

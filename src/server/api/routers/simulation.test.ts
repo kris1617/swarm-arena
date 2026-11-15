@@ -977,6 +977,253 @@ describe("simulationRouter.listCompleted", () => {
 	});
 });
 
+describe("simulationRouter.listLeaderboard", () => {
+	it("returns only the caller's own runs, not another user's", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [other] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!other) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(other.id);
+
+		const [ownRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.42,
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		await db.insert(simulationRuns).values({
+			userId: other.id,
+			seed: 2,
+			...VALID_START_INPUT,
+			status: "stopped",
+			score: 0.9,
+			stoppedAt: new Date(),
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result).toHaveLength(1);
+		expect(result[0]?.id).toBe(ownRun?.id);
+	});
+
+	it("orders results by score descending", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const now = Date.now();
+		const scores = [0.3, 0.9, 0.5];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: scores[i],
+				// Stagger startedAt so ordering can't accidentally be explained
+				// by insertion/startedAt order instead of score.
+				startedAt: new Date(now - i * 1000),
+				stoppedAt: new Date(),
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result.map((r) => r.score)).toEqual([0.9, 0.5, 0.3]);
+	});
+
+	it("tie-breaks equal scores by startedAt descending", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const now = Date.now();
+		const [olderRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				startedAt: new Date(now - 10_000),
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		const [newerRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 2,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				startedAt: new Date(now),
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result.map((r) => r.id)).toEqual([newerRun?.id, olderRun?.id]);
+	});
+
+	it("excludes a stopped run with a null score", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 1,
+			...VALID_START_INPUT,
+			status: "stopped",
+			stoppedAt: new Date(),
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result).toHaveLength(0);
+	});
+
+	it("excludes a run with a non-stopped status even if scored", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		// Running rows never carry a score in practice, but this asserts the
+		// status filter independent of that, matching the plan's explicit
+		// "exclusion of non-stopped runs" criterion.
+		await db.insert(simulationRuns).values({
+			userId: owner.id,
+			seed: 1,
+			...VALID_START_INPUT,
+			status: "running",
+			score: 0.8,
+		});
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result).toHaveLength(0);
+	});
+
+	it("caps results at 50 rows", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		for (let i = 0; i < 51; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: i,
+				stoppedAt: new Date(),
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result).toHaveLength(50);
+	});
+
+	it("rejects with UNAUTHORIZED when there is no session", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: null,
+		});
+
+		await expect(caller.simulation.listLeaderboard()).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 describe("simulationRouter.getParameterSuggestion", () => {
 	it("computes the suggestion from only the caller's own stopped runs, excluding another user's", async () => {
 		const [owner] = await db
