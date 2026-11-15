@@ -149,15 +149,15 @@ None — no schema change, no data migration.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 Hardcoded-value scan across all five new pages returns zero hits
-- [x] 1.5 Each parameters-page entry is sourced from the imported `DEFAULT_PARAMETER_RANGES` constant, not hand-typed
+- [x] 1.1 Type checking passes: `npm run typecheck` — 9e116f1
+- [x] 1.2 Linting passes: `npm run check` — 9e116f1
+- [x] 1.3 Full suite still passes: `npm test` — 9e116f1
+- [x] 1.4 Hardcoded-value scan across all five new pages returns zero hits — 9e116f1
+- [x] 1.5 Each parameters-page entry is sourced from the imported `DEFAULT_PARAMETER_RANGES` constant, not hand-typed — 9e116f1
 
 #### Manual
 
-- [x] 1.6 All five routes load without error and show expected content
-- [x] 1.7 Index page's four links and each sub-page's back-link work correctly
-- [x] 1.8 Sidebar shows a single "Reference" entry, active only on `/reference` itself
-- [x] 1.9 Parameters page's 13 numeric defaults match `DEFAULT_PARAMETER_RANGES` exactly
+- [x] 1.6 All five routes load without error and show expected content — 9e116f1
+- [x] 1.7 Index page's four links and each sub-page's back-link work correctly — 9e116f1
+- [x] 1.8 Sidebar shows a single "Reference" entry, active only on `/reference` itself — 9e116f1
+- [x] 1.9 Parameters page's 13 numeric defaults match `DEFAULT_PARAMETER_RANGES` exactly — 9e116f1
