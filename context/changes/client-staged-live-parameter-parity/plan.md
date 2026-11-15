@@ -205,12 +205,12 @@ None — `parameterChanges` is a new optional key in a schema-less JSON `history
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [x] 3.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 3.5 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 1d08a7c
+- [x] 3.2 Linting passes: `npm run check` — 1d08a7c
+- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — 1d08a7c
+- [x] 3.4 `npx vitest run src/server/api/routers/simulation.test.ts` — 1d08a7c
+- [x] 3.5 Full suite passes: `npm test` — 1d08a7c
 
 #### Manual
 
-- [x] 3.6 Analysis view's ReferenceLine overlay renders a client-staged run's live edits
+- [x] 3.6 Analysis view's ReferenceLine overlay renders a client-staged run's live edits — 1d08a7c
