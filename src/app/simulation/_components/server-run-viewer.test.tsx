@@ -45,6 +45,23 @@ type CapturedUpdateRunParamsOptions = {
 let capturedUpdateRunParamsOptions: CapturedUpdateRunParamsOptions = {};
 let updateRunParamsMutate: ReturnType<typeof vi.fn>;
 
+// live-boid-count-adjustment Phase 3: same capture-the-options-object pattern
+// as `updateRunParams` above, for the new `adjustLivePopulation` mutation.
+type AdjustPopulationVariables = {
+	runId: number;
+	field: "boidCount" | "predatorCount";
+	delta: number;
+};
+type CapturedAdjustPopulationOptions = {
+	onSuccess?: (
+		data: { ok: true; warnings: string[]; newCount: number },
+		variables: AdjustPopulationVariables,
+	) => void;
+	onError?: (error: { message: string }) => void;
+};
+let capturedAdjustPopulationOptions: CapturedAdjustPopulationOptions = {};
+let adjustPopulationMutate: ReturnType<typeof vi.fn>;
+
 vi.mock("~/trpc/react", () => ({
 	api: {
 		simulation: {
@@ -63,6 +80,18 @@ vi.mock("~/trpc/react", () => ({
 					updateRunParamsMutate = vi.fn();
 					return {
 						mutate: updateRunParamsMutate,
+						isPending: false,
+						data: undefined,
+						error: undefined,
+					};
+				},
+			},
+			adjustLivePopulation: {
+				useMutation: (options: CapturedAdjustPopulationOptions = {}) => {
+					capturedAdjustPopulationOptions = options;
+					adjustPopulationMutate = vi.fn();
+					return {
+						mutate: adjustPopulationMutate,
 						isPending: false,
 						data: undefined,
 						error: undefined,
@@ -111,6 +140,7 @@ describe("ServerRunViewer", () => {
 	beforeEach(() => {
 		capturedWatchOptions = {};
 		capturedUpdateRunParamsOptions = {};
+		capturedAdjustPopulationOptions = {};
 		vi.mocked(drawScene).mockClear();
 		// happy-dom doesn't implement a real canvas 2d context; stub
 		// getContext so the component's `if (ctx)` guard passes and
@@ -416,6 +446,128 @@ describe("ServerRunViewer", () => {
 
 			expect(container.textContent).toContain("Takes effect immediately");
 			expect(container.textContent).toContain("Affects future offspring only");
+		});
+	});
+
+	describe("live-boid-count-adjustment Phase 3: population step buttons", () => {
+		function renderViewer() {
+			act(() => {
+				root.render(
+					<ServerRunViewer
+						onClose={vi.fn()}
+						runId={42}
+						xyArea={200}
+						zDepth={200}
+					/>,
+				);
+			});
+		}
+
+		function pushSnapshot(boids: unknown[], predators: unknown[]) {
+			act(() => {
+				capturedWatchOptions.onData?.({
+					id: "0",
+					data: { boids, predators, liveParams: LIVE_PARAMS_FIXTURE },
+				});
+			});
+		}
+
+		function findButton(label: string) {
+			return Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === label,
+			);
+		}
+
+		it("renders a boid-count and predator-count control with the current count and two buttons, under 'Takes effect immediately'", () => {
+			renderViewer();
+			pushSnapshot([{ x: 1 }, { x: 2 }], [{ x: 3 }]);
+
+			expect(container.textContent).toContain("Boid count: current 2");
+			expect(container.textContent).toContain("Predator count: current 1");
+
+			const immediateHeading = Array.from(container.querySelectorAll("p")).find(
+				(p) => p.textContent === "Takes effect immediately",
+			);
+			expect(immediateHeading).not.toBeUndefined();
+			const immediateSection = immediateHeading?.nextElementSibling;
+			expect(immediateSection?.textContent).toContain("Boid count");
+			expect(immediateSection?.textContent).toContain("Predator count");
+
+			// Two buttons (-10/+10) per control, four total.
+			expect(findButton("-10")).not.toBeUndefined();
+			expect(findButton("+10")).not.toBeUndefined();
+		});
+
+		it("clicking a boid-count +10 button calls adjustLivePopulation.mutate with field 'boidCount' and delta 10", () => {
+			renderViewer();
+			pushSnapshot([{ x: 1 }], []);
+
+			const plusButtons = Array.from(
+				container.querySelectorAll("button"),
+			).filter((b) => b.textContent === "+10");
+			expect(plusButtons.length).toBeGreaterThan(0);
+			act(() => {
+				plusButtons[0]?.dispatchEvent(
+					new MouseEvent("click", { bubbles: true }),
+				);
+			});
+
+			expect(adjustPopulationMutate).toHaveBeenCalledTimes(1);
+			expect(adjustPopulationMutate).toHaveBeenCalledWith({
+				runId: 42,
+				field: "boidCount",
+				delta: 10,
+			});
+		});
+
+		it("clicking a predator-count -10 button calls adjustLivePopulation.mutate with field 'predatorCount' and delta -10", () => {
+			renderViewer();
+			pushSnapshot([], [{ x: 1 }]);
+
+			const minusButtons = Array.from(
+				container.querySelectorAll("button"),
+			).filter((b) => b.textContent === "-10");
+			// Second control rendered is the predator-count row.
+			expect(minusButtons.length).toBeGreaterThan(1);
+			act(() => {
+				minusButtons[1]?.dispatchEvent(
+					new MouseEvent("click", { bubbles: true }),
+				);
+			});
+
+			expect(adjustPopulationMutate).toHaveBeenCalledTimes(1);
+			expect(adjustPopulationMutate).toHaveBeenCalledWith({
+				runId: 42,
+				field: "predatorCount",
+				delta: -10,
+			});
+		});
+
+		it("renders a warning returned from adjustLivePopulation in the panel's warning list", () => {
+			renderViewer();
+			pushSnapshot([{ x: 1 }], []);
+
+			const plusButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "+10",
+			);
+			act(() => {
+				plusButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			act(() => {
+				capturedAdjustPopulationOptions.onSuccess?.(
+					{
+						ok: true,
+						warnings: ["boidCount + predatorCount would be 11, over the limit"],
+						newCount: 11,
+					},
+					{ runId: 42, field: "boidCount", delta: 10 },
+				);
+			});
+
+			expect(container.textContent).toContain(
+				"boidCount + predatorCount would be 11, over the limit",
+			);
 		});
 	});
 });

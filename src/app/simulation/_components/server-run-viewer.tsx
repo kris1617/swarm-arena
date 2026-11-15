@@ -109,6 +109,13 @@ export function ServerRunViewer({
 		boids: BoidState[];
 		predators: PredatorState[];
 	} | null>(null);
+	// live-boid-count-adjustment Phase 3: current boid/predator counts for the
+	// population step-button control, read off the same ~150ms subscription
+	// push `lastSnapshotRef` already receives — no new snapshot field needed.
+	const [liveCounts, setLiveCounts] = useState<{
+		boids: number;
+		predators: number;
+	} | null>(null);
 
 	const { cameraRef, sizeRef, recenter } = useCamera({
 		boidLength: BOID_LENGTH,
@@ -346,6 +353,96 @@ export function ServerRunViewer({
 		);
 	}
 
+	// live-boid-count-adjustment Phase 3: each click is a complete, immediate
+	// action (no staging/dirty-tracking, unlike the LIVE_FIELDS Apply flow) —
+	// mirrors S-29's client-staged Switch precedent. Cooldown/flash state is
+	// scoped to these two controls specifically (not shared with
+	// `applyCooldown`/`flashFields`, which belong to the batched scalar-field
+	// Apply flow), but shared between the boid and predator rows themselves —
+	// a population click is rare enough that a single shared cooldown is a
+	// reasonable simplification over per-kind state.
+	const [populationCooldown, setPopulationCooldown] = useState(false);
+	const [flashPopulationFields, setFlashPopulationFields] = useState<
+		ReadonlySet<"boidCount" | "predatorCount">
+	>(new Set());
+
+	const adjustPopulationMutation =
+		api.simulation.adjustLivePopulation.useMutation({
+			onSuccess: (data, variables) => {
+				// `boidCount`/`predatorCount` aren't in `LIVE_FIELDS`, so these
+				// warnings already fall through `unmatchedWarnings()` without any
+				// change there; dedupe by prefix across repeated clicks the same
+				// way `updateRunParamsMutation`'s onSuccess replaces its own
+				// fields' prior warnings rather than accumulating stale ones.
+				setWarnings((current) => [
+					...current.filter((warning) => !warning.startsWith(variables.field)),
+					...data.warnings,
+				]);
+				setFlashPopulationFields(new Set([variables.field]));
+				setTimeout(() => {
+					setFlashPopulationFields(new Set());
+				}, FLASH_DURATION_MS);
+				setPopulationCooldown(true);
+				setTimeout(() => {
+					setPopulationCooldown(false);
+				}, APPLY_COOLDOWN_MS);
+			},
+			onError: (error) => {
+				// Reuse the same error surface the `watch` subscription and
+				// `updateRunParamsMutation` already use, per the lessons.md rule
+				// on a single error-display mechanism per component.
+				setViewError(error.message);
+			},
+		});
+
+	function handleAdjustPopulation(
+		field: "boidCount" | "predatorCount",
+		delta: number,
+	) {
+		adjustPopulationMutation.mutate({ runId, field, delta });
+	}
+
+	// live-boid-count-adjustment Phase 3: shared per-kind render for the
+	// "current: N [-10] [+10]" rows, same ring-flash treatment
+	// `renderLiveField` gives the scalar fields above.
+	function renderPopulationControl(
+		field: "boidCount" | "predatorCount",
+		label: string,
+		currentCount: number,
+	) {
+		return (
+			<div
+				className={cn(
+					"flex items-center justify-between gap-2 rounded-xl transition-shadow",
+					flashPopulationFields.has(field) ? "ring-chart-2 ring-2" : "",
+				)}
+				key={field}
+			>
+				<span className="text-foreground text-sm">
+					{label}: current {currentCount}
+				</span>
+				<div className="flex gap-2">
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-3 py-1 text-xs font-semibold"
+						disabled={adjustPopulationMutation.isPending || populationCooldown}
+						onClick={() => handleAdjustPopulation(field, -10)}
+						type="button"
+					>
+						-10
+					</Button>
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-3 py-1 text-xs font-semibold"
+						disabled={adjustPopulationMutation.isPending || populationCooldown}
+						onClick={() => handleAdjustPopulation(field, 10)}
+						type="button"
+					>
+						+10
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
 	function redraw() {
 		const snapshot = lastSnapshotRef.current;
 		const ctx = canvasRef.current?.getContext("2d");
@@ -407,6 +504,10 @@ export function ServerRunViewer({
 				// still broken.
 				setViewError(null);
 				lastSnapshotRef.current = data;
+				setLiveCounts({
+					boids: data.boids.length,
+					predators: data.predators.length,
+				});
 				redraw();
 				syncLiveParams(data.liveParams);
 			},
@@ -488,6 +589,20 @@ export function ServerRunViewer({
 						{IMMEDIATE_FIELDS.map((field) =>
 							renderLiveField(field, liveValues),
 						)}
+						{liveCounts
+							? renderPopulationControl(
+									"boidCount",
+									"Boid count",
+									liveCounts.boids,
+								)
+							: null}
+						{liveCounts
+							? renderPopulationControl(
+									"predatorCount",
+									"Predator count",
+									liveCounts.predators,
+								)
+							: null}
 					</div>
 					<p className="text-foreground text-sm font-semibold">
 						Affects future offspring only
