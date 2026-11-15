@@ -3,7 +3,7 @@ project: swarm-arena
 version: 1
 status: draft
 created: 2026-11-09
-updated: 2026-11-14
+updated: 2026-11-15
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
@@ -65,7 +65,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-16 | dashboard-restyle               | User sees the post-login dashboard restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-17 | staging-live-view-restyle       | User sees the simulation staging form and live view restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
-| S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | proposed |
+| S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | done |
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
@@ -412,7 +412,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — net-new page, built directly on F-06's shell with no prior page to preserve; reuses the same ownership-scoped query pattern every other run-listing query in this router already follows.
-- **Status:** proposed
+- **Status:** done
 
 ### S-20: Reference and documentation pages
 
@@ -524,6 +524,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-19: User sees a leaderboard of their own completed runs ranked by score, highest first.** — Archived 2026-11-15 → `context/archive/2026-11-14-leaderboard/`. Lesson: —.
 - **S-22: User temporarily elevates their own account (or another account) to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then reverts — the elevation is reversible, not a permanent role change.** — Archived 2026-11-14 → `context/archive/2026-11-14-temporary-admin-elevation/`. Lesson: NextAuth's database-strategy session round-trips through JSON before any consumer reads it, turning a Date-typed column into an ISO string (or the adapter's own raw number) at runtime — a helper reading a session-sourced timestamp should normalize with `new Date(x).getTime()` rather than trust the Drizzle column's declared type, and this gap went undetected by unit tests because every fabricated session fixture passed a real `Date`.
 - **S-21: User sees a run-specific optimization suggestion on a completed run's analysis view, derived from that single run's own phase/resource history — distinct from S-13's cross-run suggestion.** — Archived 2026-11-14 → `context/archive/2026-11-14-post-run-optimization-suggestion/`. Lesson: —.
 - **S-18: User sees the run-analysis and run-comparison pages restyled with the new design direction, with no change to existing chart/table behavior.** — Archived 2026-11-14 → `context/archive/2026-11-14-analysis-comparison-restyle/`. Lesson: —.
