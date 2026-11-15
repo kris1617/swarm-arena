@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
@@ -238,7 +237,11 @@ describe("startCorpusRun / collectAndCleanupCorpusRun round trip", () => {
 			collectAndCleanupCorpusRun(db, owner.id, run.id),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
-		// Manual cleanup since the run was never allowed to finish naturally.
-		await db.delete(users).where(eq(users.id, owner.id));
+		// collectAndCleanupCorpusRun cleans up the fixture owner even on
+		// this throw path (finally-based cleanup) — no manual delete needed.
+		const ownerRow = await db.query.users.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, owner.id),
+		});
+		expect(ownerRow).toBeUndefined();
 	});
 });

@@ -165,18 +165,27 @@ export async function startCorpusRun(
 
 	const restoreRanges = await ensureAdminRangesAdmit(db, params);
 
-	const caller = callerFor(db, owner.id);
-	const { runId } = await callProcedure(caller.simulation.startServer(params));
-
-	// `checkAgainstAdminRanges` only runs at start time, never mid-tick, so
-	// restoring the admin ranges immediately after `startServer` returns
-	// cannot affect the run already in progress.
-	await db
-		.update(adminSettings)
-		.set({ parameterRanges: restoreRanges })
-		.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
-
-	return { runId, ownerId: owner.id };
+	try {
+		const caller = callerFor(db, owner.id);
+		const { runId } = await callProcedure(
+			caller.simulation.startServer(params),
+		);
+		return { runId, ownerId: owner.id };
+	} catch (err) {
+		// `startServer` never got to register a run — the fixture owner is
+		// the harness's own resource, so it cleans it up on this path too.
+		await db.delete(users).where(eq(users.id, owner.id));
+		throw err;
+	} finally {
+		// `checkAgainstAdminRanges` only runs at start time, never mid-tick,
+		// so restoring the admin ranges as soon as `startServer` settles —
+		// success or throw — cannot affect a run already in progress, and
+		// must happen either way: this row is shared with real traffic.
+		await db
+			.update(adminSettings)
+			.set({ parameterRanges: restoreRanges })
+			.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+	}
 }
 
 // Reads back a completed run's full analysis payload via the real
@@ -191,27 +200,31 @@ export async function collectAndCleanupCorpusRun(
 	ownerId: string,
 	runId: number,
 ): Promise<CorpusRunRecord> {
-	const caller = callerFor(db, ownerId);
-	const analysis = await callProcedure(
-		caller.simulation.getRunAnalysis({ runId }),
-	);
+	try {
+		const caller = callerFor(db, ownerId);
+		const analysis = await callProcedure(
+			caller.simulation.getRunAnalysis({ runId }),
+		);
 
-	const record: CorpusRunRecord = {
-		params: {
-			boidCount: analysis.boidCount,
-			predatorCount: analysis.predatorCount,
-			foodStockInitial: analysis.foodStockInitial,
-			foodRegenRate: analysis.foodRegenRate,
-			protectionThreshold: analysis.protectionThreshold,
-		},
-		score: analysis.score,
-		history: analysis.history,
-		completedCycles: analysis.completedCycles,
-		finalGeneticDiversity: analysis.finalGeneticDiversity,
-		runOptimizationSuggestion: analysis.runOptimizationSuggestion,
-	};
-
-	await db.delete(users).where(eq(users.id, ownerId));
-
-	return record;
+		return {
+			params: {
+				boidCount: analysis.boidCount,
+				predatorCount: analysis.predatorCount,
+				foodStockInitial: analysis.foodStockInitial,
+				foodRegenRate: analysis.foodRegenRate,
+				protectionThreshold: analysis.protectionThreshold,
+			},
+			score: analysis.score,
+			history: analysis.history,
+			completedCycles: analysis.completedCycles,
+			finalGeneticDiversity: analysis.finalGeneticDiversity,
+			runOptimizationSuggestion: analysis.runOptimizationSuggestion,
+		};
+	} finally {
+		// Fixture owner is this harness's own resource — clean it up
+		// whether `getRunAnalysis` succeeded or threw (e.g. the documented
+		// "run not stopped yet" case), so a caller's thrown precondition
+		// violation never leaks a row.
+		await db.delete(users).where(eq(users.id, ownerId));
+	}
 }
