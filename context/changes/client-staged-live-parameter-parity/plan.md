@@ -98,13 +98,15 @@ Give the 5 target fields the `showMinimap`/`showBoundary` ref treatment inside `
 
 **Contract**: Reuse `LIVE_FIELDS`/`LIVE_FIELD_LABELS`/`IMMEDIATE_FIELDS`/`FUTURE_OFFSPRING_FIELDS` as local constants typed against `LiveAdjustableParams` (type-only import from `~/server/simulation/server-run-registry`, same as `server-run-viewer.tsx:26` already does). An `handleApplyLiveField(field, value)` handler: writes `value` into the matching ref, calls `checkLiveParamRangesSoft` (now from `parameter-ranges.ts`, Phase 1) against a single-field patch using ranges from `api.simulation.getParameterRanges.useQuery()` (falling back to `DEFAULT_PARAMETER_RANGES`, same pattern as `page.tsx:56-57`), stores the resulting warnings for display, and triggers the same `APPLY_COOLDOWN_MS`/`FLASH_DURATION_MS` flash/disable behavior `server-run-viewer.tsx:211-217` uses (copy the constants; 500ms/1000ms respectively, per this slice's own decision to keep UI consistency with the server-owned panel).
 
+**Test setup note** (plan-review F1): `simulation-canvas.test.tsx`'s existing `vi.mock("~/trpc/react", ...)` (lines 13-29) defines only `api.simulation.stop.useMutation`. Rendering `SimulationCanvas` with this new panel added will call `api.simulation.getParameterRanges.useQuery()`, which doesn't exist on that mock and will throw. Extend the mock first: add a `getParameterRanges: { useQuery: () => ({ data: undefined }) }` stub to the same `api.simulation` object, before writing any of this phase's new tests.
+
 ### Success Criteria:
 
 #### Automated Verification:
 
 - Type checking passes: `npm run typecheck`
 - Linting passes: `npm run check`
-- `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — add tests asserting: (a) changing a ref via the panel's Apply handler and calling `computeSingleRunTick` (or triggering a tick) reflects the new value; (b) an out-of-range value produces a warning matching `checkLiveParamRangesSoft`'s format; (c) the panel renders exactly 5 fields under the two expected headings, mirroring `server-run-viewer.test.tsx`'s equivalent assertions.
+- `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — first extend the existing `vi.mock("~/trpc/react", ...)` with a `getParameterRanges.useQuery` stub (see Test setup note above), then add tests asserting: (a) changing a ref via the panel's Apply handler and calling `computeSingleRunTick` (or triggering a tick) reflects the new value; (b) an out-of-range value produces a warning matching `checkLiveParamRangesSoft`'s format; (c) the panel renders exactly 5 fields under the two expected headings, mirroring `server-run-viewer.test.tsx`'s equivalent assertions.
 - Full suite passes: `npm test`
 
 #### Manual Verification:
