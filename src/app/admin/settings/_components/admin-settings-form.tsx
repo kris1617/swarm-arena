@@ -20,11 +20,13 @@ export function AdminSettingsForm() {
 
 	const [ranges, setRanges] = useState<ParameterRanges | null>(null);
 	const [maxObjectCount, setMaxObjectCount] = useState(500);
+	const [maxConcurrentObjectCount, setMaxConcurrentObjectCount] = useState(150);
 
 	useEffect(() => {
 		if (rangesQuery.data) {
 			setRanges(rangesQuery.data.parameterRanges);
 			setMaxObjectCount(rangesQuery.data.maxObjectCount);
+			setMaxConcurrentObjectCount(rangesQuery.data.maxConcurrentObjectCount);
 		}
 	}, [rangesQuery.data]);
 
@@ -52,7 +54,11 @@ export function AdminSettingsForm() {
 				if (!ranges) {
 					return;
 				}
-				updateMutation.mutate({ parameterRanges: ranges, maxObjectCount });
+				updateMutation.mutate({
+					parameterRanges: ranges,
+					maxObjectCount,
+					maxConcurrentObjectCount,
+				});
 			}}
 		>
 			{RANGED_PARAMETER_NAMES.map((name) => (
@@ -122,6 +128,20 @@ export function AdminSettingsForm() {
 					onChange={(e) => setMaxObjectCount(Number(e.target.value))}
 					type="number"
 					value={maxObjectCount}
+				/>
+			</label>
+			<label
+				className="flex flex-col gap-1"
+				htmlFor="max-concurrent-object-count"
+			>
+				Max combined object count across concurrent server runs (F-07)
+				<Input
+					className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
+					id="max-concurrent-object-count"
+					min={1}
+					onChange={(e) => setMaxConcurrentObjectCount(Number(e.target.value))}
+					type="number"
+					value={maxConcurrentObjectCount}
 				/>
 			</label>
 			<Button

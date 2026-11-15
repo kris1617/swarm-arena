@@ -802,6 +802,114 @@ describe("simulationRouter.startServer", () => {
 	});
 });
 
+describe("simulationRouter.startServer — concurrent object-count ceiling (F-07)", () => {
+	function callerFor(userId: string) {
+		return createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: userId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+	}
+
+	it("rejects a startServer whose combined population with other active server runs would exceed maxConcurrentObjectCount, and rolls the row back to stopped", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+		const caller = callerFor(owner.id);
+
+		// 80 + 80 = 160, over the seeded default ceiling of 150.
+		const first = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 70,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(first.runId);
+
+		await expect(
+			caller.simulation.startServer({
+				...VALID_START_INPUT,
+				boidCount: 70,
+				predatorCount: 10,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		const rows = await db
+			.select()
+			.from(simulationRuns)
+			.where(eq(simulationRuns.userId, owner.id));
+		// The first run stays running; the second (rejected) run's row was
+		// rolled back to stopped, not left dangling as "running" with
+		// nothing tracking it.
+		expect(rows.find((r) => r.id === first.runId)?.status).toBe("running");
+		expect(rows.find((r) => r.id !== first.runId)?.status).toBe("stopped");
+	});
+
+	it("allows a startServer whose combined population stays under maxConcurrentObjectCount", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+		const caller = callerFor(owner.id);
+
+		// 60 + 60 = 120, under the seeded default ceiling of 150.
+		const first = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 50,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(first.runId);
+
+		const second = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 50,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(second.runId);
+
+		expect(isServerRunActive(first.runId)).toBe(true);
+		expect(isServerRunActive(second.runId)).toBe(true);
+	});
+
+	it("never counts a client-staged (non-server) run toward the ceiling", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+		const caller = callerFor(owner.id);
+
+		// A client-staged run with a population alone exceeding the ceiling —
+		// it must never be registered in server-run-registry.ts, so it must
+		// never count toward (or be blocked by) the aggregate check below.
+		await caller.simulation.start({
+			...VALID_START_INPUT,
+			boidCount: 120,
+			predatorCount: 40,
+		});
+
+		const result = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 50,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(result.runId);
+
+		expect(isServerRunActive(result.runId)).toBe(true);
+	});
+});
+
 describe("simulationRouter.listRunning", () => {
 	it("returns only the caller's own running rows, not another user's", async () => {
 		const [owner] = await db
@@ -1954,6 +2062,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 				parameterRanges: (await caller.simulation.getParameterRanges())
 					.parameterRanges,
 				maxObjectCount: 500,
+				maxConcurrentObjectCount: 150,
 			}),
 		).rejects.toMatchObject({
 			code: "FORBIDDEN",
@@ -1983,6 +2092,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 				boidCount: { min: 1, max: 20, default: 10 },
 			},
 			maxObjectCount: current.maxObjectCount,
+			maxConcurrentObjectCount: current.maxConcurrentObjectCount,
 		});
 
 		const memberCaller = createCaller({
@@ -2022,6 +2132,7 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 					boidCount: { min: 100, max: 50, default: 10 },
 				},
 				maxObjectCount: current.maxObjectCount,
+				maxConcurrentObjectCount: current.maxConcurrentObjectCount,
 			}),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
@@ -2164,6 +2275,42 @@ describe("simulationRouter.savePause / resume", () => {
 		// afterEach's trackedServerRunIds loop calls stopServerRun, a no-op
 		// against the registry, so finish it explicitly via resume+stop.
 		await caller.simulation.resume({ runId });
+	});
+
+	it("rejects resume with BAD_REQUEST when it would exceed maxConcurrentObjectCount (F-07), leaving the row saved", async () => {
+		const { caller } = await insertOwnerAndCaller();
+
+		// Run B is started and saved FIRST, while nothing else is active, so
+		// its own startServer call doesn't itself hit the ceiling. Run A is
+		// then started (also alone, since B is merely "saved" — not an
+		// active server run — at this point). Only then does resuming B
+		// bring the total to 160, over the seeded default ceiling of 150.
+		const runB = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 70,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(runB.runId);
+		await caller.simulation.savePause({ runId: runB.runId });
+
+		const runA = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 70,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(runA.runId);
+
+		await expect(
+			caller.simulation.resume({ runId: runB.runId }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		expect(isServerRunActive(runB.runId)).toBe(false);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runB.runId),
+		});
+		expect(row?.status).toBe("saved");
 	});
 
 	it("listSaved returns only the caller's own saved rows", async () => {

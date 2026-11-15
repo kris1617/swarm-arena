@@ -1,0 +1,1 @@
+ALTER TABLE `.bootstrap-scaffold_admin_settings` ADD `maxConcurrentObjectCount` integer DEFAULT 150 NOT NULL;

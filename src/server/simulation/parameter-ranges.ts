@@ -49,3 +49,13 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;
+
+// F-07: caps the SUM of boidCount+predatorCount across every one of a
+// user's currently-ticking server-owned runs at once — distinct from
+// DEFAULT_MAX_OBJECT_COUNT, which only bounds a single run.
+// Measured, not guessed: this engine's tick time crosses the 16ms
+// real-time budget around 200 combined individuals on this project's VPS
+// (single-threaded JS tick execution — 4 vCPUs don't parallelize it). 150
+// leaves margin below that measured breakeven point. See
+// context/foundation/capacity-limits.md.
+export const DEFAULT_MAX_CONCURRENT_OBJECT_COUNT = 150;

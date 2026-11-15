@@ -19,6 +19,7 @@ import {
 	segmentCompletedCycles,
 } from "~/server/simulation/boids";
 import {
+	DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	DEFAULT_MAX_OBJECT_COUNT,
 	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
@@ -70,9 +71,11 @@ const startInputSchema = z.object({
 // constraint.
 const ADMIN_SETTINGS_ID = 1;
 
-async function getOrSeedAdminSettings(
-	db: typeof dbSingleton,
-): Promise<{ parameterRanges: ParameterRanges; maxObjectCount: number }> {
+async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
+	parameterRanges: ParameterRanges;
+	maxObjectCount: number;
+	maxConcurrentObjectCount: number;
+}> {
 	const existing = await db.query.adminSettings.findFirst({
 		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
 	});
@@ -80,6 +83,7 @@ async function getOrSeedAdminSettings(
 		return {
 			parameterRanges: existing.parameterRanges as ParameterRanges,
 			maxObjectCount: existing.maxObjectCount,
+			maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
 		};
 	}
 	// First-run seed: insert the default row matching the pre-S-04 hardcoded
@@ -88,11 +92,54 @@ async function getOrSeedAdminSettings(
 		id: ADMIN_SETTINGS_ID,
 		parameterRanges: DEFAULT_PARAMETER_RANGES,
 		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	});
 	return {
 		parameterRanges: DEFAULT_PARAMETER_RANGES,
 		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	};
+}
+
+// F-07: the sum of boidCount+predatorCount across every one of `userId`'s
+// OTHER currently server-ticking runs (excluding `excludeRunId`, the run
+// being started/resumed right now — it isn't registered in
+// server-run-registry.ts yet at the point this is called) plus
+// `thisRunObjectCount` must not exceed the admin's configured
+// `maxConcurrentObjectCount`. Scoped to server-owned ticking specifically
+// via `isServerRunActive` — a client-staged `start` run also shows
+// `status: "running"` in the DB but never touches server-run-registry.ts,
+// so it must never count toward or be blocked by this ceiling.
+async function assertWithinConcurrentObjectCeiling(
+	db: typeof dbSingleton,
+	userId: string,
+	thisRunObjectCount: number,
+	excludeRunId: number,
+): Promise<void> {
+	const { maxConcurrentObjectCount } = await getOrSeedAdminSettings(db);
+	const runningRows = await db
+		.select({
+			id: simulationRuns.id,
+			boidCount: simulationRuns.boidCount,
+			predatorCount: simulationRuns.predatorCount,
+		})
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.status, "running"),
+			),
+		);
+	const otherServerTickingTotal = runningRows
+		.filter((row) => row.id !== excludeRunId && isServerRunActive(row.id))
+		.reduce((sum, row) => sum + row.boidCount + row.predatorCount, 0);
+	const total = otherServerTickingTotal + thisRunObjectCount;
+	if (total > maxConcurrentObjectCount) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `Starting this run would bring your combined server-run population to ${total}, over the ${maxConcurrentObjectCount} limit — stop another server run first.`,
+		});
+	}
 }
 
 function checkAgainstAdminRanges(
@@ -235,6 +282,23 @@ export const simulationRouter = createTRPCRouter({
 				userId,
 				input,
 			);
+			try {
+				await assertWithinConcurrentObjectCeiling(
+					ctx.db,
+					userId,
+					input.boidCount + input.predatorCount,
+					runId,
+				);
+			} catch (error) {
+				// Same rollback shape as the startServerRun catch below — the
+				// row above is already "running" with nothing now tracking
+				// it, so it must not silently occupy a slot forever.
+				await ctx.db
+					.update(simulationRuns)
+					.set({ status: "stopped", stoppedAt: new Date() })
+					.where(eq(simulationRuns.id, runId));
+				throw error;
+			}
 			try {
 				startServerRun({ runId, seed, ...input });
 			} catch (error) {
@@ -843,6 +907,13 @@ export const simulationRouter = createTRPCRouter({
 				});
 			}
 
+			await assertWithinConcurrentObjectCeiling(
+				ctx.db,
+				run.userId,
+				run.boidCount + run.predatorCount,
+				run.id,
+			);
+
 			try {
 				resumeServerRun(input.runId, run.savedState as ServerRunSnapshot);
 			} catch (error) {
@@ -899,6 +970,7 @@ export const simulationRouter = createTRPCRouter({
 					}),
 				),
 				maxObjectCount: z.number().int().positive(),
+				maxConcurrentObjectCount: z.number().int().positive(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -917,12 +989,14 @@ export const simulationRouter = createTRPCRouter({
 					id: ADMIN_SETTINGS_ID,
 					parameterRanges: input.parameterRanges,
 					maxObjectCount: input.maxObjectCount,
+					maxConcurrentObjectCount: input.maxConcurrentObjectCount,
 				})
 				.onConflictDoUpdate({
 					target: adminSettings.id,
 					set: {
 						parameterRanges: input.parameterRanges,
 						maxObjectCount: input.maxObjectCount,
+						maxConcurrentObjectCount: input.maxConcurrentObjectCount,
 					},
 				});
 			return { ok: true };

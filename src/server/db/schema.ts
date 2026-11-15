@@ -158,4 +158,15 @@ export const adminSettings = createTable("admin_settings", (d) => ({
 	// FR-018's combined boid+predator object-count cap — previously
 	// hardcoded to 500 in simulation.ts's zod schema.
 	maxObjectCount: d.integer().notNull().default(500),
+	// F-07: caps the SUM of boidCount+predatorCount across every one of a
+	// user's currently-ticking server-owned runs at once (MAX_PARALLEL_RUNS
+	// already caps run *count*, not combined population) — distinct from
+	// maxObjectCount, which only bounds a single run. Default 150 is
+	// measured, not guessed: this engine's tick time crosses the 16ms
+	// real-time budget around 200 combined individuals on this project's
+	// VPS, and tick execution is single-threaded JS (no worker_threads),
+	// so the VPS's 4 vCPUs don't parallelize it — 150 leaves margin below
+	// that measured breakeven point. See
+	// context/foundation/capacity-limits.md.
+	maxConcurrentObjectCount: d.integer().notNull().default(150),
 }));
