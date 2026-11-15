@@ -7,9 +7,9 @@ updated: 2026-11-15
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
-milestone_id: area-camera-and-ops-limits
-milestone_seq: 4
-milestone_status: done
+milestone_id: live-in-run-parameter-adjustment
+milestone_seq: 5
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,25 +20,21 @@ milestone_status: done
 
 ## Milestone
 
-**M-4: Area, camera, and ops limits** — Status: done
+**M-5: Live in-run parameter adjustment** — Status: open
 
-- **Intent:** Make the simulation's spatial area itself a configurable parameter, turn the render view into a camera over that area (rather than always rendering the whole area), add an area-aware population-health insight to run analysis, give the owner a durable in-app channel to capture new feature/bug ideas for future rounds, and ground the app's capacity limits (max area, object count, concurrent runs) in this specific VPS's actual hardware instead of arbitrary defaults. Main goal is quality — this is a single-hobbyist-user app (per the PRD's own `target_scale`/`after_hours_only` framing), so the new area/camera mechanic and the VPS-bound limits both deserve doing right rather than fast; a rushed version risks shipping a feature that can silently overload the box it runs on.
-- **Source materials:** user description (2026-11-15, immediately after M-3's close) — no PRD update yet; scope anchors below are distilled from the user's own words, not from `prd.md`.
-- **Done when:** F-07 and S-24 through S-26 are all `done`.
+- **Intent:** Let the user tune a running simulation's most impactful parameters and see the effect immediately, instead of having to stop/reconfigure/restart — closing the gap the PRD itself previously parked as a Non-Goal ("no live, in-run parameter adjustment (v1)", FR-028) and explicitly flagged to "revisit as its own future milestone." Scoped to the server-owned execution path only (see Parked for why client-staged and population-shape parameters are excluded from this milestone). Main goal is quality — the real risk here is concurrency correctness (a parameter write racing a live, 16ms-interval tick), not speed to ship.
+- **Source materials:** user description (2026-11-15, immediately after M-4's close) — this was previously an explicit PRD Non-Goal (FR-028); the product-level requirement is captured in this charter rather than as a new FR, since the PRD's own Non-Goal already names the shape and the explicit revisit intent.
+- **Done when:** S-27 is `done`.
 - **Scope anchors:**
-  - MS-01: User can define the simulation's spatial area as an additional configurable simulation parameter (distinct from today's fixed world-size constants).
-  - MS-02: The render view becomes a camera over the simulation area — the user sees only a portion of a (potentially larger) simulation area at a time, not the whole area rendered at once.
-  - MS-03: A run's outcome/analysis can show whether population health held up given the area used for that run (an area-aware insight, distinct from today's four score factors).
-  - MS-04: A module exists for the user to report new functionality ideas and bugs from within the app, persisted so they can be picked up in future roadmap rounds.
-  - MS-05: New non-functional requirements are defined and bound to this specific VPS's actual resource limits (4 vCPU AMD EPYC-Milan, 7.7GiB RAM / ~6.1GiB available, 232GB disk / 187GB free, no container-level resource caps currently set), creating explicit capacity ceilings (max simulation area, max object count, max concurrent runs) grounded in real hardware rather than arbitrary defaults.
+  - MS-01: User can change a server-owned run's flocking weights (separation/alignment/cohesion), food regen rate, and protection threshold while it is actively running, with the change taking effect on the very next tick.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization. M-4 makes the simulation's own spatial scale a first-class, user-controlled dimension — a bigger area to roam, a camera to look at part of it, and a check on whether the population still thrives at that scale — while keeping the app's limits honest about the one real machine it runs on, and giving the owner a place to park what comes next.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closes that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick.
 
 ## North star
 
-**S-24: User configures the simulation's area size and sees a camera-limited view into it** — the smallest end-to-end slice that proves the core new mechanic: a bigger area only matters once there's a way to look at just part of it, and a camera control only matters once there's something larger than the viewport to look at — so these ship together, not as two independently-meaningless halves.
+**S-27: Live-adjust flocking weights and food/threshold on a running simulation** — the only slice in this milestone, and the validation milestone (the smallest end-to-end flow that proves the core idea works) for the whole feature: everything else about live parameter adjustment's value depends on this one mechanism — mutating a running simulation's parameters safely while its tick loop keeps firing — actually working correctly.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -79,6 +75,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | done |
 | S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | done |
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
+| S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | ready |
 
 ## Streams
 
@@ -96,10 +93,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | J      | Engine performance (M-3)          | `S-23`                                   | Standalone — no foundation prerequisite; pure backend change to `boids.ts`'s neighbor search, no UI surface. |
 | K      | Area & camera (M-4)               | `F-07` → `S-24` → `S-25`                 | Carries M-4's north star (`S-24`). The VPS-capacity foundation is sequenced first by main-goal bias (quality: decide real limits before the feature that needs them) — a hard dependency here, not just a bias, since S-24's area parameter range must respect F-07's ceiling. |
 | L      | Feedback channel (M-4)            | `S-26`                                   | Standalone — no foundation prerequisite; fully independent of the area/camera work, can run anytime. |
+| M      | Live parameter tuning (M-5)       | `S-27`                                   | Standalone — no foundation prerequisite; baseline confirms the server-owned registry's `LiveRun.params` is already a single mutable field read fresh every tick, so no new Foundation is needed. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), and again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), and again `2026-11-15` for M-5 (live parameter adjustment).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -112,6 +110,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **2026-11-14 refresh (second) — relevant to S-09/F-05/S-10/S-11:** no dashboard or post-login landing page exists — `/simulation` is both the staging form and the only run-related page; there is no route a logged-in user is redirected to. `listRunning`/`listSaved` (`src/server/api/routers/simulation.ts`) already return the caller's own rows filtered by status, so a run-list dashboard is additive UI, not new backend capability. No run-analysis UI or endpoint exists anywhere. Confirmed via code inspection: `computeScore`'s callers (`stop` resolver, `server-run-registry.ts`'s `tick()`/`stopServerRun`) consume `phaseHistory`/`foodRatioSamples`/survivor genes only to compute the final score number — none of those arrays are persisted; `simulationRuns.score` is the only thing written back. An analysis view has nothing to read until F-05 persists them.
 - **2026-11-14 refresh (third) — relevant to M-3 (F-06, S-15–S-23):** the app uses shadcn/ui primitives (`Button`, `Input`, `Switch` in `src/components/ui/`) and a design-token system (`src/styles/globals.css`), but no shared app shell/sidebar-nav layout exists — every page (`login`, `dashboard`, `simulation`, `runs/[runId]`, `runs/compare`) is an independent `<main>` with its own ad hoc Tailwind classes, not a common layout. The login page (`src/app/login/page.tsx`) is generic/default-looking, not branded. No leaderboard, post-run-optimization-suggestion, admin-elevation, or reference/documentation page exists anywhere. `src/server/simulation/boids.ts`'s flocking-force calculation does a full pairwise scan (`for (const other of boids)` nested inside a per-boid loop) — confirmed O(N²), the exact pattern the user's prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`) replaced with a spatial-hash grid, per that project's own `docs/ARCHITEKTURA.md` ("Siatka Haszu Przestrzennego... Optymalizacja wyszukiwania sąsiadów z O(N²) do O(N)"). `users.role` (schema.ts) already has the `admin`/`member` enum; no elevation/toggle mechanism exists to change it from the app itself today (only direct DB access).
 - **2026-11-15 refresh — relevant to M-4 (F-07, S-24–S-26):** the simulation's spatial extent is two hardcoded module-level constants in `src/server/simulation/boids.ts` (`INITIAL_AREA_SIZE = 200` for x/y, `Z_DEPTH_RANGE = 200` for z), not a per-run parameter — every run uses the same fixed toroidal world size today. No camera/viewport concept exists anywhere in the render path; `simulation-canvas.tsx` and the server-run live-view path both render the entire world extent directly, with no pan/zoom/sub-region state. `admin_settings.parameterRanges` (the existing admin-configurable-range mechanism from S-22/S-04) is schema-flexible enough to add a new ranged parameter without a migration shape change, but `src/server/simulation/parameter-ranges.ts`'s `RANGED_PARAMETER_NAMES`/`DEFAULT_PARAMETER_RANGES` would need a new entry for area. No feedback/bug-report table or route exists anywhere in `schema.ts` or `src/server/api/routers/`. Deploy/infra's VPS is confirmed (2026-11-15, direct SSH inspection): 4 vCPU (AMD EPYC-Milan), 7.7GiB RAM (~6.1GiB available at the time of inspection), 232GB disk (187GB free), and the app's Docker container currently has no memory/CPU limit set (`docker inspect` reports unlimited) — today's `DEFAULT_MAX_OBJECT_COUNT = 500` (`parameter-ranges.ts`) was chosen to match pre-existing hardcoded bounds, not derived from this hardware. S-23's recent finding (spatial-hash grid narrowing effectiveness depends on the world-size-to-radius ratio) is directly relevant here: a configurable, potentially larger area would change that ratio and could make the existing grid optimization meaningfully more effective than it measured at the current fixed 200-unit world — worth revisiting once area becomes variable, not re-litigated now.
+- **2026-11-15 refresh — relevant to M-5 (S-27):** live, in-run parameter adjustment is absent on both execution paths today (confirmed by direct code inspection). Server-owned: `server-run-registry.ts`'s `LiveRun.params` is set once at construction (`startServerRun`/`resumeServerRun`) and only ever read inside `tick()` — no mutator exists, and no tRPC mutation (`simulation.ts`'s `start`/`startServer`/`stop`/`savePause`/`resume`/`watch`) updates a running run's params; the admin-settings mutation only writes global range ceilings, not a specific run's live values. The `watch` subscription (`watchServerRun`) is purely server→client push, with no input channel back into the run. Client-staged: `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime (its own inline comment states this explicitly) — no live-editing form exists, and changing a prop wouldn't reach the running closure anyway since the mount effect doesn't re-run. Because `LiveRun.params` is already a single mutable object field read fresh every 16ms tick, adding a mutator plus a tRPC mutation is additive to the existing registry — no Foundation is needed; S-27 folds this directly into its own vertical slice. The client-staged path would require restructuring the mount effect to read live values instead of closed-over props, a materially larger change — out of scope for M-5 (see Parked).
 
 ## Foundations
 
@@ -531,6 +530,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low-medium — still fully additive to the simulation engine, but now carries a real external dependency (GitHub's API, auth for creating issues — likely a personal access token or GitHub App, not yet decided) that a pure DB-table design wouldn't have had; `/10x-plan` needs to settle how the app authenticates to GitHub without leaking a token client-side.
 - **Status:** done
 
+### S-27: Live-adjust flocking weights and food/threshold on a running simulation
+
+- **Outcome:** User changes a server-owned run's separation/alignment/cohesion weights, food regen rate, and protection threshold while it is actively running, and sees the effect reflected in the live view within the next tick — not just at start time.
+- **Change ID:** live-parameter-adjustment
+- **PRD refs:** MS-01
+- **Prerequisites:** — (server-owned execution (F-03/F-04), auth (F-01), and admin-configurable ranges (S-04/S-22) are all already `done`)
+- **Parallel with:** — (only slice in this milestone)
+- **Blockers:** —
+- **Unknowns:**
+  - Should a live parameter change be validated against the existing admin-configured ranges (`admin_settings.parameterRanges`, the same mechanism `start`/`stop` already enforce) before being applied, or is a runtime tweak to an already-running simulation allowed to exceed those ranges since it isn't a new run's initial configuration? — Owner: user. Block: no.
+  - Should a live parameter change be recorded anywhere (e.g., appended to the run's persisted `history`) so a completed run's analysis view can show when/what was changed mid-run, or is it a pure runtime-only tweak with no persisted trace? — Owner: user. Block: no.
+  - What's the UI mechanism for making the change — an inline editable panel on the live-view page, or a separate control surface? — Owner: user. Block: no (a planning-level UI decision, not a product blocker).
+- **Risk:** The real risk is concurrency correctness, not scope: `tick()` runs on a 16ms `setInterval` per run, so a tRPC mutation writing `run.params` must not race a tick already in flight (a half-written params object read mid-tick could produce an inconsistent step). Kept as the sole slice of its own milestone — rather than folded into an unrelated change — so this correctness concern gets focused implementation and review attention.
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -568,6 +582,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-24       | configurable-area-and-camera-view   | Configurable simulation area + camera-limited render view                | yes                    | F-07 done — run `/10x-plan configurable-area-and-camera-view` |
 | S-25       | area-aware-population-insight       | Area-aware population-health insight in run analysis                    | no                     | Unknowns resolved (new 5th score factor); still waiting on S-24 to land first |
 | S-26       | in-app-feedback-module               | In-app feedback/bug-report module                                        | yes                    | Unknowns resolved (GitHub Issues integration) — no prerequisites, ready to plan now |
+| S-27       | live-parameter-adjustment            | Live-adjust flocking weights, food regen rate, and protection threshold on a running server-owned simulation | yes                    | No prerequisites; all 3 Unknowns are non-blocking planning-level decisions — ready to plan now |
 
 ## Open Roadmap Questions
 
@@ -585,8 +600,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Shared/collaborative simulations across users** — Why parked: explicit PRD Non-Goal — admin/member are access roles, not co-editing roles; a run belongs to the user who started it.
 - **Client-driven parallel rendering of multiple simulations at once** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — retired in favor of server-owned execution; the client renders at most one server-run simulation live at a time.
 - **Diversity-index trend over time in the analysis view** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.
-- **Live, in-run parameter adjustment** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-028) — the live simulation engine has no live-parameter-update path today; materially larger architectural change than the post-run suggestion (S-21), which ships instead. Revisit as its own future milestone.
+- **Live, in-run parameter adjustment** — ~~Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-028) — the live simulation engine has no live-parameter-update path today; materially larger architectural change than the post-run suggestion (S-21), which ships instead.~~ Promoted into M-5's slice S-27 (2026-11-15), per the Non-Goal's own "revisit as its own future milestone" note — scoped to flocking weights + food regen rate + protection threshold on server-owned runs only (see the two narrower items below for what's still excluded).
 - **Full UI rewrite onto a new template** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-032) — F-06 adopts a modern design direction incrementally on the existing shadcn/ui layer, not a wholesale replacement.
+- **Live parameter adjustment on client-staged runs** (M-5, 2026-11-15) — Why parked: `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime (its own inline comment states this explicitly); undoing that is a real structural change, not a small addition. M-5 ships server-owned-only; client-staged parity is deferred to a future milestone if there's demand.
+- **Live adjustment of population-shape parameters** (boidCount, flockCount, crossbreedingEnabled) (M-5, 2026-11-15) — Why parked: these require re-initializing the population/world state, not just patching a value read fresh every tick (`LiveRun.params`) — a structurally different mechanism than S-27's simple param patch. Out of scope for M-5; revisit as its own future milestone if there's demand.
 
 (FR-015, FR-016, and FR-017 — previously parked here as nice-to-have — are promoted into M-2's slices S-13, S-12, and S-14 respectively; see `## Slices`.)
 
