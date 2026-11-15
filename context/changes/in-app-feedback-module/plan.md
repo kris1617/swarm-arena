@@ -291,10 +291,10 @@ New `feedback_reports` table, brand new with no pre-existing data — no backfil
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
-- [x] 3.4 New `retry-worker.test.ts` passes
+- [x] 3.1 Type checking passes: `npm run typecheck` — e1f58fe
+- [x] 3.2 Linting passes: `npm run check` — e1f58fe
+- [x] 3.3 Full suite still passes: `npm test` — e1f58fe
+- [x] 3.4 New `retry-worker.test.ts` passes — e1f58fe
 
 ### Phase 4: UI (feedback form)
 
