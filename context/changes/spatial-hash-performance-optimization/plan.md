@@ -209,10 +209,10 @@ None — no schema change, no persisted data shape change, no parameter change. 
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`, including unmodified existing determinism/convergence tests
-- [x] 1.4 New wrap-seam/boundary edge-case determinism test(s) pass
+- [x] 1.1 Type checking passes: `npm run typecheck` — 0f3581d
+- [x] 1.2 Linting passes: `npm run check` — 0f3581d
+- [x] 1.3 Full suite still passes: `npm test`, including unmodified existing determinism/convergence tests — 0f3581d
+- [x] 1.4 New wrap-seam/boundary edge-case determinism test(s) pass — 0f3581d
 
 ### Phase 2: resolveOverlaps exclusion + applyPredation + reproducePopulation + test reconciliation
 
