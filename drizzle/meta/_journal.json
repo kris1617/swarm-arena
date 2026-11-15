@@ -57,6 +57,13 @@
       "when": 1794737754481,
       "tag": "0007_known_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794744561813,
+      "tag": "0008_striped_doomsday",
+      "breakpoints": true
     }
   ]
 }

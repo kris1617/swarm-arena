@@ -177,3 +177,33 @@ export const adminSettings = createTable("admin_settings", (d) => ({
 	// context/foundation/capacity-limits.md.
 	maxConcurrentObjectCount: d.integer().notNull().default(150),
 }));
+
+// in-app-feedback-module (roadmap S-26): one row per submitted bug/idea
+// report, doubling as both the GitHub-send retry queue (`status`/
+// `attemptCount`/`lastError`) and the per-user rate-limit source (count rows
+// by `userId`/`createdAt` rather than a separate counter).
+export const feedbackReports = createTable("feedback_report", (d) => ({
+	id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
+	userId: d
+		.text()
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	category: d.text({ enum: ["bug", "idea"] }).notNull(),
+	title: d.text().notNull(),
+	description: d.text().notNull(),
+	pagePath: d.text().notNull(),
+	userAgent: d.text().notNull(),
+	status: d
+		.text({ enum: ["pending", "sent", "abandoned"] })
+		.notNull()
+		.default("pending"),
+	githubIssueNumber: d.integer(),
+	githubIssueUrl: d.text(),
+	attemptCount: d.integer().notNull().default(0),
+	lastError: d.text(),
+	createdAt: d
+		.integer({ mode: "timestamp" })
+		.default(sql`(unixepoch())`)
+		.notNull(),
+	lastAttemptAt: d.integer({ mode: "timestamp" }),
+}));

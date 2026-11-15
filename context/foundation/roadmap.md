@@ -78,7 +78,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | F-07 | vps-resource-capacity-limits    | (foundation) Concrete max-area/max-object-count/max-concurrent-run ceilings exist, derived from this VPS's actual CPU/RAM/disk | —              | MS-05                                                  | done |
 | S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | done |
 | S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | proposed |
-| S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | ready |
+| S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | in-progress |
 
 ## Streams
 
@@ -529,7 +529,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - ~~What's the actual mechanism?~~ — **Resolved 2026-11-15.** GitHub Issues integration — reports get created as real issues in this project's own GitHub repo, specifically so they flow into the existing dev pipeline (the same repo this app's CI/CD already deploys from) rather than into a second, disconnected inbox. No longer blocks `/10x-plan`.
   - Who can see submitted reports — moot given GitHub Issues' own visibility model (repo-level, not app-level) — Owner: user. Block: no.
 - **Risk:** Low-medium — still fully additive to the simulation engine, but now carries a real external dependency (GitHub's API, auth for creating issues — likely a personal access token or GitHub App, not yet decided) that a pure DB-table design wouldn't have had; `/10x-plan` needs to settle how the app authenticates to GitHub without leaking a token client-side.
-- **Status:** ready
+- **Status:** in-progress
 
 ## Backlog Handoff
 
