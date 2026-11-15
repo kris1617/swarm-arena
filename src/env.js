@@ -39,6 +39,10 @@ export const env = createEnv({
 			.string()
 			.optional()
 			.transform((v) => v === "true"),
+		// in-app-feedback-module (S-26): a GitHub fine-grained PAT, used
+		// server-side only to create Issues in kris1617/swarm-arena — never
+		// exposed to the client.
+		GITHUB_FEEDBACK_TOKEN: z.string().min(1),
 	},
 
 	/**
@@ -64,6 +68,7 @@ export const env = createEnv({
 		AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
 		E2E_TEST_AUTH_SECRET: process.env.E2E_TEST_AUTH_SECRET,
 		ALLOW_SELF_ELEVATION: process.env.ALLOW_SELF_ELEVATION,
+		GITHUB_FEEDBACK_TOKEN: process.env.GITHUB_FEEDBACK_TOKEN,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
 	/**

@@ -19,6 +19,11 @@ export default defineConfig({
 			AUTH_SECRET: "test-secret",
 			AUTH_GITHUB_ID: "test-github-id",
 			AUTH_GITHUB_SECRET: "test-github-secret",
+			// in-app-feedback-module (S-26): required (z.string().min(1)) in
+			// src/env.js, same tier as the required vars above — without this,
+			// every test file would fail env validation at module load, not
+			// just feedback.test.ts's own tests.
+			GITHUB_FEEDBACK_TOKEN: "test-token",
 		},
 		server: {
 			// next-auth's lib/env.js does `import { NextRequest } from "next/server"`
