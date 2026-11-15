@@ -31,11 +31,11 @@ import { api } from "~/trpc/react";
 // iteration order is stable and `satisfies` catches drift if the server-side
 // type ever adds/removes a field.
 const LIVE_FIELDS = [
-	"separationWeight",
-	"alignmentWeight",
-	"cohesionWeight",
 	"foodRegenRate",
 	"protectionThreshold",
+	"energyThreshold",
+	"mutationChance",
+	"mutationMagnitude",
 ] as const satisfies readonly (keyof LiveAdjustableParams)[];
 
 type LiveField = (typeof LIVE_FIELDS)[number];
@@ -43,12 +43,26 @@ type LiveField = (typeof LIVE_FIELDS)[number];
 type LiveFormValues = Record<LiveField, number>;
 
 const LIVE_FIELD_LABELS: Record<LiveField, string> = {
-	separationWeight: "Separation weight",
-	alignmentWeight: "Alignment weight",
-	cohesionWeight: "Cohesion weight",
 	foodRegenRate: "Food regen rate",
 	protectionThreshold: "Protection threshold",
+	energyThreshold: "Energy threshold",
+	mutationChance: "Mutation chance",
+	mutationMagnitude: "Mutation magnitude",
 };
+
+// live-parameter-adjustment (S-27) Phase 2: the panel groups the 5 fields by
+// when a change actually takes effect, so a user isn't confused about why
+// the offspring-only fields don't visibly do anything until the next birth.
+const IMMEDIATE_FIELDS = [
+	"foodRegenRate",
+	"protectionThreshold",
+] as const satisfies readonly LiveField[];
+
+const FUTURE_OFFSPRING_FIELDS = [
+	"energyThreshold",
+	"mutationChance",
+	"mutationMagnitude",
+] as const satisfies readonly LiveField[];
 
 // How long the Apply button stays disabled after a successful apply
 // (decision 6 in plan.md's Overview — client-side only, no server throttle).
@@ -232,6 +246,49 @@ export function ServerRunViewer({
 		return warnings.filter((warning) => warning.startsWith(field));
 	}
 
+	// live-parameter-adjustment (S-27) Phase 2: shared per-field render used by
+	// both grouped sub-sections below (`IMMEDIATE_FIELDS`/
+	// `FUTURE_OFFSPRING_FIELDS`) — same NumberField/warning/flash rendering as
+	// before the grouping split, just factored out so it isn't duplicated.
+	// `values` is passed explicitly (rather than reading `liveValues` from the
+	// closure) so callers only invoke this once `liveValues` is known non-null.
+	function renderLiveField(field: LiveField, values: LiveFormValues) {
+		const fieldWarnings = warningsForField(field);
+		const fieldRange = DEFAULT_PARAMETER_RANGES[field];
+		const step =
+			field === "energyThreshold"
+				? "1"
+				: field === "protectionThreshold"
+					? "1"
+					: field === "mutationChance" || field === "mutationMagnitude"
+						? "0.05"
+						: "0.1";
+		return (
+			<div
+				className={cn(
+					"flex flex-col gap-1 rounded-xl transition-shadow",
+					flashFields.has(field) ? "ring-chart-2 ring-2" : "",
+				)}
+				key={field}
+			>
+				<NumberField
+					id={`live-param-${field}`}
+					label={LIVE_FIELD_LABELS[field]}
+					max={fieldRange.max}
+					min={fieldRange.min}
+					onChange={(value) => handleLiveFieldChange(field, value)}
+					step={step}
+					value={values[field]}
+				/>
+				{fieldWarnings.map((warning) => (
+					<p className="text-destructive text-xs" key={warning}>
+						{warning}
+					</p>
+				))}
+			</div>
+		);
+	}
+
 	function unmatchedWarnings(): string[] {
 		return warnings.filter(
 			(warning) => !LIVE_FIELDS.some((field) => warning.startsWith(field)),
@@ -373,34 +430,22 @@ export function ServerRunViewer({
 					<p className="text-foreground text-sm font-semibold">
 						Live parameters
 					</p>
-					{LIVE_FIELDS.map((field) => {
-						const fieldWarnings = warningsForField(field);
-						const fieldRange = DEFAULT_PARAMETER_RANGES[field];
-						return (
-							<div
-								className={cn(
-									"flex flex-col gap-1 rounded-xl transition-shadow",
-									flashFields.has(field) ? "ring-chart-2 ring-2" : "",
-								)}
-								key={field}
-							>
-								<NumberField
-									id={`live-param-${field}`}
-									label={LIVE_FIELD_LABELS[field]}
-									max={fieldRange.max}
-									min={fieldRange.min}
-									onChange={(value) => handleLiveFieldChange(field, value)}
-									step={field === "protectionThreshold" ? "1" : "0.1"}
-									value={liveValues[field]}
-								/>
-								{fieldWarnings.map((warning) => (
-									<p className="text-destructive text-xs" key={warning}>
-										{warning}
-									</p>
-								))}
-							</div>
-						);
-					})}
+					<p className="text-foreground text-sm font-semibold">
+						Takes effect immediately
+					</p>
+					<div className="flex flex-col gap-2">
+						{IMMEDIATE_FIELDS.map((field) =>
+							renderLiveField(field, liveValues),
+						)}
+					</div>
+					<p className="text-foreground text-sm font-semibold">
+						Affects future offspring only
+					</p>
+					<div className="flex flex-col gap-2">
+						{FUTURE_OFFSPRING_FIELDS.map((field) =>
+							renderLiveField(field, liveValues),
+						)}
+					</div>
 					<Button
 						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-6 py-2 text-sm font-semibold"
 						disabled={applyCooldown || updateRunParamsMutation.isPending}

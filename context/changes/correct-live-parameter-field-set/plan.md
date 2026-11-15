@@ -156,27 +156,27 @@ None — `LiveAdjustableParams` is a TypeScript type, not a DB schema; `simulati
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.5 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 53db13a
+- [x] 1.2 Linting passes: `npm run check` — 53db13a
+- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts` — 53db13a
+- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts` — 53db13a
+- [x] 1.5 Full suite passes: `npm test` — 53db13a
 
 #### Manual
 
-- [x] 1.6 mutationMagnitude=0 produces zero-deviation offspring genes
-- [x] 1.7 High energyThreshold stops further reproduction
+- [x] 1.6 mutationMagnitude=0 produces zero-deviation offspring genes — 53db13a
+- [x] 1.7 High energyThreshold stops further reproduction — 53db13a
 
 ### Phase 2: Frontend — panel field swap + grouped UI
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
+- [x] 2.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 2.5 Panel shows 5 fields under 2 correctly-grouped headings
-- [ ] 2.6 Flash/warning/cooldown behavior unchanged for both groups
+- [x] 2.5 Panel shows 5 fields under 2 correctly-grouped headings
+- [x] 2.6 Flash/warning/cooldown behavior unchanged for both groups

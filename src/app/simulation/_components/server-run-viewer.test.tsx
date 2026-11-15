@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // so the test can invoke `onData`/`onError` directly — same pattern
 // `simulation-canvas.test.tsx` uses for `api.simulation.stop.useMutation`.
 type LiveParams = {
-	separationWeight: number;
-	alignmentWeight: number;
-	cohesionWeight: number;
 	foodRegenRate: number;
 	protectionThreshold: number;
+	energyThreshold: number;
+	mutationChance: number;
+	mutationMagnitude: number;
 };
 
 type CapturedWatchOptions = {
@@ -95,11 +95,11 @@ import { drawScene } from "./simulation-canvas";
 // Shared fixture for the 5 live-adjustable fields — individual tests
 // override whichever field(s) they care about via object spread.
 const LIVE_PARAMS_FIXTURE: LiveParams = {
-	separationWeight: 1,
-	alignmentWeight: 1,
-	cohesionWeight: 1,
 	foodRegenRate: 10,
 	protectionThreshold: 10,
+	energyThreshold: 50,
+	mutationChance: 0.1,
+	mutationMagnitude: 0.2,
 };
 
 describe("ServerRunViewer", () => {
@@ -290,7 +290,7 @@ describe("ServerRunViewer", () => {
 			renderViewer();
 			pushLiveParams(LIVE_PARAMS_FIXTURE);
 
-			setFieldValue("separationWeight", 5);
+			setFieldValue("energyThreshold", 75);
 			setFieldValue("foodRegenRate", 25);
 
 			const buttons = Array.from(container.querySelectorAll("button"));
@@ -303,7 +303,7 @@ describe("ServerRunViewer", () => {
 			expect(updateRunParamsMutate).toHaveBeenCalledTimes(1);
 			expect(updateRunParamsMutate).toHaveBeenCalledWith({
 				runId: 42,
-				separationWeight: 5,
+				energyThreshold: 75,
 				foodRegenRate: 25,
 			});
 		});
@@ -312,7 +312,7 @@ describe("ServerRunViewer", () => {
 			renderViewer();
 			pushLiveParams(LIVE_PARAMS_FIXTURE);
 
-			setFieldValue("separationWeight", 5);
+			setFieldValue("energyThreshold", 75);
 
 			const findApplyButton = () =>
 				Array.from(container.querySelectorAll("button")).find(
@@ -329,7 +329,7 @@ describe("ServerRunViewer", () => {
 			act(() => {
 				capturedUpdateRunParamsOptions.onSuccess?.(
 					{ ok: true, warnings: [] },
-					{ runId: 42, separationWeight: 5 },
+					{ runId: 42, energyThreshold: 75 },
 				);
 			});
 
@@ -342,19 +342,27 @@ describe("ServerRunViewer", () => {
 			renderViewer();
 			pushLiveParams(LIVE_PARAMS_FIXTURE);
 
-			// User starts editing separationWeight, but hasn't applied yet.
-			setFieldValue("separationWeight", 7);
+			// User starts editing energyThreshold, but hasn't applied yet.
+			setFieldValue("energyThreshold", 77);
 
 			// The ~150ms subscription push races in with a different value for
 			// the same field (e.g. another client's edit, or the server's
 			// unchanged current value) — the in-progress edit must survive it.
-			pushLiveParams({ ...LIVE_PARAMS_FIXTURE, separationWeight: 3 });
+			pushLiveParams({ ...LIVE_PARAMS_FIXTURE, energyThreshold: 33 });
 
-			expect(getFieldInput("separationWeight").value).toBe("7");
+			expect(getFieldInput("energyThreshold").value).toBe("77");
 			// A field the user hasn't touched still re-syncs from the push.
-			expect(getFieldInput("alignmentWeight").value).toBe(
-				String(LIVE_PARAMS_FIXTURE.alignmentWeight),
+			expect(getFieldInput("mutationChance").value).toBe(
+				String(LIVE_PARAMS_FIXTURE.mutationChance),
 			);
+		});
+
+		it("renders both group headings for the live-parameter panel", () => {
+			renderViewer();
+			pushLiveParams(LIVE_PARAMS_FIXTURE);
+
+			expect(container.textContent).toContain("Takes effect immediately");
+			expect(container.textContent).toContain("Affects future offspring only");
 		});
 	});
 });
