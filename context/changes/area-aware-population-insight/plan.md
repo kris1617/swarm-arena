@@ -603,17 +603,17 @@ treat as "scored under the old formula" by design.
 
 #### Manual
 
-- [x] 2.5 Comparison page shows N/A for a pre-change run's 5th factor
-- [x] 2.6 Comparison page shows real values for two post-change runs
+- [x] 2.5 Comparison page shows N/A for a pre-change run's 5th factor — 66b44e8
+- [x] 2.6 Comparison page shows real values for two post-change runs — 66b44e8
 
 ### Phase 3: Comparability marker
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 3.4 Full suite passes: `npm test`
 
 #### Manual
 

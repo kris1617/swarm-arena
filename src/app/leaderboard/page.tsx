@@ -62,6 +62,14 @@ export default function LeaderboardPage() {
 									<span className="font-semibold">
 										Score: {run.score?.toFixed(2)}
 									</span>
+									{!run.scoredWithAreaFactor && (
+										<span
+											className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
+											title="Scored before the area-population-density factor existed"
+										>
+											4-factor score
+										</span>
+									)}
 									<Button
 										asChild
 										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"

@@ -592,7 +592,7 @@ export const simulationRouter = createTRPCRouter({
 		if (!userId) {
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
-		return ctx.db
+		const rows = await ctx.db
 			.select({
 				id: simulationRuns.id,
 				startedAt: simulationRuns.startedAt,
@@ -600,6 +600,7 @@ export const simulationRouter = createTRPCRouter({
 				predatorCount: simulationRuns.predatorCount,
 				score: simulationRuns.score,
 				stoppedAt: simulationRuns.stoppedAt,
+				history: simulationRuns.history,
 			})
 			.from(simulationRuns)
 			.where(
@@ -611,6 +612,14 @@ export const simulationRouter = createTRPCRouter({
 			)
 			.orderBy(desc(simulationRuns.score), desc(simulationRuns.startedAt))
 			.limit(50);
+
+		return rows.map(({ history, ...row }) => ({
+			...row,
+			scoredWithAreaFactor: Array.isArray(
+				(history as { populationDensitySamples?: unknown } | null)
+					?.populationDensitySamples,
+			),
+		}));
 	}),
 
 	// parameter-suggestion-heuristic Phase 1: heuristic "try changing this

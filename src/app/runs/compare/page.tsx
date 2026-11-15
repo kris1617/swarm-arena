@@ -137,6 +137,16 @@ export default function RunsComparePage() {
 				</p>
 			))}
 
+			{okRows
+				.filter((row) => row.breakdown?.areaPopulationDensity === null)
+				.map((row) => (
+					<p className="text-foreground/70 text-sm" key={`legacy-${row.runId}`}>
+						Run #{row.runId} was scored before the area-population-density
+						factor existed — its score and this run&apos;s other runs may not be
+						directly comparable.
+					</p>
+				))}
+
 			{okRows.length === 0 ? (
 				<p>Could not load this comparison.</p>
 			) : (

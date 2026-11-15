@@ -1334,6 +1334,95 @@ describe("simulationRouter.listLeaderboard", () => {
 			code: "UNAUTHORIZED",
 		} satisfies Partial<TRPCError>);
 	});
+
+	// S-25 Phase 3: scoredWithAreaFactor reuses the same JSON-presence-check
+	// convention as Phase 2's areaPopulationDensity — a run with
+	// `populationDensitySamples` in history was scored under the new
+	// 5-factor formula; a run without it (or with no history at all) was
+	// scored under the old 4-factor formula.
+	it("flags a run with populationDensitySamples in history as scoredWithAreaFactor, and one without (or with no history) as not", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [fiveFactorRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.9,
+				stoppedAt: new Date(),
+				history: {
+					phaseHistory: ["crash", "recovery"],
+					foodRatioSamples: [0.5],
+					survivorGenes: [],
+					populationCountSamples: [10],
+					populationDensitySamples: [0.5],
+					elapsedSeconds: 5,
+				},
+			})
+			.returning({ id: simulationRuns.id });
+		const [legacyRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 2,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.4,
+				stoppedAt: new Date(),
+				history: {
+					phaseHistory: ["crash", "recovery"],
+					foodRatioSamples: [0.5],
+					survivorGenes: [],
+					populationCountSamples: [10],
+					elapsedSeconds: 5,
+				},
+			})
+			.returning({ id: simulationRuns.id });
+		const [historylessRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 3,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.2,
+				stoppedAt: new Date(),
+				history: null,
+			})
+			.returning({ id: simulationRuns.id });
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result.find((r) => r.id === fiveFactorRun?.id)).toMatchObject({
+			scoredWithAreaFactor: true,
+		});
+		expect(result.find((r) => r.id === legacyRun?.id)).toMatchObject({
+			scoredWithAreaFactor: false,
+		});
+		expect(result.find((r) => r.id === historylessRun?.id)).toMatchObject({
+			scoredWithAreaFactor: false,
+		});
+		// The raw `history` JSON blob must not leak into the response shape.
+		for (const row of result) {
+			expect(row).not.toHaveProperty("history");
+		}
+	});
 });
 
 describe("simulationRouter.getParameterSuggestion", () => {
