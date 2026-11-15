@@ -329,5 +329,5 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Manual
 
-- [x] 3.5 Completed run with a live edit shows a correctly-placed, correctly-labeled marker
-- [x] 3.6 Completed run predating this change renders unchanged, no markers, no error
+- [x] 3.5 Completed run with a live edit shows a correctly-placed, correctly-labeled marker — 23cd32a
+- [x] 3.6 Completed run predating this change renders unchanged, no markers, no error — 23cd32a
