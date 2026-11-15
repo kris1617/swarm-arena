@@ -10,10 +10,15 @@ import {
 	BOID_LENGTH,
 	CANVAS_HEIGHT,
 	CANVAS_WIDTH,
+	drawMinimap,
 	drawScene,
+	drawWorldBoundary,
+	MINIMAP_HEIGHT,
+	MINIMAP_WIDTH,
 } from "~/app/simulation/_components/simulation-canvas";
 import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
+import { Switch } from "~/components/ui/switch";
 import type { BoidState, PredatorState } from "~/server/simulation/boids";
 import { api } from "~/trpc/react";
 
@@ -61,6 +66,29 @@ export function ServerRunViewer({
 		worldSize,
 	});
 
+	// S-24 Phase 3: minimap/boundary toggles — same ref-plus-state posture as
+	// simulation-canvas.tsx's identical toggles, and for the same reason:
+	// `redraw` here is captured once by useCamera's own effect (its
+	// onChange), so the visibility it draws against must come from a ref,
+	// not from `showMinimap`/`showBoundary` state directly.
+	const minimapCanvasRef = useRef<HTMLCanvasElement>(null);
+	const showMinimapRef = useRef(true);
+	const showBoundaryRef = useRef(true);
+	const [showMinimap, setShowMinimap] = useState(true);
+	const [showBoundary, setShowBoundary] = useState(true);
+
+	function handleToggleMinimap(checked: boolean) {
+		showMinimapRef.current = checked;
+		setShowMinimap(checked);
+		redraw();
+	}
+
+	function handleToggleBoundary(checked: boolean) {
+		showBoundaryRef.current = checked;
+		setShowBoundary(checked);
+		redraw();
+	}
+
 	function redraw() {
 		const snapshot = lastSnapshotRef.current;
 		const ctx = canvasRef.current?.getContext("2d");
@@ -84,6 +112,31 @@ export function ServerRunViewer({
 			sizeRef.current.width,
 			sizeRef.current.height,
 		);
+		if (showBoundaryRef.current) {
+			drawWorldBoundary(
+				ctx,
+				cameraRef.current,
+				sizeRef.current.width,
+				sizeRef.current.height,
+				worldSize,
+			);
+		}
+		if (showMinimapRef.current) {
+			const minimapCtx = minimapCanvasRef.current?.getContext("2d");
+			if (minimapCtx) {
+				drawMinimap(
+					minimapCtx,
+					snapshot.boids,
+					snapshot.predators,
+					cameraRef.current,
+					sizeRef.current.width,
+					sizeRef.current.height,
+					worldSize,
+					MINIMAP_WIDTH,
+					MINIMAP_HEIGHT,
+				);
+			}
+		}
 	}
 
 	const { status } = api.simulation.watch.useSubscription(
@@ -127,6 +180,38 @@ export function ServerRunViewer({
 				>
 					Re-center
 				</Button>
+				{showMinimap ? (
+					<canvas
+						className="border-border/40 bg-background/60 absolute bottom-2 left-2 rounded border"
+						height={MINIMAP_HEIGHT}
+						ref={minimapCanvasRef}
+						width={MINIMAP_WIDTH}
+					/>
+				) : null}
+			</div>
+			<div className="flex w-full items-center justify-center gap-6">
+				<label
+					className="flex items-center gap-2 text-sm"
+					htmlFor="server-run-minimap-visible"
+				>
+					Minimap
+					<Switch
+						checked={showMinimap}
+						id="server-run-minimap-visible"
+						onCheckedChange={handleToggleMinimap}
+					/>
+				</label>
+				<label
+					className="flex items-center gap-2 text-sm"
+					htmlFor="server-run-boundary-visible"
+				>
+					Boundary indicator
+					<Switch
+						checked={showBoundary}
+						id="server-run-boundary-visible"
+						onCheckedChange={handleToggleBoundary}
+					/>
+				</label>
 			</div>
 			<p className="text-foreground text-sm">
 				{status === "pending" || status === "connecting"

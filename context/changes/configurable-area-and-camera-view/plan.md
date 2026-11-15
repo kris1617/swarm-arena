@@ -296,15 +296,15 @@ New `simulationRuns.xyArea`/`zDepth` columns require a migration with a backfill
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
-- [ ] 3.4 Hardcoded-value scan on touched files returns zero hits
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.4 Hardcoded-value scan on touched files returns zero hits
 
 #### Manual
 
-- [ ] 3.5 Minimap accurately reflects viewport position through pan/zoom, toggleable
-- [ ] 3.6 Boundary indicator appears at world edges, stays correctly positioned, toggleable independently
+- [x] 3.5 Minimap accurately reflects viewport position through pan/zoom, toggleable
+- [x] 3.6 Boundary indicator appears at world edges, stays correctly positioned, toggleable independently
 
 ### Phase 4: Staging form wiring + integration
 

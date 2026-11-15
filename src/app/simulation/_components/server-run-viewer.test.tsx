@@ -32,9 +32,11 @@ vi.mock("~/trpc/react", () => ({
 	},
 }));
 
-// Partial mock: keep the real exports, spy-wrap only `drawScene` so the
-// test can assert it was called with the pushed snapshot's data without
-// needing a real canvas 2d context (happy-dom's canvas support is limited).
+// Partial mock: keep the real exports, spy-wrap `drawScene` (so the test can
+// assert it was called with the pushed snapshot's data) and the S-24 Phase 3
+// `drawWorldBoundary`/`drawMinimap` passes (enabled by default, same as
+// drawScene they'd otherwise touch the real canvas methods) without needing
+// a real canvas 2d context (happy-dom's canvas support is limited).
 vi.mock("./simulation-canvas", async () => {
 	const actual = await vi.importActual<typeof import("./simulation-canvas")>(
 		"./simulation-canvas",
@@ -42,6 +44,8 @@ vi.mock("./simulation-canvas", async () => {
 	return {
 		...actual,
 		drawScene: vi.fn(),
+		drawWorldBoundary: vi.fn(),
+		drawMinimap: vi.fn(),
 	};
 });
 

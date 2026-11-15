@@ -4,12 +4,16 @@ import { useEffect, useRef, useState } from "react";
 
 import {
 	type Camera,
+	computeMinimapCamera,
+	computeViewportRectOnMinimap,
 	resolveCameraForFrame,
+	type WorldSize,
 	worldToScreenX,
 	worldToScreenY,
 } from "~/app/simulation/_components/camera";
 import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
+import { Switch } from "~/components/ui/switch";
 import {
 	type BoidGenes,
 	type BoidState,
@@ -21,7 +25,11 @@ import {
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
-import { CANVAS_BACKGROUND } from "~/styles/theme-colors";
+import {
+	CANVAS_BACKGROUND,
+	CANVAS_BORDER_COLOR,
+	CANVAS_HIGHLIGHT_COLOR,
+} from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
 // S-24 Phase 2: these are now only the *initial* drawing-buffer size, kept
@@ -32,6 +40,12 @@ import { api } from "~/trpc/react";
 // the camera transform (camera.ts).
 export const CANVAS_WIDTH = 600;
 export const CANVAS_HEIGHT = 400;
+// S-24 Phase 3: the minimap's own fixed small drawing-buffer size — same
+// 3:2 ratio as the main canvas for visual consistency, scaled down to a
+// corner-overlay size. Exported so ServerRunViewer sizes its own minimap
+// `<canvas>` identically rather than re-deriving the ratio.
+export const MINIMAP_WIDTH = 120;
+export const MINIMAP_HEIGHT = 80;
 // Triangle half-length (nose to tail-center) and half-width (wing to wing),
 // drawn pointing along each boid's current heading for a bird/fish-like look.
 // Exported so camera.ts's max-zoom ceiling ("a few boid-lengths across") is
@@ -186,6 +200,84 @@ export function drawScene(
 	}
 }
 
+// S-24 Phase 3: draws the toroidal world's four edges — the rectangle
+// [0, worldSize.x] x [0, worldSize.y] in world space — using the exact same
+// worldToScreenX/Y transform the entities above use, so the boundary stays
+// correctly positioned through pan/zoom instead of being a fixed-position
+// decoration. Exported for ServerRunViewer (S-07) to reuse unchanged.
+export function drawWorldBoundary(
+	ctx: CanvasRenderingContext2D,
+	camera: Camera,
+	canvasWidth: number,
+	canvasHeight: number,
+	worldSize: WorldSize,
+) {
+	const left = worldToScreenX(0, camera, canvasWidth);
+	const top = worldToScreenY(0, camera, canvasHeight);
+	const right = worldToScreenX(worldSize.x, camera, canvasWidth);
+	const bottom = worldToScreenY(worldSize.y, camera, canvasHeight);
+
+	ctx.save();
+	ctx.strokeStyle = CANVAS_BORDER_COLOR;
+	ctx.lineWidth = 1;
+	ctx.strokeRect(left, top, right - left, bottom - top);
+	ctx.restore();
+}
+
+// S-24 Phase 3: a small overlay showing the FULL configured world (not the
+// main camera's zoomed view) at a fixed small scale, plus a rectangle
+// marking where the main camera's current viewport sits within it. Reuses
+// `drawScene` itself for the entity-drawing pass (same shapes/colors/depth
+// logic, zero divergence) by targeting a separate small canvas with its own
+// fixed, whole-world-fitting camera (`computeMinimapCamera`) — not a
+// second, divergent rendering implementation. Exported for ServerRunViewer
+// (S-07) to reuse unchanged.
+export function drawMinimap(
+	minimapCtx: CanvasRenderingContext2D,
+	boids: BoidState[],
+	predators: PredatorState[],
+	mainCamera: Camera,
+	mainCanvasWidth: number,
+	mainCanvasHeight: number,
+	worldSize: WorldSize,
+	minimapWidth: number,
+	minimapHeight: number,
+) {
+	const minimapCamera = computeMinimapCamera(
+		worldSize,
+		minimapWidth,
+		minimapHeight,
+	);
+	drawScene(
+		minimapCtx,
+		boids,
+		predators,
+		minimapCamera,
+		minimapWidth,
+		minimapHeight,
+	);
+
+	const rect = computeViewportRectOnMinimap(
+		mainCamera,
+		mainCanvasWidth,
+		mainCanvasHeight,
+		minimapCamera,
+		minimapWidth,
+		minimapHeight,
+	);
+	minimapCtx.save();
+	minimapCtx.strokeStyle = CANVAS_HIGHLIGHT_COLOR;
+	minimapCtx.lineWidth = 1;
+	minimapCtx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+	minimapCtx.restore();
+
+	minimapCtx.save();
+	minimapCtx.strokeStyle = CANVAS_BORDER_COLOR;
+	minimapCtx.lineWidth = 1;
+	minimapCtx.strokeRect(0, 0, minimapWidth, minimapHeight);
+	minimapCtx.restore();
+}
+
 export function SimulationCanvas({
 	runId,
 	seed,
@@ -242,9 +334,38 @@ export function SimulationCanvas({
 		worldSize,
 	});
 
+	// S-24 Phase 3: minimap/boundary toggles. Mirrored into both a ref (the
+	// source of truth `redraw()` reads — see the comment below on why a ref,
+	// not state, is what redraw must read) and a `useState` purely so the
+	// `Switch` controls below can render their current `checked` value.
+	const minimapCanvasRef = useRef<HTMLCanvasElement>(null);
+	const showMinimapRef = useRef(true);
+	const showBoundaryRef = useRef(true);
+	const [showMinimap, setShowMinimap] = useState(true);
+	const [showBoundary, setShowBoundary] = useState(true);
+
+	function handleToggleMinimap(checked: boolean) {
+		showMinimapRef.current = checked;
+		setShowMinimap(checked);
+		redraw();
+	}
+
+	function handleToggleBoundary(checked: boolean) {
+		showBoundaryRef.current = checked;
+		setShowBoundary(checked);
+		redraw();
+	}
+
 	// Resolves the camera for the current boids/predators snapshot and
 	// redraws. Called both from the tick loop below (new data) and from
-	// useCamera's onChange (pan/zoom/resize input between ticks).
+	// useCamera's onChange (pan/zoom/resize input between ticks). This
+	// function itself is captured once by the mount effect below and by
+	// useCamera's own effect (both have narrow dependency arrays, by
+	// design — see their own biome-ignore comments), so it must read
+	// per-toggle visibility from refs (showMinimapRef/showBoundaryRef), not
+	// from `showMinimap`/`showBoundary` state directly — a state read here
+	// would close over whichever value was current when the effect first
+	// ran and never see a later toggle.
 	function redraw() {
 		const ctx = canvasRef.current?.getContext("2d");
 		if (!ctx) {
@@ -267,6 +388,31 @@ export function SimulationCanvas({
 			sizeRef.current.width,
 			sizeRef.current.height,
 		);
+		if (showBoundaryRef.current) {
+			drawWorldBoundary(
+				ctx,
+				cameraRef.current,
+				sizeRef.current.width,
+				sizeRef.current.height,
+				worldSize,
+			);
+		}
+		if (showMinimapRef.current) {
+			const minimapCtx = minimapCanvasRef.current?.getContext("2d");
+			if (minimapCtx) {
+				drawMinimap(
+					minimapCtx,
+					boidsRef.current,
+					predatorsRef.current,
+					cameraRef.current,
+					sizeRef.current.width,
+					sizeRef.current.height,
+					worldSize,
+					MINIMAP_WIDTH,
+					MINIMAP_HEIGHT,
+				);
+			}
+		}
 	}
 
 	const stopRun = api.simulation.stop.useMutation({
@@ -463,6 +609,38 @@ export function SimulationCanvas({
 				>
 					Re-center
 				</Button>
+				{showMinimap ? (
+					<canvas
+						className="border-border/40 bg-background/60 absolute bottom-2 left-2 rounded border"
+						height={MINIMAP_HEIGHT}
+						ref={minimapCanvasRef}
+						width={MINIMAP_WIDTH}
+					/>
+				) : null}
+			</div>
+			<div className="flex w-full max-w-2xl items-center justify-center gap-6">
+				<label
+					className="flex items-center gap-2 text-sm"
+					htmlFor="minimap-visible"
+				>
+					Minimap
+					<Switch
+						checked={showMinimap}
+						id="minimap-visible"
+						onCheckedChange={handleToggleMinimap}
+					/>
+				</label>
+				<label
+					className="flex items-center gap-2 text-sm"
+					htmlFor="boundary-visible"
+				>
+					Boundary indicator
+					<Switch
+						checked={showBoundary}
+						id="boundary-visible"
+						onCheckedChange={handleToggleBoundary}
+					/>
+				</label>
 			</div>
 			{populationCapped ? (
 				<p className="text-muted-foreground text-sm">

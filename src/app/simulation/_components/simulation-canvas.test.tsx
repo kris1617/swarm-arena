@@ -64,12 +64,16 @@ const BASE_PROPS = {
 	onFinished: vi.fn(),
 };
 
-// Fake 2D context implementing exactly the drawing methods `drawScene` calls,
-// all as no-ops, plus a settable `fillStyle` so assignment doesn't throw.
+// Fake 2D context implementing exactly the drawing methods `drawScene`,
+// `drawWorldBoundary`, and `drawMinimap` (S-24 Phase 3's own minimap/
+// boundary-indicator pass, both enabled by default) call, all as no-ops,
+// plus settable `fillStyle`/`strokeStyle`/`lineWidth` so assignment doesn't
+// throw.
 function createFakeContext() {
 	return {
 		clearRect: vi.fn(),
 		fillRect: vi.fn(),
+		strokeRect: vi.fn(),
 		save: vi.fn(),
 		translate: vi.fn(),
 		rotate: vi.fn(),
@@ -80,6 +84,8 @@ function createFakeContext() {
 		fill: vi.fn(),
 		restore: vi.fn(),
 		fillStyle: "",
+		strokeStyle: "",
+		lineWidth: 1,
 	};
 }
 

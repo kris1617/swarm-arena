@@ -126,6 +126,65 @@ export function updateAutoFollowCenter(
 	camera.centerY = circularMean(ys, worldSize.y);
 }
 
+// S-24 Phase 3: a fixed camera for the minimap pass — always centered on and
+// fitted to the FULL configured world (never the live population's
+// centroid, and never "manual"), at whatever zoom keeps the whole world
+// visible within the minimap's own small drawing surface. Reuses
+// computeMinZoom (the same "keep the whole world visible" math the main
+// camera's own lower zoom bound already uses) rather than a second formula.
+export function computeMinimapCamera(
+	worldSize: WorldSize,
+	minimapWidth: number,
+	minimapHeight: number,
+): Camera {
+	return {
+		centerX: worldSize.x / 2,
+		centerY: worldSize.y / 2,
+		zoom: computeMinZoom(worldSize, minimapWidth, minimapHeight),
+		mode: "auto",
+	};
+}
+
+// The main camera's current viewport, expressed as a rectangle in the
+// minimap's own small pixel space. Derived from the main camera's
+// centerX/centerY/zoom and the main canvas's width/height (the inverse of
+// worldToScreenX/Y: screen center -> world-space half-extents), then mapped
+// into minimap pixels through worldToScreenX/Y using the minimap's own
+// fixed camera — the exact same transform an entity position goes through,
+// just against a different camera. Does not account for the viewport
+// wrapping around a toroidal edge (e.g. a camera centered near x=0 whose
+// left edge wraps to worldSize.x) — the rectangle can extend slightly
+// outside the minimap's own world bounds in that case, which is an accepted
+// visual simplification for this overlay, not a correctness bug in the
+// main view's own wrap behavior.
+export function computeViewportRectOnMinimap(
+	mainCamera: Camera,
+	mainCanvasWidth: number,
+	mainCanvasHeight: number,
+	minimapCamera: Camera,
+	minimapWidth: number,
+	minimapHeight: number,
+): { x: number; y: number; width: number; height: number } {
+	const halfWorldWidth = mainCanvasWidth / 2 / mainCamera.zoom;
+	const halfWorldHeight = mainCanvasHeight / 2 / mainCamera.zoom;
+	const left = mainCamera.centerX - halfWorldWidth;
+	const top = mainCamera.centerY - halfWorldHeight;
+	const right = mainCamera.centerX + halfWorldWidth;
+	const bottom = mainCamera.centerY + halfWorldHeight;
+
+	const screenLeft = worldToScreenX(left, minimapCamera, minimapWidth);
+	const screenTop = worldToScreenY(top, minimapCamera, minimapHeight);
+	const screenRight = worldToScreenX(right, minimapCamera, minimapWidth);
+	const screenBottom = worldToScreenY(bottom, minimapCamera, minimapHeight);
+
+	return {
+		x: screenLeft,
+		y: screenTop,
+		width: screenRight - screenLeft,
+		height: screenBottom - screenTop,
+	};
+}
+
 // Resolves a camera's state for the frame about to be drawn: in "auto" mode,
 // re-centers on the live population and re-fits zoom to the current
 // canvas/world size (so resizing the window never leaves auto-follow

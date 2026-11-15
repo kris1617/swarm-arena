@@ -16,3 +16,14 @@ export const BOID_FILL_COLOR = "#38bdf8";
 // with a distinct shape (not color alone) for robustness, including for
 // colorblind users.
 export const PREDATOR_FILL_COLOR = "#f97316";
+// S-24 Phase 3: canvas-readable mirror of --border (oklch(1 0 0 / 20%) —
+// white at 20% opacity), the same subtle line this canvas's own CSS border
+// already uses via the `border-border/20` Tailwind class. Used for the
+// world's wrap-boundary indicator and the minimap's own frame — chrome, not
+// content, so it stays subtle rather than competing with entities.
+export const CANVAS_BORDER_COLOR = "rgba(255, 255, 255, 0.2)";
+// A brighter variant of the same --foreground white (oklch(1 0 0) =
+// #ffffff), used only for the minimap's viewport-position rectangle, which
+// needs to stay legible against moving entities rather than blend in as
+// chrome the way CANVAS_BORDER_COLOR does.
+export const CANVAS_HIGHLIGHT_COLOR = "rgba(255, 255, 255, 0.6)";
