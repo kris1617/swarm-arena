@@ -1,7 +1,7 @@
 ---
 change_id: client-staged-live-parameter-parity
 title: Client-staged live parameter parity
-status: preparing
+status: planned
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null
