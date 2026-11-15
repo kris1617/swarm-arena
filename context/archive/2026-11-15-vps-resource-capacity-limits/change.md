@@ -1,10 +1,10 @@
 ---
 change_id: vps-resource-capacity-limits
 title: Derive simulation capacity ceilings from the VPS's actual resources
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T09:46:11Z
 ---
 
 ## Notes
