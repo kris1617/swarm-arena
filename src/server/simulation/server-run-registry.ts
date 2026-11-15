@@ -278,6 +278,14 @@ export function adjustLivePopulation(
 		}
 	}
 
+	// impl-review F2: a zero delta is a true no-op — skip the changelog push
+	// and throttle update entirely rather than recording a no-change entry
+	// and consuming the shared throttle window. Unreachable from the UI
+	// (only ±10 is ever sent); only matters for a direct/malformed call.
+	if (delta === 0) {
+		return { status: "applied" };
+	}
+
 	// Same derivation startServerRun uses (lines ~365-380) — growth needs to
 	// generate new individuals exactly as the initial population was seeded.
 	const maxLifespan = Math.max(60, run.params.maxDurationSeconds);

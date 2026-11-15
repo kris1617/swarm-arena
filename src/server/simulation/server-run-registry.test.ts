@@ -684,6 +684,38 @@ describe("adjustLivePopulation", () => {
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
 	});
+
+	it("impl-review F2: a zero delta is a true no-op — no changelog entry, no throttle update", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(37);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 37,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+
+		const result = adjustLivePopulation(runId, "boid", 0);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		expect(after?.boids).toHaveLength(before.boids.length);
+
+		// No throttle consumed: a real adjustment immediately afterward must
+		// still succeed rather than being throttled by the no-op.
+		const second = adjustLivePopulation(runId, "boid", 3);
+		expect(second).toEqual({ status: "applied" });
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
 });
 
 describe("snapshotServerRun / resumeServerRun", () => {

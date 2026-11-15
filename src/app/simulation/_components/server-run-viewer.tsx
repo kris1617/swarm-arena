@@ -358,10 +358,11 @@ export function ServerRunViewer({
 	// mirrors S-29's client-staged Switch precedent. Cooldown/flash state is
 	// scoped to these two controls specifically (not shared with
 	// `applyCooldown`/`flashFields`, which belong to the batched scalar-field
-	// Apply flow), but shared between the boid and predator rows themselves —
-	// a population click is rare enough that a single shared cooldown is a
-	// reasonable simplification over per-kind state.
-	const [populationCooldown, setPopulationCooldown] = useState(false);
+	// Apply flow), and keyed per field (impl-review F1) so clicking boid's
+	// buttons doesn't visibly disable/flash predator's row too.
+	const [populationCooldownFields, setPopulationCooldownFields] = useState<
+		ReadonlySet<"boidCount" | "predatorCount">
+	>(new Set());
 	const [flashPopulationFields, setFlashPopulationFields] = useState<
 		ReadonlySet<"boidCount" | "predatorCount">
 	>(new Set());
@@ -382,9 +383,15 @@ export function ServerRunViewer({
 				setTimeout(() => {
 					setFlashPopulationFields(new Set());
 				}, FLASH_DURATION_MS);
-				setPopulationCooldown(true);
+				setPopulationCooldownFields((current) =>
+					new Set(current).add(variables.field),
+				);
 				setTimeout(() => {
-					setPopulationCooldown(false);
+					setPopulationCooldownFields((current) => {
+						const next = new Set(current);
+						next.delete(variables.field);
+						return next;
+					});
 				}, APPLY_COOLDOWN_MS);
 			},
 			onError: (error) => {
@@ -424,7 +431,11 @@ export function ServerRunViewer({
 				<div className="flex gap-2">
 					<Button
 						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-3 py-1 text-xs font-semibold"
-						disabled={adjustPopulationMutation.isPending || populationCooldown}
+						disabled={
+							(adjustPopulationMutation.isPending &&
+								adjustPopulationMutation.variables?.field === field) ||
+							populationCooldownFields.has(field)
+						}
 						onClick={() => handleAdjustPopulation(field, -10)}
 						type="button"
 					>
@@ -432,7 +443,11 @@ export function ServerRunViewer({
 					</Button>
 					<Button
 						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-3 py-1 text-xs font-semibold"
-						disabled={adjustPopulationMutation.isPending || populationCooldown}
+						disabled={
+							(adjustPopulationMutation.isPending &&
+								adjustPopulationMutation.variables?.field === field) ||
+							populationCooldownFields.has(field)
+						}
 						onClick={() => handleAdjustPopulation(field, 10)}
 						type="button"
 					>
