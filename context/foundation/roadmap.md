@@ -7,9 +7,9 @@ updated: 2026-11-15
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
-milestone_id: modernization-and-polish
-milestone_seq: 3
-milestone_status: done
+milestone_id: area-camera-and-ops-limits
+milestone_seq: 4
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,20 +20,25 @@ milestone_status: done
 
 ## Milestone
 
-**M-3: Modernization and polish** — Status: done
+**M-4: Area, camera, and ops limits** — Status: open
 
-- **Intent:** Make the app look and feel like a real, modern application (branded login, a consistent design direction across every page, four reference/documentation pages), add two concrete capabilities the user asked for by name (a leaderboard, a run-specific post-run optimization suggestion), give the owner on-demand flexibility (temporary admin elevation), and port a proven performance optimization from the project's own prior Lua implementation (spatial-partitioning neighbor search). Main goal is quality — the user explicitly framed the current UI as not looking like "a common application UI," and the perf work is a proven port, not a guess, so both deserve doing right over doing fast.
-- **Source materials:** `context/foundation/prd.md` (v5) — a user-described scope round (2026-11-14, same day as M-2's close) covering FR-026 through FR-034.
-- **Done when:** F-06 and S-15 through S-23 are all `done`.
-- **Scope anchors:** FR-026 (leaderboard), FR-027 (post-run optimization suggestion), FR-029 (spatial-partitioning performance), FR-030 (temporary admin elevation), FR-031 (branded login), FR-032 (UI modernization), FR-033 (confirmed nav flow), FR-034 (reference/documentation pages). FR-028 (live in-run adjustment) is explicitly parked, not built this round — see Parked.
+- **Intent:** Make the simulation's spatial area itself a configurable parameter, turn the render view into a camera over that area (rather than always rendering the whole area), add an area-aware population-health insight to run analysis, give the owner a durable in-app channel to capture new feature/bug ideas for future rounds, and ground the app's capacity limits (max area, object count, concurrent runs) in this specific VPS's actual hardware instead of arbitrary defaults. Main goal is quality — this is a single-hobbyist-user app (per the PRD's own `target_scale`/`after_hours_only` framing), so the new area/camera mechanic and the VPS-bound limits both deserve doing right rather than fast; a rushed version risks shipping a feature that can silently overload the box it runs on.
+- **Source materials:** user description (2026-11-15, immediately after M-3's close) — no PRD update yet; scope anchors below are distilled from the user's own words, not from `prd.md`.
+- **Done when:** F-07 and S-24 through S-26 are all `done`.
+- **Scope anchors:**
+  - MS-01: User can define the simulation's spatial area as an additional configurable simulation parameter (distinct from today's fixed world-size constants).
+  - MS-02: The render view becomes a camera over the simulation area — the user sees only a portion of a (potentially larger) simulation area at a time, not the whole area rendered at once.
+  - MS-03: A run's outcome/analysis can show whether population health held up given the area used for that run (an area-aware insight, distinct from today's four score factors).
+  - MS-04: A module exists for the user to report new functionality ideas and bugs from within the app, persisted so they can be picked up in future roadmap rounds.
+  - MS-05: New non-functional requirements are defined and bound to this specific VPS's actual resource limits (4 vCPU AMD EPYC-Milan, 7.7GiB RAM / ~6.1GiB available, 232GB disk / 187GB free, no container-level resource caps currently set), creating explicit capacity ceilings (max simulation area, max object count, max concurrent runs) grounded in real hardware rather than arbitrary defaults.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal. M-3 is where the app stops looking like a prototype — polish, insight depth, performance, and the operational flexibility to tune the admin-governed parameter ranges on demand.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization. M-4 makes the simulation's own spatial scale a first-class, user-controlled dimension — a bigger area to roam, a camera to look at part of it, and a check on whether the population still thrives at that scale — while keeping the app's limits honest about the one real machine it runs on, and giving the owner a place to park what comes next.
 
 ## North star
 
-**S-15: User sees a properly branded Swarm Arena login page** — the smallest end-to-end slice that proves the new UI design foundation (F-06) actually works, and the first thing anyone sees, directly answering the user's own framing of the problem ("it doesn't look like a common application UI").
+**S-24: User configures the simulation's area size and sees a camera-limited view into it** — the smallest end-to-end slice that proves the core new mechanic: a bigger area only matters once there's a way to look at just part of it, and a camera control only matters once there's something larger than the viewport to look at — so these ship together, not as two independently-meaningless halves.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -70,6 +75,10 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | done |
+| F-07 | vps-resource-capacity-limits    | (foundation) Concrete max-area/max-object-count/max-concurrent-run ceilings exist, derived from this VPS's actual CPU/RAM/disk | —              | MS-05                                                  | ready |
+| S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | blocked |
+| S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | blocked |
+| S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | blocked |
 
 ## Streams
 
@@ -85,10 +94,12 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | H      | Post-run insight (M-3)            | `S-21`                                   | Standalone — no foundation prerequisite; functionally independent of the UI restyle work, though sequencing it alongside `S-18` (analysis restyle) avoids touching the analysis page's layout twice. |
 | I      | Access flexibility (M-3)          | `S-22`                                   | Standalone — no foundation prerequisite; the elevation mechanism itself is a planning-level decision (PRD Open Question #6), not a roadmap-level blocker. |
 | J      | Engine performance (M-3)          | `S-23`                                   | Standalone — no foundation prerequisite; pure backend change to `boids.ts`'s neighbor search, no UI surface. |
+| K      | Area & camera (M-4)               | `F-07` → `S-24` → `S-25`                 | Carries M-4's north star (`S-24`). The VPS-capacity foundation is sequenced first by main-goal bias (quality: decide real limits before the feature that needs them) — a hard dependency here, not just a bias, since S-24's area parameter range must respect F-07's ceiling. |
+| L      | Feedback channel (M-4)            | `S-26`                                   | Standalone — no foundation prerequisite; fully independent of the area/camera work, can run anytime. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), and again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), and again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -100,6 +111,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **2026-11-14 refresh — relevant to F-03/F-04 specifically:** simulation execution today is 100% client-side, `requestAnimationFrame`-driven (`src/app/simulation/_components/simulation-canvas.tsx`, `src/app/simulation/multi/_components/multi-simulation-stage.tsx`); no server-owned tick loop exists. `simulationRuns` (`src/server/db/schema.ts`) persists only run configuration and terminal fields (status/score/timestamps) — no live per-tick state. No push/subscription mechanism exists (`src/server/api/routers/simulation.ts` has only `start`/`stop` mutations; no tRPC subscription, SSE route, or WebSocket handler found). The existing `computeMultiRunTick` (`src/server/simulation/multi-run-lifecycle.ts`) already separates "tick every running slot" from "render only the active slot's output" — the closest in-repo precedent for the tick/render split F-03/F-04 need, even though it currently runs client-side only.
 - **2026-11-14 refresh (second) — relevant to S-09/F-05/S-10/S-11:** no dashboard or post-login landing page exists — `/simulation` is both the staging form and the only run-related page; there is no route a logged-in user is redirected to. `listRunning`/`listSaved` (`src/server/api/routers/simulation.ts`) already return the caller's own rows filtered by status, so a run-list dashboard is additive UI, not new backend capability. No run-analysis UI or endpoint exists anywhere. Confirmed via code inspection: `computeScore`'s callers (`stop` resolver, `server-run-registry.ts`'s `tick()`/`stopServerRun`) consume `phaseHistory`/`foodRatioSamples`/survivor genes only to compute the final score number — none of those arrays are persisted; `simulationRuns.score` is the only thing written back. An analysis view has nothing to read until F-05 persists them.
 - **2026-11-14 refresh (third) — relevant to M-3 (F-06, S-15–S-23):** the app uses shadcn/ui primitives (`Button`, `Input`, `Switch` in `src/components/ui/`) and a design-token system (`src/styles/globals.css`), but no shared app shell/sidebar-nav layout exists — every page (`login`, `dashboard`, `simulation`, `runs/[runId]`, `runs/compare`) is an independent `<main>` with its own ad hoc Tailwind classes, not a common layout. The login page (`src/app/login/page.tsx`) is generic/default-looking, not branded. No leaderboard, post-run-optimization-suggestion, admin-elevation, or reference/documentation page exists anywhere. `src/server/simulation/boids.ts`'s flocking-force calculation does a full pairwise scan (`for (const other of boids)` nested inside a per-boid loop) — confirmed O(N²), the exact pattern the user's prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`) replaced with a spatial-hash grid, per that project's own `docs/ARCHITEKTURA.md` ("Siatka Haszu Przestrzennego... Optymalizacja wyszukiwania sąsiadów z O(N²) do O(N)"). `users.role` (schema.ts) already has the `admin`/`member` enum; no elevation/toggle mechanism exists to change it from the app itself today (only direct DB access).
+- **2026-11-15 refresh — relevant to M-4 (F-07, S-24–S-26):** the simulation's spatial extent is two hardcoded module-level constants in `src/server/simulation/boids.ts` (`INITIAL_AREA_SIZE = 200` for x/y, `Z_DEPTH_RANGE = 200` for z), not a per-run parameter — every run uses the same fixed toroidal world size today. No camera/viewport concept exists anywhere in the render path; `simulation-canvas.tsx` and the server-run live-view path both render the entire world extent directly, with no pan/zoom/sub-region state. `admin_settings.parameterRanges` (the existing admin-configurable-range mechanism from S-22/S-04) is schema-flexible enough to add a new ranged parameter without a migration shape change, but `src/server/simulation/parameter-ranges.ts`'s `RANGED_PARAMETER_NAMES`/`DEFAULT_PARAMETER_RANGES` would need a new entry for area. No feedback/bug-report table or route exists anywhere in `schema.ts` or `src/server/api/routers/`. Deploy/infra's VPS is confirmed (2026-11-15, direct SSH inspection): 4 vCPU (AMD EPYC-Milan), 7.7GiB RAM (~6.1GiB available at the time of inspection), 232GB disk (187GB free), and the app's Docker container currently has no memory/CPU limit set (`docker inspect` reports unlimited) — today's `DEFAULT_MAX_OBJECT_COUNT = 500` (`parameter-ranges.ts`) was chosen to match pre-existing hardcoded bounds, not derived from this hardware. S-23's recent finding (spatial-hash grid narrowing effectiveness depends on the world-size-to-radius ratio) is directly relevant here: a configurable, potentially larger area would change that ratio and could make the existing grid optimization meaningfully more effective than it measured at the current fixed 200-unit world — worth revisiting once area becomes variable, not re-litigated now.
 
 ## Foundations
 
@@ -180,6 +192,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** —
 - **Risk:** The main risk is scope creep into "redesign everything at once" — explicitly bounded to establishing the shell + token extensions and proving them on exactly one page (S-15) before any other page adopts them. Must not regress the existing design-token discipline (`AGENTS.md`: no literal colors/arbitrary Tailwind values) — extends `globals.css`'s tokens, doesn't bypass them.
 - **Status:** done
+
+### F-07: VPS resource capacity limits
+
+- **Outcome:** (foundation) Concrete, documented ceilings exist for simulation area size, object count, and concurrent run count — derived from this specific VPS's actual CPU/RAM/disk (4 vCPU AMD EPYC-Milan, 7.7GiB RAM, 232GB disk; confirmed 2026-11-15 via direct inspection), not from arbitrary defaults. Does not itself change any code path — it's a capacity *policy* decision that S-24's area-parameter range (and a review of the existing `DEFAULT_MAX_OBJECT_COUNT`) must respect.
+- **Change ID:** vps-resource-capacity-limits
+- **PRD refs:** MS-05
+- **Unlocks:** S-24 — the new area parameter's admin-configurable range has nothing safe to default to without this; also closes the "how big can area get" Unknown below before `/10x-plan` has to guess at it.
+- **Prerequisites:** —
+- **Parallel with:** S-26
+- **Blockers:** —
+- **Unknowns:**
+  - What safety margin (headroom) to target when deriving a ceiling from available RAM/CPU — e.g., cap simulation memory use at 50% of available RAM, leaving room for the OS, Caddy, and normal request handling? — Owner: user. Block: no — `/10x-plan` can propose a reasonable default margin; the user can tighten or loosen it.
+  - Should the app itself enforce a container-level resource limit (currently unset per the Baseline's `docker inspect` finding), or only enforce limits at the simulation-parameter level (area/object-count ranges) and leave the container unbounded? — Owner: user. Block: no — either is implementable; this is a defense-in-depth preference, not a blocker to drafting the parameter-range ceiling itself.
+- **Risk:** Low — this is measurement and policy-setting, not new code; the main risk is picking a ceiling that's either too conservative (undersells the box) or too loose (risks an OOM on this specific 7.7GB-RAM machine, which has no swap configured per the Baseline's `free -h` finding — a genuine, not theoretical, failure mode if ignored).
+- **Status:** ready
 
 ## Slices
 
@@ -463,6 +490,47 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Confirmed O(N²) today (`boids.ts`'s nested `for (const other of boids)` scan) — the technique being ported is already proven in this project's own prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`, documented in that project's own `docs/ARCHITEKTURA.md`), not an invented approach. Must produce identical scores/behavior to the pre-optimization scan for the same seed/parameters (determinism NFR) — any deviation is a correctness bug, not an accepted tradeoff; verification needs a deliberate before/after comparison on a fixed seed, not just "it still runs."
 - **Status:** done
 
+### S-24: Configurable area and camera view
+
+- **Outcome:** User sets the simulation's spatial area size (within an admin-set range, bounded by F-07's capacity ceiling) when staging a run, and the render view becomes a camera over that area — showing only a portion of it at a time — rather than always rendering the entire area at once.
+- **Change ID:** configurable-area-and-camera-view
+- **PRD refs:** MS-01, MS-02
+- **Prerequisites:** F-07 (area's admin-range ceiling must be set from real capacity first)
+- **Parallel with:** S-26
+- **Blockers:** —
+- **Unknowns:**
+  - What is the camera's actual interaction model — does it pan/zoom under user control, follow the population's centroid automatically, or let the user pick a fixed sub-region at staging time? — Owner: user. Block: yes — this is the single biggest open design question in this milestone; `/10x-plan` cannot proceed without it.
+  - Does increasing the area change only the toroidal wrap boundary (`INITIAL_AREA_SIZE`/`Z_DEPTH_RANGE` in `boids.ts`), leaving all existing radii (`NEIGHBOR_RADIUS`, `CAPTURE_RADIUS`, etc.) fixed, or should some radii scale with area too? — Owner: user/team. Block: no — the Baseline's S-23 cross-reference suggests leaving radii fixed is the simpler, lower-risk default (and would make the existing spatial-hash grid more effective, not less); `/10x-plan` can propose this without blocking roadmap sequencing.
+- **Risk:** Medium — this is the most technically novel work in M-4 (no camera/viewport concept exists anywhere in the render path today, per the Baseline). Changing world size also interacts with every `wrap()`/`wrappedDelta()` call site in `boids.ts` and with S-23's recently-shipped spatial-hash grid (cell-size-to-world-size ratio) — both already proven correct for a *fixed* 200-unit world; a variable area needs the same determinism discipline S-23 applied, not a weaker standard.
+- **Status:** blocked
+
+### S-25: Area-aware population insight
+
+- **Outcome:** User sees, in a completed run's analysis view, whether population health held up given the area that run used — e.g., confirming that increasing the area didn't just thin the population out without the scoring/analysis reflecting why.
+- **Change ID:** area-aware-population-insight
+- **PRD refs:** MS-03
+- **Prerequisites:** S-24 (needs a variable area to exist before an area-aware insight means anything)
+- **Parallel with:** S-26
+- **Blockers:** —
+- **Unknowns:**
+  - What shape should this insight take — a new (fifth) score factor, a qualitative note alongside the existing four-factor breakdown, or a new comparison chart (e.g., population density over time, normalized by area)? — Owner: user. Block: yes — changing the score formula itself is a much bigger decision than adding a display-only insight, and the roadmap shouldn't presume which one the user wants.
+- **Risk:** Low-medium — depends entirely on S-24 landing first and on how the Unknown above resolves; if it becomes a new score factor, it also reopens FR-010/FR-019's "four-factor product" formula, which `/10x-plan` would need to treat as carefully as S-09's prior phase-quality correction did.
+- **Status:** blocked
+
+### S-26: In-app feedback module
+
+- **Outcome:** User reports a new functionality idea or a bug from within the app itself (not an external tool), and it's persisted somewhere the owner can review it when scoping a future milestone.
+- **Change ID:** in-app-feedback-module
+- **PRD refs:** MS-04
+- **Prerequisites:** —
+- **Parallel with:** F-07, S-24, S-25 — fully independent of the area/camera work.
+- **Blockers:** —
+- **Unknowns:**
+  - What's the actual mechanism — a simple in-app form writing to a new DB table, an integration with an external tracker (e.g., GitHub Issues), or something else? — Owner: user. Block: yes — this determines whether the slice needs any new schema/router work at all or is mostly a thin UI over an existing external API.
+  - Who can see submitted reports — just the owner (admin-only view), or does the single-user nature of this app (per PRD's own framing — "currently one real user") make that question moot for now? — Owner: user. Block: no — likely moot given the PRD's own access-control note, but worth confirming before `/10x-plan` assumes it.
+- **Risk:** Low — fully additive, no interaction with the simulation engine or existing scoring/analysis logic; the only real risk is over-building (e.g., a full ticketing system) for what the PRD's own scale (`target_scale: users: small`) actually needs.
+- **Status:** blocked
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -496,6 +564,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-21       | post-run-optimization-suggestion    | Run-specific post-run optimization suggestion on the analysis view      | yes                     | No prerequisites — can run parallel with everything else in M-3 |
 | S-22       | temporary-admin-elevation           | Reversible, temporary elevation to admin                                | yes                     | No prerequisites — elevation mechanism deferred to `/10x-plan` |
 | S-23       | spatial-hash-performance-optimization | Spatial-partitioning neighbor search for flocking calculations        | yes                     | No prerequisites — ported from the project's own prior Lua implementation |
+| F-07       | vps-resource-capacity-limits        | Derive area/object-count/concurrency ceilings from the VPS's real specs | yes                    | `/10x-plan` can propose defaults for its two non-blocking Unknowns (headroom margin, container-limit enforcement) |
+| S-24       | configurable-area-and-camera-view   | Configurable simulation area + camera-limited render view                | no                     | Blocked on F-07 and on the camera interaction-model Unknown — resolve before planning |
+| S-25       | area-aware-population-insight       | Area-aware population-health insight in run analysis                    | no                     | Blocked on S-24 and on the insight-shape Unknown — resolve before planning |
+| S-26       | in-app-feedback-module               | In-app feedback/bug-report module                                        | no                     | Blocked on the mechanism Unknown — resolve before planning |
 
 ## Open Roadmap Questions
 
