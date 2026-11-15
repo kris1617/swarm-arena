@@ -1,10 +1,10 @@
 ---
 change_id: leaderboard
 title: Leaderboard of the user's completed runs ranked by score
-status: impl_reviewed
+status: archived
 created: 2026-11-14
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T07:23:41Z
 ---
 
 ## Notes
