@@ -279,18 +279,18 @@ New `simulationRuns.xyArea`/`zDepth` columns require a migration with a backfill
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on touched files returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 Hardcoded-value scan on touched files returns zero hits
 
 #### Manual
 
-- [ ] 2.5 Default camera auto-follows the population smoothly
-- [ ] 2.6 Pan/zoom switches to manual mode and is clamped at configured min/max zoom
-- [ ] 2.7 Re-center control returns to auto-follow
-- [ ] 2.8 Canvas visibly resizes with its container without distorting the scene
-- [ ] 2.9 All of the above work identically on both rendering paths
+- [x] 2.5 Default camera auto-follows the population smoothly
+- [x] 2.6 Pan/zoom switches to manual mode and is clamped at configured min/max zoom
+- [x] 2.7 Re-center control returns to auto-follow
+- [x] 2.8 Canvas visibly resizes with its container without distorting the scene
+- [x] 2.9 All of the above work identically on both rendering paths
 
 ### Phase 3: Minimap + wrap-boundary indicator
 

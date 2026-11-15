@@ -75,7 +75,14 @@ describe("ServerRunViewer", () => {
 
 	it("calls drawScene with the pushed snapshot's boids/predators on onData", () => {
 		act(() => {
-			root.render(<ServerRunViewer onClose={vi.fn()} runId={42} />);
+			root.render(
+				<ServerRunViewer
+					onClose={vi.fn()}
+					runId={42}
+					xyArea={200}
+					zDepth={200}
+				/>,
+			);
 		});
 
 		const fixtureBoids = [{ x: 1 }];
@@ -95,7 +102,14 @@ describe("ServerRunViewer", () => {
 
 	it("renders the error message when onError fires", () => {
 		act(() => {
-			root.render(<ServerRunViewer onClose={vi.fn()} runId={42} />);
+			root.render(
+				<ServerRunViewer
+					onClose={vi.fn()}
+					runId={42}
+					xyArea={200}
+					zDepth={200}
+				/>,
+			);
 		});
 
 		act(() => {
@@ -107,7 +121,14 @@ describe("ServerRunViewer", () => {
 
 	it("clears a stale error once new data arrives (impl-review F1)", () => {
 		act(() => {
-			root.render(<ServerRunViewer onClose={vi.fn()} runId={42} />);
+			root.render(
+				<ServerRunViewer
+					onClose={vi.fn()}
+					runId={42}
+					xyArea={200}
+					zDepth={200}
+				/>,
+			);
 		});
 
 		act(() => {
@@ -128,11 +149,23 @@ describe("ServerRunViewer", () => {
 	it("calls onClose exactly once when Stop viewing is clicked", () => {
 		const onClose = vi.fn();
 		act(() => {
-			root.render(<ServerRunViewer onClose={onClose} runId={42} />);
+			root.render(
+				<ServerRunViewer
+					onClose={onClose}
+					runId={42}
+					xyArea={200}
+					zDepth={200}
+				/>,
+			);
 		});
 
-		const button = container.querySelector("button");
-		expect(button).not.toBeNull();
+		// S-24 Phase 2: the camera overlay's "Re-center" button now also
+		// renders inside this component, so a plain `querySelector("button")`
+		// (the first button in document order) would grab that one instead —
+		// select by visible text to keep targeting "Stop viewing" specifically.
+		const buttons = Array.from(container.querySelectorAll("button"));
+		const button = buttons.find((b) => b.textContent === "Stop viewing");
+		expect(button).not.toBeUndefined();
 		act(() => {
 			button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 		});

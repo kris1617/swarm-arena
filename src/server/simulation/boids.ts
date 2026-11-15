@@ -1169,7 +1169,11 @@ export function runTick(
 // gives 100, nowhere near either boid. Mapping each value onto a circle
 // (angle = value/range * 2π) and averaging there, then mapping back, gives
 // the geometrically correct "middle" regardless of where the seam falls.
-function circularMean(values: number[], range: number): number {
+// Exported for the camera module (S-24 Phase 2): a camera centered on a
+// population straddling the toroidal wrap seam needs the same circular-mean
+// handling computeCohesion's centroid does below, not a plain arithmetic
+// average.
+export function circularMean(values: number[], range: number): number {
 	let sumSin = 0;
 	let sumCos = 0;
 	for (const value of values) {

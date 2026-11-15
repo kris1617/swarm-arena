@@ -506,6 +506,11 @@ export const simulationRouter = createTRPCRouter({
 				startedAt: simulationRuns.startedAt,
 				boidCount: simulationRuns.boidCount,
 				predatorCount: simulationRuns.predatorCount,
+				// S-24 Phase 2: ServerRunViewer needs the viewed run's real
+				// configured world size to derive its camera's zoom limits
+				// (camera.ts's computeMinZoom) — never a hardcoded 200.
+				xyArea: simulationRuns.xyArea,
+				zDepth: simulationRuns.zDepth,
 			})
 			.from(simulationRuns)
 			.where(

@@ -248,9 +248,21 @@ export default function SimulationPage() {
 
 			{viewingRunId ? (
 				<ServerRunViewer
+					// S-24 Phase 2: the viewed run's own configured world size, from
+					// `listRunning`'s per-run config — falls back to the admin
+					// default only for the brief window before that list has
+					// loaded/included this run (e.g. right after starting it).
 					key={viewingRunId}
 					onClose={() => setViewingRunId(null)}
 					runId={viewingRunId}
+					xyArea={
+						runningRunsQuery.data?.find((run) => run.id === viewingRunId)
+							?.xyArea ?? ranges.xyArea.default
+					}
+					zDepth={
+						runningRunsQuery.data?.find((run) => run.id === viewingRunId)
+							?.zDepth ?? ranges.zDepth.default
+					}
 				/>
 			) : null}
 

@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+	type Camera,
+	resolveCameraForFrame,
+	worldToScreenX,
+	worldToScreenY,
+} from "~/app/simulation/_components/camera";
+import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
 import {
 	type BoidGenes,
@@ -17,28 +24,29 @@ import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import { CANVAS_BACKGROUND } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
-// Exported for ServerRunViewer (S-07) to match the staging canvas's exact
-// dimensions rather than duplicating the numbers.
+// S-24 Phase 2: these are now only the *initial* drawing-buffer size, kept
+// around as a sensible default/fallback (and for ServerRunViewer to seed its
+// own camera with before its ResizeObserver fires) — the canvas itself
+// resizes responsively via useCamera's ResizeObserver, and the old fixed
+// RENDER_SCALE/RENDER_OFFSET_X/Y world-to-pixel mapping is gone, replaced by
+// the camera transform (camera.ts).
 export const CANVAS_WIDTH = 600;
 export const CANVAS_HEIGHT = 400;
-// createInitialPopulation spreads boids over a 0-200 square; scale that up
-// and center it so the initial frame isn't tiny in a 600x400 canvas. Boids
-// stay within that range indefinitely — stepBoids wraps x/y/z toroidally,
-// so they re-enter from the opposite edge instead of drifting off-canvas.
-const RENDER_SCALE = 2;
-const RENDER_OFFSET_X = (CANVAS_WIDTH - 200 * RENDER_SCALE) / 2;
-const RENDER_OFFSET_Y = (CANVAS_HEIGHT - 200 * RENDER_SCALE) / 2;
 // Triangle half-length (nose to tail-center) and half-width (wing to wing),
 // drawn pointing along each boid's current heading for a bird/fish-like look.
-const BOID_LENGTH = 6;
+// Exported so camera.ts's max-zoom ceiling ("a few boid-lengths across") is
+// derived from the real rendered boid size, not a second hardcoded number.
+export const BOID_LENGTH = 6;
 const BOID_WIDTH = 4;
 // Predators render as a wider/diamond silhouette (vs. the boid's narrow
 // triangle) so they're distinguishable by shape alone, not just color.
 const PREDATOR_LENGTH = 7;
 const PREDATOR_WIDTH = 7;
 // Depth at which a boid renders at its base size (scale 1); centered on
-// boids.ts's Z_DEPTH_RANGE (200) so the inverse-linear falloff below spans
-// the typical z range instead of saturating at one end of it.
+// this project's pre-S-24 default zDepth (200) so the inverse-linear
+// falloff below spans the typical z range instead of saturating at one
+// end of it. zDepth is now a per-run parameter (S-24), but this constant
+// stays a fixed rendering reference point, not re-derived per run.
 const REFERENCE_DEPTH = 100;
 // Clamp bounds on the depth-derived scale factor — the inverse-linear
 // formula grows unbounded as z approaches 0, so this keeps very close boids
@@ -118,15 +126,23 @@ export function colorToCss({
 }
 
 // Exported for ServerRunViewer (S-07) to reuse unchanged — already pure
-// given a canvas context + boids/predators arrays.
+// given a canvas context + boids/predators arrays. S-24 Phase 2: the fixed
+// world-to-pixel mapping is gone, replaced by the shared camera transform —
+// `camera`/`canvasWidth`/`canvasHeight` are explicit parameters (not read
+// from `ctx.canvas`) so this stays testable against a fake context that
+// implements only the drawing methods below. Entity x/y/z, boid-length, and
+// depth-cue constants/`computeDepthScale` below are unchanged.
 export function drawScene(
 	ctx: CanvasRenderingContext2D,
 	boids: BoidState[],
 	predators: PredatorState[],
+	camera: Camera,
+	canvasWidth: number,
+	canvasHeight: number,
 ) {
-	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+	ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 	ctx.fillStyle = CANVAS_BACKGROUND;
-	ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+	ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
 	const entities: DrawEntity[] = [
 		...boids.map((boid): DrawEntity => ({ ...boid, kind: "boid" })),
@@ -139,8 +155,8 @@ export function drawScene(
 	];
 	const sorted = entities.sort(compareByDepth);
 	for (const entity of sorted) {
-		const x = entity.x * RENDER_SCALE + RENDER_OFFSET_X;
-		const y = entity.y * RENDER_SCALE + RENDER_OFFSET_Y;
+		const x = worldToScreenX(entity.x, camera, canvasWidth);
+		const y = worldToScreenY(entity.y, camera, canvasHeight);
 		// Heading from current velocity; zero velocity (e.g. the very first
 		// frame) points along +x as a stable default.
 		const speed = Math.hypot(entity.vx, entity.vy);
@@ -190,6 +206,10 @@ export function SimulationCanvas({
 	onFinished,
 }: SimulationCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	// Fixed for this component instance's lifetime — props are fixed for the
+	// lifetime of a run (the page remounts this component with a new `key`
+	// per runId), same as the mount effect below already assumes.
+	const worldSize = { x: xyArea, y: xyArea, z: zDepth };
 	// Created once per run (inside the run-once effect below) and reused for
 	// every tick's createInitial*/computeSingleRunTick call, never recreated —
 	// a fresh rng per tick would make reproduction's mutation/gender rolls
@@ -211,6 +231,43 @@ export function SimulationCanvas({
 	const [status, setStatus] = useState<"running" | "stopped">("running");
 	const [tickError, setTickError] = useState<string | null>(null);
 	const [populationCapped, setPopulationCapped] = useState(false);
+
+	// S-24 Phase 2: camera state/input/resize for this canvas instance —
+	// per-component, not shared/persisted (see use-camera.ts).
+	const { cameraRef, sizeRef, recenter } = useCamera({
+		boidLength: BOID_LENGTH,
+		canvasRef,
+		defaultSize: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+		onChange: () => redraw(),
+		worldSize,
+	});
+
+	// Resolves the camera for the current boids/predators snapshot and
+	// redraws. Called both from the tick loop below (new data) and from
+	// useCamera's onChange (pan/zoom/resize input between ticks).
+	function redraw() {
+		const ctx = canvasRef.current?.getContext("2d");
+		if (!ctx) {
+			return;
+		}
+		resolveCameraForFrame(
+			cameraRef.current,
+			boidsRef.current,
+			predatorsRef.current,
+			worldSize,
+			sizeRef.current.width,
+			sizeRef.current.height,
+			BOID_LENGTH,
+		);
+		drawScene(
+			ctx,
+			boidsRef.current,
+			predatorsRef.current,
+			cameraRef.current,
+			sizeRef.current.width,
+			sizeRef.current.height,
+		);
+	}
 
 	const stopRun = api.simulation.stop.useMutation({
 		onError: (error, variables) => {
@@ -256,14 +313,13 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/xyArea/zDepth/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
 		if (!canvas || !maybeCtx) {
 			return;
 		}
-		const ctx: CanvasRenderingContext2D = maybeCtx;
 
 		// Generous relative to maxDurationSeconds so natural lifespan decay
 		// doesn't cut the run shorter than the duration the member chose.
@@ -275,7 +331,6 @@ export function SimulationCanvas({
 		// createInitialPopulation's per-flock seed colors and from mutation
 		// during reproduction, not from different starting weights.
 		const flockWeights = Array.from({ length: flockCount }, () => weights);
-		const worldSize = { x: xyArea, y: xyArea, z: zDepth };
 		boidsRef.current = createInitialPopulation(
 			boidCount,
 			rngRef.current,
@@ -293,7 +348,7 @@ export function SimulationCanvas({
 			worldSize,
 		);
 		foodStockRef.current = foodStockInitial;
-		drawScene(ctx, boidsRef.current, predatorsRef.current);
+		redraw();
 
 		function stop() {
 			if (hasStoppedRef.current) {
@@ -348,7 +403,7 @@ export function SimulationCanvas({
 				lastTimestampRef.current = result.lastTimestamp;
 				setPopulationCapped(result.populationCapped);
 
-				drawScene(ctx, result.boids, result.predators);
+				redraw();
 
 				if (result.shouldStop) {
 					stop();
@@ -388,12 +443,27 @@ export function SimulationCanvas({
 
 	return (
 		<div className="flex flex-col items-center gap-4">
-			<canvas
-				className="border-border/20 rounded-lg border"
-				height={CANVAS_HEIGHT}
-				ref={canvasRef}
-				width={CANVAS_WIDTH}
-			/>
+			{/* AGENTS.md disallows arbitrary Tailwind values (e.g. aspect-[3/2]) —
+			the 3:2 drawing-buffer ratio is expressed as an inline style instead,
+			same posture as any other non-token, non-color numeric layout value. */}
+			<div
+				className="relative w-full max-w-2xl"
+				style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
+			>
+				<canvas
+					className="border-border/20 h-full w-full rounded-lg border"
+					height={CANVAS_HEIGHT}
+					ref={canvasRef}
+					width={CANVAS_WIDTH}
+				/>
+				<Button
+					className="bg-input text-foreground hover:bg-foreground/35 absolute top-2 right-2 h-auto rounded-full px-4 py-1 text-xs font-semibold"
+					onClick={recenter}
+					type="button"
+				>
+					Re-center
+				</Button>
+			</div>
 			{populationCapped ? (
 				<p className="text-muted-foreground text-sm">
 					Population capped — at the object limit
