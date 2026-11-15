@@ -1,7 +1,7 @@
 ---
 change_id: live-crossbreeding-toggle
 title: Live-adjust crossbreeding toggle on a running simulation
-status: implementing
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null

@@ -263,12 +263,12 @@ None — `crossbreedingEnabled` becomes a new optional key in `LiveAdjustablePar
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [x] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — de3fc98
+- [x] 3.2 Linting passes: `npm run check` — de3fc98
+- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — de3fc98
+- [x] 3.4 Full suite passes: `npm test` — de3fc98
 
 #### Manual
 
-- [x] 3.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
-- [x] 3.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
+- [x] 3.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only" — de3fc98
+- [x] 3.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run — de3fc98
