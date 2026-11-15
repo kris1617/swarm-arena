@@ -20,12 +20,11 @@ type NavItem = {
 	href: string;
 };
 
-// S-20 (reference-documentation-pages) still needs its own entry here when
-// that page ships — see plan's "What We're NOT Doing".
 const NAV_ITEMS: NavItem[] = [
 	{ label: "Dashboard", href: "/dashboard" },
 	{ label: "Simulation", href: "/simulation" },
 	{ label: "Leaderboard", href: "/leaderboard" },
+	{ label: "Reference", href: "/reference" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
