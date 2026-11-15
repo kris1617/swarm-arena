@@ -7,9 +7,9 @@ updated: 2026-11-15
 prd_version: 5
 main_goal: quality
 top_blocker: none
-milestone_id: genetic-diversity-trend
-milestone_seq: 7
-milestone_status: done
+milestone_id: parameter-suggestion-analytics-corpus
+milestone_seq: 8
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,21 +20,26 @@ milestone_status: done
 
 ## Milestone
 
-**M-7: Genetic-diversity trend** — Status: done
+**M-8: Parameter-suggestion & analytics validation corpus** — Status: open
 
-- **Intent:** Reverse one specific, narrowly-scoped PRD Non-Goal — the analysis view shows only a single final genetic-diversity value today; this milestone adds the per-tick trend the Non-Goal explicitly deferred, invoking its own "revisit if a future slice needs the same series" clause now that the user has asked for it directly.
-- **Source materials:** user description (2026-11-15, immediately after M-6's close) — reverses the Non-Goal at `prd.md`'s Non-Goals section ("No diversity-index trend over time in the analysis view (v1)"); the PRD text itself is left as the historical scoping record (same convention this roadmap already used for S-27 overriding the "No live, in-run parameter adjustment" Non-Goal without editing prd.md).
-- **Done when:** S-32 is `done`.
+- **Intent:** Build a reusable, varied-parameter corpus of simulation runs — generated once, exported to a fixture file, never needing regeneration — that lets the maintainer (and, going forward, the test suite) check whether the existing parameter-suggestion heuristic (FR-015) actually surfaces sensible correlated suggestions, and whether every per-run analytics function handles the full range of parameter combinations without error. This is test/validation infrastructure, not a new user-facing capability — the "user" for every item below is the project's own maintainer/test suite.
+- **Source materials:** user description (2026-11-15, immediately after M-7's close), clarified through a 4-question interview (custom-MVP-shape exception — this doesn't fit a familiar CRUD/SaaS pattern): corpus stored as an exported JSON/CSV fixture file (not live DB rows) so it survives a DB reset and needs no live app dependency to reuse; parameter variation is a structured sweep across known-impactful parameters (flocking weights, food regen rate, crossbreeding) deliberately targeting healthy-growth/crash/overshoot-recovery phases, not random sampling; ~20 total runs with up to 4 ticking in parallel, each capped at 60 minutes of simulated duration; the milestone produces both new automated tests (suggestion-quality + analytics-correctness regression checks) and a dataset the maintainer can explore manually.
+- **Done when:** F-08, S-33, S-34, and S-35 are all `done`.
 - **Scope anchors:**
-  - MS-01: User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value.
+  - MS-01: A reusable, persisted corpus of varied-parameter simulation runs exists, exported to a fixture file so it never needs regenerating.
+  - MS-02: The corpus is generated from multiple simulations, some ticking in parallel.
+  - MS-03: Each generated simulation is capped at 60 minutes of simulated duration.
+  - MS-04: An automated test checks whether the parameter-suggestion heuristic produces a sensible, correlated suggestion against the corpus.
+  - MS-05: Automated tests check whether every per-run analytics function handles the corpus's full range of parameter combinations without error.
+  - MS-06: Corpus generation starts from a clean application state and cleans up its own generation-time side effects afterward, leaving only the exported fixture behind.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 is a smaller, independent move: the analysis view's genetic-diversity factor has only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — this milestone closes that one specific gap.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability.
 
 ## North star
 
-**S-32: Genetic-diversity trend over time in the analysis view** — the milestone's sole slice, so it is trivially the north star: the smallest end-to-end flow that proves the idea (a per-tick diversity series, charted alongside the existing population-over-time chart) works, with low implementation risk since it mirrors three already-shipped sample-array precedents exactly.
+**S-33: Generate and persist the full structured-parameter-sweep corpus** — the smallest end-to-end flow that proves this milestone's core idea: that a varied, parallel-generated, duration-capped corpus can actually be produced and exported for reuse. S-34/S-35 (the suggestion-quality and analytics-correctness tests) are both downstream consumers of this slice's output and prove nothing on their own without it.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -81,6 +86,10 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count and predator count while it is actively running | —              | MS-03                                                  | done |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
 | S-32 | genetic-diversity-trend        | User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value | —              | FR-025, MS-01                                          | done |
+| F-08 | corpus-generation-harness      | (foundation) A single simulation run can be generated end-to-end through the real app, exported to a fixture file, and cleaned up afterward | —              | MS-01, MS-06                                           | proposed |
+| S-33 | parameter-sweep-corpus-generation | Maintainer generates and persists a ~20-run structured-parameter-sweep corpus (up to 4 runs ticking in parallel, each capped at 60 simulated minutes) to a reusable fixture file | F-08           | MS-01, MS-02, MS-03, MS-06                             | proposed |
+| S-34 | suggestion-quality-corpus-test | Maintainer has an automated test asserting the parameter-suggestion heuristic produces a sensible, correlated suggestion against the persisted corpus | S-33           | MS-04                                                  | proposed |
+| S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | proposed |
 
 ## Streams
 
@@ -101,10 +110,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | M      | Live parameter tuning (M-5)       | `S-27`                                   | Standalone — no foundation prerequisite; baseline confirms the server-owned registry's `LiveRun.params` is already a single mutable field read fresh every tick, so no new Foundation is needed. |
 | N      | Extended live tuning (M-6)        | `S-31` → `S-28`, `S-29`, `S-30`          | `S-31` (fix S-27's field set) is a hard prerequisite only for `S-28` (sequencing — plan client-staged parity against the corrected set); `S-29`/`S-30` are independent of `S-31` and of each other, and `S-28` carries M-6's north star once unblocked. |
 | O      | Diversity trend (M-7)             | `S-32`                                   | Standalone — no foundation prerequisite; mirrors the already-shipped per-tick sample-array pattern (`populationCountSamples` et al.) exactly, so no new Foundation is needed. |
+| P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -214,6 +224,20 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Should the app itself enforce a container-level resource limit (currently unset per the Baseline's `docker inspect` finding), or only enforce limits at the simulation-parameter level (area/object-count ranges) and leave the container unbounded? — Owner: user. Block: no — either is implementable; this is a defense-in-depth preference, not a blocker to drafting the parameter-range ceiling itself.
 - **Risk:** Low — this is measurement and policy-setting, not new code; the main risk is picking a ceiling that's either too conservative (undersells the box) or too loose (risks an OOM on this specific 7.7GB-RAM machine, which has no swap configured per the Baseline's `free -h` finding — a genuine, not theoretical, failure mode if ignored). Planning (2026-11-15) found the *actual* binding constraint is CPU (single-threaded tick execution), not RAM — see `context/foundation/capacity-limits.md` for the measured tick-cost curve.
 - **Status:** done
+
+### F-08: Corpus-generation harness
+
+- **Outcome:** (foundation) A single simulation run can be driven end-to-end through the real app's own execution path (not a bypass of the engine) with explicit parameters, allowed to tick to completion under a simulated-duration cap, have its persisted history/score captured, exported to a fixture-file record, and have its own DB/registry footprint cleaned up afterward — leaving no trace beyond the exported record.
+- **Change ID:** corpus-generation-harness
+- **PRD refs:** MS-01, MS-06
+- **Unlocks:** S-33 (which runs this harness ~20 times, batched up to 4-wide, to build the full corpus); any future slice needing the same single-run generate-and-export capability.
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:**
+  - Should the harness drive ticks via the same accelerated/fake-timer mechanism the existing test suite already uses (so a 60-simulated-minute run's `maxDurationSeconds` configuration is respected and exercised realistically without the generation script actually blocking for 60 real-world minutes), or via real wall-clock ticking? — Owner: team/plan. Block: no — the existing test suite's established `vi.useFakeTimers()`/`vi.advanceTimersByTimeAsync()` pattern is the obvious default; `/10x-plan` can confirm and detail it.
+- **Risk:** Low — reuses the existing server-owned execution engine and its already-tested `createCaller`-based test pattern; the main risk is ensuring real-time-equivalent behavior (scoring, phase classification) isn't accidentally distorted by however ticks are accelerated.
+- **Status:** proposed
 
 ## Slices
 
@@ -618,6 +642,46 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low — mirrors three existing precedents exactly (append-per-tick sample array, schema-less `history` JSON blob needs no migration, optional-field guarded read for backward compatibility with older runs lacking the series — same pattern `populationCountSamples?` already uses at `simulation.ts:811`).
 - **Status:** done
 
+### S-33: Generate and persist the parameter-sweep corpus
+
+- **Outcome:** Maintainer generates a ~20-run structured-parameter-sweep corpus (varying flocking weights, food regen rate, and crossbreeding across a few levels each, deliberately targeting healthy-growth/crash/overshoot-recovery phases), with up to 4 runs registered and ticking concurrently at a time, each capped at 60 simulated minutes, using F-08's harness — then exports the full corpus to a reusable fixture file and cleans up every generation-time DB/registry artifact, leaving only the exported file behind.
+- **Change ID:** parameter-sweep-corpus-generation
+- **PRD refs:** MS-01, MS-02, MS-03, MS-06
+- **Prerequisites:** F-08 (the single-run generate-and-export harness this slice calls ~20 times, batched)
+- **Parallel with:** — (the only slice building the corpus; S-34/S-35 both wait on this one's output)
+- **Blockers:** —
+- **Unknowns:**
+  - Exact parameter/level matrix for the structured sweep (which specific values of separation/alignment/cohesion weight, food regen rate, and crossbreeding on/off, and how they combine into ~20 runs) — Owner: team/plan. Block: no — `/10x-plan` can propose a concrete matrix grounded in the existing admin-configured ranges and the phase-quality model; the user can adjust.
+  - Exact fixture-file format and location (e.g. `context/fixtures/` or a test-only directory, JSON vs. CSV, one file vs. one-per-run) — Owner: team/plan. Block: no.
+- **Risk:** Moderate — the first real exercise of F-08's harness at scale (4-way concurrent registration) and the first slice needing an explicit "clean before, clean after, keep only the export" lifecycle discipline; deserves the same care S-27's impl-review gave to concurrency/bounds, now applied to a batch-generation script instead of a single live-adjust mutation.
+- **Status:** proposed
+
+### S-34: Suggestion-quality test against the corpus
+
+- **Outcome:** Maintainer has an automated test that runs the existing parameter-suggestion heuristic (FR-015) against the persisted corpus fixture and asserts it surfaces a sensible, correlated suggestion — turning "xcheck if we can get suggestions on parameters" into a repeatable regression check rather than a one-time manual read of the output.
+- **Change ID:** suggestion-quality-corpus-test
+- **PRD refs:** MS-04
+- **Prerequisites:** S-33 (consumes its exported fixture — never regenerates the corpus itself)
+- **Parallel with:** S-35 (both consume S-33's output independently, touch unrelated code paths)
+- **Blockers:** —
+- **Unknowns:**
+  - What exactly counts as "sensible" for the assertion — must the suggested parameter be the single most-correlated one the heuristic itself would rank first (deterministic, since the corpus is fixed), or is a looser bound (e.g. "among the top 3 correlated") more robust to minor heuristic tuning later? — Owner: user. Block: no — `/10x-plan` will propose the stricter exact-match assertion by default, grounded in the corpus being a fixed, deterministic fixture.
+- **Risk:** Low — the heuristic itself (FR-015/S-13) is already shipped and tested in isolation; this slice only adds a new input fixture and a correctness assertion against it, no changes to the heuristic's own logic.
+- **Status:** proposed
+
+### S-35: Analytics-correctness tests against the corpus
+
+- **Outcome:** Maintainer has automated tests confirming every per-run analytics function (`getRunAnalysis`'s population/diversity/phase-breakdown/completed-cycles/final-diversity/optimization-suggestion, `getRunsComparison`, `listCompleted`/leaderboard ranking) handles the corpus's full range of parameter combinations — including any scenario that produced a crash, an empty population, or an unusual phase sequence — without throwing or returning a malformed shape.
+- **Change ID:** analytics-correctness-corpus-tests
+- **PRD refs:** MS-05
+- **Prerequisites:** S-33 (consumes its exported fixture)
+- **Parallel with:** S-34 (both consume S-33's output independently)
+- **Blockers:** —
+- **Unknowns:**
+  - Should every analytics endpoint get its own dedicated test iterating the full corpus, or one shared parameterized test (`it.each`) per endpoint across all corpus entries — Owner: team/plan. Block: no — the latter matches this project's own `lessons.md` guidance against "redundant copies" of near-identical tests.
+- **Risk:** Low — purely additive test coverage against already-shipped, already-tested endpoints; the main value is catching an edge case (e.g. a crashed-to-zero-population run) that the corpus's deliberately varied scenarios might surface but today's narrower test fixtures don't.
+- **Status:** proposed
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -661,6 +725,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-30       | live-boid-count-adjustment           | Live-adjust boid count (increase/decrease) on a running server-owned simulation | yes                    | No prerequisites; real array-mutation work with existing cull/generation patterns to build on |
 | S-31       | correct-live-parameter-field-set     | Fix S-27's live-adjustable field set: remove non-functional weights, add functional reproduction params | yes                    | No prerequisites; corrects a verified defect in archived S-27 — recommended next move |
 | S-32       | genetic-diversity-trend              | Chart genetic-diversity trend over time in the analysis view, alongside the existing population-count chart | yes                    | No prerequisites; mirrors 3 existing per-tick sample-array precedents — ready to plan now |
+| F-08       | corpus-generation-harness            | Single-run generate-and-export harness for simulation test fixtures | yes                    | No prerequisites; reuses the existing server-owned engine + createCaller test pattern — ready to plan now |
+| S-33       | parameter-sweep-corpus-generation    | Generate and persist a ~20-run structured-parameter-sweep corpus to a reusable fixture file | no                     | Waiting on F-08 |
+| S-34       | suggestion-quality-corpus-test       | Automated test: parameter-suggestion heuristic produces a sensible, correlated suggestion against the corpus | no                     | Waiting on S-33 |
+| S-35       | analytics-correctness-corpus-tests   | Automated tests: every per-run analytics function handles the corpus's full range of parameter combinations | no                     | Waiting on S-33; can run parallel with S-34 |
 
 ## Open Roadmap Questions
 
