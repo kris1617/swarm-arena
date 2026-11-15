@@ -2204,3 +2204,123 @@ describe("simulationRouter.savePause / resume", () => {
 		await otherCaller.simulation.resume({ runId: otherRunId });
 	});
 });
+
+// testing-full-lifecycle-regression: drives the real cross-procedure user
+// journey described by the project owner — start, pause/resume, finish,
+// list, compare (FR-016's bounded 2-4-run comparison), delete the test
+// data, and verify the dashboard is empty again — as drift-detection
+// coverage for a future change that breaks one step's output against the
+// next step's input (e.g. savePause's snapshot shape vs. what resume
+// expects, or stop's persisted history shape vs. what getRunsComparison
+// reads). Unlike every describe block above, which inserts isolated
+// fixture rows per test, this test chains real mutations end to end.
+describe("simulationRouter full lifecycle regression", () => {
+	// Chains ~15 real round-trips (DB inserts/queries plus `createCaller`
+	// procedure calls) end to end — comfortably over Vitest's 5000ms default
+	// in this environment (each router call logs 200-450ms here), so this
+	// one long-running scenario test gets its own explicit timeout rather
+	// than raising the suite-wide default.
+	it("drives start, pause/resume, stop, compare, and cleanup end to end, leaving an empty dashboard", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `lifecycle-owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		// 1. Start a client-staged run (run A).
+		const { runId: runIdA } = await caller.simulation.start(VALID_START_INPUT);
+		let running = await caller.simulation.listRunning();
+		expect(running.map((r) => r.id)).toContain(runIdA);
+
+		// 2. Start a server-owned run (run B) — the only path that supports
+		// pause/resume.
+		const { runId: runIdB } =
+			await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runIdB);
+		expect(isServerRunActive(runIdB)).toBe(true);
+		running = await caller.simulation.listRunning();
+		expect(running.map((r) => r.id).sort()).toEqual([runIdA, runIdB].sort());
+
+		// 3. Pause run B — the "stop/resume" possibility the owner asked about.
+		await caller.simulation.savePause({ runId: runIdB });
+		expect(isServerRunActive(runIdB)).toBe(false);
+		let saved = await caller.simulation.listSaved();
+		expect(saved.map((r) => r.id)).toEqual([runIdB]);
+		running = await caller.simulation.listRunning();
+		expect(running.map((r) => r.id)).toEqual([runIdA]);
+
+		// 4. Resume run B.
+		await caller.simulation.resume({ runId: runIdB });
+		expect(isServerRunActive(runIdB)).toBe(true);
+		saved = await caller.simulation.listSaved();
+		expect(saved).toHaveLength(0);
+		running = await caller.simulation.listRunning();
+		expect(running.map((r) => r.id).sort()).toEqual([runIdA, runIdB].sort());
+
+		// 5. Finish run B the way the tick loop itself finishes a server-owned
+		// run on natural completion (duration elapsed / population wipe) —
+		// `stop` explicitly refuses a server-owned active run ("use savePause
+		// instead"), so this is the only route to a scored "stopped" row for
+		// this path.
+		await stopServerRun(runIdB);
+		const rowB = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runIdB),
+		});
+		expect(rowB?.status).toBe("stopped");
+		expect(typeof rowB?.score).toBe("number");
+
+		// 6. Stop run A via the client-staged path, with representative score
+		// signals.
+		const { score: scoreA } = await caller.simulation.stop({
+			runId: runIdA,
+			elapsedTicks: 30,
+			cohesionSamples: [0.6, 0.7],
+			...VALID_STOP_EXTRAS,
+		});
+		expect(typeof scoreA).toBe("number");
+
+		// 7. Both completed runs show up in the dashboard's completed and
+		// leaderboard lists.
+		const completed = await caller.simulation.listCompleted();
+		expect(completed.map((r) => r.id).sort()).toEqual([runIdA, runIdB].sort());
+		const leaderboard = await caller.simulation.listLeaderboard();
+		expect(leaderboard.map((r) => r.id).sort()).toEqual(
+			[runIdA, runIdB].sort(),
+		);
+
+		// 8. Compare the two runs (FR-016's bounded 2-4-run comparison).
+		const comparison = await caller.simulation.getRunsComparison({
+			runIds: [runIdA, runIdB],
+		});
+		expect(comparison).toHaveLength(2);
+		for (const row of comparison) {
+			expect(row).not.toHaveProperty("error");
+			if ("breakdown" in row) {
+				expect(row.breakdown).not.toBeNull();
+			}
+		}
+
+		// 9. Delete the test data — same cascade-delete cleanup pattern every
+		// other test in this file uses (deleting the owner cascades to both
+		// `simulationRuns` rows via `onDelete: "cascade"`) — and verify the
+		// dashboard is empty again for this user: the owner's explicit
+		// "finish clean" requirement.
+		await db.delete(users).where(eq(users.id, owner.id));
+
+		expect(await caller.simulation.listRunning()).toEqual([]);
+		expect(await caller.simulation.listSaved()).toEqual([]);
+		expect(await caller.simulation.listCompleted()).toEqual([]);
+		expect(await caller.simulation.listLeaderboard()).toEqual([]);
+	}, 20_000);
+});
