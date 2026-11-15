@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: area-camera-and-ops-limits
 milestone_seq: 4
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-4: Area, camera, and ops limits** — Status: open
+**M-4: Area, camera, and ops limits** — Status: done
 
 - **Intent:** Make the simulation's spatial area itself a configurable parameter, turn the render view into a camera over that area (rather than always rendering the whole area), add an area-aware population-health insight to run analysis, give the owner a durable in-app channel to capture new feature/bug ideas for future rounds, and ground the app's capacity limits (max area, object count, concurrent runs) in this specific VPS's actual hardware instead of arbitrary defaults. Main goal is quality — this is a single-hobbyist-user app (per the PRD's own `target_scale`/`after_hours_only` framing), so the new area/camera mechanic and the VPS-bound limits both deserve doing right rather than fast; a rushed version risks shipping a feature that can silently overload the box it runs on.
 - **Source materials:** user description (2026-11-15, immediately after M-3's close) — no PRD update yet; scope anchors below are distilled from the user's own words, not from `prd.md`.
@@ -595,6 +595,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-1: First working simulation loop** (`first-working-simulation-loop`) — closed 2026-11-14. Delivered the first end-to-end boids/predator simulation loop (configure, run, stop/resume, score) plus server-owned execution, a post-login run dashboard, and a per-run population-dynamics analysis view; all 5 foundations and 11 slices done.
 - **M-2: Insight and comparison** (`insight-and-comparison`) — closed 2026-11-14. Delivered the three remaining nice-to-have FRs M-1 deferred: side-by-side run comparison, a score-correlated parameter-change suggestion, and JSON/CSV run export; all 3 slices done. Every FR in the PRD (v4) is now implemented.
 - **M-3: Modernization and polish** (`modernization-and-polish`) — closed 2026-11-15. Delivered a shared app shell/design-token foundation and five pages built or restyled on it (branded login, dashboard, staging/live view, analysis/comparison, a new leaderboard, and four new reference/documentation pages), a run-specific post-run optimization suggestion, temporary admin elevation, and a spatial-hash neighbor-search optimization for the flocking engine; F-06 and all 9 slices (S-15–S-23) done. Every FR in the PRD (v5) is now implemented.
+- **M-4: Area, camera, and ops limits** (`area-camera-and-ops-limits`) — closed 2026-11-15. Delivered VPS-measured capacity ceilings for area/object-count/concurrency (F-07), a configurable simulation area with a camera-limited render view (S-24), a new area-aware 5th score factor with backward-compatible run comparison and a formula-version marker (S-25), and an in-app GitHub-Issues-backed feedback module with a DB-backed retry queue (S-26); F-07 and all 3 slices (S-24–S-26) done.
 
 ## Done
 
