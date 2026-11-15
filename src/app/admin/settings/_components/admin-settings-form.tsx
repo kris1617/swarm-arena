@@ -61,7 +61,9 @@ export function AdminSettingsForm() {
 				});
 			}}
 		>
-			{RANGED_PARAMETER_NAMES.map((name) => (
+			{RANGED_PARAMETER_NAMES.filter(
+				(name) => name !== "crossbreedingEnabled",
+			).map((name) => (
 				<fieldset
 					className="bg-input flex flex-col gap-1 rounded-2xl px-4 py-3"
 					key={name}

@@ -27,6 +27,11 @@ const PARAMETER_DESCRIPTIONS: Record<
 	mutationMagnitude: "How large a gene mutation can be when one occurs.",
 	xyArea: "The side length of the square area the simulation wraps within.",
 	zDepth: "The depth of the volume the simulation wraps within.",
+	// live-crossbreeding-toggle: has its own hand-written card below the loop
+	// (a boolean has no min/max/default to describe here) — a placeholder
+	// value keeps this Record exhaustive without being rendered anywhere,
+	// since the loop below filters this key out.
+	crossbreedingEnabled: "",
 };
 
 const PARAMETER_LABELS: Record<keyof typeof DEFAULT_PARAMETER_RANGES, string> =
@@ -46,6 +51,7 @@ const PARAMETER_LABELS: Record<keyof typeof DEFAULT_PARAMETER_RANGES, string> =
 		mutationMagnitude: "Mutation magnitude",
 		xyArea: "Area size",
 		zDepth: "Depth size",
+		crossbreedingEnabled: "",
 	};
 
 export default function ParametersPage() {
@@ -62,25 +68,27 @@ export default function ParametersPage() {
 				</p>
 
 				<div className="flex flex-col gap-3">
-					{Object.entries(DEFAULT_PARAMETER_RANGES).map(([name, range]) => {
-						const key = name as keyof typeof DEFAULT_PARAMETER_RANGES;
-						return (
-							<div
-								className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
-								key={name}
-							>
-								<span className="text-foreground font-semibold">
-									{PARAMETER_LABELS[key]}
-								</span>
-								<span className="text-foreground text-sm">
-									{PARAMETER_DESCRIPTIONS[key]}
-								</span>
-								<span className="text-muted-foreground text-xs">
-									Range: {range.min}–{range.max} · Default: {range.default}
-								</span>
-							</div>
-						);
-					})}
+					{Object.entries(DEFAULT_PARAMETER_RANGES)
+						.filter(([name]) => name !== "crossbreedingEnabled")
+						.map(([name, range]) => {
+							const key = name as keyof typeof DEFAULT_PARAMETER_RANGES;
+							return (
+								<div
+									className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
+									key={name}
+								>
+									<span className="text-foreground font-semibold">
+										{PARAMETER_LABELS[key]}
+									</span>
+									<span className="text-foreground text-sm">
+										{PARAMETER_DESCRIPTIONS[key]}
+									</span>
+									<span className="text-muted-foreground text-xs">
+										Range: {range.min}–{range.max} · Default: {range.default}
+									</span>
+								</div>
+							);
+						})}
 
 					<div className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4">
 						<span className="text-foreground font-semibold">

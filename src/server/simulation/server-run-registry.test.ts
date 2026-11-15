@@ -350,6 +350,47 @@ describe("applyLiveParams", () => {
 		activeRunIds.length = 0;
 	});
 
+	// live-crossbreeding-toggle Phase 1: crossbreedingEnabled is a boolean on
+	// run.params, but ParameterChangeEntry.oldValue/newValue are typed
+	// number — confirms the generic typeof-coercion in applyLiveParams
+	// stores 0/1 in the changelog while run.params itself keeps the real
+	// boolean.
+	it("coerces a boolean field's oldValue/newValue to 0/1 in the changelog, while run.params stays a real boolean", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(24);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 24,
+			...BASE_PARAMS,
+			crossbreedingEnabled: true,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const applied = applyLiveParams(runId, { crossbreedingEnabled: false });
+		expect(applied).toEqual({ status: "applied" });
+		const state = getLiveRunState(runId);
+		expect(state?.liveParams.crossbreedingEnabled).toBe(false);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "crossbreedingEnabled",
+			oldValue: 1,
+			newValue: 0,
+		});
+		activeRunIds.length = 0;
+	});
+
 	// impl-review (live-parameter-adjustment, F1): the client's own 500ms
 	// Apply cooldown is UI-only — this is the real gate against a direct
 	// caller pushing unbounded parameterChanges entries.

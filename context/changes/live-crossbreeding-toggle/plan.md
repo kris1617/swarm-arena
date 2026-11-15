@@ -234,16 +234,16 @@ None — `crossbreedingEnabled` becomes a new optional key in `LiveAdjustablePar
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [ ] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 1.5 `npx vitest run src/server/simulation/parameter-ranges.test.ts`
-- [ ] 1.6 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run check`
+- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
+- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 1.5 `npx vitest run src/server/simulation/parameter-ranges.test.ts`
+- [x] 1.6 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 1.7 Admin settings page does not show crossbreedingEnabled as a numeric editor
+- [x] 1.7 Admin settings page does not show crossbreedingEnabled as a numeric editor
 
 ### Phase 2: Server-owned panel
 

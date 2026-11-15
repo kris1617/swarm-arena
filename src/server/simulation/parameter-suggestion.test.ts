@@ -5,7 +5,7 @@ import {
 	suggestParameterChange,
 } from "~/server/simulation/parameter-suggestion";
 
-// Baseline values for all 15 ranged parameters — a test overrides only the
+// Baseline values for all 16 ranged parameters — a test overrides only the
 // one(s) it wants to vary, leaving the rest constant (and therefore
 // correlation-ineligible) unless stated otherwise.
 const BASELINE = {
@@ -19,6 +19,7 @@ const BASELINE = {
 	foodStockInitial: 100,
 	foodRegenRate: 10,
 	flockCount: 2,
+	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,

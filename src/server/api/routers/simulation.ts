@@ -156,6 +156,9 @@ function checkAgainstAdminRanges(
 ): void {
 	for (const name of RANGED_PARAMETER_NAMES) {
 		const value = input[name];
+		if (typeof value === "boolean") {
+			continue;
+		}
 		const range = ranges[name];
 		if (value < range.min || value > range.max) {
 			throw new TRPCError({
@@ -673,6 +676,7 @@ export const simulationRouter = createTRPCRouter({
 					foodStockInitial: simulationRuns.foodStockInitial,
 					foodRegenRate: simulationRuns.foodRegenRate,
 					flockCount: simulationRuns.flockCount,
+					crossbreedingEnabled: simulationRuns.crossbreedingEnabled,
 					energyThreshold: simulationRuns.energyThreshold,
 					mutationChance: simulationRuns.mutationChance,
 					mutationMagnitude: simulationRuns.mutationMagnitude,
@@ -906,6 +910,7 @@ export const simulationRouter = createTRPCRouter({
 				energyThreshold: z.number().finite().positive().optional(),
 				mutationChance: z.number().min(0).max(1).optional(),
 				mutationMagnitude: z.number().min(0).max(1).optional(),
+				crossbreedingEnabled: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -932,7 +937,13 @@ export const simulationRouter = createTRPCRouter({
 				});
 			}
 			const { parameterRanges } = await getOrSeedAdminSettings(ctx.db);
-			const warnings = checkLiveParamRangesSoft(patch, parameterRanges);
+			const numericPatch = Object.fromEntries(
+				Object.entries(patch).map(([k, v]) => [
+					k,
+					typeof v === "boolean" ? Number(v) : v,
+				]),
+			);
+			const warnings = checkLiveParamRangesSoft(numericPatch, parameterRanges);
 			const result = applyLiveParams(runId, patch);
 			if (result.status === "not-found") {
 				throw new TRPCError({

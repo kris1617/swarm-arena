@@ -62,6 +62,7 @@ export type LiveAdjustableParams = Pick<
 	| "energyThreshold"
 	| "mutationChance"
 	| "mutationMagnitude"
+	| "crossbreedingEnabled"
 >;
 
 export type LiveParamPatch = Partial<LiveAdjustableParams>;
@@ -144,6 +145,7 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 			energyThreshold: run.params.energyThreshold,
 			mutationChance: run.params.mutationChance,
 			mutationMagnitude: run.params.mutationMagnitude,
+			crossbreedingEnabled: run.params.crossbreedingEnabled,
 		},
 	};
 }
@@ -190,13 +192,14 @@ export function applyLiveParams(
 	const tick = run.populationCountSamples.length;
 	for (const [field, newValue] of Object.entries(patch) as [
 		keyof LiveAdjustableParams,
-		number,
+		number | boolean,
 	][]) {
+		const oldValue = run.params[field];
 		run.parameterChanges.push({
 			tick,
 			field,
-			oldValue: run.params[field],
-			newValue,
+			oldValue: typeof oldValue === "boolean" ? Number(oldValue) : oldValue,
+			newValue: typeof newValue === "boolean" ? Number(newValue) : newValue,
 		});
 	}
 	run.params = { ...run.params, ...patch };

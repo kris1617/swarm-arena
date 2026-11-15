@@ -2723,6 +2723,24 @@ describe("simulationRouter.updateRunParams", () => {
 		expect(result).toEqual({ ok: true, warnings: [] });
 	});
 
+	// live-crossbreeding-toggle Phase 1: crossbreedingEnabled is a genuine
+	// boolean over the wire — confirms it's accepted and never trips the
+	// degenerate 0-1 admin range (checkLiveParamRangesSoft's call-site
+	// conversion coerces true/false to 1/0 before the comparison, both of
+	// which fall inside [0,1]).
+	it("applies a crossbreedingEnabled patch and returns ok with no warnings", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const result = await caller.simulation.updateRunParams({
+			runId,
+			crossbreedingEnabled: false,
+		});
+
+		expect(result).toEqual({ ok: true, warnings: [] });
+	});
+
 	it("applies an out-of-range value and returns a non-empty warnings array without rejecting", async () => {
 		const { caller } = await insertOwnerAndCaller();
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);

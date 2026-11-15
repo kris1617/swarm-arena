@@ -41,6 +41,7 @@ const PARAMETER_LABELS: Record<RangedParameterName, string> = {
 	foodStockInitial: "Initial food stock",
 	foodRegenRate: "Food regen rate",
 	flockCount: "Flock count",
+	crossbreedingEnabled: "Crossbreeding enabled",
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
