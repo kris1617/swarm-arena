@@ -1,10 +1,10 @@
 ---
 change_id: client-staged-live-parameter-parity
 title: Client-staged live parameter parity
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T18:25:44Z
 ---
 
 ## Notes
