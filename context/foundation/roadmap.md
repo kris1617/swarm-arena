@@ -6,10 +6,10 @@ created: 2026-11-09
 updated: 2026-11-15
 prd_version: 5
 main_goal: quality
-top_blocker: decisions
-milestone_id: extended-live-tuning
-milestone_seq: 6
-milestone_status: done
+top_blocker: none
+milestone_id: genetic-diversity-trend
+milestone_seq: 7
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,23 +20,21 @@ milestone_status: done
 
 ## Milestone
 
-**M-6: Extended live tuning** — Status: done
+**M-7: Genetic-diversity trend** — Status: open
 
-- **Intent:** Extend M-5's live-parameter-adjustment mechanism in the two directions it explicitly parked: bring the same capability to the client-staged execution path, and extend the server-owned path's live-adjustable set to the cheapest population-shape parameters. Main goal is quality — the client-staged restructuring (reading live values instead of closed-over immutable props) is genuinely new architectural territory for this codebase and deserves careful correctness work, and boidCount's live array mutation (adding/culling a running population) needs the same discipline M-5's impl-review applied to its own concurrency/bounds concerns.
-- **Source materials:** user description (2026-11-15, immediately after M-5's close) — both scope anchors were parked explicitly in M-5's `## Parked` section; `flockCount` live-adjustment was investigated and found structurally invasive (every boid's `flockId`/color is set once at birth and never re-derived — changing it mid-run means rewriting the whole live population, not patching a value) and stays parked for a future milestone.
-- **Done when:** S-28, S-29, S-30, and S-31 are all `done`.
+- **Intent:** Reverse one specific, narrowly-scoped PRD Non-Goal — the analysis view shows only a single final genetic-diversity value today; this milestone adds the per-tick trend the Non-Goal explicitly deferred, invoking its own "revisit if a future slice needs the same series" clause now that the user has asked for it directly.
+- **Source materials:** user description (2026-11-15, immediately after M-6's close) — reverses the Non-Goal at `prd.md`'s Non-Goals section ("No diversity-index trend over time in the analysis view (v1)"); the PRD text itself is left as the historical scoping record (same convention this roadmap already used for S-27 overriding the "No live, in-run parameter adjustment" Non-Goal without editing prd.md).
+- **Done when:** S-32 is `done`.
 - **Scope anchors:**
-  - MS-01: User changes a client-staged run's live-adjustable fields while it is actively running — the same capability M-5 shipped for server-owned runs, now on the client-staged path, against a corrected field set (S-31 fixes a verified defect in S-27's original 5 fields before this one is planned).
-  - MS-02: User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction events.
-  - MS-03: User increases or decreases a running server-owned simulation's boid count while it is actively running.
+  - MS-01: User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extends the same idea in the two directions M-5 explicitly parked: client-staged runs get the same live-tuning capability, and the server-owned path's live-adjustable set grows to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid count).
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 is a smaller, independent move: the analysis view's genetic-diversity factor has only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — this milestone closes that one specific gap.
 
 ## North star
 
-**S-28: Client-staged parameter-adjustment parity** — the smallest end-to-end flow that proves the core idea works for this milestone: unlike S-29/S-30 (which extend an already-proven mechanism to two more fields on the already-proven server-owned path), S-28 is the only slice carrying genuinely new architectural risk — `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for a run's lifetime, and this slice requires restructuring that to read live values instead, a pattern this codebase has never needed before M-6. Gated behind S-31 (which corrects a verified defect in S-27's field set) so this slice targets fields that actually work, not a second copy of the same mistake.
+**S-32: Genetic-diversity trend over time in the analysis view** — the milestone's sole slice, so it is trivially the north star: the smallest end-to-end flow that proves the idea (a per-tick diversity series, charted alongside the existing population-over-time chart) works, with low implementation risk since it mirrors three already-shipped sample-array precedents exactly.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -82,6 +80,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction | —              | MS-02                                                  | done |
 | S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count and predator count while it is actively running | —              | MS-03                                                  | done |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
+| S-32 | genetic-diversity-trend        | User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value | —              | FR-025, MS-01                                          | ready |
 
 ## Streams
 
@@ -101,10 +100,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | L      | Feedback channel (M-4)            | `S-26`                                   | Standalone — no foundation prerequisite; fully independent of the area/camera work, can run anytime. |
 | M      | Live parameter tuning (M-5)       | `S-27`                                   | Standalone — no foundation prerequisite; baseline confirms the server-owned registry's `LiveRun.params` is already a single mutable field read fresh every tick, so no new Foundation is needed. |
 | N      | Extended live tuning (M-6)        | `S-31` → `S-28`, `S-29`, `S-30`          | `S-31` (fix S-27's field set) is a hard prerequisite only for `S-28` (sequencing — plan client-staged parity against the corrected set); `S-29`/`S-30` are independent of `S-31` and of each other, and `S-28` carries M-6's north star once unblocked. |
+| O      | Diversity trend (M-7)             | `S-32`                                   | Standalone — no foundation prerequisite; mirrors the already-shipped per-tick sample-array pattern (`populationCountSamples` et al.) exactly, so no new Foundation is needed. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -606,6 +606,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low implementation risk (mirrors S-27's exact mechanism, just a different field set), but this is a correctness fix for shipped, archived, user-facing behavior — worth flagging in the change's own notes that S-27 (now corrected) never worked as advertised for 3 of its 5 fields, so anyone who used it to tune weights mid-run saw no real effect and may not have known why.
 - **Status:** done
 
+### S-32: Genetic-diversity trend over time in the analysis view
+
+- **Outcome:** User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the single final value (FR-025) shown today. Reverses the PRD's own Non-Goal at this scope (`prd.md`'s Non-Goals: "No diversity-index trend over time in the analysis view (v1)"), per the Non-Goal's own "revisit if a future slice needs the same series" clause — the user has now asked for exactly that.
+- **Change ID:** genetic-diversity-trend
+- **PRD refs:** FR-025, MS-01 (extends FR-025's existing final-value display; overrides the Non-Goal at Non-Goals §3, "No diversity-index trend over time")
+- **Prerequisites:** — (`computeGeneticDiversity` (`boids.ts:1266`) already takes exactly the per-tick input shape needed — `boids.map(b => b.genes)` — and the per-tick sample-array pattern this mirrors already exists three times over: `populationCountSamples`/`foodRatioSamples`/`populationDensitySamples`)
+- **Parallel with:** — (sole slice this milestone)
+- **Blockers:** —
+- **Unknowns:**
+  - Should the diversity-trend line share the existing population-count chart's Y-axis, or get its own — population is a count (tens to hundreds) and diversity is a 0-1 ratio, a large scale mismatch on one axis? — Owner: user/implementer during `/10x-plan`. Block: no.
+- **Risk:** Low — mirrors three existing precedents exactly (append-per-tick sample array, schema-less `history` JSON blob needs no migration, optional-field guarded read for backward compatibility with older runs lacking the series — same pattern `populationCountSamples?` already uses at `simulation.ts:811`).
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -648,6 +661,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-29       | live-crossbreeding-toggle            | Live-adjust the crossbreeding toggle on a running server-owned simulation | yes                    | No prerequisites; confirmed already structurally live, just excluded from the allowlist type |
 | S-30       | live-boid-count-adjustment           | Live-adjust boid count (increase/decrease) on a running server-owned simulation | yes                    | No prerequisites; real array-mutation work with existing cull/generation patterns to build on |
 | S-31       | correct-live-parameter-field-set     | Fix S-27's live-adjustable field set: remove non-functional weights, add functional reproduction params | yes                    | No prerequisites; corrects a verified defect in archived S-27 — recommended next move |
+| S-32       | genetic-diversity-trend              | Chart genetic-diversity trend over time in the analysis view, alongside the existing population-count chart | yes                    | No prerequisites; mirrors 3 existing per-tick sample-array precedents — ready to plan now |
 
 ## Open Roadmap Questions
 
@@ -664,7 +678,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Shared/collaborative simulations across users** — Why parked: explicit PRD Non-Goal — admin/member are access roles, not co-editing roles; a run belongs to the user who started it.
 - **Client-driven parallel rendering of multiple simulations at once** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — retired in favor of server-owned execution; the client renders at most one server-run simulation live at a time.
-- **Diversity-index trend over time in the analysis view** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.
+- **Diversity-index trend over time in the analysis view** — ~~Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.~~ Promoted into M-7's slice S-32 (2026-11-15), per the Non-Goal's own "revisit if a future slice needs the same series" clause.
 - **Live, in-run parameter adjustment** — ~~Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-028) — the live simulation engine has no live-parameter-update path today; materially larger architectural change than the post-run suggestion (S-21), which ships instead.~~ Promoted into M-5's slice S-27 (2026-11-15), per the Non-Goal's own "revisit as its own future milestone" note — scoped to flocking weights + food regen rate + protection threshold on server-owned runs only (see the two narrower items below for what's still excluded).
 - **Full UI rewrite onto a new template** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-032) — F-06 adopts a modern design direction incrementally on the existing shadcn/ui layer, not a wholesale replacement.
 - **Live parameter adjustment on client-staged runs** — ~~Why parked (M-5, 2026-11-15): `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime; undoing that is a real structural change, not a small addition.~~ Promoted into M-6's slice S-28 (2026-11-15).
