@@ -192,12 +192,12 @@ New `admin_settings.maxConcurrentObjectCount` column — standard Drizzle migrat
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 Full suite still passes: `npm test`
-- [x] 2.4 `docker compose config` confirms the memory limit is actually applied under plain Compose
+- [x] 2.1 Type checking passes: `npm run typecheck` — f57db8b
+- [x] 2.2 Linting passes: `npm run check` — f57db8b
+- [x] 2.3 Full suite still passes: `npm test` — f57db8b
+- [x] 2.4 `docker compose config` confirms the memory limit is actually applied under plain Compose — f57db8b
 
 #### Manual
 
-- [ ] 2.5 Production's container memory limit is live post-deploy (`docker inspect`)
-- [ ] 2.6 App starts and serves requests normally under the new limit
+- [x] 2.5 Production's container memory limit is live post-deploy (`docker inspect`) — f57db8b
+- [x] 2.6 App starts and serves requests normally under the new limit — f57db8b
