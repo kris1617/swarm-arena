@@ -313,19 +313,19 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Manual
 
-- [x] 2.5 Panel pre-fills current values from the live view
-- [x] 2.6 Applying a change visibly affects the running simulation within one tick, with a success flash
-- [x] 2.7 Out-of-range value applies with an inline warning, not a rejection
-- [x] 2.8 Apply button is disabled during the cooldown window
+- [x] 2.5 Panel pre-fills current values from the live view — ae0d492
+- [x] 2.6 Applying a change visibly affects the running simulation within one tick, with a success flash — ae0d492
+- [x] 2.7 Out-of-range value applies with an inline warning, not a rejection — ae0d492
+- [x] 2.8 Apply button is disabled during the cooldown window — ae0d492
 
 ### Phase 3: Analysis view — changelog overlay on the population chart
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 3.4 Full suite passes: `npm test`
 
 #### Manual
 

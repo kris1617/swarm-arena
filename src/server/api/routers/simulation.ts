@@ -733,6 +733,12 @@ export const simulationRouter = createTRPCRouter({
 				foodRatioSamples: number[];
 				survivorGenes: BoidGenes[];
 				populationCountSamples?: number[];
+				parameterChanges?: {
+					tick: number;
+					field: string;
+					oldValue: number;
+					newValue: number;
+				}[];
 			} | null;
 			// impl-review (run-analysis-view): `history` is a schema-less JSON
 			// column — the cast above is unchecked. Guard the required fields

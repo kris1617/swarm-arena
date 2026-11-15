@@ -6,6 +6,7 @@ import {
 	CartesianGrid,
 	Line,
 	LineChart,
+	ReferenceLine,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -144,6 +145,20 @@ export default function RunAnalysisPage() {
 								stroke="var(--chart-5)"
 								type="monotone"
 							/>
+							{history?.parameterChanges?.map((change) => (
+								<ReferenceLine
+									key={`${change.tick}-${change.field}-${change.oldValue}-${change.newValue}`}
+									label={{
+										value: change.field,
+										fill: "var(--foreground)",
+										fontSize: 10,
+										position: "top",
+									}}
+									stroke="var(--foreground)"
+									strokeDasharray="4 2"
+									x={change.tick}
+								/>
+							))}
 						</LineChart>
 					</ResponsiveContainer>
 				) : (
