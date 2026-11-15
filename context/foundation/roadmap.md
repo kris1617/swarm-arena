@@ -75,7 +75,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | done |
 | S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | done |
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
-| S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | ready |
+| S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | in-progress |
 
 ## Streams
 
@@ -543,7 +543,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Should a live parameter change be recorded anywhere (e.g., appended to the run's persisted `history`) so a completed run's analysis view can show when/what was changed mid-run, or is it a pure runtime-only tweak with no persisted trace? — Owner: user. Block: no.
   - What's the UI mechanism for making the change — an inline editable panel on the live-view page, or a separate control surface? — Owner: user. Block: no (a planning-level UI decision, not a product blocker).
 - **Risk:** The real risk is concurrency correctness, not scope: `tick()` runs on a 16ms `setInterval` per run, so a tRPC mutation writing `run.params` must not race a tick already in flight (a half-written params object read mid-tick could produce an inconsistent step). Kept as the sole slice of its own milestone — rather than folded into an unrelated change — so this correctness concern gets focused implementation and review attention.
-- **Status:** ready
+- **Status:** in-progress
 
 ## Backlog Handoff
 

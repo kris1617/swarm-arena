@@ -25,6 +25,7 @@ import {
 	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
+	type RangedParameterName,
 } from "~/server/simulation/parameter-ranges";
 import {
 	type ParameterSuggestion,
@@ -36,7 +37,9 @@ import { suggestRunOptimization } from "~/server/simulation/run-optimization-sug
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
+	applyLiveParams,
 	isServerRunActive,
+	type LiveParamPatch,
 	resumeServerRun,
 	type ServerRunSnapshot,
 	snapshotServerRun,
@@ -168,6 +171,29 @@ function checkAgainstAdminRanges(
 			message: `boidCount + predatorCount must not exceed ${maxObjectCount}`,
 		});
 	}
+}
+
+// live-parameter-adjustment (S-27): a soft (non-throwing) counterpart to
+// `checkAgainstAdminRanges` — a live edit may exceed the admin-configured
+// range; it still applies, just with a warning per out-of-range field
+// instead of a rejection (decision 1 in plan.md's Overview).
+function checkLiveParamRangesSoft(
+	patch: LiveParamPatch,
+	ranges: ParameterRanges,
+): string[] {
+	const warnings: string[] = [];
+	for (const [field, value] of Object.entries(patch) as [
+		RangedParameterName,
+		number,
+	][]) {
+		const range = ranges[field];
+		if (value < range.min || value > range.max) {
+			warnings.push(
+				`${field} (${value}) is outside the configured range ${range.min}-${range.max}`,
+			);
+		}
+	}
+	return warnings;
 }
 
 // Shared by `start` and `startServer` — both need identical validation,
@@ -857,6 +883,58 @@ export const simulationRouter = createTRPCRouter({
 			}
 
 			return results;
+		}),
+
+	// live-parameter-adjustment (S-27): patch a batch of live-adjustable
+	// fields on a running server-owned simulation. Validation is
+	// deliberately soft — an out-of-range value still applies, accompanied
+	// by a warning (decision 1 in plan.md's Overview) — unlike
+	// `checkAgainstAdminRanges`, which rejects `start`/`startServer`
+	// outright. The ownership/active-run check mirrors `savePause` exactly.
+	updateRunParams: protectedProcedure
+		.input(
+			z.object({
+				runId: z.number(),
+				separationWeight: z.number().finite().optional(),
+				alignmentWeight: z.number().finite().optional(),
+				cohesionWeight: z.number().finite().optional(),
+				foodRegenRate: z.number().finite().nonnegative().optional(),
+				protectionThreshold: z.number().int().nonnegative().optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { runId, ...patch } = input;
+			if (Object.keys(patch).length === 0) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "No fields to update",
+				});
+			}
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+			});
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "running" || !isServerRunActive(runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not an active server-run simulation",
+				});
+			}
+			const { parameterRanges } = await getOrSeedAdminSettings(ctx.db);
+			const warnings = checkLiveParamRangesSoft(patch, parameterRanges);
+			const applied = applyLiveParams(runId, patch);
+			if (!applied) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer active",
+				});
+			}
+			return { ok: true, warnings };
 		}),
 
 	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable

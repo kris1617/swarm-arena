@@ -2517,6 +2517,128 @@ describe("simulationRouter.savePause / resume", () => {
 	});
 });
 
+describe("simulationRouter.updateRunParams", () => {
+	async function insertOwnerAndCaller() {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		return { ownerId: owner.id, caller };
+	}
+
+	it("applies a valid patch and returns ok with no warnings", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const result = await caller.simulation.updateRunParams({
+			runId,
+			separationWeight: 2,
+		});
+
+		expect(result).toEqual({ ok: true, warnings: [] });
+	});
+
+	it("applies an out-of-range value and returns a non-empty warnings array without rejecting", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		// Default separationWeight range is 0-10 (DEFAULT_PARAMETER_RANGES) —
+		// 999 is well outside it.
+		const result = await caller.simulation.updateRunParams({
+			runId,
+			separationWeight: 999,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings.length).toBeGreaterThan(0);
+	});
+
+	it("rejects with FORBIDDEN for a non-owner", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.updateRunParams({
+				runId,
+				separationWeight: 2,
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST for a saved (non-active) run", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+		await caller.simulation.savePause({ runId });
+
+		await expect(
+			caller.simulation.updateRunParams({ runId, separationWeight: 2 }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		// Clean up: this run is "saved" (no live interval) — resume+stop so
+		// afterEach's trackedServerRunIds loop can tear it down.
+		await caller.simulation.resume({ runId });
+	});
+
+	it("rejects with BAD_REQUEST for a non-existent run", async () => {
+		const { caller } = await insertOwnerAndCaller();
+
+		await expect(
+			caller.simulation.updateRunParams({
+				runId: 999_999,
+				separationWeight: 2,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST for an empty patch", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await expect(
+			caller.simulation.updateRunParams({ runId }),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 // testing-full-lifecycle-regression: drives the real cross-procedure user
 // journey described by the project owner — start, pause/resume, finish,
 // list, compare (FR-016's bounded 2-4-run comparison), delete the test

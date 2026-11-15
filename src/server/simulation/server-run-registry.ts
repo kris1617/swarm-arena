@@ -53,6 +53,26 @@ export type ServerRunParams = {
 	zDepth: number;
 };
 
+// live-parameter-adjustment (S-27): the subset of ServerRunParams a running
+// server-owned simulation can be patched on, mid-run, via `applyLiveParams`.
+export type LiveAdjustableParams = Pick<
+	ServerRunParams,
+	| "separationWeight"
+	| "alignmentWeight"
+	| "cohesionWeight"
+	| "foodRegenRate"
+	| "protectionThreshold"
+>;
+
+export type LiveParamPatch = Partial<LiveAdjustableParams>;
+
+export type ParameterChangeEntry = {
+	tick: number;
+	field: keyof LiveAdjustableParams;
+	oldValue: number;
+	newValue: number;
+};
+
 type LiveRun = {
 	params: ServerRunParams;
 	rng: Rng;
@@ -65,6 +85,10 @@ type LiveRun = {
 	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
 	// 5th scoring factor.
 	populationDensitySamples: number[];
+	// live-parameter-adjustment (S-27): changelog of live edits applied to
+	// `params` while this run was ticking — not a per-tick sample, only grows
+	// when `applyLiveParams` is called.
+	parameterChanges: ParameterChangeEntry[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
@@ -91,6 +115,10 @@ export type LiveRunSnapshot = {
 	predators: PredatorState[];
 	elapsedSeconds: number;
 	populationCapped: boolean;
+	// live-parameter-adjustment (S-27): the run's *current* live-adjustable
+	// values — not the DB row's "started with" columns, which never change —
+	// so the live-edit panel can pre-fill from them.
+	liveParams: LiveAdjustableParams;
 };
 
 export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
@@ -103,7 +131,44 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 		predators: run.predators,
 		elapsedSeconds: run.elapsedSeconds,
 		populationCapped: run.populationCapped,
+		liveParams: {
+			separationWeight: run.params.separationWeight,
+			alignmentWeight: run.params.alignmentWeight,
+			cohesionWeight: run.params.cohesionWeight,
+			foodRegenRate: run.params.foodRegenRate,
+			protectionThreshold: run.params.protectionThreshold,
+		},
 	};
+}
+
+// live-parameter-adjustment (S-27): the single place that patches a running
+// `LiveRun.params` and appends changelog entries — exported so the
+// `updateRunParams` tRPC mutation can call it, and so tests can call it
+// directly (same testable-core pattern `watchServerRun`'s docstring already
+// explains for this file). Entirely synchronous — no `await` between reading
+// `run.params[field]` and the final reassignment, per the race-safety note
+// on `LiveRun`'s module-state `Map`: a plain object reassignment cannot
+// interleave with a `tick()` callback mid-write in Node's single-threaded
+// event loop.
+export function applyLiveParams(runId: number, patch: LiveParamPatch): boolean {
+	const run = registry.get(runId);
+	if (!run) {
+		return false;
+	}
+	const tick = run.populationCountSamples.length;
+	for (const [field, newValue] of Object.entries(patch) as [
+		keyof LiveAdjustableParams,
+		number,
+	][]) {
+		run.parameterChanges.push({
+			tick,
+			field,
+			oldValue: run.params[field],
+			newValue,
+		});
+	}
+	run.params = { ...run.params, ...patch };
+	return true;
 }
 
 export function isServerRunActive(runId: number): boolean {
@@ -126,6 +191,10 @@ async function finishRun(
 			// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding
 			// the 5th scoring factor, persisted alongside its siblings.
 			populationDensitySamples: number[];
+			// live-parameter-adjustment (S-27): the changelog of live edits
+			// applied while this run was ticking — mirrors the exact threading
+			// pattern populationDensitySamples (S-25) established.
+			parameterChanges: ParameterChangeEntry[];
 			// compare-runs-side-by-side Phase 1: the survival factor
 			// (computeScore's first argument), never persisted before —
 			// without it the score can't be decomposed back into its four
@@ -233,6 +302,7 @@ function tick(runId: number): void {
 					survivorGenes: run.boids.map((b) => b.genes),
 					populationCountSamples: run.populationCountSamples,
 					populationDensitySamples: run.populationDensitySamples,
+					parameterChanges: run.parameterChanges,
 					elapsedSeconds: run.elapsedSeconds,
 				},
 			});
@@ -299,6 +369,7 @@ export function startServerRun(params: ServerRunParams): void {
 		foodRatioSamples: [],
 		populationCountSamples: [],
 		populationDensitySamples: [],
+		parameterChanges: [],
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: null,
@@ -336,6 +407,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 			survivorGenes: run.boids.map((b) => b.genes),
 			populationCountSamples: run.populationCountSamples,
 			populationDensitySamples: run.populationDensitySamples,
+			parameterChanges: run.parameterChanges,
 			elapsedSeconds: run.elapsedSeconds,
 		},
 	});
@@ -353,6 +425,7 @@ export type ServerRunSnapshot = {
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
+	parameterChanges: ParameterChangeEntry[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
@@ -382,6 +455,7 @@ export function snapshotServerRun(
 		foodRatioSamples: run.foodRatioSamples,
 		populationCountSamples: run.populationCountSamples,
 		populationDensitySamples: run.populationDensitySamples,
+		parameterChanges: run.parameterChanges,
 		phaseHistory: run.phaseHistory,
 		elapsedSeconds: run.elapsedSeconds,
 		lastTimestamp: run.lastTimestamp,
@@ -429,6 +503,13 @@ export function resumeServerRun(
 		// (single-run-lifecycle.ts) throws, silently killing the resumed run
 		// with a null score via `tick()`'s catch block.
 		populationDensitySamples: snapshot.populationDensitySamples ?? [],
+		// live-parameter-adjustment (S-27): same `?? []` fallback, same
+		// reason — a `savedState` row written before this field existed has
+		// no `parameterChanges` key despite `ServerRunSnapshot`'s type
+		// claiming otherwise; without the fallback the changelog would be
+		// `undefined` and `applyLiveParams`'s `.push` on a later live edit
+		// would throw.
+		parameterChanges: snapshot.parameterChanges ?? [],
 		phaseHistory: snapshot.phaseHistory,
 		elapsedSeconds: snapshot.elapsedSeconds,
 		lastTimestamp: snapshot.lastTimestamp,

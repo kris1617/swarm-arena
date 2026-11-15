@@ -6,7 +6,9 @@ import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
 import type { BoidGenes, BoidState } from "~/server/simulation/boids";
 import {
+	applyLiveParams,
 	getLiveRunState,
+	type ParameterChangeEntry,
 	resumeServerRun,
 	type ServerRunParams,
 	type ServerRunSnapshot,
@@ -137,6 +139,13 @@ describe("server-run-registry", () => {
 		expect(
 			(row?.history as { elapsedSeconds?: number } | null)?.elapsedSeconds,
 		).toBeGreaterThan(0);
+		// live-parameter-adjustment (S-27): the changelog array is present
+		// in persisted history on natural completion too, even when empty
+		// (no live edit was ever applied to this run).
+		expect(
+			(row?.history as { parameterChanges?: unknown[] } | null)
+				?.parameterChanges,
+		).toEqual([]);
 		activeRunIds.length = 0; // already finished; nothing left for afterEach to stop
 	});
 
@@ -174,6 +183,11 @@ describe("server-run-registry", () => {
 		expect(
 			(row?.history as { elapsedSeconds?: number } | null)?.elapsedSeconds,
 		).toBeGreaterThan(0);
+		// live-parameter-adjustment (S-27): stopServerRun's own write site.
+		expect(
+			(row?.history as { parameterChanges?: unknown[] } | null)
+				?.parameterChanges,
+		).toEqual([]);
 		activeRunIds.length = 0;
 	});
 
@@ -280,9 +294,141 @@ describe("server-run-registry", () => {
 	});
 });
 
+describe("applyLiveParams", () => {
+	it("returns false for an unregistered runId", () => {
+		expect(applyLiveParams(999_999, { separationWeight: 5 })).toBe(false);
+	});
+
+	it("patches run.params and appends a changelog entry with the correct tick/field/oldValue/newValue", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(20);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 20,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const applied = applyLiveParams(runId, {
+			separationWeight: 7,
+			foodRegenRate: 42,
+		});
+
+		expect(applied).toBe(true);
+		const state = getLiveRunState(runId);
+		expect(state?.liveParams.separationWeight).toBe(7);
+		expect(state?.liveParams.foodRegenRate).toBe(42);
+		// Other live-adjustable fields are untouched by a partial patch.
+		expect(state?.liveParams.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toHaveLength(2);
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "separationWeight",
+			oldValue: BASE_PARAMS.separationWeight,
+			newValue: 7,
+		});
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "foodRegenRate",
+			oldValue: BASE_PARAMS.foodRegenRate,
+			newValue: 42,
+		});
+		activeRunIds.length = 0;
+	});
+});
+
 describe("snapshotServerRun / resumeServerRun", () => {
 	it("returns undefined for an unregistered runId", () => {
 		expect(snapshotServerRun(999_999)).toBeUndefined();
+	});
+
+	it("parameterChanges survives a snapshot/resume round-trip", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(21);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 21,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		applyLiveParams(runId, { separationWeight: 9 });
+
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		expect(snapshot.parameterChanges).toHaveLength(1);
+
+		resumeServerRun(runId, snapshot);
+		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(9);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toHaveLength(1);
+		expect(changes?.[0]).toMatchObject({
+			field: "separationWeight",
+			oldValue: BASE_PARAMS.separationWeight,
+			newValue: 9,
+		});
+		activeRunIds.length = 0;
+	});
+
+	// Mirrors the `populationDensitySamples`-missing-from-legacy-snapshot
+	// regression test below: a `savedState` row written before this field
+	// existed has no `parameterChanges` key, so `resumeServerRun` must not
+	// crash when reconstructing it.
+	it("resuming a snapshot missing parameterChanges (pre-S-27 data) does not crash the run", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(22);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 22,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		const legacySnapshot = { ...snapshot } as Partial<ServerRunSnapshot>;
+		legacySnapshot.parameterChanges = undefined;
+		delete (legacySnapshot as Record<string, unknown>).parameterChanges;
+
+		resumeServerRun(runId, legacySnapshot as ServerRunSnapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		// If the resumed run crashed on a missing parameterChanges array, a
+		// live edit's `.push` below would throw inside applyLiveParams.
+		expect(getLiveRunState(runId)).toBeDefined();
+		expect(applyLiveParams(runId, { separationWeight: 3 })).toBe(true);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
 	});
 
 	it("snapshotting removes the run from the live registry without scoring/stopping it", async () => {
@@ -486,6 +632,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 			foodRatioSamples: [],
 			populationCountSamples: [],
 			populationDensitySamples: [],
+			parameterChanges: [],
 			phaseHistory: [],
 			elapsedSeconds: 0,
 			lastTimestamp: null,
