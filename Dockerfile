@@ -13,6 +13,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=1
 ENV DATABASE_URL="file:./build-placeholder.sqlite"
 RUN npm run build
+# See scripts/patch-next-forwarded-host.mjs for why: self-hosted behind a
+# reverse proxy, Next's standalone server otherwise builds every request's
+# absolute URL (including Auth.js's per-request OAuth callbackUrl) from its
+# own bind address instead of the real Caddy-forwarded Host header, which
+# breaks GitHub sign-in with a redirect_uri mismatch.
+RUN node scripts/patch-next-forwarded-host.mjs .next/standalone/node_modules/next/dist/server/next-server.js
 
 FROM node:22-alpine AS runner
 WORKDIR /app
