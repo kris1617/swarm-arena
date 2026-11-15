@@ -1,7 +1,7 @@
 ---
 change_id: configurable-area-and-camera-view
 title: Configurable simulation area with a camera-limited render view
-status: implementing
+status: impl_reviewed
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null

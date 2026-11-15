@@ -72,6 +72,8 @@ Turn `INITIAL_AREA_SIZE`/`Z_DEPTH_RANGE` into per-run parameters threaded throug
 
 **Contract**: `xyArea: d.integer().notNull()`, `zDepth: d.integer().notNull()`. Requires a new Drizzle migration. No default needed at the column level the way F-07's admin-settings column needed one (every row is written by `insertRunningSimulation` going forward, not read from a pre-existing row) — but existing historical rows need a migration-time backfill to 200 (the pre-change constant value) so old rows don't end up with a null/invalid world size if ever resumed or re-analyzed.
 
+**Implementation note (impl-review F1)**: shipped as `.notNull().default(200)` instead — the same column-level-default pattern this table's sibling columns (`flockCount`, `energyThreshold`, etc.) already use — rather than a bare `.notNull()`. This was a deliberate adaptation so the many existing test fixtures and raw DB inserts across `simulation.test.ts` that don't spread the full `VALID_START_INPUT` object wouldn't all need updating; it produces the identical backfill-to-200 outcome this contract requires.
+
 #### 4. Wire `xyArea`/`zDepth` through the start/resume/tick paths
 
 **Files**: `src/server/api/routers/simulation.ts`, `src/server/simulation/server-run-registry.ts`, `src/server/simulation/single-run-lifecycle.ts`, `src/app/simulation/_components/simulation-canvas.tsx`
