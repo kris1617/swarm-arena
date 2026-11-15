@@ -42,7 +42,7 @@
   - Tradeoff: New stateful throttle logic (per-run last-call timestamp) that doesn't exist anywhere else in this router; more code than Fix A for a single-hobbyist-user app.
   - Confidence: MEDIUM — no existing precedent for server-side throttling in this codebase to mirror.
   - Blind spot: Where the throttle state would live (in-memory on `LiveRun`? a new Map?) isn't designed here.
-- **Decision**: PENDING
+- **Decision**: FIXED (Fix B, commit ab838ab) — `LiveRun.lastParamUpdateAt` + a 500ms server-side throttle in `applyLiveParams`, mapped to `TOO_MANY_REQUESTS` in `updateRunParams`. Regression test confirms an immediate second call is throttled; deliberate-break check confirmed red before the fix, green after.
 
 ### F2 — `parameterChanges` isn't runtime-validated as an array before `.map`, matching existing `populationCountSamples` convention
 
