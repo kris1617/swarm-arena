@@ -234,30 +234,30 @@ None — `crossbreedingEnabled` becomes a new optional key in `LiveAdjustablePar
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.5 `npx vitest run src/server/simulation/parameter-ranges.test.ts`
-- [x] 1.6 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 8bb7116
+- [x] 1.2 Linting passes: `npm run check` — 8bb7116
+- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts` — 8bb7116
+- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts` — 8bb7116
+- [x] 1.5 `npx vitest run src/server/simulation/parameter-ranges.test.ts` — 8bb7116
+- [x] 1.6 Full suite passes: `npm test` — 8bb7116
 
 #### Manual
 
-- [x] 1.7 Admin settings page does not show crossbreedingEnabled as a numeric editor
+- [x] 1.7 Admin settings page does not show crossbreedingEnabled as a numeric editor — 8bb7116
 
 ### Phase 2: Server-owned panel
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
+- [x] 2.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 2.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
-- [ ] 2.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
+- [x] 2.5 Panel shows a Switch for crossbreedingEnabled under "Affects future offspring only"
+- [x] 2.6 Toggling off mid-run stops new mixed-flock offspring for the remainder of the run
 
 ### Phase 3: Client-staged panel
 
