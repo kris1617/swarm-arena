@@ -1,7 +1,7 @@
 ---
 change_id: correct-live-parameter-field-set
 title: Correct S-27's live-adjustable field set
-status: implemented
+status: impl_reviewed
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null
