@@ -2033,6 +2033,78 @@ describe("simulationRouter.getRunsComparison", () => {
 			error: "not-completed",
 		});
 	});
+
+	// S-25 Phase 2: areaPopulationDensity is independently gated on
+	// `populationDensitySamples` presence — present history gets a numeric
+	// value, same structure as the other 4 factors.
+	it("returns a numeric areaPopulationDensity when history has populationDensitySamples", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const runId = await insertStoppedRun(ownerId, {
+			score: 0.7,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				populationDensitySamples: VALID_STOP_EXTRAS.populationDensitySamples,
+				elapsedSeconds: 5,
+			},
+		});
+		const otherRunId = await insertStoppedRun(ownerId, { score: 0.3 });
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [runId, otherRunId],
+		});
+
+		const row = result.find((r) => r.runId === runId);
+		expect(row).toMatchObject({
+			runId,
+			// VALID_STOP_EXTRAS.populationDensitySamples is a single sample
+			// ([0.5]) — computeAreaPopulationDensity's own ratio-against-first-
+			// sample average is exactly 1 for a single-element array, so this
+			// pins the real computed value rather than merely its type.
+			breakdown: {
+				areaPopulationDensity: 1,
+			},
+		});
+	});
+
+	// S-25 Phase 2: a run that predates this plan has every field the
+	// existing breakdown-is-null guard checks, but not
+	// `populationDensitySamples` — the other 4 factors must still compute
+	// while the new 5th factor is independently `null`.
+	it("returns a null areaPopulationDensity for a run predating populationDensitySamples, while the other 4 factors still compute", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const legacyRunId = await insertStoppedRun(ownerId, {
+			score: 0.6,
+			history: {
+				phaseHistory: ["crash", "recovery"],
+				foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+				survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+				populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				elapsedSeconds: 5,
+			},
+		});
+		const otherRunId = await insertStoppedRun(ownerId, { score: 0.3 });
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [legacyRunId, otherRunId],
+		});
+
+		const row = result.find((r) => r.runId === legacyRunId);
+		expect(row).toMatchObject({
+			runId: legacyRunId,
+			breakdown: {
+				survival: 5,
+				resourceManagement: expect.any(Number),
+				geneticDiversity: 0,
+				phaseQuality: expect.any(Number),
+				areaPopulationDensity: null,
+			},
+		});
+	});
 });
 
 describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {

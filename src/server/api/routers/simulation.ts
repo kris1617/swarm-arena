@@ -771,6 +771,7 @@ export const simulationRouter = createTRPCRouter({
 							resourceManagement: number;
 							geneticDiversity: number;
 							phaseQuality: number;
+							areaPopulationDensity: number | null;
 						} | null;
 				  }
 			> = [];
@@ -803,6 +804,7 @@ export const simulationRouter = createTRPCRouter({
 					foodRatioSamples: number[];
 					survivorGenes: BoidGenes[];
 					elapsedSeconds?: number;
+					populationDensitySamples?: number[];
 				} | null;
 
 				const breakdown =
@@ -819,6 +821,13 @@ export const simulationRouter = createTRPCRouter({
 									rawHistory.survivorGenes,
 								),
 								phaseQuality: computePhaseQuality(rawHistory.phaseHistory),
+								areaPopulationDensity: Array.isArray(
+									rawHistory.populationDensitySamples,
+								)
+									? computeAreaPopulationDensity(
+											rawHistory.populationDensitySamples,
+										)
+									: null,
 							}
 						: null;
 

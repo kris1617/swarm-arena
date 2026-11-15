@@ -19,6 +19,7 @@ const FACTOR_LABELS = {
 	resourceManagement: "Resource management",
 	geneticDiversity: "Genetic diversity",
 	phaseQuality: "Phase quality",
+	areaPopulationDensity: "Area population density",
 } as const;
 
 // S-12: one color per run column/bar, cycled for up to 4 runs. Sourced from
@@ -59,6 +60,7 @@ type OkRow = {
 		resourceManagement: number;
 		geneticDiversity: number;
 		phaseQuality: number;
+		areaPopulationDensity: number | null;
 	} | null;
 };
 
@@ -118,7 +120,7 @@ export default function RunsComparePage() {
 			factor: FACTOR_LABELS[factor],
 		};
 		for (const row of okRows) {
-			if (row.breakdown) {
+			if (row.breakdown && row.breakdown[factor] !== null) {
 				point[`Run #${row.runId}`] = row.breakdown[factor];
 			}
 		}
@@ -190,7 +192,11 @@ export default function RunsComparePage() {
 										</td>
 										{okRows.map((row) => (
 											<td className="pr-4" key={row.runId}>
-												{row.breakdown ? row.breakdown[factor].toFixed(2) : "—"}
+												{row.breakdown
+													? row.breakdown[factor] === null
+														? "N/A"
+														: row.breakdown[factor].toFixed(2)
+													: "—"}
 											</td>
 										))}
 									</tr>

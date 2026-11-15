@@ -579,27 +579,27 @@ treat as "scored under the old formula" by design.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `npx vitest run src/server/simulation/boids.test.ts`
-- [x] 1.4 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [x] 1.5 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.6 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.7 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 7819066
+- [x] 1.2 Linting passes: `npm run check` — 7819066
+- [x] 1.3 `npx vitest run src/server/simulation/boids.test.ts` — 7819066
+- [x] 1.4 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts` — 7819066
+- [x] 1.5 `npx vitest run src/server/simulation/server-run-registry.test.ts` — 7819066
+- [x] 1.6 `npx vitest run src/server/api/routers/simulation.test.ts` — 7819066
+- [x] 1.7 Full suite passes: `npm test` — 7819066
 
 #### Manual
 
-- [x] 1.8 Client-staged run score sanity check against the new formula
-- [x] 1.9 PRD amendment reads coherently (no dangling "four factors")
+- [x] 1.8 Client-staged run score sanity check against the new formula — 7819066
+- [x] 1.9 PRD amendment reads coherently (no dangling "four factors") — 7819066
 
 ### Phase 2: Run-comparison backward-compatible breakdown
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 2.4 Full suite passes: `npm test`
 
 #### Manual
 
