@@ -49,7 +49,7 @@ const LIVE_FIELD_LABELS: Record<LiveField, string> = {
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
-	crossbreedingEnabled: "Crossbreeding",
+	crossbreedingEnabled: "Crossbreeding enabled",
 };
 
 // live-parameter-adjustment (S-27) Phase 2: the panel groups the 5 fields by

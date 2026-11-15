@@ -67,7 +67,7 @@ const LIVE_FIELD_LABELS: Record<LiveField, string> = {
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
-	crossbreedingEnabled: "Crossbreeding",
+	crossbreedingEnabled: "Crossbreeding enabled",
 };
 
 // Mirrors server-run-viewer.tsx's identical grouping — the panel groups the
@@ -520,6 +520,12 @@ export function SimulationCanvas({
 				return next;
 			});
 		}, FLASH_DURATION_MS);
+		// impl-review F3: crossbreedingEnabled has no Apply button to read
+		// cooldownFields (it applies immediately on flip), so tracking its
+		// cooldown here would be a dead state update.
+		if (field === "crossbreedingEnabled") {
+			return;
+		}
 		setCooldownFields((current) => new Set(current).add(field));
 		setTimeout(() => {
 			setCooldownFields((current) => {

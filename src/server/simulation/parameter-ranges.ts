@@ -50,7 +50,11 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	// live-crossbreeding-toggle: degenerate 0-1 range — a boolean toggle
 	// admitted into the numeric admin-range machinery rather than branched
 	// around it. Default of 1 matches the staging form's own default
-	// (page.tsx, useState(true)).
+	// (page.tsx, useState(true)). This entry is structurally inert: it is
+	// filtered out of the admin settings UI (admin-settings-form.tsx) and
+	// always skipped by checkAgainstAdminRanges's boolean short-circuit
+	// (simulation.ts), so it can only be changed via a raw
+	// updateParameterRanges API call, and even then has no observable effect.
 	crossbreedingEnabled: { min: 0, max: 1, default: 1 },
 	energyThreshold: { min: 0.1, max: 500, default: 50 },
 	mutationChance: { min: 0, max: 1, default: 0.1 },
