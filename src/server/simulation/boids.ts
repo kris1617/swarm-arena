@@ -1415,18 +1415,44 @@ export function computeResourceManagement(foodRatioSamples: number[]): number {
 	);
 }
 
-// S-04 (FR-010 full): the real four-factor formula, replacing the
-// 2-argument placeholder (`elapsedTicks * average(cohesionSamples)`).
-// Deliberately takes four plain numbers rather than raw arrays — see
-// `research.md`/`plan.md` Phase 3 item 5: both the server-owned path
-// (which holds state locally) and the client-staged path (which sends its
-// signals over `stop`'s mutation input) compute each factor from whatever
-// state they hold, via the `compute*` helpers above, before calling this.
+// S-25 (FR-010 full, FR-035): the 5th scoring factor — a time-averaged ratio
+// of each tick's combined boid+predator population density (population ÷
+// full 3D volume) relative to the run's own starting density. Takes **raw**
+// per-tick density samples, not pre-normalized ones — normalization against
+// the run's own first sample happens here, once, mirroring
+// computeResourceManagement's flat-average shape.
+export function computeAreaPopulationDensity(densitySamples: number[]): number {
+	if (densitySamples.length === 0) {
+		return 0;
+	}
+	const initialDensity = densitySamples[0];
+	if (!initialDensity || initialDensity <= 0) {
+		return 0;
+	}
+	const ratios = densitySamples.map((sample) => sample / initialDensity);
+	return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
+}
+
+// S-04 (FR-010 full): the real five-factor formula (S-25 added the 5th,
+// areaPopulationDensity), replacing the 2-argument placeholder
+// (`elapsedTicks * average(cohesionSamples)`). Deliberately takes plain
+// numbers rather than raw arrays — see `research.md`/`plan.md` Phase 3 item
+// 5: both the server-owned path (which holds state locally) and the
+// client-staged path (which sends its signals over `stop`'s mutation input)
+// compute each factor from whatever state they hold, via the `compute*`
+// helpers above, before calling this.
 export function computeScore(
 	elapsedTicks: number,
 	resourceManagement: number,
 	geneticDiversity: number,
 	phaseQuality: number,
+	areaPopulationDensity: number,
 ): number {
-	return elapsedTicks * resourceManagement * geneticDiversity * phaseQuality;
+	return (
+		elapsedTicks *
+		resourceManagement *
+		geneticDiversity *
+		phaseQuality *
+		areaPopulationDensity
+	);
 }

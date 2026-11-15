@@ -444,6 +444,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 			cohesionSamples: [],
 			foodRatioSamples: [],
 			populationCountSamples: [],
+			populationDensitySamples: [],
 			phaseHistory: [],
 			elapsedSeconds: 0,
 			lastTimestamp: null,

@@ -11,6 +11,7 @@ import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, simulationRuns } from "~/server/db/schema";
 import {
 	type BoidGenes,
+	computeAreaPopulationDensity,
 	computeGeneticDiversity,
 	computePhaseQuality,
 	computeResourceManagement,
@@ -388,6 +389,10 @@ export const simulationRouter = createTRPCRouter({
 					.array(z.number().int().nonnegative())
 					.min(1)
 					.max(50_000),
+				// S-25 (FR-010 full, FR-035): raw per-tick density samples
+				// feeding the 5th scoring factor — same bound posture as every
+				// sibling sample-array field.
+				populationDensitySamples: z.array(z.number().min(0)).min(1).max(50_000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -432,6 +437,7 @@ export const simulationRouter = createTRPCRouter({
 				computeResourceManagement(input.foodRatioSamples),
 				computeGeneticDiversity(input.survivingBoidGenes),
 				computePhaseQuality(input.phaseHistory),
+				computeAreaPopulationDensity(input.populationDensitySamples),
 			);
 
 			// Race-safety net: a second concurrent `stop` call for the same run
@@ -451,6 +457,7 @@ export const simulationRouter = createTRPCRouter({
 						foodRatioSamples: input.foodRatioSamples,
 						survivorGenes: input.survivingBoidGenes,
 						populationCountSamples: input.populationCountSamples,
+						populationDensitySamples: input.populationDensitySamples,
 						// compare-runs-side-by-side Phase 1: the survival
 						// factor, matching server-run-registry.ts's two write
 						// sites — reuses the same value already computed for

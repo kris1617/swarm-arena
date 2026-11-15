@@ -77,7 +77,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | done |
 | F-07 | vps-resource-capacity-limits    | (foundation) Concrete max-area/max-object-count/max-concurrent-run ceilings exist, derived from this VPS's actual CPU/RAM/disk | —              | MS-05                                                  | done |
 | S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | done |
-| S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | proposed |
+| S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | in-progress |
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
 
 ## Streams
@@ -515,7 +515,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~What shape should this insight take?~~ — **Resolved 2026-11-15.** A new, fifth score factor (not a display-only note or chart) — reopens FR-010/FR-019's "four-factor product" formula into a five-factor one. `/10x-plan` must treat this with the same care S-09's prior phase-quality correction required (a scoring-formula change, not a cosmetic addition), including how it interacts with existing score-dependent features (leaderboard ordering, run comparison, the parameter-suggestion heuristic's correlation input). No longer blocks `/10x-plan`.
 - **Risk:** Medium — upgraded from Low-medium now that the shape is confirmed as a formula change, not a display addition: a fifth score factor changes every existing scored run's *comparability* against future ones (same concern FR-010/FR-019's prior resolution had to address) and touches the leaderboard (S-19), run comparison (S-12), and parameter-suggestion heuristic (S-13) — all of which read the score as a single comparable number today. Depends entirely on S-24 landing first (needs a variable area to make an area-normalized factor meaningful).
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-26: In-app feedback module
 

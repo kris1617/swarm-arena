@@ -30,6 +30,11 @@ export function computeSingleRunTick(
 		// tracking automatically, with no duplicated logic.
 		foodRatioSamples: number[];
 		populationCountSamples: number[];
+		// S-25 (FR-010 full, FR-035): raw per-tick density samples (combined
+		// boid+predator population ÷ full 3D volume) — threaded through the
+		// same shared tick core as the other sample arrays so both execution
+		// paths collect it identically.
+		populationDensitySamples: number[];
 		phaseHistory: PopulationPhase[];
 		elapsedSeconds: number;
 		lastTimestamp: number | null;
@@ -61,6 +66,7 @@ export function computeSingleRunTick(
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
+	populationDensitySamples: number[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number;
@@ -121,6 +127,17 @@ export function computeSingleRunTick(
 		...state.populationCountSamples,
 		nextBoids.length,
 	];
+	// S-25 (FR-010 full, FR-035): one raw density sample per tick — combined
+	// boid+predator population ÷ the run's full configured 3D volume.
+	// Normalization against the run's own first sample happens once, inside
+	// computeAreaPopulationDensity, not at every collection site here.
+	const volume = params.worldSize.x * params.worldSize.y * params.worldSize.z;
+	const rawDensity =
+		volume > 0 ? (nextBoids.length + nextPredators.length) / volume : 0;
+	const nextPopulationDensitySamples = [
+		...state.populationDensitySamples,
+		rawDensity,
+	];
 	const phaseHistoryWindow = nextPopulationCountSamples.map(
 		(populationCount, index) => ({
 			populationCount,
@@ -145,6 +162,7 @@ export function computeSingleRunTick(
 		cohesionSamples: nextCohesionSamples,
 		foodRatioSamples: nextFoodRatioSamples,
 		populationCountSamples: nextPopulationCountSamples,
+		populationDensitySamples: nextPopulationDensitySamples,
 		phaseHistory: nextPhaseHistory,
 		elapsedSeconds: nextElapsedSeconds,
 		lastTimestamp: timestamp,

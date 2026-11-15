@@ -6,6 +6,7 @@ import { simulationRuns } from "~/server/db/schema";
 import {
 	type BoidGenes,
 	type BoidState,
+	computeAreaPopulationDensity,
 	computeGeneticDiversity,
 	computePhaseQuality,
 	computeResourceManagement,
@@ -61,6 +62,9 @@ type LiveRun = {
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
+	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
+	// 5th scoring factor.
+	populationDensitySamples: number[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
@@ -119,6 +123,9 @@ async function finishRun(
 			// S-11 (MS-08): the run-analysis-view's population-over-time chart
 			// needs this time series — added alongside the other three.
 			populationCountSamples: number[];
+			// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding
+			// the 5th scoring factor, persisted alongside its siblings.
+			populationDensitySamples: number[];
 			// compare-runs-side-by-side Phase 1: the survival factor
 			// (computeScore's first argument), never persisted before —
 			// without it the score can't be decomposed back into its four
@@ -174,6 +181,7 @@ function tick(runId: number): void {
 				cohesionSamples: run.cohesionSamples,
 				foodRatioSamples: run.foodRatioSamples,
 				populationCountSamples: run.populationCountSamples,
+				populationDensitySamples: run.populationDensitySamples,
 				phaseHistory: run.phaseHistory,
 				elapsedSeconds: run.elapsedSeconds,
 				lastTimestamp: run.lastTimestamp,
@@ -203,6 +211,7 @@ function tick(runId: number): void {
 		run.cohesionSamples = result.cohesionSamples;
 		run.foodRatioSamples = result.foodRatioSamples;
 		run.populationCountSamples = result.populationCountSamples;
+		run.populationDensitySamples = result.populationDensitySamples;
 		run.phaseHistory = result.phaseHistory;
 		run.elapsedSeconds = result.elapsedSeconds;
 		run.lastTimestamp = result.lastTimestamp;
@@ -214,6 +223,7 @@ function tick(runId: number): void {
 				computeResourceManagement(run.foodRatioSamples),
 				computeGeneticDiversity(run.boids.map((b) => b.genes)),
 				computePhaseQuality(run.phaseHistory),
+				computeAreaPopulationDensity(run.populationDensitySamples),
 			);
 			void finishRun(runId, {
 				score,
@@ -222,6 +232,7 @@ function tick(runId: number): void {
 					foodRatioSamples: run.foodRatioSamples,
 					survivorGenes: run.boids.map((b) => b.genes),
 					populationCountSamples: run.populationCountSamples,
+					populationDensitySamples: run.populationDensitySamples,
 					elapsedSeconds: run.elapsedSeconds,
 				},
 			});
@@ -287,6 +298,7 @@ export function startServerRun(params: ServerRunParams): void {
 		cohesionSamples: [],
 		foodRatioSamples: [],
 		populationCountSamples: [],
+		populationDensitySamples: [],
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: null,
@@ -314,6 +326,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 		computeResourceManagement(run.foodRatioSamples),
 		computeGeneticDiversity(run.boids.map((b) => b.genes)),
 		computePhaseQuality(run.phaseHistory),
+		computeAreaPopulationDensity(run.populationDensitySamples),
 	);
 	await finishRun(runId, {
 		score,
@@ -322,6 +335,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 			foodRatioSamples: run.foodRatioSamples,
 			survivorGenes: run.boids.map((b) => b.genes),
 			populationCountSamples: run.populationCountSamples,
+			populationDensitySamples: run.populationDensitySamples,
 			elapsedSeconds: run.elapsedSeconds,
 		},
 	});
@@ -338,6 +352,7 @@ export type ServerRunSnapshot = {
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	populationCountSamples: number[];
+	populationDensitySamples: number[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
@@ -366,6 +381,7 @@ export function snapshotServerRun(
 		cohesionSamples: run.cohesionSamples,
 		foodRatioSamples: run.foodRatioSamples,
 		populationCountSamples: run.populationCountSamples,
+		populationDensitySamples: run.populationDensitySamples,
 		phaseHistory: run.phaseHistory,
 		elapsedSeconds: run.elapsedSeconds,
 		lastTimestamp: run.lastTimestamp,
@@ -403,6 +419,7 @@ export function resumeServerRun(
 		cohesionSamples: snapshot.cohesionSamples,
 		foodRatioSamples: snapshot.foodRatioSamples,
 		populationCountSamples: snapshot.populationCountSamples,
+		populationDensitySamples: snapshot.populationDensitySamples,
 		phaseHistory: snapshot.phaseHistory,
 		elapsedSeconds: snapshot.elapsedSeconds,
 		lastTimestamp: snapshot.lastTimestamp,

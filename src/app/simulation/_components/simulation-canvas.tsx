@@ -315,6 +315,10 @@ export function SimulationCanvas({
 	// server-run-registry.ts uses — see single-run-lifecycle.ts.
 	const foodRatioSamplesRef = useRef<number[]>([]);
 	const populationCountSamplesRef = useRef<number[]>([]);
+	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
+	// 5th scoring factor — threaded through the same shared tick core as
+	// the other sample arrays.
+	const populationDensitySamplesRef = useRef<number[]>([]);
 	const phaseHistoryRef = useRef<PopulationPhase[]>([]);
 	const elapsedSecondsRef = useRef(0);
 	const rafIdRef = useRef<number>(0);
@@ -456,6 +460,10 @@ export function SimulationCanvas({
 				populationCountSamplesRef.current.length > 0
 					? populationCountSamplesRef.current
 					: [0],
+			populationDensitySamples:
+				populationDensitySamplesRef.current.length > 0
+					? populationDensitySamplesRef.current
+					: [0],
 		};
 	}
 
@@ -519,6 +527,7 @@ export function SimulationCanvas({
 						cohesionSamples: cohesionSamplesRef.current,
 						foodRatioSamples: foodRatioSamplesRef.current,
 						populationCountSamples: populationCountSamplesRef.current,
+						populationDensitySamples: populationDensitySamplesRef.current,
 						phaseHistory: phaseHistoryRef.current,
 						elapsedSeconds: elapsedSecondsRef.current,
 						lastTimestamp: lastTimestampRef.current,
@@ -544,6 +553,7 @@ export function SimulationCanvas({
 				cohesionSamplesRef.current = result.cohesionSamples;
 				foodRatioSamplesRef.current = result.foodRatioSamples;
 				populationCountSamplesRef.current = result.populationCountSamples;
+				populationDensitySamplesRef.current = result.populationDensitySamples;
 				phaseHistoryRef.current = result.phaseHistory;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;

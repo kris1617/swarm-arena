@@ -70,6 +70,10 @@ function buildState(
 		// which assert on resource-management/phase-classifier state.
 		foodRatioSamples: [],
 		populationCountSamples: [],
+		// S-25 (FR-035): threaded alongside populationCountSamples — empty
+		// default is fine for every pre-existing test here, none of which
+		// assert on area-population-density state.
+		populationDensitySamples: [],
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: 0,

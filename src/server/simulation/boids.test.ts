@@ -6,6 +6,7 @@ import {
 	type BoidGenes,
 	type BoidState,
 	classifyPopulationPhase,
+	computeAreaPopulationDensity,
 	computeCohesion,
 	computeGeneticDiversity,
 	computePhaseQuality,
@@ -1382,32 +1383,58 @@ describe("computePhaseQuality", () => {
 
 describe("computeScore", () => {
 	it("increases monotonically with elapsedTicks, holding every other factor fixed", () => {
-		expect(computeScore(20, 0.8, 0.8, 0.8)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.8, 0.8),
+		expect(computeScore(20, 0.8, 0.8, 0.8, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8, 1),
 		);
 	});
 
 	it("increases monotonically with resourceManagement, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.9, 0.8, 0.8)).toBeGreaterThan(
-			computeScore(10, 0.2, 0.8, 0.8),
+		expect(computeScore(10, 0.9, 0.8, 0.8, 1)).toBeGreaterThan(
+			computeScore(10, 0.2, 0.8, 0.8, 1),
 		);
 	});
 
 	it("increases monotonically with geneticDiversity, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.8, 0.9, 0.8)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.2, 0.8),
+		expect(computeScore(10, 0.8, 0.9, 0.8, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.2, 0.8, 1),
 		);
 	});
 
 	it("increases monotonically with phaseQuality, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.8, 0.8, 0.9)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.8, 0.2),
+		expect(computeScore(10, 0.8, 0.8, 0.9, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.2, 1),
+		);
+	});
+
+	it("increases monotonically with areaPopulationDensity, holding every other factor fixed", () => {
+		expect(computeScore(10, 0.8, 0.8, 0.8, 0.9)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8, 0.2),
 		);
 	});
 
 	it("is 0 when any single factor is 0 (true product, not a sum)", () => {
-		expect(computeScore(10, 0, 0.8, 0.8)).toBe(0);
-		expect(computeScore(10, 0.8, 0, 0.8)).toBe(0);
-		expect(computeScore(10, 0.8, 0.8, 0)).toBe(0);
+		expect(computeScore(10, 0, 0.8, 0.8, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0, 0.8, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0.8, 0)).toBe(0);
+	});
+});
+
+describe("computeAreaPopulationDensity", () => {
+	it("returns 0 for an empty sample array", () => {
+		expect(computeAreaPopulationDensity([])).toBe(0);
+	});
+
+	it("returns 1.0 average when density holds exactly constant", () => {
+		expect(computeAreaPopulationDensity([0.5, 0.5, 0.5])).toBeCloseTo(1.0);
+	});
+
+	it("returns an average strictly below 1.0 when density declines over the run", () => {
+		expect(computeAreaPopulationDensity([1, 0.5, 0.25])).toBeLessThan(1.0);
+		expect(computeAreaPopulationDensity([1, 0.5, 0.25])).toBeGreaterThan(0);
+	});
+
+	it("returns 0 when the initial sample is 0 (empty starting population)", () => {
+		expect(computeAreaPopulationDensity([0, 0.5, 0.8])).toBe(0);
 	});
 });

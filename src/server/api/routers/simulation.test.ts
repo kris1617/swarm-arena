@@ -59,6 +59,8 @@ const VALID_STOP_EXTRAS = {
 	],
 	// S-11 (run-analysis-view): added alongside the other three sample arrays.
 	populationCountSamples: [10],
+	// S-25 (FR-035): added alongside the other sample arrays.
+	populationDensitySamples: [0.5],
 };
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
