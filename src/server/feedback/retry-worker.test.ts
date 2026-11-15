@@ -135,4 +135,42 @@ describe("startFeedbackRetryWorker", () => {
 			expect.any(String),
 		);
 	});
+
+	// impl-review F2: a thrown exception from one row (e.g. a transient DB
+	// error inside attemptSendReport) must not abort the rest of the tick's
+	// batch, and must not escape the interval callback as an unhandled
+	// rejection that could crash the whole server process.
+	it("continues to the next row when attemptSendReport throws for an earlier one", async () => {
+		vi.useFakeTimers();
+		resetWorkerStartedFlag();
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const ownerId = await insertOwnerUser();
+		const failingReportId = await insertReport(ownerId, "pending");
+		const okReportId = await insertReport(ownerId, "pending");
+
+		mockedAttemptSendReport.mockImplementation(async (_db, reportId) => {
+			if (reportId === failingReportId) {
+				throw new Error("simulated transient DB error");
+			}
+			return { sent: false };
+		});
+
+		startFeedbackRetryWorker();
+		await vi.advanceTimersByTimeAsync(RETRY_INTERVAL_MS);
+
+		expect(mockedAttemptSendReport).toHaveBeenCalledWith(
+			db,
+			failingReportId,
+			expect.any(String),
+		);
+		expect(mockedAttemptSendReport).toHaveBeenCalledWith(
+			db,
+			okReportId,
+			expect.any(String),
+		);
+		expect(errorSpy).toHaveBeenCalled();
+
+		errorSpy.mockRestore();
+	});
 });

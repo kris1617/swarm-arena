@@ -43,8 +43,25 @@ async function retryPendingReports(): Promise<void> {
 
 	// Sequential, not Promise.all — per the plan's explicit reasoning: avoid
 	// bursting GitHub's rate limit on a cold start with several queued rows.
+	//
+	// impl-review F2: each row's attempt is wrapped in its own try/catch,
+	// same discipline server-run-registry.ts's tick() already uses. Without
+	// this, an exception from attemptSendReport (e.g. a DB hiccup in one of
+	// its pre-try queries, or its own success-path write — see send-report.ts's
+	// comment) would become an unhandled promise rejection inside this bare
+	// setInterval callback (startFeedbackRetryWorker below never attaches a
+	// .catch()), which Node's default unhandled-rejection policy turns into a
+	// process crash — taking down the whole app, not just this feature, on a
+	// single transient failure.
 	for (const report of pendingReports) {
-		await attemptSendReport(db, report.id, env.GITHUB_FEEDBACK_TOKEN);
+		try {
+			await attemptSendReport(db, report.id, env.GITHUB_FEEDBACK_TOKEN);
+		} catch (error) {
+			console.error(
+				`feedback retry worker: attemptSendReport failed for report ${report.id}:`,
+				error,
+			);
+		}
 	}
 }
 
@@ -54,6 +71,11 @@ export function startFeedbackRetryWorker(): void {
 	}
 	globalForRetryWorker.feedbackRetryWorkerStarted = true;
 
+	// impl-review F4: unlike server-run-registry.ts's per-run intervals
+	// (stopped and cleared when that specific run stops), this is a single
+	// worker meant to run for the entire life of the server process — there
+	// is no stop path by design, so the interval handle itself is never
+	// retained.
 	setInterval(() => {
 		void retryPendingReports();
 	}, RETRY_INTERVAL_MS);

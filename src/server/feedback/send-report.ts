@@ -48,27 +48,30 @@ export async function attemptSendReport(
 		where: (t, { eq: eqFn }) => eqFn(t.id, report.userId),
 	});
 
-	const body = `${report.description}\n\n---\nReported from: ${report.pagePath}\nUser agent: ${report.userAgent}\nReporter: ${user?.email ?? "unknown"}`;
+	// impl-review F3: the auto-attached context leads, the user's own text
+	// trails — a description containing its own fake "Reported from"/
+	// "Reporter" lines then reads as part of the user's text rather than
+	// impersonating this footer's position.
+	const body = `Reported from: ${report.pagePath}\nUser agent: ${report.userAgent}\nReporter: ${user?.email ?? "unknown"}\n\n---\n\n${report.description}`;
 	const title = formatIssueTitle(report.category, report.title);
 	const labels = [mapCategoryToGithubLabel(report.category)];
 
+	// impl-review F1: only the external call is inside this try/catch. The
+	// success-path DB write below is deliberately OUTSIDE it — if GitHub
+	// already created the issue but persisting that fact fails (e.g. a
+	// transient SQLite busy error), that is an infrastructure failure, not a
+	// send failure, and must not be reclassified as one: doing so would flip
+	// status back to "pending"/"abandoned" with no githubIssueNumber/Url
+	// recorded, and the retry worker would file a duplicate issue for the
+	// same report on its next tick. Letting it propagate instead (caught by
+	// retry-worker.ts's per-row try/catch, or tRPC's own error path for the
+	// router's immediate attempt) is the correct failure mode here.
+	let result: { issueNumber: number; issueUrl: string };
 	try {
-		const result = await createGithubIssue(
+		result = await createGithubIssue(
 			{ token, owner: GITHUB_OWNER, repo: GITHUB_REPO, title, body, labels },
 			fetch,
 		);
-
-		await db
-			.update(feedbackReports)
-			.set({
-				status: "sent",
-				githubIssueNumber: result.issueNumber,
-				githubIssueUrl: result.issueUrl,
-				lastAttemptAt: new Date(),
-			})
-			.where(eq(feedbackReports.id, reportId));
-
-		return { sent: true, issueUrl: result.issueUrl };
 	} catch (error) {
 		// A failed send is an expected, handled outcome per the plan, not an
 		// exceptional one propagating to the caller — never rethrow.
@@ -92,4 +95,19 @@ export async function attemptSendReport(
 
 		return { sent: false };
 	}
+
+	// GitHub already has the issue at this point — a failure here is a DB
+	// infrastructure problem, not a send failure (see the comment above the
+	// try block), so it propagates to the caller rather than being swallowed.
+	await db
+		.update(feedbackReports)
+		.set({
+			status: "sent",
+			githubIssueNumber: result.issueNumber,
+			githubIssueUrl: result.issueUrl,
+			lastAttemptAt: new Date(),
+		})
+		.where(eq(feedbackReports.id, reportId));
+
+	return { sent: true, issueUrl: result.issueUrl };
 }
