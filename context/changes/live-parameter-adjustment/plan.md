@@ -306,17 +306,17 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [x] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 847c5ca
+- [x] 2.2 Linting passes: `npm run check` — 847c5ca
+- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx` — 847c5ca
+- [x] 2.4 Full suite passes: `npm test` — 847c5ca
 
 #### Manual
 
-- [ ] 2.5 Panel pre-fills current values from the live view
-- [ ] 2.6 Applying a change visibly affects the running simulation within one tick, with a success flash
-- [ ] 2.7 Out-of-range value applies with an inline warning, not a rejection
-- [ ] 2.8 Apply button is disabled during the cooldown window
+- [x] 2.5 Panel pre-fills current values from the live view
+- [x] 2.6 Applying a change visibly affects the running simulation within one tick, with a success flash
+- [x] 2.7 Out-of-range value applies with an inline warning, not a rejection
+- [x] 2.8 Apply button is disabled during the cooldown window
 
 ### Phase 3: Analysis view — changelog overlay on the population chart
 
