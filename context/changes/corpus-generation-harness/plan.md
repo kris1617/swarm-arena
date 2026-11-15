@@ -116,7 +116,7 @@ None — no schema change; `adminSettings` is read/written through its existing 
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run scripts/corpus/harness.test.ts`
-- [ ] 1.4 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 61f15a7
+- [x] 1.2 Linting passes: `npm run check` — 61f15a7
+- [x] 1.3 `npx vitest run scripts/corpus/harness.test.ts` — 61f15a7
+- [x] 1.4 Full suite passes: `npm test` — 61f15a7
