@@ -213,10 +213,10 @@ None — no DB schema change. `boidCount`/`predatorCount` on `simulationRuns` re
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [ ] 1.4 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — a960308
+- [x] 1.2 Linting passes: `npm run check` — a960308
+- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts` — a960308
+- [x] 1.4 Full suite passes: `npm test` — a960308
 
 ### Phase 2: Router procedure & cap checks
 

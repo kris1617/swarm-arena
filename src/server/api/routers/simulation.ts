@@ -37,7 +37,12 @@ import { suggestRunOptimization } from "~/server/simulation/run-optimization-sug
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
+	// live-boid-count-adjustment Phase 2: aliased to avoid colliding with
+	// this file's own new `adjustLivePopulation` router procedure key — see
+	// that procedure's body for the alias in use.
+	adjustLivePopulation as adjustLivePopulationRegistry,
 	applyLiveParams,
+	getLiveRunState,
 	isServerRunActive,
 	resumeServerRun,
 	type ServerRunSnapshot,
@@ -147,6 +152,73 @@ async function assertWithinConcurrentObjectCeiling(
 			message: `Starting this run would bring your combined server-run population to ${total}, over the ${maxConcurrentObjectCount} limit — stop another server run first.`,
 		});
 	}
+}
+
+// live-boid-count-adjustment Phase 2: soft (warn, don't block) counterpart
+// to `checkAgainstAdminRanges`'s per-run combined-count cap, reused only by
+// the `adjustLivePopulation` live-adjust path — out-of-range live edits warn
+// rather than reject, same posture as `checkLiveParamRangesSoft`. Pure
+// function, no `db` needed.
+function checkPerRunObjectCapSoft(
+	otherFieldCount: number,
+	newCount: number,
+	maxObjectCount: number,
+): string | null {
+	const total = otherFieldCount + newCount;
+	if (total > maxObjectCount) {
+		return `boidCount + predatorCount would be ${total}, over the per-run limit of ${maxObjectCount}`;
+	}
+	return null;
+}
+
+// live-boid-count-adjustment Phase 2: soft counterpart to
+// `assertWithinConcurrentObjectCeiling`, but sources *other* runs' counts
+// from their live registry state (`getLiveRunState`) rather than the DB's
+// start-time `boidCount`/`predatorCount` columns — a prior live-adjust on
+// another run would otherwise make a DB-sourced sum stale. Takes `db` as an
+// explicit parameter (per the router-helper lesson in
+// context/foundation/lessons.md), matching
+// `assertWithinConcurrentObjectCeiling`'s own signature shape.
+async function checkConcurrentObjectCapSoft(
+	db: typeof dbSingleton,
+	userId: string,
+	thisRunNewTotal: number,
+	excludeRunId: number,
+	maxConcurrentObjectCount: number,
+): Promise<string | null> {
+	const runningRows = await db
+		.select({
+			id: simulationRuns.id,
+			boidCount: simulationRuns.boidCount,
+			predatorCount: simulationRuns.predatorCount,
+		})
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.status, "running"),
+			),
+		);
+	const otherServerTickingTotal = runningRows
+		.filter((row) => row.id !== excludeRunId && isServerRunActive(row.id))
+		.reduce((sum, row) => {
+			// Narrow race guard: `isServerRunActive` confirmed a registry entry
+			// a moment ago, but the run could have stopped naturally between
+			// that check and this read — fall back to the DB row's start-time
+			// columns rather than throwing.
+			const live = getLiveRunState(row.id);
+			return (
+				sum +
+				(live
+					? live.boids.length + live.predators.length
+					: row.boidCount + row.predatorCount)
+			);
+		}, 0);
+	const total = otherServerTickingTotal + thisRunNewTotal;
+	if (total > maxConcurrentObjectCount) {
+		return `This would bring your combined server-run population to ${total}, over the ${maxConcurrentObjectCount} limit across your running simulations`;
+	}
+	return null;
 }
 
 function checkAgainstAdminRanges(
@@ -962,6 +1034,97 @@ export const simulationRouter = createTRPCRouter({
 				});
 			}
 			return { ok: true, warnings };
+		}),
+
+	// live-boid-count-adjustment Phase 2: the router-level entry point for a
+	// population step-button click — mirrors `updateRunParams`'s
+	// ownership/active-run check shape exactly. Validation is soft, same
+	// posture as `updateRunParams`: an out-of-range resulting count still
+	// applies, accompanied by warnings.
+	adjustLivePopulation: protectedProcedure
+		.input(
+			z.object({
+				runId: z.number(),
+				field: z.enum(["boidCount", "predatorCount"]),
+				delta: z.number().int(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+			});
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "running" || !isServerRunActive(input.runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not an active server-run simulation",
+				});
+			}
+
+			const liveState = getLiveRunState(input.runId);
+			if (!liveState) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer active",
+				});
+			}
+			const kind = input.field === "boidCount" ? "boid" : "predator";
+			const currentCount =
+				kind === "boid" ? liveState.boids.length : liveState.predators.length;
+			const otherFieldCount =
+				kind === "boid" ? liveState.predators.length : liveState.boids.length;
+			const newCount = Math.max(0, currentCount + input.delta);
+
+			const { parameterRanges, maxObjectCount, maxConcurrentObjectCount } =
+				await getOrSeedAdminSettings(ctx.db);
+
+			const warnings = checkLiveParamRangesSoft(
+				{ [input.field]: newCount },
+				parameterRanges,
+			);
+			const perRunWarning = checkPerRunObjectCapSoft(
+				otherFieldCount,
+				newCount,
+				maxObjectCount,
+			);
+			if (perRunWarning) {
+				warnings.push(perRunWarning);
+			}
+			const concurrentWarning = await checkConcurrentObjectCapSoft(
+				ctx.db,
+				run.userId,
+				newCount + otherFieldCount,
+				input.runId,
+				maxConcurrentObjectCount,
+			);
+			if (concurrentWarning) {
+				warnings.push(concurrentWarning);
+			}
+
+			const result = adjustLivePopulationRegistry(
+				input.runId,
+				kind,
+				input.delta,
+			);
+			if (result.status === "not-found") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer active",
+				});
+			}
+			if (result.status === "throttled") {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: `Try again in ${result.retryAfterMs}ms`,
+				});
+			}
+
+			return { ok: true, warnings, newCount };
 		}),
 
 	// S-04 Phase 4 (FR-012): pause a live server-owned run into a resumable

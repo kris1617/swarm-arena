@@ -2846,6 +2846,162 @@ describe("simulationRouter.updateRunParams", () => {
 	});
 });
 
+// live-boid-count-adjustment Phase 2: the population step-button mutation —
+// same ownership/active-run/throttle check shape as `updateRunParams`'s own
+// describe block above, plus the two new soft-cap checks.
+describe("simulationRouter.adjustLivePopulation", () => {
+	async function insertOwnerAndCaller() {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		return { ownerId: owner.id, caller };
+	}
+
+	it("applies a valid delta and returns ok with no warnings and the new count", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const result = await caller.simulation.adjustLivePopulation({
+			runId,
+			field: "boidCount",
+			delta: 10,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings).toEqual([]);
+		expect(result.newCount).toBe(VALID_START_INPUT.boidCount + 10);
+	});
+
+	it("applies a delta pushing the per-run total over maxObjectCount and still warns without rejecting", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		// VALID_START_INPUT.boidCount (10) + 600 + predatorCount (2) = 612,
+		// over the seeded default maxObjectCount of 500.
+		const result = await caller.simulation.adjustLivePopulation({
+			runId,
+			field: "boidCount",
+			delta: 600,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings.length).toBeGreaterThan(0);
+		expect(result.newCount).toBe(VALID_START_INPUT.boidCount + 600);
+	});
+
+	it("applies a delta pushing the user's cross-run total over maxConcurrentObjectCount and still warns without rejecting", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId: firstRunId } =
+			await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(firstRunId);
+		// Second concurrently-ticking run for the same user — 70 + 10 = 80,
+		// combined with the first run's 10 + 2 = 12 stays at 92, under the
+		// seeded default maxConcurrentObjectCount of 150 at startServer time.
+		const { runId: secondRunId } = await caller.simulation.startServer({
+			...VALID_START_INPUT,
+			boidCount: 70,
+			predatorCount: 10,
+		});
+		trackedServerRunIds.push(secondRunId);
+
+		// Growing the first run's boidCount by 200 brings its own total to
+		// 212, which combined with the second run's 80 is 292 — over 150.
+		const result = await caller.simulation.adjustLivePopulation({
+			runId: firstRunId,
+			field: "boidCount",
+			delta: 200,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings.length).toBeGreaterThan(0);
+		expect(result.newCount).toBe(VALID_START_INPUT.boidCount + 200);
+	});
+
+	it("rejects with FORBIDDEN for a non-owner", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.adjustLivePopulation({
+				runId,
+				field: "boidCount",
+				delta: 10,
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST for a saved (non-active) run", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+		await caller.simulation.savePause({ runId });
+
+		await expect(
+			caller.simulation.adjustLivePopulation({
+				runId,
+				field: "boidCount",
+				delta: 10,
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		// Clean up: this run is "saved" (no live interval) — resume+stop so
+		// afterEach's trackedServerRunIds loop can tear it down.
+		await caller.simulation.resume({ runId });
+	});
+
+	it("rejects a second call within the throttle window with TOO_MANY_REQUESTS, shared with updateRunParams", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.3 });
+
+		await expect(
+			caller.simulation.adjustLivePopulation({
+				runId,
+				field: "boidCount",
+				delta: 10,
+			}),
+		).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 // testing-full-lifecycle-regression: drives the real cross-procedure user
 // journey described by the project owner — start, pause/resume, finish,
 // list, compare (FR-016's bounded 2-4-run comparison), delete the test
