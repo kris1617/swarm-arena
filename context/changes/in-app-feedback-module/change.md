@@ -1,7 +1,7 @@
 ---
 change_id: in-app-feedback-module
 title: In-app feedback module (GitHub Issues integration)
-status: implementing
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null
