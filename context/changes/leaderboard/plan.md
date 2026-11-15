@@ -156,14 +156,14 @@ None — no schema change; `score`, `status`, and `userId` already exist.
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on the new page returns zero hits
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`
+- [x] 2.4 Hardcoded-value scan on the new page returns zero hits
 
 #### Manual
 
-- [ ] 2.5 Ranked order + rank numbers + top-3 highlight correct for a multi-run user
-- [ ] 2.6 Empty state renders correctly for a zero-completed-runs user
-- [ ] 2.7 Sidebar "Leaderboard" entry present, links correctly, and highlights as active
-- [ ] 2.8 A completed-but-unscored run is excluded from the leaderboard but still visible on the dashboard
+- [x] 2.5 Ranked order + rank numbers + top-3 highlight correct for a multi-run user
+- [x] 2.6 Empty state renders correctly for a zero-completed-runs user
+- [x] 2.7 Sidebar "Leaderboard" entry present, links correctly, and highlights as active
+- [x] 2.8 A completed-but-unscored run is excluded from the leaderboard but still visible on the dashboard
