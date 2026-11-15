@@ -901,11 +901,11 @@ export const simulationRouter = createTRPCRouter({
 		.input(
 			z.object({
 				runId: z.number(),
-				separationWeight: z.number().finite().optional(),
-				alignmentWeight: z.number().finite().optional(),
-				cohesionWeight: z.number().finite().optional(),
 				foodRegenRate: z.number().finite().nonnegative().optional(),
 				protectionThreshold: z.number().int().nonnegative().optional(),
+				energyThreshold: z.number().finite().positive().optional(),
+				mutationChance: z.number().min(0).max(1).optional(),
+				mutationMagnitude: z.number().min(0).max(1).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

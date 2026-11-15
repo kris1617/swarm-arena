@@ -296,7 +296,7 @@ describe("server-run-registry", () => {
 
 describe("applyLiveParams", () => {
 	it("returns not-found for an unregistered runId", () => {
-		expect(applyLiveParams(999_999, { separationWeight: 5 })).toEqual({
+		expect(applyLiveParams(999_999, { mutationMagnitude: 5 })).toEqual({
 			status: "not-found",
 		});
 	});
@@ -314,16 +314,16 @@ describe("applyLiveParams", () => {
 		await vi.advanceTimersByTimeAsync(64);
 
 		const applied = applyLiveParams(runId, {
-			separationWeight: 7,
+			mutationMagnitude: 7,
 			foodRegenRate: 42,
 		});
 
 		expect(applied).toEqual({ status: "applied" });
 		const state = getLiveRunState(runId);
-		expect(state?.liveParams.separationWeight).toBe(7);
+		expect(state?.liveParams.mutationMagnitude).toBe(7);
 		expect(state?.liveParams.foodRegenRate).toBe(42);
 		// Other live-adjustable fields are untouched by a partial patch.
-		expect(state?.liveParams.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
+		expect(state?.liveParams.energyThreshold).toBe(BASE_PARAMS.energyThreshold);
 
 		await stopServerRun(runId);
 		const row = await db.query.simulationRuns.findFirst({
@@ -337,8 +337,8 @@ describe("applyLiveParams", () => {
 		expect(changes).toHaveLength(2);
 		expect(changes).toContainEqual({
 			tick: expect.any(Number),
-			field: "separationWeight",
-			oldValue: BASE_PARAMS.separationWeight,
+			field: "mutationMagnitude",
+			oldValue: BASE_PARAMS.mutationMagnitude,
 			newValue: 7,
 		});
 		expect(changes).toContainEqual({
@@ -365,23 +365,23 @@ describe("applyLiveParams", () => {
 		});
 		await vi.advanceTimersByTimeAsync(64);
 
-		expect(applyLiveParams(runId, { separationWeight: 2 })).toEqual({
+		expect(applyLiveParams(runId, { mutationMagnitude: 2 })).toEqual({
 			status: "applied",
 		});
 		// Immediately retrying, no time advanced — must be throttled, not applied.
-		const second = applyLiveParams(runId, { separationWeight: 3 });
+		const second = applyLiveParams(runId, { mutationMagnitude: 3 });
 		expect(second.status).toBe("throttled");
 		if (second.status === "throttled") {
 			expect(second.retryAfterMs).toBeGreaterThan(0);
 		}
 		// The throttled call must not have changed params or logged a change.
-		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(2);
+		expect(getLiveRunState(runId)?.liveParams.mutationMagnitude).toBe(2);
 
 		await vi.advanceTimersByTimeAsync(500);
-		expect(applyLiveParams(runId, { separationWeight: 4 })).toEqual({
+		expect(applyLiveParams(runId, { mutationMagnitude: 4 })).toEqual({
 			status: "applied",
 		});
-		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(4);
+		expect(getLiveRunState(runId)?.liveParams.mutationMagnitude).toBe(4);
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
@@ -404,7 +404,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 			maxDurationSeconds: 600,
 		});
 		await vi.advanceTimersByTimeAsync(64);
-		applyLiveParams(runId, { separationWeight: 9 });
+		applyLiveParams(runId, { mutationMagnitude: 9 });
 
 		const snapshot = snapshotServerRun(runId);
 		if (!snapshot) {
@@ -413,7 +413,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		expect(snapshot.parameterChanges).toHaveLength(1);
 
 		resumeServerRun(runId, snapshot);
-		expect(getLiveRunState(runId)?.liveParams.separationWeight).toBe(9);
+		expect(getLiveRunState(runId)?.liveParams.mutationMagnitude).toBe(9);
 
 		await stopServerRun(runId);
 		const row = await db.query.simulationRuns.findFirst({
@@ -426,8 +426,8 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		)?.parameterChanges;
 		expect(changes).toHaveLength(1);
 		expect(changes?.[0]).toMatchObject({
-			field: "separationWeight",
-			oldValue: BASE_PARAMS.separationWeight,
+			field: "mutationMagnitude",
+			oldValue: BASE_PARAMS.mutationMagnitude,
 			newValue: 9,
 		});
 		activeRunIds.length = 0;
@@ -464,7 +464,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		// If the resumed run crashed on a missing parameterChanges array, a
 		// live edit's `.push` below would throw inside applyLiveParams.
 		expect(getLiveRunState(runId)).toBeDefined();
-		expect(applyLiveParams(runId, { separationWeight: 3 })).toEqual({
+		expect(applyLiveParams(runId, { mutationMagnitude: 3 })).toEqual({
 			status: "applied",
 		});
 

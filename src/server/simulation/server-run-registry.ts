@@ -57,11 +57,11 @@ export type ServerRunParams = {
 // server-owned simulation can be patched on, mid-run, via `applyLiveParams`.
 export type LiveAdjustableParams = Pick<
 	ServerRunParams,
-	| "separationWeight"
-	| "alignmentWeight"
-	| "cohesionWeight"
 	| "foodRegenRate"
 	| "protectionThreshold"
+	| "energyThreshold"
+	| "mutationChance"
+	| "mutationMagnitude"
 >;
 
 export type LiveParamPatch = Partial<LiveAdjustableParams>;
@@ -139,11 +139,11 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 		elapsedSeconds: run.elapsedSeconds,
 		populationCapped: run.populationCapped,
 		liveParams: {
-			separationWeight: run.params.separationWeight,
-			alignmentWeight: run.params.alignmentWeight,
-			cohesionWeight: run.params.cohesionWeight,
 			foodRegenRate: run.params.foodRegenRate,
 			protectionThreshold: run.params.protectionThreshold,
+			energyThreshold: run.params.energyThreshold,
+			mutationChance: run.params.mutationChance,
+			mutationMagnitude: run.params.mutationMagnitude,
 		},
 	};
 }

@@ -2638,7 +2638,7 @@ describe("simulationRouter.updateRunParams", () => {
 
 		const result = await caller.simulation.updateRunParams({
 			runId,
-			separationWeight: 2,
+			mutationMagnitude: 0.5,
 		});
 
 		expect(result).toEqual({ ok: true, warnings: [] });
@@ -2649,11 +2649,12 @@ describe("simulationRouter.updateRunParams", () => {
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
 		trackedServerRunIds.push(runId);
 
-		// Default separationWeight range is 0-10 (DEFAULT_PARAMETER_RANGES) —
-		// 999 is well outside it.
+		// Default energyThreshold range is 0.1-500 (DEFAULT_PARAMETER_RANGES);
+		// zod only requires `positive()`, so 99999 passes schema validation
+		// but trips the soft admin-range warning.
 		const result = await caller.simulation.updateRunParams({
 			runId,
-			separationWeight: 999,
+			energyThreshold: 99999,
 		});
 
 		expect(result.ok).toBe(true);
@@ -2667,10 +2668,10 @@ describe("simulationRouter.updateRunParams", () => {
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
 		trackedServerRunIds.push(runId);
 
-		await caller.simulation.updateRunParams({ runId, separationWeight: 2 });
+		await caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.3 });
 
 		await expect(
-			caller.simulation.updateRunParams({ runId, separationWeight: 3 }),
+			caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.4 }),
 		).rejects.toMatchObject({
 			code: "TOO_MANY_REQUESTS",
 		} satisfies Partial<TRPCError>);
@@ -2698,7 +2699,7 @@ describe("simulationRouter.updateRunParams", () => {
 		await expect(
 			attackerCaller.simulation.updateRunParams({
 				runId,
-				separationWeight: 2,
+				mutationMagnitude: 0.5,
 			}),
 		).rejects.toMatchObject({
 			code: "FORBIDDEN",
@@ -2712,7 +2713,7 @@ describe("simulationRouter.updateRunParams", () => {
 		await caller.simulation.savePause({ runId });
 
 		await expect(
-			caller.simulation.updateRunParams({ runId, separationWeight: 2 }),
+			caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.5 }),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
@@ -2728,7 +2729,7 @@ describe("simulationRouter.updateRunParams", () => {
 		await expect(
 			caller.simulation.updateRunParams({
 				runId: 999_999,
-				separationWeight: 2,
+				mutationMagnitude: 0.5,
 			}),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
