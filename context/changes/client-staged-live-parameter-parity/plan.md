@@ -189,28 +189,28 @@ None — `parameterChanges` is a new optional key in a schema-less JSON `history
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `npm run typecheck`
-- [x] 2.2 Linting passes: `npm run check`
-- [x] 2.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [x] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — a08c90a
+- [x] 2.2 Linting passes: `npm run check` — a08c90a
+- [x] 2.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — a08c90a
+- [x] 2.4 Full suite passes: `npm test` — a08c90a
 
 #### Manual
 
-- [x] 2.5 Panel shows 5 fields under 2 correctly-grouped headings
-- [x] 2.6 mutationMagnitude=0 produces zero-deviation offspring genes
-- [x] 2.7 High energyThreshold stops further reproduction
-- [x] 2.8 Out-of-range value shows the expected warning text
+- [x] 2.5 Panel shows 5 fields under 2 correctly-grouped headings — a08c90a
+- [x] 2.6 mutationMagnitude=0 produces zero-deviation offspring genes — a08c90a
+- [x] 2.7 High energyThreshold stops further reproduction — a08c90a
+- [x] 2.8 Out-of-range value shows the expected warning text — a08c90a
 
 ### Phase 3: Changelog parity
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [ ] 3.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 3.5 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck`
+- [x] 3.2 Linting passes: `npm run check`
+- [x] 3.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
+- [x] 3.4 `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 3.5 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 3.6 Analysis view's ReferenceLine overlay renders a client-staged run's live edits
+- [x] 3.6 Analysis view's ReferenceLine overlay renders a client-staged run's live edits

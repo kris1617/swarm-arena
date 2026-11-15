@@ -61,6 +61,16 @@ const VALID_STOP_EXTRAS = {
 	populationCountSamples: [10],
 	// S-25 (FR-035): added alongside the other sample arrays.
 	populationDensitySamples: [0.5],
+	// client-staged-live-parameter-parity Phase 3: required (no `.min()`,
+	// but not `.optional()` either) — `[]` is the legitimate value for a run
+	// where the live-edit panel was never touched, same as every pre-existing
+	// stop() test below that doesn't exercise this field.
+	parameterChanges: [] as {
+		tick: number;
+		field: string;
+		oldValue: number;
+		newValue: number;
+	}[],
 };
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
@@ -392,6 +402,71 @@ describe("simulationRouter.stop authorization", () => {
 			// survival factor, sent over the wire as `elapsedTicks`.
 			elapsedSeconds: 1,
 		});
+	});
+
+	// client-staged-live-parameter-parity Phase 3: the two-sided change S-27
+	// made for the server-owned path (applyLiveParams -> history), here for
+	// the client-staged path's one-shot stop() call.
+	it("accepts and persists a parameterChanges array into history", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const parameterChanges = [
+			{ tick: 5, field: "mutationMagnitude", oldValue: 0.2, newValue: 0 },
+		];
+
+		await caller.simulation.stop({
+			runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			...VALID_STOP_EXTRAS,
+			parameterChanges,
+		});
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.history).toMatchObject({ parameterChanges });
+	});
+
+	// Backward-compatible with a run that had no live edits — the panel's
+	// Apply handler was never clicked, so the changelog stays empty.
+	it("still succeeds when parameterChanges is an empty array", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.stop({
+			runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			...VALID_STOP_EXTRAS,
+			parameterChanges: [],
+		});
+
+		expect(result).toMatchObject({ score: 0 });
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.history).toMatchObject({ parameterChanges: [] });
 	});
 
 	it("rejects with UNAUTHORIZED when there is no session", async () => {

@@ -9,6 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 let capturedStopOptions: {
 	onError?: (error: { message: string }, variables: { runId: number }) => void;
 } = {};
+// client-staged-live-parameter-parity Phase 3: exposed so tests can inspect
+// what buildStopInput() actually sent. Must stay the SAME vi.fn() instance
+// across every useMutation() call for a test (the component re-renders —
+// e.g. on each Apply click's state updates — well before Stop is clicked),
+// or a later render would silently swap in a fresh, never-called mock out
+// from under an assertion made after the click. Reset in each describe
+// block's own beforeEach instead of being reassigned here.
+let capturedStopMutate: ReturnType<typeof vi.fn> = vi.fn();
 
 vi.mock("~/trpc/react", () => ({
 	api: {
@@ -17,7 +25,7 @@ vi.mock("~/trpc/react", () => ({
 				useMutation: (options: typeof capturedStopOptions = {}) => {
 					capturedStopOptions = options;
 					return {
-						mutate: vi.fn(),
+						mutate: capturedStopMutate,
 						isPending: false,
 						data: undefined,
 						error: undefined,
@@ -254,6 +262,7 @@ describe("SimulationCanvas live-edit panel", () => {
 
 	beforeEach(() => {
 		capturedStopOptions = {};
+		capturedStopMutate = vi.fn();
 		rafMock = vi.fn(() => 1);
 		cafMock = vi.fn();
 		vi.stubGlobal("requestAnimationFrame", rafMock);
@@ -388,6 +397,77 @@ describe("SimulationCanvas live-edit panel", () => {
 
 		expect(container.textContent).toContain(
 			"mutationChance (5) is outside the configured range 0-1",
+		);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	// client-staged-live-parameter-parity Phase 3: buildStopInput()'s
+	// parameterChanges field — exercised indirectly via the Stop button
+	// (buildStopInput isn't exported; `stopRun.mutate(...)`'s captured call
+	// args are the only observable surface).
+	it("includes parameterChanges with entries matching applied edits when stopped", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		act(() => {
+			setNumberFieldValue(container, "mutationMagnitude", "0");
+		});
+		act(() => {
+			clickApplyFor(container, "mutationMagnitude");
+		});
+
+		const stopButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent === "Stop",
+		);
+		act(() => {
+			stopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		expect(capturedStopMutate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parameterChanges: [
+					expect.objectContaining({
+						field: "mutationMagnitude",
+						oldValue: BASE_PROPS.mutationMagnitude,
+						newValue: 0,
+					}),
+				],
+			}),
+		);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("sends an empty parameterChanges array when no edits were made", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		const stopButton = Array.from(container.querySelectorAll("button")).find(
+			(button) => button.textContent === "Stop",
+		);
+		act(() => {
+			stopButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+
+		expect(capturedStopMutate).toHaveBeenCalledWith(
+			expect.objectContaining({ parameterChanges: [] }),
 		);
 
 		act(() => {

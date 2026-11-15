@@ -30,7 +30,10 @@ import {
 	DEFAULT_PARAMETER_RANGES,
 } from "~/server/simulation/parameter-ranges";
 import { createRng } from "~/server/simulation/rng";
-import type { LiveAdjustableParams } from "~/server/simulation/server-run-registry";
+import type {
+	LiveAdjustableParams,
+	ParameterChangeEntry,
+} from "~/server/simulation/server-run-registry";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import {
 	CANVAS_BACKGROUND,
@@ -432,6 +435,15 @@ export function SimulationCanvas({
 	const mutationChanceRef = useRef(mutationChance);
 	const mutationMagnitudeRef = useRef(mutationMagnitude);
 
+	// client-staged-live-parameter-parity Phase 3: the client-staged path's
+	// own changelog of applied live edits, mirroring `ParameterChangeEntry`'s
+	// shape and server-run-registry.ts's `applyLiveParams` append pattern —
+	// so a completed client-staged run's `history` carries the same
+	// parameterChanges the analysis view's ReferenceLine overlay already
+	// renders for a server-owned run. Appended to (never replaced) by
+	// handleApplyLiveField below, read once at stop time by buildStopInput.
+	const parameterChangesRef = useRef<ParameterChangeEntry[]>([]);
+
 	// The live-edit panel's own refs, keyed the same way as LIVE_FIELDS, so
 	// handleApplyLiveField can write to the right ref without a switch.
 	const liveFieldRefs: Record<LiveField, React.RefObject<number>> = {
@@ -474,6 +486,19 @@ export function SimulationCanvas({
 	}
 
 	function handleApplyLiveField(field: LiveField, value: number) {
+		// client-staged-live-parameter-parity Phase 3: recorded before the
+		// write below so `oldValue` is the pre-apply value, same ordering as
+		// server-run-registry.ts's `applyLiveParams`. `populationCountSamplesRef`
+		// is this component's own running tick counter (one sample pushed per
+		// tick in the mount effect's `tick()` below) — the same signal
+		// `applyLiveParams` uses (`run.populationCountSamples.length`) for its
+		// `tick` field.
+		parameterChangesRef.current.push({
+			tick: populationCountSamplesRef.current.length,
+			field,
+			oldValue: liveFieldRefs[field].current,
+			newValue: value,
+		});
 		liveFieldRefs[field].current = value;
 		const warnings = checkLiveParamRangesSoft({ [field]: value }, liveRanges);
 		setFieldWarnings((current) => ({ ...current, [field]: warnings }));
@@ -648,6 +673,11 @@ export function SimulationCanvas({
 				populationDensitySamplesRef.current.length > 0
 					? populationDensitySamplesRef.current
 					: [0],
+			// client-staged-live-parameter-parity Phase 3: the applied-edits
+			// changelog — `[]` is a legitimate value (the user may never have
+			// touched the live-edit panel), unlike the sample arrays above
+			// which fall back to a `[0]` placeholder when empty.
+			parameterChanges: parameterChangesRef.current,
 		};
 	}
 

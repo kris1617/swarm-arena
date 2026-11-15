@@ -395,6 +395,24 @@ export const simulationRouter = createTRPCRouter({
 				// feeding the 5th scoring factor — same bound posture as every
 				// sibling sample-array field.
 				populationDensitySamples: z.array(z.number().min(0)).min(1).max(50_000),
+				// client-staged-live-parameter-parity Phase 3: the client-staged
+				// path's own changelog of applied live edits, matching the
+				// server-owned path's `ParameterChangeEntry` shape
+				// (server-run-registry.ts) and threaded into `history` below so
+				// the analysis view's ReferenceLine overlay renders them for a
+				// completed client-staged run too. No `.min()` — an empty
+				// changelog is legitimate: the user may never have touched the
+				// live-edit panel.
+				parameterChanges: z
+					.array(
+						z.object({
+							tick: z.number(),
+							field: z.string(),
+							oldValue: z.number(),
+							newValue: z.number(),
+						}),
+					)
+					.max(50_000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -465,6 +483,12 @@ export const simulationRouter = createTRPCRouter({
 						// sites — reuses the same value already computed for
 						// computeScore's first argument above.
 						elapsedSeconds: clampedElapsedTicks,
+						// client-staged-live-parameter-parity Phase 3: persisted
+						// alongside the other history fields so the analysis
+						// view's ReferenceLine overlay renders applied live
+						// edits for a client-staged run too, matching the
+						// server-owned path's `finishRun` write.
+						parameterChanges: input.parameterChanges,
 					},
 				})
 				.where(
