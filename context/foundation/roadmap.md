@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: extended-live-tuning
 milestone_seq: 6
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-6: Extended live tuning** — Status: open
+**M-6: Extended live tuning** — Status: done
 
 - **Intent:** Extend M-5's live-parameter-adjustment mechanism in the two directions it explicitly parked: bring the same capability to the client-staged execution path, and extend the server-owned path's live-adjustable set to the cheapest population-shape parameters. Main goal is quality — the client-staged restructuring (reading live values instead of closed-over immutable props) is genuinely new architectural territory for this codebase and deserves careful correctness work, and boidCount's live array mutation (adding/culling a running population) needs the same discipline M-5's impl-review applied to its own concurrency/bounds concerns.
 - **Source materials:** user description (2026-11-15, immediately after M-5's close) — both scope anchors were parked explicitly in M-5's `## Parked` section; `flockCount` live-adjustment was investigated and found structurally invasive (every boid's `flockId`/color is set once at birth and never re-derived — changing it mid-run means rewriting the whole live population, not patching a value) and stays parked for a future milestone.
@@ -79,8 +79,8 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
 | S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | done |
 | S-28 | client-staged-live-parameter-parity | User changes a client-staged run's foodRegenRate, protectionThreshold, energyThreshold, mutationChance, and mutationMagnitude while it is actively running | S-31           | MS-01                                                  | done |
-| S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction | —              | MS-02                                                  | ready |
-| S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count while it is actively running | —              | MS-03                                                  | ready |
+| S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction | —              | MS-02                                                  | done |
+| S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count and predator count while it is actively running | —              | MS-03                                                  | done |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
 
 ## Streams
@@ -570,31 +570,27 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-29: Live-adjust crossbreeding toggle on a running simulation
 
-- **Outcome:** User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction events (mixed-flock pairs stop or start producing offspring).
+- **Outcome:** User toggles crossbreeding on or off for a running simulation — both server-owned and client-staged (scope expanded from server-owned-only during planning, user's explicit choice) — and sees the effect on subsequent reproduction events (mixed-flock pairs stop or start producing offspring).
 - **Change ID:** live-crossbreeding-toggle
 - **PRD refs:** MS-02
-- **Prerequisites:** — (`crossbreedingEnabled` is already read fresh from `run.params` every tick — confirmed via direct code inspection; the only gap is `LiveAdjustableParams`'s type-level allowlist)
+- **Prerequisites:** — (`crossbreedingEnabled` is already read fresh from `run.params`/the tick closure every tick on both paths — confirmed via direct code inspection; the gap is `LiveAdjustableParams`'s type-level allowlist plus, on the client-staged path, the same ref treatment S-28 gave its 5 numeric fields)
 - **Parallel with:** S-28, S-30 — mutually independent, no shared Prerequisites
 - **Blockers:** —
-- **Unknowns:**
-  - Should this reuse S-27's exact mutation/UI mechanism (same `updateRunParams`-style call, same panel), or does a boolean toggle warrant a different UI control (a switch, not a numeric field) within the same panel? — Owner: user. Block: no (UI detail, not a product blocker).
-- **Risk:** Low — confirmed by direct code inspection that `crossbreedingEnabled` is structurally already "live" the same way the 5 fields S-27 shipped are; the change is closer to widening an allowlist than building new mechanism. The main risk is scope creep into reproducing more of S-27's ceremony (warnings, changelog entries) than a boolean toggle actually needs.
-- **Status:** ready
+- **Unknowns:** — (resolved during planning: reuses the existing numeric live-adjust machinery with a `Switch` control, not a separate boolean-only mechanism)
+- **Risk:** Low — confirmed by direct code inspection that `crossbreedingEnabled` is structurally already "live" the same way the 5 fields S-27/S-28 shipped are; the change is closer to widening an allowlist than building new mechanism. The main risk (boolean vs. numeric type friction) was resolved during planning via a generic, isolated coercion at 2 call sites.
+- **Status:** done
 
-### S-30: Live-adjust boid count on a running simulation
+### S-30: Live-adjust boid and predator count on a running simulation
 
-- **Outcome:** User increases or decreases a running server-owned simulation's boid count while it is actively running, and sees the population size change reflected in the live view.
+- **Outcome:** User increases or decreases a running server-owned simulation's boid count AND predator count while it is actively running — both execution paths' object-shape, scope expanded during planning from boid-only, user's explicit choice, since `PredatorState` carries the identical energy/age shape `BoidState` does — and sees the population size change reflected in the live view.
 - **Change ID:** live-boid-count-adjustment
 - **PRD refs:** MS-03
-- **Prerequisites:** — (`createInitialPopulation`'s generation logic and `applyHunger`/`applyPredation`'s cull-by-filter patterns both already exist as reusable precedents)
+- **Prerequisites:** — (`createInitialPopulation`/`createInitialPredators`'s generation logic and `applyHunger`/`applyPredation`'s cull-by-filter patterns both already exist as reusable precedents)
 - **Parallel with:** S-28, S-29 — mutually independent, no shared Prerequisites
 - **Blockers:** —
-- **Unknowns:**
-  - Increasing boidCount: generate new boids with the same logic `createInitialPopulation` uses — but what RNG/seed state do they draw from mid-run, and should they spawn at random positions across the world or clustered near the existing population? — Owner: user. Block: no.
-  - Decreasing boidCount: what's the cull rule — random selection, oldest-first, youngest-first, or lowest-energy-first? — Owner: user. Block: no.
-  - Should a live boidCount change be validated against the admin's live object-count cap (`maxObjectCount`, the same enforcement `start`/`stop` already apply), mirroring S-27's soft-range-check precedent? — Owner: user. Block: no.
-- **Risk:** Moderate — unlike S-27/S-29 (a `run.params` scalar patch), this mutates the live `boids` array itself, a structurally different and riskier operation (array identity, length changes mid-tick-read, interaction with existing per-tick sample arrays sized by population). Has real precedent to build on (`applyHunger`/`applyPredation`'s filter idiom), but deserves the same concurrency-correctness scrutiny S-27's impl-review applied to its own scalar patch.
-- **Status:** ready
+- **Unknowns:** — (resolved during planning: clustered-near-centroid spawn for growth; lowest-energy-first cull for shrink; soft-warn, not hard-block, against both the per-run `maxObjectCount` and cross-run `maxConcurrentObjectCount` caps, mirroring S-27's soft-range-check precedent)
+- **Risk:** Moderate — unlike S-27/S-29 (a `run.params` scalar patch), this mutates the live `boids`/`predators` arrays themselves, a structurally different and riskier operation (array identity, length changes mid-tick-read, interaction with existing per-tick sample arrays sized by population). Has real precedent to build on (`applyHunger`/`applyPredation`'s filter idiom), but deserves the same concurrency-correctness scrutiny S-27's impl-review applied to its own scalar patch.
+- **Status:** done
 
 ### S-31: Correct S-27's live-adjustable field set
 
@@ -684,9 +680,12 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-3: Modernization and polish** (`modernization-and-polish`) — closed 2026-11-15. Delivered a shared app shell/design-token foundation and five pages built or restyled on it (branded login, dashboard, staging/live view, analysis/comparison, a new leaderboard, and four new reference/documentation pages), a run-specific post-run optimization suggestion, temporary admin elevation, and a spatial-hash neighbor-search optimization for the flocking engine; F-06 and all 9 slices (S-15–S-23) done. Every FR in the PRD (v5) is now implemented.
 - **M-4: Area, camera, and ops limits** (`area-camera-and-ops-limits`) — closed 2026-11-15. Delivered VPS-measured capacity ceilings for area/object-count/concurrency (F-07), a configurable simulation area with a camera-limited render view (S-24), a new area-aware 5th score factor with backward-compatible run comparison and a formula-version marker (S-25), and an in-app GitHub-Issues-backed feedback module with a DB-backed retry queue (S-26); F-07 and all 3 slices (S-24–S-26) done.
 - **M-5: Live in-run parameter adjustment** (`live-in-run-parameter-adjustment`) — closed 2026-11-15. Delivered live mid-run tuning of a server-owned simulation's flocking weights, food regen rate, and protection threshold (soft-validated against admin ranges, server-side throttled), with a persisted change-log overlaid on the completed run's population chart; S-27 (the milestone's sole slice) done. Scoped to the server-owned execution path only — client-staged parity and population-shape parameter adjustment stay parked for a future milestone.
+- **M-6: Extended live tuning** (`extended-live-tuning`) — closed 2026-11-15. Delivered client-staged live-parameter parity (S-28), a live crossbreeding toggle on both execution paths (S-29, scope expanded from server-owned-only during planning), live boid-AND-predator count adjustment on the server-owned path (S-30, scope expanded from boid-only), and a correction to S-27's own live-adjustable field set (S-31); all 4 slices done. `flockCount` live-adjustment stays parked — investigated and found structurally invasive (every boid's `flockId`/color is set once at birth, never re-derived per tick).
 
 ## Done
 
+- **S-30: User increases or decreases a running server-owned simulation's boid count AND predator count while it is actively running — both execution paths' object-shape, scope expanded during planning from boid-only, user's explicit choice, since `PredatorState` carries the identical energy/age shape `BoidState` does — and sees the population size change reflected in the live view.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-boid-count-adjustment/`. Lesson: —.
+- **S-29: User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-crossbreeding-toggle/`. Lesson: —.
 - **S-28: User changes a client-staged run's foodRegenRate, protectionThreshold, energyThreshold, mutationChance, and mutationMagnitude while it is actively running.** — Archived 2026-11-15 → `context/archive/2026-11-15-client-staged-live-parameter-parity/`. Lesson: —.
 - **S-31: A user live-adjusting a running server-owned simulation only sees fields that have a real, verified effect on its behavior.** — Archived 2026-11-15 → `context/archive/2026-11-15-correct-live-parameter-field-set/`. Lesson: —.
 - **S-27: User changes a server-owned run's separation/alignment/cohesion weights, food regen rate, and protection threshold while it is actively running, and sees the effect reflected in the live view within the next tick — not just at start time.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-parameter-adjustment/`. Lesson: an impl-review caught that the client's own 500ms Apply cooldown was UI-only — a direct tRPC call could push unbounded `parameterChanges` changelog entries into persisted `history` for a run's entire duration, since every other client-supplied sample array in this codebase is bounded (`.max(50_000)`) but this new one wasn't; fixed with a server-side throttle (not just a tighter client-side one) before archiving, matching this session's recurring pattern of UI-only guards needing a server-side backstop.
