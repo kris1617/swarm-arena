@@ -69,7 +69,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | done |
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
-| S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
+| S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | done |
 
 ## Streams
 
@@ -461,7 +461,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Confirmed O(N²) today (`boids.ts`'s nested `for (const other of boids)` scan) — the technique being ported is already proven in this project's own prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`, documented in that project's own `docs/ARCHITEKTURA.md`), not an invented approach. Must produce identical scores/behavior to the pre-optimization scan for the same seed/parameters (determinism NFR) — any deviation is a correctness bug, not an accepted tradeoff; verification needs a deliberate before/after comparison on a fixed seed, not just "it still runs."
-- **Status:** ready
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -524,6 +524,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-23: Boid/predator flocking-force calculations use spatial partitioning (a grid-based neighbor search) instead of a full pairwise scan.** — Archived 2026-11-15 → `context/archive/2026-11-15-spatial-hash-performance-optimization/`. Lesson: a technique "proven" in a prior implementation doesn't transfer on faith — measure before/after on the actual target codebase's constants. The ported grid is a genuine win for small-radius queries (applyPredation, reproducePopulation) but measurably *slower* than plain pairwise for the one query FR-029 names explicitly (stepBoids' own boid-boid loop), because that radius already covers a large fraction of this world's volume — a geometry fact the roadmap's own risk note didn't anticipate, caught only by direct wall-clock measurement, not by code review or by trusting the prior (differently-sized) reference implementation.
 - **S-20: User reads four reference pages — the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics — separated from the functional app pages, not interleaved with them.** — Archived 2026-11-15 → `context/archive/2026-11-15-reference-documentation-pages/`. Lesson: —.
 - **S-19: User sees a leaderboard of their own completed runs ranked by score, highest first.** — Archived 2026-11-15 → `context/archive/2026-11-14-leaderboard/`. Lesson: —.
 - **S-22: User temporarily elevates their own account (or another account) to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then reverts — the elevation is reversible, not a permanent role change.** — Archived 2026-11-14 → `context/archive/2026-11-14-temporary-admin-elevation/`. Lesson: NextAuth's database-strategy session round-trips through JSON before any consumer reads it, turning a Date-typed column into an ISO string (or the adapter's own raw number) at runtime — a helper reading a session-sourced timestamp should normalize with `new Date(x).getTime()` rather than trust the Drizzle column's declared type, and this gap went undetected by unit tests because every fabricated session fixture passed a real `Date`.
