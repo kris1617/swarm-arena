@@ -310,14 +310,14 @@ New `simulationRuns.xyArea`/`zDepth` columns require a migration with a backfill
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 Full suite still passes: `npm test`
-- [ ] 4.4 Hardcoded-value scan on touched files returns zero hits
+- [x] 4.1 Type checking passes: `npm run typecheck`
+- [x] 4.2 Linting passes: `npm run check`
+- [x] 4.3 Full suite still passes: `npm test`
+- [x] 4.4 Hardcoded-value scan on touched files returns zero hits
 
 #### Manual
 
-- [ ] 4.5 Staging form's new fields are bound to the admin's configured range and actually take effect
-- [ ] 4.6 Switching watched runs (S-08) resets the camera to default
-- [ ] 4.7 Resuming a saved run resets the camera to default
-- [ ] 4.8 End-to-end: larger-area run, camera, minimap, and boundary indicator all behave correctly together
+- [x] 4.5 Staging form's new fields are bound to the admin's configured range and actually take effect
+- [x] 4.6 Switching watched runs (S-08) resets the camera to default
+- [x] 4.7 Resuming a saved run resets the camera to default
+- [x] 4.8 End-to-end: larger-area run, camera, minimap, and boundary indicator all behave correctly together

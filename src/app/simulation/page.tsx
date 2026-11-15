@@ -44,11 +44,11 @@ export default function SimulationPage() {
 	const [energyThreshold, setEnergyThreshold] = useState(50);
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
-	// S-24: no form field yet (Phase 4 adds the NumberFields and their
-	// setters) — fixed at the xyArea/zDepth admin-range default (200),
-	// preserving today's exact world size until Phase 4 exposes these.
-	const xyArea = 200;
-	const zDepth = 200;
+	// S-24 Phase 4: the simulation's configured spatial extent — same
+	// useState/NumberField/buildStartInput-clamp pattern as every other
+	// ranged parameter above.
+	const [xyArea, setXyArea] = useState(200);
+	const [zDepth, setZDepth] = useState(200);
 	// S-04 (FR-002 full): admin-configured bounds, replacing the hardcoded
 	// MAX_BOID_COUNT this form used before. Falls back to the same defaults
 	// the admin-settings table seeds on first read, so the form isn't
@@ -496,6 +496,22 @@ export default function SimulationPage() {
 						onChange={setMutationMagnitude}
 						step="0.05"
 						value={mutationMagnitude}
+					/>
+					<NumberField
+						id="xy-area"
+						label={`Area size (${ranges.xyArea.min}-${ranges.xyArea.max})`}
+						max={ranges.xyArea.max}
+						min={ranges.xyArea.min}
+						onChange={setXyArea}
+						value={xyArea}
+					/>
+					<NumberField
+						id="z-depth"
+						label={`Depth size (${ranges.zDepth.min}-${ranges.zDepth.max})`}
+						max={ranges.zDepth.max}
+						min={ranges.zDepth.min}
+						onChange={setZDepth}
+						value={zDepth}
 					/>
 					<Button
 						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
