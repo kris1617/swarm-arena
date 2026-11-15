@@ -36,6 +36,17 @@ const PHASE_LABELS: Record<PopulationPhase, string> = {
 	recovery: "Recovery",
 };
 
+// genetic-diversity-trend (phase 3): extracted so the chart's
+// tick-zipping can be unit-tested without rendering the page.
+export function buildDiversityChartData(
+	samples: number[] | undefined,
+): { tick: number; diversity: number }[] | undefined {
+	if (samples === undefined) {
+		return undefined;
+	}
+	return samples.map((diversity, tick) => ({ tick, diversity }));
+}
+
 function PhaseDot(props: {
 	cx?: number;
 	cy?: number;
@@ -95,6 +106,9 @@ export default function RunAnalysisPage() {
 			)
 		: null;
 	const totalTicks = history?.phaseHistory.length ?? 0;
+	const diversityChartData = buildDiversityChartData(
+		history?.geneticDiversitySamples,
+	);
 
 	return (
 		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
@@ -163,6 +177,27 @@ export default function RunAnalysisPage() {
 					</ResponsiveContainer>
 				) : (
 					<p>No population data recorded for this run.</p>
+				)}
+			</section>
+
+			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
+				<h2 className="font-semibold">Genetic diversity over time</h2>
+				{diversityChartData ? (
+					<ResponsiveContainer height={240} width="100%">
+						<LineChart data={diversityChartData}>
+							<CartesianGrid strokeDasharray="3 3" />
+							<XAxis dataKey="tick" label="Tick" />
+							<YAxis domain={[0, 1]} label="Diversity" />
+							<Tooltip />
+							<Line
+								dataKey="diversity"
+								stroke="var(--chart-1)"
+								type="monotone"
+							/>
+						</LineChart>
+					</ResponsiveContainer>
+				) : (
+					<p>No genetic-diversity data recorded for this run.</p>
 				)}
 			</section>
 

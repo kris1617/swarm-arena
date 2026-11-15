@@ -205,10 +205,10 @@ None — `history` is a schema-less JSON column; no DB migration needed, exactly
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — b201fd8
+- [x] 2.2 Linting passes: `npm run check` — b201fd8
+- [x] 2.3 `npx vitest run src/server/api/routers/simulation.test.ts` — b201fd8
+- [x] 2.4 Full suite passes: `npm test` — b201fd8
 
 ### Phase 3: Analysis-view chart
 
@@ -221,5 +221,5 @@ None — `history` is a schema-less JSON column; no DB migration needed, exactly
 
 #### Manual
 
-- [ ] 3.5 A newly completed run's analysis view shows a varying genetic-diversity-over-time chart below the population chart
-- [ ] 3.6 A pre-existing run's analysis view still renders correctly, with no new chart and no error
+- [x] 3.5 A newly completed run's analysis view shows a varying genetic-diversity-over-time chart below the population chart
+- [x] 3.6 A pre-existing run's analysis view still renders correctly, with no new chart and no error
