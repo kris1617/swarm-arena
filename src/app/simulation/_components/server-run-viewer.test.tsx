@@ -7,14 +7,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // (`api.simulation.watch.useSubscription()`), capturing the options object
 // so the test can invoke `onData`/`onError` directly — same pattern
 // `simulation-canvas.test.tsx` uses for `api.simulation.stop.useMutation`.
+type LiveParams = {
+	separationWeight: number;
+	alignmentWeight: number;
+	cohesionWeight: number;
+	foodRegenRate: number;
+	protectionThreshold: number;
+};
+
 type CapturedWatchOptions = {
 	onData?: (envelope: {
 		id: string;
-		data: { boids: unknown[]; predators: unknown[] };
+		data: {
+			boids: unknown[];
+			predators: unknown[];
+			liveParams: LiveParams;
+		};
 	}) => void;
 	onError?: (error: { message: string }) => void;
 };
 let capturedWatchOptions: CapturedWatchOptions = {};
+
+// live-parameter-adjustment (S-27) Phase 2: same capture-the-options-object
+// pattern `simulation-canvas.test.tsx` uses for `api.simulation.stop
+// .useMutation` — `mutate` records what it was called with so a test can
+// assert on the sent patch, and `onSuccess`/`onError` are invoked explicitly
+// by the test to simulate the mutation settling.
+type UpdateRunParamsVariables = { runId: number } & Partial<LiveParams>;
+type CapturedUpdateRunParamsOptions = {
+	onSuccess?: (
+		data: { ok: true; warnings: string[] },
+		variables: UpdateRunParamsVariables,
+	) => void;
+	onError?: (error: { message: string }) => void;
+};
+let capturedUpdateRunParamsOptions: CapturedUpdateRunParamsOptions = {};
+let updateRunParamsMutate: ReturnType<typeof vi.fn>;
 
 vi.mock("~/trpc/react", () => ({
 	api: {
@@ -26,6 +54,18 @@ vi.mock("~/trpc/react", () => ({
 				) => {
 					capturedWatchOptions = options;
 					return { status: "pending", data: undefined, error: null };
+				},
+			},
+			updateRunParams: {
+				useMutation: (options: CapturedUpdateRunParamsOptions = {}) => {
+					capturedUpdateRunParamsOptions = options;
+					updateRunParamsMutate = vi.fn();
+					return {
+						mutate: updateRunParamsMutate,
+						isPending: false,
+						data: undefined,
+						error: undefined,
+					};
 				},
 			},
 		},
@@ -52,12 +92,23 @@ vi.mock("./simulation-canvas", async () => {
 import { ServerRunViewer } from "./server-run-viewer";
 import { drawScene } from "./simulation-canvas";
 
+// Shared fixture for the 5 live-adjustable fields — individual tests
+// override whichever field(s) they care about via object spread.
+const LIVE_PARAMS_FIXTURE: LiveParams = {
+	separationWeight: 1,
+	alignmentWeight: 1,
+	cohesionWeight: 1,
+	foodRegenRate: 10,
+	protectionThreshold: 10,
+};
+
 describe("ServerRunViewer", () => {
 	let container: HTMLDivElement;
 	let root: ReturnType<typeof createRoot>;
 
 	beforeEach(() => {
 		capturedWatchOptions = {};
+		capturedUpdateRunParamsOptions = {};
 		vi.mocked(drawScene).mockClear();
 		// happy-dom doesn't implement a real canvas 2d context; stub
 		// getContext so the component's `if (ctx)` guard passes and
@@ -94,7 +145,11 @@ describe("ServerRunViewer", () => {
 		act(() => {
 			capturedWatchOptions.onData?.({
 				id: "0",
-				data: { boids: fixtureBoids, predators: fixturePredators },
+				data: {
+					boids: fixtureBoids,
+					predators: fixturePredators,
+					liveParams: LIVE_PARAMS_FIXTURE,
+				},
 			});
 		});
 
@@ -143,7 +198,7 @@ describe("ServerRunViewer", () => {
 		act(() => {
 			capturedWatchOptions.onData?.({
 				id: "0",
-				data: { boids: [], predators: [] },
+				data: { boids: [], predators: [], liveParams: LIVE_PARAMS_FIXTURE },
 			});
 		});
 
@@ -175,5 +230,131 @@ describe("ServerRunViewer", () => {
 		});
 
 		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	describe("live-parameter-adjustment (S-27) Phase 2: live-edit panel", () => {
+		function renderViewer() {
+			act(() => {
+				root.render(
+					<ServerRunViewer
+						onClose={vi.fn()}
+						runId={42}
+						xyArea={200}
+						zDepth={200}
+					/>,
+				);
+			});
+		}
+
+		function pushLiveParams(liveParams: LiveParams) {
+			act(() => {
+				capturedWatchOptions.onData?.({
+					id: "0",
+					data: { boids: [], predators: [], liveParams },
+				});
+			});
+		}
+
+		function getFieldInput(field: keyof LiveParams): HTMLInputElement {
+			const input = container.querySelector(`#live-param-${field}`);
+			expect(input).not.toBeNull();
+			return input as HTMLInputElement;
+		}
+
+		function setFieldValue(field: keyof LiveParams, value: number) {
+			const input = getFieldInput(field);
+			act(() => {
+				const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				)?.set;
+				nativeInputValueSetter?.call(input, String(value));
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+			});
+		}
+
+		it("pre-fills the panel from the subscription's first pushed liveParams", () => {
+			renderViewer();
+			pushLiveParams(LIVE_PARAMS_FIXTURE);
+
+			for (const field of Object.keys(LIVE_PARAMS_FIXTURE) as Array<
+				keyof LiveParams
+			>) {
+				expect(getFieldInput(field).value).toBe(
+					String(LIVE_PARAMS_FIXTURE[field]),
+				);
+			}
+		});
+
+		it("clicking Apply after changing 2 of 5 fields sends only those 2 fields", () => {
+			renderViewer();
+			pushLiveParams(LIVE_PARAMS_FIXTURE);
+
+			setFieldValue("separationWeight", 5);
+			setFieldValue("foodRegenRate", 25);
+
+			const buttons = Array.from(container.querySelectorAll("button"));
+			const applyButton = buttons.find((b) => b.textContent === "Apply");
+			expect(applyButton).not.toBeUndefined();
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			expect(updateRunParamsMutate).toHaveBeenCalledTimes(1);
+			expect(updateRunParamsMutate).toHaveBeenCalledWith({
+				runId: 42,
+				separationWeight: 5,
+				foodRegenRate: 25,
+			});
+		});
+
+		it("disables the Apply button immediately after a successful apply (cooldown)", () => {
+			renderViewer();
+			pushLiveParams(LIVE_PARAMS_FIXTURE);
+
+			setFieldValue("separationWeight", 5);
+
+			const findApplyButton = () =>
+				Array.from(container.querySelectorAll("button")).find(
+					(b) => b.textContent === "Apply" || b.textContent === "Applied",
+				);
+
+			act(() => {
+				findApplyButton()?.dispatchEvent(
+					new MouseEvent("click", { bubbles: true }),
+				);
+			});
+
+			// Simulate the mutation settling successfully.
+			act(() => {
+				capturedUpdateRunParamsOptions.onSuccess?.(
+					{ ok: true, warnings: [] },
+					{ runId: 42, separationWeight: 5 },
+				);
+			});
+
+			const button = findApplyButton();
+			expect(button?.textContent).toBe("Applied");
+			expect(button?.hasAttribute("disabled")).toBe(true);
+		});
+
+		it("does not overwrite a field being actively edited when a new subscription push arrives", () => {
+			renderViewer();
+			pushLiveParams(LIVE_PARAMS_FIXTURE);
+
+			// User starts editing separationWeight, but hasn't applied yet.
+			setFieldValue("separationWeight", 7);
+
+			// The ~150ms subscription push races in with a different value for
+			// the same field (e.g. another client's edit, or the server's
+			// unchanged current value) — the in-progress edit must survive it.
+			pushLiveParams({ ...LIVE_PARAMS_FIXTURE, separationWeight: 3 });
+
+			expect(getFieldInput("separationWeight").value).toBe("7");
+			// A field the user hasn't touched still re-syncs from the push.
+			expect(getFieldInput("alignmentWeight").value).toBe(
+				String(LIVE_PARAMS_FIXTURE.alignmentWeight),
+			);
+		});
 	});
 });

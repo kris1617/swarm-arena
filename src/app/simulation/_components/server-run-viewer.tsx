@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import { useRef, useState } from "react";
 
 import {
@@ -18,9 +19,43 @@ import {
 } from "~/app/simulation/_components/simulation-canvas";
 import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
+import { NumberField } from "~/components/ui/number-field";
 import { Switch } from "~/components/ui/switch";
 import type { BoidState, PredatorState } from "~/server/simulation/boids";
+import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
+import type { LiveAdjustableParams } from "~/server/simulation/server-run-registry";
 import { api } from "~/trpc/react";
+
+// live-parameter-adjustment (S-27) Phase 2: the 5 fields `LiveAdjustableParams`
+// carries, kept as a local tuple (rather than `Object.keys` on a value) so
+// iteration order is stable and `satisfies` catches drift if the server-side
+// type ever adds/removes a field.
+const LIVE_FIELDS = [
+	"separationWeight",
+	"alignmentWeight",
+	"cohesionWeight",
+	"foodRegenRate",
+	"protectionThreshold",
+] as const satisfies readonly (keyof LiveAdjustableParams)[];
+
+type LiveField = (typeof LIVE_FIELDS)[number];
+
+type LiveFormValues = Record<LiveField, number>;
+
+const LIVE_FIELD_LABELS: Record<LiveField, string> = {
+	separationWeight: "Separation weight",
+	alignmentWeight: "Alignment weight",
+	cohesionWeight: "Cohesion weight",
+	foodRegenRate: "Food regen rate",
+	protectionThreshold: "Protection threshold",
+};
+
+// How long the Apply button stays disabled after a successful apply
+// (decision 6 in plan.md's Overview — client-side only, no server throttle).
+const APPLY_COOLDOWN_MS = 500;
+
+// How long a successfully-applied field keeps its success-flash styling.
+const FLASH_DURATION_MS = 1000;
 
 type ServerRunViewerProps = {
 	runId: number;
@@ -89,6 +124,120 @@ export function ServerRunViewer({
 		redraw();
 	}
 
+	// live-parameter-adjustment (S-27) Phase 2: the live-edit panel's form
+	// state. `null` until the first subscription push arrives (no values to
+	// pre-fill from yet).
+	const [liveValues, setLiveValues] = useState<LiveFormValues | null>(null);
+	// Per-field dirtiness: true once the user has typed into a field since its
+	// value was last confirmed to match the server (initial sync or a
+	// successful apply). A dirty field is never overwritten by a later
+	// subscription push — see `syncLiveParams` below.
+	const dirtyFieldsRef = useRef<Partial<Record<LiveField, boolean>>>({});
+	// The last value we know the server actually holds for each field —
+	// updated by non-dirty subscription pushes and by a successful apply.
+	// Used only to compute the batch patch on Apply (diff against this, not
+	// against the full form), so Apply never re-sends a field the user didn't
+	// touch.
+	const appliedValuesRef = useRef<LiveFormValues | null>(null);
+	const [warnings, setWarnings] = useState<string[]>([]);
+	const [flashFields, setFlashFields] = useState<ReadonlySet<LiveField>>(
+		new Set(),
+	);
+	const [applyCooldown, setApplyCooldown] = useState(false);
+	// The exact patch most recently sent, read back in `onSuccess` (not
+	// re-derived from `liveValues`, which may have moved on if the user kept
+	// typing while the request was in flight).
+	const pendingPatchRef = useRef<Partial<LiveFormValues>>({});
+
+	function syncLiveParams(data: LiveAdjustableParams) {
+		if (!appliedValuesRef.current) {
+			// First push: nothing to preserve yet, pre-fill every field.
+			const initial = { ...data };
+			appliedValuesRef.current = initial;
+			setLiveValues(initial);
+			return;
+		}
+		const applied = appliedValuesRef.current;
+		setLiveValues((current) => {
+			const next = current ? { ...current } : { ...data };
+			for (const field of LIVE_FIELDS) {
+				if (!dirtyFieldsRef.current[field]) {
+					next[field] = data[field];
+					applied[field] = data[field];
+				}
+			}
+			return next;
+		});
+	}
+
+	function handleLiveFieldChange(field: LiveField, value: number) {
+		dirtyFieldsRef.current[field] = true;
+		setLiveValues((current) =>
+			current ? { ...current, [field]: value } : current,
+		);
+	}
+
+	const updateRunParamsMutation = api.simulation.updateRunParams.useMutation({
+		onSuccess: (data) => {
+			const patch = pendingPatchRef.current;
+			const changedFields = Object.keys(patch) as LiveField[];
+			const applied = appliedValuesRef.current;
+			for (const field of changedFields) {
+				const value = patch[field];
+				if (value === undefined) {
+					continue;
+				}
+				if (applied) {
+					applied[field] = value;
+				}
+				dirtyFieldsRef.current[field] = false;
+			}
+			setWarnings(data.warnings);
+			setFlashFields(new Set(changedFields));
+			setTimeout(() => {
+				setFlashFields(new Set());
+			}, FLASH_DURATION_MS);
+			setApplyCooldown(true);
+			setTimeout(() => {
+				setApplyCooldown(false);
+			}, APPLY_COOLDOWN_MS);
+		},
+		onError: (error) => {
+			// Reuse the same error surface the `watch` subscription already
+			// uses (L47/155-157) rather than inventing a second
+			// error-display mechanism — per plan.md's Phase 2 contract.
+			setViewError(error.message);
+		},
+	});
+
+	function handleApplyLiveParams() {
+		if (!liveValues || !appliedValuesRef.current) {
+			return;
+		}
+		const applied = appliedValuesRef.current;
+		const patch: Partial<LiveFormValues> = {};
+		for (const field of LIVE_FIELDS) {
+			if (liveValues[field] !== applied[field]) {
+				patch[field] = liveValues[field];
+			}
+		}
+		if (Object.keys(patch).length === 0) {
+			return;
+		}
+		pendingPatchRef.current = patch;
+		updateRunParamsMutation.mutate({ runId, ...patch });
+	}
+
+	function warningsForField(field: LiveField): string[] {
+		return warnings.filter((warning) => warning.startsWith(field));
+	}
+
+	function unmatchedWarnings(): string[] {
+		return warnings.filter(
+			(warning) => !LIVE_FIELDS.some((field) => warning.startsWith(field)),
+		);
+	}
+
 	function redraw() {
 		const snapshot = lastSnapshotRef.current;
 		const ctx = canvasRef.current?.getContext("2d");
@@ -151,6 +300,7 @@ export function ServerRunViewer({
 				setViewError(null);
 				lastSnapshotRef.current = data;
 				redraw();
+				syncLiveParams(data.liveParams);
 			},
 			onError: (error) => {
 				setViewError(error.message);
@@ -218,6 +368,54 @@ export function ServerRunViewer({
 					? "Connecting..."
 					: null}
 			</p>
+			{liveValues ? (
+				<div className="bg-input/40 flex w-full flex-col gap-2 rounded-2xl p-3">
+					<p className="text-foreground text-sm font-semibold">
+						Live parameters
+					</p>
+					{LIVE_FIELDS.map((field) => {
+						const fieldWarnings = warningsForField(field);
+						const fieldRange = DEFAULT_PARAMETER_RANGES[field];
+						return (
+							<div
+								className={cn(
+									"flex flex-col gap-1 rounded-xl transition-shadow",
+									flashFields.has(field) ? "ring-chart-2 ring-2" : "",
+								)}
+								key={field}
+							>
+								<NumberField
+									id={`live-param-${field}`}
+									label={LIVE_FIELD_LABELS[field]}
+									max={fieldRange.max}
+									min={fieldRange.min}
+									onChange={(value) => handleLiveFieldChange(field, value)}
+									step={field === "protectionThreshold" ? "1" : "0.1"}
+									value={liveValues[field]}
+								/>
+								{fieldWarnings.map((warning) => (
+									<p className="text-destructive text-xs" key={warning}>
+										{warning}
+									</p>
+								))}
+							</div>
+						);
+					})}
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-6 py-2 text-sm font-semibold"
+						disabled={applyCooldown || updateRunParamsMutation.isPending}
+						onClick={handleApplyLiveParams}
+						type="button"
+					>
+						{applyCooldown ? "Applied" : "Apply"}
+					</Button>
+					{unmatchedWarnings().map((warning) => (
+						<p className="text-destructive text-xs" key={warning}>
+							{warning}
+						</p>
+					))}
+				</div>
+			) : null}
 			{viewError ? <p className="text-destructive">{viewError}</p> : null}
 			<Button
 				className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"

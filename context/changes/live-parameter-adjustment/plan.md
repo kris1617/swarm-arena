@@ -300,16 +300,16 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Manual
 
-- [x] 1.6 Out-of-range live patch applies with a warning and affects the next tick
+- [x] 1.6 Out-of-range live patch applies with a warning and affects the next tick — db79860
 
 ### Phase 2: Frontend — inline live-edit panel
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 `npx vitest run src/app/simulation/_components/server-run-viewer.test.tsx`
+- [x] 2.4 Full suite passes: `npm test`
 
 #### Manual
 
