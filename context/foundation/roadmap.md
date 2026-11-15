@@ -76,9 +76,9 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | done |
 | F-07 | vps-resource-capacity-limits    | (foundation) Concrete max-area/max-object-count/max-concurrent-run ceilings exist, derived from this VPS's actual CPU/RAM/disk | —              | MS-05                                                  | ready |
-| S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | blocked |
-| S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | blocked |
-| S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | blocked |
+| S-24 | configurable-area-and-camera-view | User sets the simulation's area size (within an admin-set range bounded by F-07) and sees a camera-limited view into it, not the whole area at once | F-07            | MS-01, MS-02                                           | proposed |
+| S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | proposed |
+| S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | ready |
 
 ## Streams
 
@@ -492,17 +492,17 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-24: Configurable area and camera view
 
-- **Outcome:** User sets the simulation's spatial area size (within an admin-set range, bounded by F-07's capacity ceiling) when staging a run, and the render view becomes a camera over that area — showing only a portion of it at a time — rather than always rendering the entire area at once.
+- **Outcome:** User sets the simulation's spatial area size (within an admin-set range, bounded by F-07's capacity ceiling) when staging a run, and the render view becomes a camera over that area — auto-following the population by default, with manual pan/zoom override — rather than always rendering the entire area at once.
 - **Change ID:** configurable-area-and-camera-view
 - **PRD refs:** MS-01, MS-02
 - **Prerequisites:** F-07 (area's admin-range ceiling must be set from real capacity first)
 - **Parallel with:** S-26
 - **Blockers:** —
 - **Unknowns:**
-  - What is the camera's actual interaction model — does it pan/zoom under user control, follow the population's centroid automatically, or let the user pick a fixed sub-region at staging time? — Owner: user. Block: yes — this is the single biggest open design question in this milestone; `/10x-plan` cannot proceed without it.
+  - ~~What is the camera's actual interaction model?~~ — **Resolved 2026-11-15.** Pan/zoom under user control, combined with auto-follow (the camera tracks the population by default; the user can pan/zoom to override). No longer blocks `/10x-plan`.
   - Does increasing the area change only the toroidal wrap boundary (`INITIAL_AREA_SIZE`/`Z_DEPTH_RANGE` in `boids.ts`), leaving all existing radii (`NEIGHBOR_RADIUS`, `CAPTURE_RADIUS`, etc.) fixed, or should some radii scale with area too? — Owner: user/team. Block: no — the Baseline's S-23 cross-reference suggests leaving radii fixed is the simpler, lower-risk default (and would make the existing spatial-hash grid more effective, not less); `/10x-plan` can propose this without blocking roadmap sequencing.
-- **Risk:** Medium — this is the most technically novel work in M-4 (no camera/viewport concept exists anywhere in the render path today, per the Baseline). Changing world size also interacts with every `wrap()`/`wrappedDelta()` call site in `boids.ts` and with S-23's recently-shipped spatial-hash grid (cell-size-to-world-size ratio) — both already proven correct for a *fixed* 200-unit world; a variable area needs the same determinism discipline S-23 applied, not a weaker standard.
-- **Status:** blocked
+- **Risk:** Medium — this is the most technically novel work in M-4 (no camera/viewport concept exists anywhere in the render path today, per the Baseline). Changing world size also interacts with every `wrap()`/`wrappedDelta()` call site in `boids.ts` and with S-23's recently-shipped spatial-hash grid (cell-size-to-world-size ratio) — both already proven correct for a *fixed* 200-unit world; a variable area needs the same determinism discipline S-23 applied, not a weaker standard. Auto-follow + manual override also needs a clear handoff rule (e.g., does a manual pan suspend auto-follow until the user re-centers, or does auto-follow immediately resume next tick?) — a `/10x-plan`-level UX detail, not a roadmap blocker.
+- **Status:** proposed
 
 ### S-25: Area-aware population insight
 
@@ -513,9 +513,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-26
 - **Blockers:** —
 - **Unknowns:**
-  - What shape should this insight take — a new (fifth) score factor, a qualitative note alongside the existing four-factor breakdown, or a new comparison chart (e.g., population density over time, normalized by area)? — Owner: user. Block: yes — changing the score formula itself is a much bigger decision than adding a display-only insight, and the roadmap shouldn't presume which one the user wants.
-- **Risk:** Low-medium — depends entirely on S-24 landing first and on how the Unknown above resolves; if it becomes a new score factor, it also reopens FR-010/FR-019's "four-factor product" formula, which `/10x-plan` would need to treat as carefully as S-09's prior phase-quality correction did.
-- **Status:** blocked
+  - ~~What shape should this insight take?~~ — **Resolved 2026-11-15.** A new, fifth score factor (not a display-only note or chart) — reopens FR-010/FR-019's "four-factor product" formula into a five-factor one. `/10x-plan` must treat this with the same care S-09's prior phase-quality correction required (a scoring-formula change, not a cosmetic addition), including how it interacts with existing score-dependent features (leaderboard ordering, run comparison, the parameter-suggestion heuristic's correlation input). No longer blocks `/10x-plan`.
+- **Risk:** Medium — upgraded from Low-medium now that the shape is confirmed as a formula change, not a display addition: a fifth score factor changes every existing scored run's *comparability* against future ones (same concern FR-010/FR-019's prior resolution had to address) and touches the leaderboard (S-19), run comparison (S-12), and parameter-suggestion heuristic (S-13) — all of which read the score as a single comparable number today. Depends entirely on S-24 landing first (needs a variable area to make an area-normalized factor meaningful).
+- **Status:** proposed
 
 ### S-26: In-app feedback module
 
@@ -526,10 +526,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** F-07, S-24, S-25 — fully independent of the area/camera work.
 - **Blockers:** —
 - **Unknowns:**
-  - What's the actual mechanism — a simple in-app form writing to a new DB table, an integration with an external tracker (e.g., GitHub Issues), or something else? — Owner: user. Block: yes — this determines whether the slice needs any new schema/router work at all or is mostly a thin UI over an existing external API.
-  - Who can see submitted reports — just the owner (admin-only view), or does the single-user nature of this app (per PRD's own framing — "currently one real user") make that question moot for now? — Owner: user. Block: no — likely moot given the PRD's own access-control note, but worth confirming before `/10x-plan` assumes it.
-- **Risk:** Low — fully additive, no interaction with the simulation engine or existing scoring/analysis logic; the only real risk is over-building (e.g., a full ticketing system) for what the PRD's own scale (`target_scale: users: small`) actually needs.
-- **Status:** blocked
+  - ~~What's the actual mechanism?~~ — **Resolved 2026-11-15.** GitHub Issues integration — reports get created as real issues in this project's own GitHub repo, specifically so they flow into the existing dev pipeline (the same repo this app's CI/CD already deploys from) rather than into a second, disconnected inbox. No longer blocks `/10x-plan`.
+  - Who can see submitted reports — moot given GitHub Issues' own visibility model (repo-level, not app-level) — Owner: user. Block: no.
+- **Risk:** Low-medium — still fully additive to the simulation engine, but now carries a real external dependency (GitHub's API, auth for creating issues — likely a personal access token or GitHub App, not yet decided) that a pure DB-table design wouldn't have had; `/10x-plan` needs to settle how the app authenticates to GitHub without leaking a token client-side.
+- **Status:** ready
 
 ## Backlog Handoff
 
@@ -565,9 +565,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-22       | temporary-admin-elevation           | Reversible, temporary elevation to admin                                | yes                     | No prerequisites — elevation mechanism deferred to `/10x-plan` |
 | S-23       | spatial-hash-performance-optimization | Spatial-partitioning neighbor search for flocking calculations        | yes                     | No prerequisites — ported from the project's own prior Lua implementation |
 | F-07       | vps-resource-capacity-limits        | Derive area/object-count/concurrency ceilings from the VPS's real specs | yes                    | `/10x-plan` can propose defaults for its two non-blocking Unknowns (headroom margin, container-limit enforcement) |
-| S-24       | configurable-area-and-camera-view   | Configurable simulation area + camera-limited render view                | no                     | Blocked on F-07 and on the camera interaction-model Unknown — resolve before planning |
-| S-25       | area-aware-population-insight       | Area-aware population-health insight in run analysis                    | no                     | Blocked on S-24 and on the insight-shape Unknown — resolve before planning |
-| S-26       | in-app-feedback-module               | In-app feedback/bug-report module                                        | no                     | Blocked on the mechanism Unknown — resolve before planning |
+| S-24       | configurable-area-and-camera-view   | Configurable simulation area + camera-limited render view                | no                     | Unknowns resolved (pan/zoom + auto-follow); still waiting on F-07 to land first |
+| S-25       | area-aware-population-insight       | Area-aware population-health insight in run analysis                    | no                     | Unknowns resolved (new 5th score factor); still waiting on S-24 to land first |
+| S-26       | in-app-feedback-module               | In-app feedback/bug-report module                                        | yes                    | Unknowns resolved (GitHub Issues integration) — no prerequisites, ready to plan now |
 
 ## Open Roadmap Questions
 
