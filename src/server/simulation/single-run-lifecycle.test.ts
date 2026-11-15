@@ -92,6 +92,39 @@ describe("computeSingleRunTick", () => {
 		expect(result.elapsedSeconds).toBeCloseTo(MAX_DT_SECONDS);
 	});
 
+	// impl-review (area-aware-population-insight, F2): Phase 1's plan called
+	// for this assertion explicitly; it was missing even though the
+	// Progress row was checked off. Includes a predator fixture
+	// (PredatorState/PredatorGenes are structurally identical to
+	// BoidState/BoidGenes — same reuse server-run-registry.test.ts's
+	// fillerPredators already relies on) so this actually exercises the
+	// "+predators" half of the formula, not just the boid count.
+	it("appends one raw density sample per tick, computed as (boids+predators) / worldSize volume", () => {
+		let state = buildState({
+			lastTimestamp: 0,
+			predators: [buildBoid({ x: 50 })],
+		});
+		const volume = PARAMS.worldSize.x * PARAMS.worldSize.y * PARAMS.worldSize.z;
+
+		// toBe, not toBeCloseTo: these density values sit around 1e-7, and
+		// toBeCloseTo's default 2-digit precision would treat any value this
+		// small as "close to 0" regardless of correctness — the division is a
+		// deterministic computation on the same two integers the production
+		// code uses, so bit-identical equality is the right check here.
+		const firstResult = computeSingleRunTick(state, 50, PARAMS);
+		expect(firstResult.populationDensitySamples).toHaveLength(1);
+		expect(firstResult.populationDensitySamples[0]).toBe(
+			(firstResult.boids.length + firstResult.predators.length) / volume,
+		);
+
+		state = firstResult;
+		const secondResult = computeSingleRunTick(state, 100, PARAMS);
+		expect(secondResult.populationDensitySamples).toHaveLength(2);
+		expect(secondResult.populationDensitySamples[1]).toBe(
+			(secondResult.boids.length + secondResult.predators.length) / volume,
+		);
+	});
+
 	it("applies zero dt on the first call (lastTimestamp: null)", () => {
 		const state = buildState({ lastTimestamp: null, elapsedSeconds: 5 });
 

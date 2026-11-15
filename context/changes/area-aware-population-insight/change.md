@@ -1,7 +1,7 @@
 ---
 change_id: area-aware-population-insight
 title: Area-aware population insight (new 5th score factor)
-status: implemented
+status: impl_reviewed
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null

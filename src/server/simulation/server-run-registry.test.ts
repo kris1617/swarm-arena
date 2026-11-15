@@ -353,6 +353,47 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// impl-review (area-aware-population-insight, F1): a `savedState` row
+	// written by `savePause` before this field existed has no
+	// `populationDensitySamples` key — the cast at this function's call site
+	// doesn't validate the JSON shape, so this is a real production path, not
+	// a hypothetical one. Without the `?? []` fallback, the next tick's spread
+	// throws, silently killing the resumed run via `tick()`'s catch block.
+	it("resuming a snapshot missing populationDensitySamples (pre-S-25 data) does not crash the run", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(13);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 13,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		// Simulate a pre-S-25 saved row: strip the field entirely rather than
+		// setting it to `undefined`, matching what a real pre-change JSON blob
+		// actually looks like (the key is simply absent, not present-as-undefined).
+		const legacySnapshot = { ...snapshot } as Partial<ServerRunSnapshot>;
+		legacySnapshot.populationDensitySamples = undefined;
+		delete (legacySnapshot as Record<string, unknown>).populationDensitySamples;
+
+		resumeServerRun(runId, legacySnapshot as ServerRunSnapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		// If the resumed tick had thrown, tick()'s catch block would have
+		// called finishRun and removed the run from the live registry.
+		expect(getLiveRunState(runId)).toBeDefined();
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
 	// The test above proves continuity when no rng-driven branch (reproduction)
 	// fires in the window — it would pass even if resumeServerRun forgot to
 	// restore the RNG's state, since plain movement never calls `rng()`. This

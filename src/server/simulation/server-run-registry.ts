@@ -419,7 +419,16 @@ export function resumeServerRun(
 		cohesionSamples: snapshot.cohesionSamples,
 		foodRatioSamples: snapshot.foodRatioSamples,
 		populationCountSamples: snapshot.populationCountSamples,
-		populationDensitySamples: snapshot.populationDensitySamples,
+		// impl-review (area-aware-population-insight, F1): a `savedState` row
+		// written by `savePause` before this field existed has no
+		// `populationDensitySamples` key, so `snapshot.populationDensitySamples`
+		// can be `undefined` here despite `ServerRunSnapshot`'s type claiming
+		// otherwise — the cast at this function's only call site doesn't
+		// actually validate the JSON shape. Without this fallback, the next
+		// tick's `[...state.populationDensitySamples, rawDensity]`
+		// (single-run-lifecycle.ts) throws, silently killing the resumed run
+		// with a null score via `tick()`'s catch block.
+		populationDensitySamples: snapshot.populationDensitySamples ?? [],
 		phaseHistory: snapshot.phaseHistory,
 		elapsedSeconds: snapshot.elapsedSeconds,
 		lastTimestamp: snapshot.lastTimestamp,
