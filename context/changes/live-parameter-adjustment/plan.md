@@ -292,15 +292,15 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.5 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 61412d5
+- [x] 1.2 Linting passes: `npm run check` — 61412d5
+- [x] 1.3 `npx vitest run src/server/simulation/server-run-registry.test.ts` — 61412d5
+- [x] 1.4 `npx vitest run src/server/api/routers/simulation.test.ts` — 61412d5
+- [x] 1.5 Full suite passes: `npm test` — 61412d5
 
 #### Manual
 
-- [ ] 1.6 Out-of-range live patch applies with a warning and affects the next tick
+- [x] 1.6 Out-of-range live patch applies with a warning and affects the next tick
 
 ### Phase 2: Frontend — inline live-edit panel
 
