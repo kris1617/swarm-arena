@@ -820,6 +820,16 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 	const offspring: T[] = [];
 	let capped = false;
 
+	// Positions are only ever read here, never mutated mid-scan (unlike
+	// resolveOverlaps, which is why that function keeps its own plain
+	// pairwise scan instead) — one snapshot grid for the whole call is safe.
+	const mateGrid = buildSpatialGrid(
+		population,
+		(p) => ({ x: p.x, y: p.y, z: p.z }),
+		MATE_DISTANCE_RADIUS,
+		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+	);
+
 	for (let i = 0; i < population.length; i++) {
 		// Once the cap is reached, no further pair this tick can produce an
 		// offspring (population.length/offspring.length/totalOtherPopulationCount
@@ -843,15 +853,20 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 			continue;
 		}
 
-		// First-match-in-range: scan forward only (not the whole population).
-		// This is equivalent to a full bidirectional first-match scan here
-		// because eligibility doesn't change mid-pass and the match
-		// conditions are symmetric — if some earlier, still-unpaired
-		// individual could also match parentA, the outer loop would already
-		// have paired it with parentA (or something else) when it was that
-		// earlier individual's turn.
-		for (let j = i + 1; j < population.length; j++) {
-			if (paired.has(j)) {
+		// First-match-in-range, scanning forward only (not the whole
+		// population) — equivalent to a full bidirectional first-match scan
+		// here because eligibility doesn't change mid-pass and the match
+		// conditions are symmetric (see above). `queryRadius` always returns
+		// candidate indices sorted ascending (see spatial-grid.ts), which is
+		// exactly what makes "first match in this narrowed candidate set"
+		// equal to "first match in the full population" below — iterating
+		// an unsorted candidate set here would silently pick a different
+		// mate than the pre-grid pairwise scan did for the same input.
+		for (const j of mateGrid.queryRadius(
+			{ x: parentA.x, y: parentA.y, z: parentA.z },
+			MATE_DISTANCE_RADIUS,
+		)) {
+			if (j <= i || paired.has(j)) {
 				continue;
 			}
 			const parentB = population[j];
@@ -953,12 +968,28 @@ export function applyPredation(
 		return boids;
 	}
 
+	// Cell size reuses NEIGHBOR_RADIUS (the largest radius queried against a
+	// boid-population grid anywhere in this file), not CAPTURE_RADIUS itself
+	// — same tradeoff the Lua reference accepts: a coarser-than-strictly-
+	// needed grid returns some false-positive candidates per cell, still
+	// exact-filtered below, in exchange for one shared cell-size convention.
+	const boidGrid = buildSpatialGrid(
+		boids,
+		(b) => ({ x: b.x, y: b.y, z: b.z }),
+		NEIGHBOR_RADIUS,
+		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+	);
+
 	const captured = new Set<BoidState>();
 	for (const predator of predators) {
 		let nearest: BoidState | null = null;
 		let nearestDist = Infinity;
-		for (const boid of boids) {
-			if (captured.has(boid)) {
+		for (const boidIndex of boidGrid.queryRadius(
+			{ x: predator.x, y: predator.y, z: predator.z },
+			CAPTURE_RADIUS,
+		)) {
+			const boid = boids[boidIndex];
+			if (!boid || captured.has(boid)) {
 				continue;
 			}
 			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);

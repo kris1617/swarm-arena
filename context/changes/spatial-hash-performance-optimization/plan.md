@@ -218,7 +218,7 @@ None — no schema change, no persisted data shape change, no parameter change. 
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`, including all Phase 1 tests and new `applyPredation`/`reproducePopulation` determinism tests
-- [ ] 2.4 `pipeline-perf.test.ts`'s rewritten assertion is grounded in an actually-measured ratio
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 Full suite still passes: `npm test`, including all Phase 1 tests and new `applyPredation`/`reproducePopulation` determinism tests
+- [x] 2.4 `pipeline-perf.test.ts`'s rewritten assertion is grounded in an actually-measured ratio

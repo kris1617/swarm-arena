@@ -41,11 +41,28 @@ describe("runTick scaling-shape perf budget", () => {
 	it("grows Math.hypot call count quadratically, not cubically or unboundedly, as boid/predator count scales 4x at a fixed 4:1 ratio", () => {
 		// Sample A: 40 boids, 10 predators (total 50). Sample B: 160 boids,
 		// 40 predators (total 200) — same 4:1 ratio, 4x scale. Math.hypot is
-		// the shared primitive every O(n^2) distance scan in the pipeline
-		// (stepBoids' neighbor scan, resolveOverlaps, stepPredators' nearest-
-		// boid scan, applyPredation's nearest-boid scan) funnels through, so
-		// its call count is a direct proxy for the pipeline's total
-		// operation count without timing wall-clock, which would be flaky.
+		// the shared primitive every distance scan in the pipeline funnels
+		// through, so its call count is a direct proxy for the pipeline's
+		// total operation count without timing wall-clock, which would be
+		// flaky.
+		//
+		// S-23 note: stepBoids, applyPredation, and reproducePopulation now
+		// use a spatial-hash grid instead of a full pairwise scan (see
+		// context/changes/spatial-hash-performance-optimization/plan.md) —
+		// but this specific band is UNCHANGED, re-measured and confirmed
+		// at ~15.8, still comfortably inside [10, 22]. That's not this test
+		// failing to notice the change: these samples start boids packed
+		// into a 100-unit spread (the literal `100` argument below) inside
+		// this engine's 200-unit wrap world, with NEIGHBOR_RADIUS=70 — dense
+		// enough, and movement-per-tick small enough (dtSeconds=0.01), that
+		// almost every boid is already a true neighbor of almost every
+		// other one. A grid can't narrow a candidate set that's already
+		// most of the population (the same finding the plan's Overview
+		// documents for stepBoids' boid-boid loop specifically, confirmed
+		// here independently via a different metric). The grid genuinely
+		// narrows candidates for smaller-radius queries (applyPredation,
+		// reproducePopulation) at other population distributions — this
+		// test's specific scenario just isn't one of them.
 		const sampleA = buildState(40, 10);
 		const sampleB = buildState(160, 40);
 

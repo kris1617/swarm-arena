@@ -485,10 +485,17 @@ describe("stepBoids", () => {
 	});
 
 	it("does not collapse a flock to a single point over many steps (regression)", () => {
-		// Verified repro: with unnormalized cohesion/alignment (the bug this
-		// guards against), this exact seed/count/dt/duration collapses to
-		// computeCohesion ~0.99 by t=14s. With unit-vector-normalized
-		// steering, it stabilizes around ~0.4. 0.9 sits well between the two.
+		// Verified repro: with unnormalized cohesion/alignment (the bug
+		// this guards against), this exact seed/count/dt/duration
+		// collapses to computeCohesion ~0.99 by t=14s. With
+		// unit-vector-normalized steering, it stabilizes around ~0.4.
+		// 0.9 sits well between the two.
+		//
+		// S-23: widened from the 5000ms default for the same reason as
+		// the "converges to a stable flock" test above — the grid
+		// measurably slows this exact (dense, small-world) scenario
+		// down; kept anyway for implementation consistency, by explicit
+		// decision (see plan.md's Overview).
 		let boids = createInitialPopulation(100, createRng(42), 1000, 1, [WEIGHTS]);
 		const dt = 0.016;
 		const steps = Math.round(30 / dt);
@@ -498,7 +505,7 @@ describe("stepBoids", () => {
 		}
 
 		expect(computeCohesion(boids)).toBeLessThan(0.9);
-	});
+	}, 15000);
 });
 
 describe("inheritGenes", () => {
@@ -755,6 +762,44 @@ describe("reproducePopulation", () => {
 		expect(result.population).toHaveLength(2);
 		expect(result.capped).toBe(true);
 	});
+
+	it(
+		"pairs with the lowest-index eligible mate in range, not the nearest " +
+			"one (S-23: the grid's ascending-index-sort contract is what " +
+			"keeps this identical to the pre-grid pairwise scan)",
+		() => {
+			// candidateFar (index 1) is farther from parentA than
+			// candidateNear (index 2), but both are well within
+			// MATE_DISTANCE_RADIUS and otherwise equally eligible. The
+			// documented rule is first-match-by-ascending-index, not
+			// nearest-match — if a grid-optimized scan ever iterated
+			// candidates in distance order instead of the required
+			// ascending-index order, this test would catch it by expecting
+			// the farther, lower-index candidate to win.
+			const parentA = makeIndividual({ x: 0, gender: "a" });
+			const candidateFar = makeIndividual({
+				x: MATE_DISTANCE_RADIUS - 1,
+				gender: "b",
+			});
+			const candidateNear = makeIndividual({ x: 1, gender: "b" });
+
+			const result = reproducePopulation(
+				[parentA, candidateFar, candidateNear],
+				createRng(1),
+				BASE_REPRODUCTION_PARAMS,
+			);
+
+			// Exactly one offspring (index 0 paired with index 1); index 2
+			// (candidateNear) stays unpaired this tick. Spawn x is the plain
+			// midpoint of parentA/candidateFar (0 and MATE_DISTANCE_RADIUS-1
+			// are both far from the wrap seam, so no wrap-around arithmetic
+			// is in play here) — if candidateNear (x=1) had instead been
+			// picked, the spawn x would be ~0.5, not ~14.5.
+			expect(result.population).toHaveLength(4);
+			const offspring = result.population[3];
+			expect(offspring?.x).toBeCloseTo((parentA.x + candidateFar.x) / 2, 5);
+		},
+	);
 
 	it("predators reproduce under the identical helper (decision #5's symmetry)", () => {
 		const population: PredatorState[] = [
