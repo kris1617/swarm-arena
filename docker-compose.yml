@@ -17,6 +17,16 @@ services:
       - /opt/swarm-arena/data:/data
     ports:
       - "127.0.0.1:3000:3000"
+    # F-07: defense-in-depth against an unbounded-growth bug (e.g. a future
+    # per-tick array that forgets to cap itself) — not a tight budget
+    # against today's known (small) per-run memory cost, which measured in
+    # the single-digit MB range. 4GB leaves ~3.7GiB headroom for the OS,
+    # Caddy, and normal request handling on this VPS's 7.7GiB, no-swap
+    # machine (confirmed 2026-11-15). This is the plain-Compose `mem_limit`
+    # shorthand, not `deploy.resources.limits.memory` — that key is a
+    # documented Swarm-only no-op under `docker compose` (this project uses
+    # plain Compose, not Swarm mode) and would silently do nothing here.
+    mem_limit: 4g
 
   caddy:
     image: caddy:2-alpine
