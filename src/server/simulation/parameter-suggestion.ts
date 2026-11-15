@@ -44,6 +44,8 @@ const PARAMETER_LABELS: Record<RangedParameterName, string> = {
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
+	xyArea: "Area size",
+	zDepth: "Depth size",
 };
 
 const MIN_SAMPLE_SIZE = 3;

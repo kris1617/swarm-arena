@@ -270,10 +270,10 @@ New `simulationRuns.xyArea`/`zDepth` columns require a migration with a backfill
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 New determinism tests (default-preserving and non-default-deterministic) pass
+- [x] 1.1 Type checking passes: `npm run typecheck`
+- [x] 1.2 Linting passes: `npm run check`
+- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.4 New determinism tests (default-preserving and non-default-deterministic) pass
 
 ### Phase 2: Camera core
 

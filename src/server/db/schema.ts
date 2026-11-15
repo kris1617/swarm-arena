@@ -120,6 +120,13 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	energyThreshold: d.real().notNull().default(50),
 	mutationChance: d.real().notNull().default(0.1),
 	mutationMagnitude: d.real().notNull().default(0.2),
+	// S-24: the run's configured spatial extent (xyArea covers x and y,
+	// zDepth covers z) — same notNull-with-default treatment as the
+	// siblings above, so `drizzle-kit push`/`migrate` can apply these
+	// against a populated table and existing rows backfill to 200 (today's
+	// pre-change fixed world size) without an interactive prompt.
+	xyArea: d.integer().notNull().default(200),
+	zDepth: d.integer().notNull().default(200),
 	status: d
 		.text({ enum: ["running", "stopped", "saved"] })
 		.notNull()

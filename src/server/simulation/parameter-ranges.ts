@@ -17,6 +17,10 @@ export const RANGED_PARAMETER_NAMES = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
+	// S-24: the simulation's spatial extent — xyArea covers both x and y,
+	// zDepth covers z. Admin-ranged like every other parameter here.
+	"xyArea",
+	"zDepth",
 ] as const;
 
 export type RangedParameterName = (typeof RANGED_PARAMETER_NAMES)[number];
@@ -46,6 +50,13 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	energyThreshold: { min: 0.1, max: 500, default: 50 },
 	mutationChance: { min: 0, max: 1, default: 0.1 },
 	mutationMagnitude: { min: 0, max: 1, default: 0.2 },
+	// S-24: min/default of 200 preserves today's exact behavior unless an
+	// admin explicitly raises it. Max of 1000 is grounded in this change's
+	// own direct measurement that a larger area LOWERS tick cost at this
+	// engine's fixed NEIGHBOR_RADIUS (confirmed at 400, direction holds at
+	// 1000) — see context/foundation/capacity-limits.md.
+	xyArea: { min: 200, max: 1000, default: 200 },
+	zDepth: { min: 200, max: 1000, default: 200 },
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;

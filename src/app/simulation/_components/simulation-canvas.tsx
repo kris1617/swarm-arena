@@ -61,6 +61,10 @@ type SimulationCanvasProps = {
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
+	// S-24: the run's configured spatial extent — xyArea covers x and y,
+	// zDepth covers z.
+	xyArea: number;
+	zDepth: number;
 	onFinished: () => void;
 };
 
@@ -181,6 +185,8 @@ export function SimulationCanvas({
 	energyThreshold,
 	mutationChance,
 	mutationMagnitude,
+	xyArea,
+	zDepth,
 	onFinished,
 }: SimulationCanvasProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -250,7 +256,7 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/xyArea/zDepth/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -269,12 +275,14 @@ export function SimulationCanvas({
 		// createInitialPopulation's per-flock seed colors and from mutation
 		// during reproduction, not from different starting weights.
 		const flockWeights = Array.from({ length: flockCount }, () => weights);
+		const worldSize = { x: xyArea, y: xyArea, z: zDepth };
 		boidsRef.current = createInitialPopulation(
 			boidCount,
 			rngRef.current,
 			maxLifespan,
 			flockCount,
 			flockWeights,
+			worldSize,
 		);
 		predatorsRef.current = createInitialPredators(
 			predatorCount,
@@ -282,6 +290,7 @@ export function SimulationCanvas({
 			maxLifespan,
 			flockCount,
 			flockWeights,
+			worldSize,
 		);
 		foodStockRef.current = foodStockInitial;
 		drawScene(ctx, boidsRef.current, predatorsRef.current);
@@ -324,6 +333,7 @@ export function SimulationCanvas({
 						energyThreshold,
 						mutationChance,
 						mutationMagnitude,
+						worldSize,
 					},
 				);
 

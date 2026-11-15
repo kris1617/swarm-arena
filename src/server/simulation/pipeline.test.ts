@@ -13,6 +13,7 @@ import {
 import { createRng } from "~/server/simulation/rng";
 
 const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
+const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 const PARAMS = {
 	dtSeconds: 0.1,
 	foodRegenRate: 5,
@@ -24,6 +25,7 @@ const PARAMS = {
 	mutationMagnitude: 0.2,
 	populationCap: 500,
 	foodStockInitial: 20,
+	worldSize: WORLD_SIZE,
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -80,8 +82,22 @@ describe("runTick", () => {
 		// not a hand-computed expected value.
 		function buildState() {
 			return {
-				boids: createInitialPopulation(10, createRng(1), 100, 1, [WEIGHTS]),
-				predators: createInitialPredators(3, createRng(2), 100, 1, [WEIGHTS]),
+				boids: createInitialPopulation(
+					10,
+					createRng(1),
+					100,
+					1,
+					[WEIGHTS],
+					WORLD_SIZE,
+				),
+				predators: createInitialPredators(
+					3,
+					createRng(2),
+					100,
+					1,
+					[WEIGHTS],
+					WORLD_SIZE,
+				),
 				foodStock: 20,
 			};
 		}
@@ -143,7 +159,7 @@ describe("applyPredation tie-break contract", () => {
 			lifespan: 100,
 		});
 
-		const result = applyPredation([first, second], [predator], 0);
+		const result = applyPredation([first, second], [predator], 0, WORLD_SIZE);
 
 		expect(result).toHaveLength(1);
 		expect(result[0]).toBe(second);
@@ -198,6 +214,7 @@ describe("applyPredation contested capture", () => {
 			[target, bystander],
 			[predatorA, predatorB],
 			0,
+			WORLD_SIZE,
 		);
 
 		expect(result).toHaveLength(1);
@@ -265,6 +282,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			hungerFirst.boids,
 			[predator],
 			protectionThreshold,
+			WORLD_SIZE,
 		);
 		expect(afterDocumentedOrder).toHaveLength(1);
 		expect(afterDocumentedOrder[0]?.x).toBe(100);
@@ -275,6 +293,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			[buildTarget(), buildBystander()],
 			[predator],
 			protectionThreshold,
+			WORLD_SIZE,
 		);
 		// The target's lifespan was still 1 (> 0) going into this call, so
 		// its removal here can only be the CAPTURE_RADIUS proximity check —
@@ -389,6 +408,7 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 				mutationMagnitude: 0.2,
 				populationCap: 500,
 				foodStockInitial: 20,
+				worldSize: WORLD_SIZE,
 			},
 		);
 

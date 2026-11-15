@@ -25,6 +25,8 @@ const PARAMETER_DESCRIPTIONS: Record<
 	mutationChance:
 		"The probability that a newly bred boid's genes mutate from its parents'.",
 	mutationMagnitude: "How large a gene mutation can be when one occurs.",
+	xyArea: "The side length of the square area the simulation wraps within.",
+	zDepth: "The depth of the volume the simulation wraps within.",
 };
 
 const PARAMETER_LABELS: Record<keyof typeof DEFAULT_PARAMETER_RANGES, string> =
@@ -42,6 +44,8 @@ const PARAMETER_LABELS: Record<keyof typeof DEFAULT_PARAMETER_RANGES, string> =
 		energyThreshold: "Energy threshold",
 		mutationChance: "Mutation chance",
 		mutationMagnitude: "Mutation magnitude",
+		xyArea: "Area size",
+		zDepth: "Depth size",
 	};
 
 export default function ParametersPage() {

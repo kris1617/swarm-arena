@@ -1,0 +1,2 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `xyArea` integer DEFAULT 200 NOT NULL;--> statement-breakpoint
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `zDepth` integer DEFAULT 200 NOT NULL;

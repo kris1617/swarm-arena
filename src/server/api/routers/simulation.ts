@@ -64,6 +64,10 @@ const startInputSchema = z.object({
 	energyThreshold: z.number().finite().positive(),
 	mutationChance: z.number().min(0).max(1),
 	mutationMagnitude: z.number().min(0).max(1),
+	// S-24: the run's configured spatial extent — validated via the same
+	// generic checkAgainstAdminRanges loop as every other ranged parameter.
+	xyArea: z.number().int().positive(),
+	zDepth: z.number().int().positive(),
 });
 
 // Singleton row id for `adminSettings` — see schema.ts's comment on the
@@ -221,6 +225,8 @@ async function insertRunningSimulation(
 			energyThreshold: input.energyThreshold,
 			mutationChance: input.mutationChance,
 			mutationMagnitude: input.mutationMagnitude,
+			xyArea: input.xyArea,
+			zDepth: input.zDepth,
 			status: "running",
 		})
 		.returning({ id: simulationRuns.id });
@@ -623,6 +629,8 @@ export const simulationRouter = createTRPCRouter({
 					energyThreshold: simulationRuns.energyThreshold,
 					mutationChance: simulationRuns.mutationChance,
 					mutationMagnitude: simulationRuns.mutationMagnitude,
+					xyArea: simulationRuns.xyArea,
+					zDepth: simulationRuns.zDepth,
 				})
 				.from(simulationRuns)
 				.where(

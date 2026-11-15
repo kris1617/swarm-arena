@@ -46,6 +46,10 @@ export type ServerRunParams = {
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
+	// S-24: the run's configured spatial extent — xyArea covers x and y,
+	// zDepth covers z.
+	xyArea: number;
+	zDepth: number;
 };
 
 type LiveRun = {
@@ -185,6 +189,11 @@ function tick(runId: number): void {
 				energyThreshold: run.params.energyThreshold,
 				mutationChance: run.params.mutationChance,
 				mutationMagnitude: run.params.mutationMagnitude,
+				worldSize: {
+					x: run.params.xyArea,
+					y: run.params.xyArea,
+					z: run.params.zDepth,
+				},
 			},
 		);
 
@@ -247,12 +256,18 @@ export function startServerRun(params: ServerRunParams): void {
 		}),
 	);
 
+	const worldSize = {
+		x: params.xyArea,
+		y: params.xyArea,
+		z: params.zDepth,
+	};
 	const boids = createInitialPopulation(
 		params.boidCount,
 		rng,
 		maxLifespan,
 		params.flockCount,
 		flockWeights,
+		worldSize,
 	);
 	const predators = createInitialPredators(
 		params.predatorCount,
@@ -260,6 +275,7 @@ export function startServerRun(params: ServerRunParams): void {
 		maxLifespan,
 		params.flockCount,
 		flockWeights,
+		worldSize,
 	);
 
 	const run: LiveRun = {

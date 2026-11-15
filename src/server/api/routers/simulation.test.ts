@@ -27,6 +27,8 @@ const VALID_START_INPUT = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
+	xyArea: 200,
+	zDepth: 200,
 };
 
 // S-04 (FR-010 full, FR-019): the stop input's new required fields —

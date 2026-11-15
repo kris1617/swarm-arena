@@ -64,12 +64,14 @@ export type PredatorState = {
 	gender: "a" | "b";
 };
 
-// Side length of the square area initial positions are spread over.
-const INITIAL_AREA_SIZE = 200;
-// Depth of the volume initial z positions are spread over. Sized comparably
-// to INITIAL_AREA_SIZE so the simulation volume is roughly cubic rather than
-// a thin 2D slab with an awkwardly large or small z range.
-const Z_DEPTH_RANGE = 200;
+// S-24: the simulation's spatial extent, threaded explicitly into every
+// function below that used to read the module-private INITIAL_AREA_SIZE/
+// Z_DEPTH_RANGE constants by name — x/y both carry the run's configured
+// `xyArea`, z carries `zDepth`. No default: a caller that forgets to thread
+// the run's real configured value must fail loudly, not silently fall back
+// to some baked-in size.
+export type WorldSize = { x: number; y: number; z: number };
+
 // Max magnitude of each initial velocity component.
 const INITIAL_SPEED = 2;
 // Boids within this radius influence alignment and cohesion. Sized relative
@@ -320,6 +322,7 @@ export function createInitialPopulation(
 	maxLifespan: number,
 	flockCount: number,
 	flockWeights: FlockWeights[],
+	worldSize: WorldSize,
 ): BoidState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
 	const colors = createFlockColors(flockCount, BOID_FILL_COLOR);
@@ -333,9 +336,9 @@ export function createInitialPopulation(
 		const flockSize = countsPerFlock[flockId] ?? 0;
 		for (let i = 0; i < flockSize; i++) {
 			boids.push({
-				x: rng() * INITIAL_AREA_SIZE,
-				y: rng() * INITIAL_AREA_SIZE,
-				z: rng() * Z_DEPTH_RANGE,
+				x: rng() * worldSize.x,
+				y: rng() * worldSize.y,
+				z: rng() * worldSize.z,
 				vx: (rng() - 0.5) * INITIAL_SPEED,
 				vy: (rng() - 0.5) * INITIAL_SPEED,
 				vz: (rng() - 0.5) * INITIAL_SPEED,
@@ -368,6 +371,7 @@ export function createInitialPredators(
 	maxLifespan: number,
 	flockCount: number,
 	flockWeights: FlockWeights[],
+	worldSize: WorldSize,
 ): PredatorState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
 	const colors = createFlockColors(flockCount, PREDATOR_FILL_COLOR);
@@ -381,9 +385,9 @@ export function createInitialPredators(
 		const flockSize = countsPerFlock[flockId] ?? 0;
 		for (let i = 0; i < flockSize; i++) {
 			predators.push({
-				x: rng() * INITIAL_AREA_SIZE,
-				y: rng() * INITIAL_AREA_SIZE,
-				z: rng() * Z_DEPTH_RANGE,
+				x: rng() * worldSize.x,
+				y: rng() * worldSize.y,
+				z: rng() * worldSize.z,
 				vx: (rng() - 0.5) * INITIAL_SPEED,
 				vy: (rng() - 0.5) * INITIAL_SPEED,
 				vz: (rng() - 0.5) * INITIAL_SPEED,
@@ -413,7 +417,10 @@ export function createInitialPredators(
 // along the line between them until exactly that far apart. This is a hard
 // constraint, not a tunable force — it cannot be outweighed by cohesion
 // regardless of weights, unlike the steering forces above.
-function resolveOverlaps(boids: BoidState[]): BoidState[] {
+function resolveOverlaps(
+	boids: BoidState[],
+	worldSize: WorldSize,
+): BoidState[] {
 	const resolved = boids.map((boid) => ({ ...boid }));
 	for (let i = 0; i < resolved.length; i++) {
 		for (let j = i + 1; j < resolved.length; j++) {
@@ -422,9 +429,9 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 			if (!a || !b) {
 				continue;
 			}
-			const dx = wrappedDelta(b.x - a.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(b.y - a.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(b.z - a.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(b.x - a.x, worldSize.x);
+			const dy = wrappedDelta(b.y - a.y, worldSize.y);
+			const dz = wrappedDelta(b.z - a.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist >= MIN_SEPARATION_DISTANCE) {
 				continue;
@@ -436,12 +443,12 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 			const ny = dist > 0 ? dy / dist : 0;
 			const nz = dist > 0 ? dz / dist : 0;
 			const overlap = MIN_SEPARATION_DISTANCE - dist;
-			a.x = wrap(a.x - (nx * overlap) / 2, INITIAL_AREA_SIZE);
-			a.y = wrap(a.y - (ny * overlap) / 2, INITIAL_AREA_SIZE);
-			a.z = wrap(a.z - (nz * overlap) / 2, Z_DEPTH_RANGE);
-			b.x = wrap(b.x + (nx * overlap) / 2, INITIAL_AREA_SIZE);
-			b.y = wrap(b.y + (ny * overlap) / 2, INITIAL_AREA_SIZE);
-			b.z = wrap(b.z + (nz * overlap) / 2, Z_DEPTH_RANGE);
+			a.x = wrap(a.x - (nx * overlap) / 2, worldSize.x);
+			a.y = wrap(a.y - (ny * overlap) / 2, worldSize.y);
+			a.z = wrap(a.z - (nz * overlap) / 2, worldSize.z);
+			b.x = wrap(b.x + (nx * overlap) / 2, worldSize.x);
+			b.y = wrap(b.y + (ny * overlap) / 2, worldSize.y);
+			b.z = wrap(b.z + (nz * overlap) / 2, worldSize.z);
 		}
 	}
 	return resolved;
@@ -450,6 +457,7 @@ function resolveOverlaps(boids: BoidState[]): BoidState[] {
 export function stepBoids(
 	boids: BoidState[],
 	dtSeconds: number,
+	worldSize: WorldSize,
 	predators: PredatorState[] = [],
 ): BoidState[] {
 	// Built once from this tick's starting positions, before any boid's new
@@ -461,7 +469,7 @@ export function stepBoids(
 		boids,
 		(b) => ({ x: b.x, y: b.y, z: b.z }),
 		NEIGHBOR_RADIUS,
-		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+		worldSize,
 	);
 	const predatorGrid =
 		predators.length > 0
@@ -469,7 +477,7 @@ export function stepBoids(
 					predators,
 					(p) => ({ x: p.x, y: p.y, z: p.z }),
 					PREDATOR_DETECTION_RADIUS,
-					{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+					worldSize,
 				)
 			: null;
 
@@ -505,9 +513,9 @@ export function stepBoids(
 			if (!other) {
 				continue;
 			}
-			const dx = wrappedDelta(boid.x - other.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(boid.y - other.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(boid.z - other.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(boid.x - other.x, worldSize.x);
+			const dy = wrappedDelta(boid.y - other.y, worldSize.y);
+			const dz = wrappedDelta(boid.z - other.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist > NEIGHBOR_RADIUS) {
 				continue;
@@ -594,9 +602,9 @@ export function stepBoids(
 			if (!predator) {
 				continue;
 			}
-			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(boid.x - predator.x, worldSize.x);
+			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
+			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist <= PREDATOR_DETECTION_RADIUS && dist < nearestPredatorDist) {
 				nearestPredatorDist = dist;
@@ -657,9 +665,9 @@ export function stepBoids(
 
 		return {
 			...boid,
-			x: wrap(boid.x + vx * dtSeconds, INITIAL_AREA_SIZE),
-			y: wrap(boid.y + vy * dtSeconds, INITIAL_AREA_SIZE),
-			z: wrap(boid.z + vz * dtSeconds, Z_DEPTH_RANGE),
+			x: wrap(boid.x + vx * dtSeconds, worldSize.x),
+			y: wrap(boid.y + vy * dtSeconds, worldSize.y),
+			z: wrap(boid.z + vz * dtSeconds, worldSize.z),
 			vx,
 			vy,
 			vz,
@@ -667,7 +675,9 @@ export function stepBoids(
 		};
 	});
 
-	return resolveOverlaps(stepped).filter((boid) => boid.lifespan > 0);
+	return resolveOverlaps(stepped, worldSize).filter(
+		(boid) => boid.lifespan > 0,
+	);
 }
 
 // Each predator pursues its nearest living boid in a straight line (no
@@ -677,6 +687,7 @@ export function stepPredators(
 	predators: PredatorState[],
 	boids: BoidState[],
 	dtSeconds: number,
+	worldSize: WorldSize,
 ): PredatorState[] {
 	const stepped = predators.map((predator) => {
 		// A predator with no boids left to target holds its current heading
@@ -689,9 +700,9 @@ export function stepPredators(
 		let nearestDy = 0;
 		let nearestDz = 0;
 		for (const boid of boids) {
-			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(boid.x - predator.x, worldSize.x);
+			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
+			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist < nearestDist) {
 				nearestDist = dist;
@@ -721,9 +732,9 @@ export function stepPredators(
 
 		return {
 			...predator,
-			x: wrap(predator.x + vx * dtSeconds, INITIAL_AREA_SIZE),
-			y: wrap(predator.y + vy * dtSeconds, INITIAL_AREA_SIZE),
-			z: wrap(predator.z + vz * dtSeconds, Z_DEPTH_RANGE),
+			x: wrap(predator.x + vx * dtSeconds, worldSize.x),
+			y: wrap(predator.y + vy * dtSeconds, worldSize.y),
+			z: wrap(predator.z + vz * dtSeconds, worldSize.z),
 			vx,
 			vy,
 			vz,
@@ -808,6 +819,7 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 		populationCap: number;
 		totalOtherPopulationCount: number;
 	},
+	worldSize: WorldSize,
 ): { population: T[]; capped: boolean } {
 	function isEligible(individual: T): boolean {
 		return (
@@ -827,7 +839,7 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 		population,
 		(p) => ({ x: p.x, y: p.y, z: p.z }),
 		MATE_DISTANCE_RADIUS,
-		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+		worldSize,
 	);
 
 	for (let i = 0; i < population.length; i++) {
@@ -882,9 +894,9 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 			) {
 				continue;
 			}
-			const dx = wrappedDelta(parentA.x - parentB.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(parentA.y - parentB.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(parentA.z - parentB.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(parentA.x - parentB.x, worldSize.x);
+			const dy = wrappedDelta(parentA.y - parentB.y, worldSize.y);
+			const dz = wrappedDelta(parentA.z - parentB.z, worldSize.z);
 			if (Math.hypot(dx, dy, dz) > MATE_DISTANCE_RADIUS) {
 				continue;
 			}
@@ -905,9 +917,9 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 			);
 			offspring.push({
 				...parentA,
-				x: wrappedMidpoint(parentA.x, parentB.x, INITIAL_AREA_SIZE),
-				y: wrappedMidpoint(parentA.y, parentB.y, INITIAL_AREA_SIZE),
-				z: wrappedMidpoint(parentA.z, parentB.z, Z_DEPTH_RANGE),
+				x: wrappedMidpoint(parentA.x, parentB.x, worldSize.x),
+				y: wrappedMidpoint(parentA.y, parentB.y, worldSize.y),
+				z: wrappedMidpoint(parentA.z, parentB.z, worldSize.z),
 				vx: (rng() - 0.5) * INITIAL_SPEED,
 				vy: (rng() - 0.5) * INITIAL_SPEED,
 				vz: (rng() - 0.5) * INITIAL_SPEED,
@@ -963,6 +975,7 @@ export function applyPredation(
 	boids: BoidState[],
 	predators: PredatorState[],
 	protectionThreshold: number,
+	worldSize: WorldSize,
 ): BoidState[] {
 	if (boids.length <= protectionThreshold) {
 		return boids;
@@ -977,7 +990,7 @@ export function applyPredation(
 		boids,
 		(b) => ({ x: b.x, y: b.y, z: b.z }),
 		NEIGHBOR_RADIUS,
-		{ x: INITIAL_AREA_SIZE, y: INITIAL_AREA_SIZE, z: Z_DEPTH_RANGE },
+		worldSize,
 	);
 
 	const captured = new Set<BoidState>();
@@ -992,9 +1005,9 @@ export function applyPredation(
 			if (!boid || captured.has(boid)) {
 				continue;
 			}
-			const dx = wrappedDelta(boid.x - predator.x, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(boid.y - predator.y, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(boid.z - predator.z, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(boid.x - predator.x, worldSize.x);
+			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
+			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
 			if (dist <= CAPTURE_RADIUS && dist < nearestDist) {
 				nearestDist = dist;
@@ -1042,6 +1055,7 @@ export function runTick(
 		mutationMagnitude: number;
 		populationCap: number;
 		foodStockInitial: number;
+		worldSize: WorldSize;
 	},
 ): {
 	boids: BoidState[];
@@ -1055,12 +1069,14 @@ export function runTick(
 	const steeredBoids = stepBoids(
 		state.boids,
 		params.dtSeconds,
+		params.worldSize,
 		state.predators,
 	);
 	const steeredPredators = stepPredators(
 		state.predators,
 		steeredBoids,
 		params.dtSeconds,
+		params.worldSize,
 	);
 	const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
 		steeredBoids,
@@ -1072,6 +1088,7 @@ export function runTick(
 		fedBoids,
 		steeredPredators,
 		params.protectionThreshold,
+		params.worldSize,
 	);
 
 	// Every surviving individual gains energy and ages by dtSeconds this
@@ -1109,23 +1126,33 @@ export function runTick(
 	// reproduction below runs) rather than the post-reproduction count —
 	// simpler, and explicitly allowed by the plan.
 	const { population: reproducedBoids, capped: boidsCapped } =
-		reproducePopulation(agedBoids, params.rng, {
-			crossbreedingEnabled: params.crossbreedingEnabled,
-			energyThreshold: params.energyThreshold,
-			mutationChance: params.mutationChance,
-			mutationMagnitude: params.mutationMagnitude,
-			populationCap: params.populationCap,
-			totalOtherPopulationCount: agedPredators.length,
-		});
+		reproducePopulation(
+			agedBoids,
+			params.rng,
+			{
+				crossbreedingEnabled: params.crossbreedingEnabled,
+				energyThreshold: params.energyThreshold,
+				mutationChance: params.mutationChance,
+				mutationMagnitude: params.mutationMagnitude,
+				populationCap: params.populationCap,
+				totalOtherPopulationCount: agedPredators.length,
+			},
+			params.worldSize,
+		);
 	const { population: reproducedPredators, capped: predatorsCapped } =
-		reproducePopulation(agedPredators, params.rng, {
-			crossbreedingEnabled: params.crossbreedingEnabled,
-			energyThreshold: params.energyThreshold,
-			mutationChance: params.mutationChance,
-			mutationMagnitude: params.mutationMagnitude,
-			populationCap: params.populationCap,
-			totalOtherPopulationCount: agedBoids.length,
-		});
+		reproducePopulation(
+			agedPredators,
+			params.rng,
+			{
+				crossbreedingEnabled: params.crossbreedingEnabled,
+				energyThreshold: params.energyThreshold,
+				mutationChance: params.mutationChance,
+				mutationMagnitude: params.mutationMagnitude,
+				populationCap: params.populationCap,
+				totalOtherPopulationCount: agedBoids.length,
+			},
+			params.worldSize,
+		);
 
 	return {
 		boids: reproducedBoids,
@@ -1163,28 +1190,31 @@ function circularMean(values: number[], range: number): number {
 	return wrap((meanTheta / (2 * Math.PI)) * range, range);
 }
 
-export function computeCohesion(boids: BoidState[]): number {
+export function computeCohesion(
+	boids: BoidState[],
+	worldSize: WorldSize,
+): number {
 	if (boids.length === 0) {
 		return 1;
 	}
 
 	const centroidX = circularMean(
 		boids.map((boid) => boid.x),
-		INITIAL_AREA_SIZE,
+		worldSize.x,
 	);
 	const centroidY = circularMean(
 		boids.map((boid) => boid.y),
-		INITIAL_AREA_SIZE,
+		worldSize.y,
 	);
 	const centroidZ = circularMean(
 		boids.map((boid) => boid.z),
-		Z_DEPTH_RANGE,
+		worldSize.z,
 	);
 	const averageDistance =
 		boids.reduce((sum, boid) => {
-			const dx = wrappedDelta(boid.x - centroidX, INITIAL_AREA_SIZE);
-			const dy = wrappedDelta(boid.y - centroidY, INITIAL_AREA_SIZE);
-			const dz = wrappedDelta(boid.z - centroidZ, Z_DEPTH_RANGE);
+			const dx = wrappedDelta(boid.x - centroidX, worldSize.x);
+			const dy = wrappedDelta(boid.y - centroidY, worldSize.y);
+			const dz = wrappedDelta(boid.z - centroidZ, worldSize.z);
 			return sum + Math.hypot(dx, dy, dz);
 		}, 0) / boids.length;
 

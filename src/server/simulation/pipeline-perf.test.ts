@@ -8,6 +8,7 @@ import {
 import { createRng } from "~/server/simulation/rng";
 
 const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
+const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both
 // samples (never short-circuited by the "flock at/below threshold" guard).
 // foodStock/foodRegenRate are generous enough that applyHunger's
@@ -25,14 +26,27 @@ const BASE_PARAMS = {
 	mutationMagnitude: 0.2,
 	populationCap: 500,
 	foodStockInitial: 1000,
+	worldSize: WORLD_SIZE,
 };
 
 function buildState(boidCount: number, predatorCount: number) {
 	return {
-		boids: createInitialPopulation(boidCount, createRng(1), 100, 1, [WEIGHTS]),
-		predators: createInitialPredators(predatorCount, createRng(2), 100, 1, [
-			WEIGHTS,
-		]),
+		boids: createInitialPopulation(
+			boidCount,
+			createRng(1),
+			100,
+			1,
+			[WEIGHTS],
+			WORLD_SIZE,
+		),
+		predators: createInitialPredators(
+			predatorCount,
+			createRng(2),
+			100,
+			1,
+			[WEIGHTS],
+			WORLD_SIZE,
+		),
 		foodStock: 1000,
 	};
 }

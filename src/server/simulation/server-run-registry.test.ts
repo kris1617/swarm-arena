@@ -32,6 +32,8 @@ const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
+	xyArea: 200,
+	zDepth: 200,
 };
 
 // Owner ids inserted by `insertOwnedRunningRun()` in this test run, so

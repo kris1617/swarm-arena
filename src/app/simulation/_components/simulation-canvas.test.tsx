@@ -59,6 +59,8 @@ const BASE_PROPS = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
+	xyArea: 200,
+	zDepth: 200,
 	onFinished: vi.fn(),
 };
 

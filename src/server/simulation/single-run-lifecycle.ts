@@ -5,6 +5,7 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 	runTick,
+	type WorldSize,
 } from "~/server/simulation/boids";
 
 // Clamp a single frame's dt so a backgrounded/stalled tab can't apply one
@@ -48,6 +49,10 @@ export function computeSingleRunTick(
 		energyThreshold: number;
 		mutationChance: number;
 		mutationMagnitude: number;
+		// S-24: the run's own configured spatial extent, threaded straight
+		// into runTick/computeCohesion below instead of their old hardcoded
+		// 200-unit assumption.
+		worldSize: WorldSize;
 	},
 ): {
 	boids: BoidState[];
@@ -100,12 +105,13 @@ export function computeSingleRunTick(
 			mutationMagnitude: params.mutationMagnitude,
 			populationCap: 500,
 			foodStockInitial: params.foodStockInitial,
+			worldSize: params.worldSize,
 		},
 	);
 
 	const nextCohesionSamples = [
 		...state.cohesionSamples,
-		computeCohesion(nextBoids),
+		computeCohesion(nextBoids, params.worldSize),
 	];
 	const nextFoodRatioSamples = [
 		...state.foodRatioSamples,

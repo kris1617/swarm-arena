@@ -25,6 +25,8 @@ type ActiveRun = {
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
+	xyArea: number;
+	zDepth: number;
 };
 
 export default function SimulationPage() {
@@ -42,6 +44,11 @@ export default function SimulationPage() {
 	const [energyThreshold, setEnergyThreshold] = useState(50);
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
+	// S-24: no form field yet (Phase 4 adds the NumberFields and their
+	// setters) — fixed at the xyArea/zDepth admin-range default (200),
+	// preserving today's exact world size until Phase 4 exposes these.
+	const xyArea = 200;
+	const zDepth = 200;
 	// S-04 (FR-002 full): admin-configured bounds, replacing the hardcoded
 	// MAX_BOID_COUNT this form used before. Falls back to the same defaults
 	// the admin-settings table seeds on first read, so the form isn't
@@ -179,6 +186,14 @@ export default function SimulationPage() {
 				Math.max(ranges.mutationMagnitude.min, mutationMagnitude),
 				ranges.mutationMagnitude.max,
 			),
+			xyArea: Math.min(
+				Math.max(ranges.xyArea.min, Math.round(xyArea)),
+				ranges.xyArea.max,
+			),
+			zDepth: Math.min(
+				Math.max(ranges.zDepth.min, Math.round(zDepth)),
+				ranges.zDepth.max,
+			),
 		};
 	}
 
@@ -214,6 +229,8 @@ export default function SimulationPage() {
 				energyThreshold: variables.energyThreshold,
 				mutationChance: variables.mutationChance,
 				mutationMagnitude: variables.mutationMagnitude,
+				xyArea: variables.xyArea,
+				zDepth: variables.zDepth,
 			});
 		},
 	});
@@ -334,6 +351,8 @@ export default function SimulationPage() {
 					runId={activeRun.runId}
 					seed={activeRun.seed}
 					weights={activeRun.weights}
+					xyArea={activeRun.xyArea}
+					zDepth={activeRun.zDepth}
 				/>
 			) : (
 				<form

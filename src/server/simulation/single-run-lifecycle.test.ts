@@ -25,6 +25,7 @@ const PARAMS = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
+	worldSize: { x: 200, y: 200, z: 200 },
 };
 
 const GENES: BoidGenes = {
