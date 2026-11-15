@@ -1,10 +1,10 @@
 ---
 change_id: reference-documentation-pages
 title: Reference pages for storyline, parameters, population lifecycle, and scoring
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T07:40:34Z
 ---
 
 ## Notes
