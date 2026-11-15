@@ -66,7 +66,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-17 | staging-live-view-restyle       | User sees the simulation staging form and live view restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-18 | analysis-comparison-restyle     | User sees the run-analysis and run-comparison pages restyled with the new design direction | F-06            | FR-032, FR-033                                         | done |
 | S-19 | leaderboard                     | User sees a leaderboard of their own completed runs ranked by score | F-06            | FR-026                                                 | done |
-| S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | proposed |
+| S-20 | reference-documentation-pages   | User reads reference pages describing the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics | F-06            | FR-034                                                 | done |
 | S-21 | post-run-optimization-suggestion | User sees a run-specific optimization suggestion on a completed run's analysis view, based on that run's own history | —              | FR-027                                                 | done |
 | S-22 | temporary-admin-elevation       | User temporarily elevates their own account to admin to adjust parameter ranges, the object-count cap, or the number of tribes | —              | FR-030                                                 | done |
 | S-23 | spatial-hash-performance-optimization | Boid/predator flocking calculations use spatial partitioning instead of a full pairwise scan, speeding up calculation and rendering at higher agent counts | —              | FR-029                                                 | ready |
@@ -425,7 +425,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Who writes the actual descriptive copy for each of the four pages — the implementer drafting from the PRD's own Business Logic/FR text, or the user reviewing/rewriting afterward? — Owner: user. Block: no — a reasonable first draft is derivable directly from this PRD's existing Business Logic section (population lifecycle, score factors) and FR-002's parameter list; the user can revise content after it ships.
 - **Risk:** Low — static content pages, no new data model; shares one simple layout pattern across all four.
-- **Status:** proposed
+- **Status:** done
 
 ### S-21: Post-run optimization suggestion
 
@@ -524,6 +524,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-20: User reads four reference pages — the simulation's storyline, its parameters, its population-lifecycle model, and its scoring metrics — separated from the functional app pages, not interleaved with them.** — Archived 2026-11-15 → `context/archive/2026-11-15-reference-documentation-pages/`. Lesson: —.
 - **S-19: User sees a leaderboard of their own completed runs ranked by score, highest first.** — Archived 2026-11-15 → `context/archive/2026-11-14-leaderboard/`. Lesson: —.
 - **S-22: User temporarily elevates their own account (or another account) to `admin` to adjust parameter ranges, the object-count cap, or the number of tribes, then reverts — the elevation is reversible, not a permanent role change.** — Archived 2026-11-14 → `context/archive/2026-11-14-temporary-admin-elevation/`. Lesson: NextAuth's database-strategy session round-trips through JSON before any consumer reads it, turning a Date-typed column into an ISO string (or the adapter's own raw number) at runtime — a helper reading a session-sourced timestamp should normalize with `new Date(x).getTime()` rather than trust the Drizzle column's declared type, and this gap went undetected by unit tests because every fabricated session fixture passed a real `Date`.
 - **S-21: User sees a run-specific optimization suggestion on a completed run's analysis view, derived from that single run's own phase/resource history — distinct from S-13's cross-run suggestion.** — Archived 2026-11-14 → `context/archive/2026-11-14-post-run-optimization-suggestion/`. Lesson: —.
