@@ -610,12 +610,12 @@ treat as "scored under the old formula" by design.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 0e137e2
+- [x] 3.2 Linting passes: `npm run check` — 0e137e2
+- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts` — 0e137e2
+- [x] 3.4 Full suite passes: `npm test` — 0e137e2
 
 #### Manual
 
-- [ ] 3.5 Leaderboard shows the "4-factor score" badge on the old run only
-- [ ] 3.6 Comparison page shows the comparability note for a pre-change run
+- [x] 3.5 Leaderboard shows the "4-factor score" badge on the old run only
+- [x] 3.6 Comparison page shows the comparability note for a pre-change run
