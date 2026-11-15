@@ -1,10 +1,10 @@
 ---
 change_id: spatial-hash-performance-optimization
 title: Grid-based spatial partitioning for boid/predator neighbor lookups
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T08:28:45Z
 ---
 
 ## Notes
