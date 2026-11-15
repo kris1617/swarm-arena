@@ -7,9 +7,9 @@ updated: 2026-11-15
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
-milestone_id: live-in-run-parameter-adjustment
-milestone_seq: 5
-milestone_status: done
+milestone_id: extended-live-tuning
+milestone_seq: 6
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,21 +20,23 @@ milestone_status: done
 
 ## Milestone
 
-**M-5: Live in-run parameter adjustment** — Status: done
+**M-6: Extended live tuning** — Status: open
 
-- **Intent:** Let the user tune a running simulation's most impactful parameters and see the effect immediately, instead of having to stop/reconfigure/restart — closing the gap the PRD itself previously parked as a Non-Goal ("no live, in-run parameter adjustment (v1)", FR-028) and explicitly flagged to "revisit as its own future milestone." Scoped to the server-owned execution path only (see Parked for why client-staged and population-shape parameters are excluded from this milestone). Main goal is quality — the real risk here is concurrency correctness (a parameter write racing a live, 16ms-interval tick), not speed to ship.
-- **Source materials:** user description (2026-11-15, immediately after M-4's close) — this was previously an explicit PRD Non-Goal (FR-028); the product-level requirement is captured in this charter rather than as a new FR, since the PRD's own Non-Goal already names the shape and the explicit revisit intent.
-- **Done when:** S-27 is `done`.
+- **Intent:** Extend M-5's live-parameter-adjustment mechanism in the two directions it explicitly parked: bring the same capability to the client-staged execution path, and extend the server-owned path's live-adjustable set to the cheapest population-shape parameters. Main goal is quality — the client-staged restructuring (reading live values instead of closed-over immutable props) is genuinely new architectural territory for this codebase and deserves careful correctness work, and boidCount's live array mutation (adding/culling a running population) needs the same discipline M-5's impl-review applied to its own concurrency/bounds concerns.
+- **Source materials:** user description (2026-11-15, immediately after M-5's close) — both scope anchors were parked explicitly in M-5's `## Parked` section; `flockCount` live-adjustment was investigated and found structurally invasive (every boid's `flockId`/color is set once at birth and never re-derived — changing it mid-run means rewriting the whole live population, not patching a value) and stays parked for a future milestone.
+- **Done when:** S-28, S-29, and S-30 are all `done`.
 - **Scope anchors:**
-  - MS-01: User can change a server-owned run's flocking weights (separation/alignment/cohesion), food regen rate, and protection threshold while it is actively running, with the change taking effect on the very next tick.
+  - MS-01: User changes a client-staged run's flocking weights, food regen rate, and protection threshold while it is actively running — the same capability M-5 shipped for server-owned runs, now on the client-staged path.
+  - MS-02: User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction events.
+  - MS-03: User increases or decreases a running server-owned simulation's boid count while it is actively running.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closes that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extends the same idea in the two directions M-5 explicitly parked: client-staged runs get the same live-tuning capability, and the server-owned path's live-adjustable set grows to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid count).
 
 ## North star
 
-**S-27: Live-adjust flocking weights and food/threshold on a running simulation** — the only slice in this milestone, and the validation milestone (the smallest end-to-end flow that proves the core idea works) for the whole feature: everything else about live parameter adjustment's value depends on this one mechanism — mutating a running simulation's parameters safely while its tick loop keeps firing — actually working correctly.
+**S-28: Client-staged parameter-adjustment parity** — the smallest end-to-end flow that proves the core idea works for this milestone: unlike S-29/S-30 (which extend an already-proven mechanism to two more fields on the already-proven server-owned path), S-28 is the only slice carrying genuinely new architectural risk — `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for a run's lifetime, and this slice requires restructuring that to read live values instead, a pattern this codebase has never needed before M-6.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -76,6 +78,9 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | done |
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
 | S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | done |
+| S-28 | client-staged-live-parameter-parity | User changes a client-staged run's flocking weights, food regen rate, and protection threshold while it is actively running | —              | MS-01                                                  | ready |
+| S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction | —              | MS-02                                                  | ready |
+| S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count while it is actively running | —              | MS-03                                                  | ready |
 
 ## Streams
 
@@ -94,10 +99,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | K      | Area & camera (M-4)               | `F-07` → `S-24` → `S-25`                 | Carries M-4's north star (`S-24`). The VPS-capacity foundation is sequenced first by main-goal bias (quality: decide real limits before the feature that needs them) — a hard dependency here, not just a bias, since S-24's area parameter range must respect F-07's ceiling. |
 | L      | Feedback channel (M-4)            | `S-26`                                   | Standalone — no foundation prerequisite; fully independent of the area/camera work, can run anytime. |
 | M      | Live parameter tuning (M-5)       | `S-27`                                   | Standalone — no foundation prerequisite; baseline confirms the server-owned registry's `LiveRun.params` is already a single mutable field read fresh every tick, so no new Foundation is needed. |
+| N      | Extended live tuning (M-6)        | `S-28`, `S-29`, `S-30`                   | Carries M-6's north star (`S-28`). All 3 slices are mutually independent (no shared Prerequisites) and can run in parallel — `S-28` extends the client-staged path, `S-29`/`S-30` extend the server-owned path's live-adjustable set; none depend on the others. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), and again `2026-11-15` for M-5 (live parameter adjustment).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -111,6 +117,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **2026-11-14 refresh (third) — relevant to M-3 (F-06, S-15–S-23):** the app uses shadcn/ui primitives (`Button`, `Input`, `Switch` in `src/components/ui/`) and a design-token system (`src/styles/globals.css`), but no shared app shell/sidebar-nav layout exists — every page (`login`, `dashboard`, `simulation`, `runs/[runId]`, `runs/compare`) is an independent `<main>` with its own ad hoc Tailwind classes, not a common layout. The login page (`src/app/login/page.tsx`) is generic/default-looking, not branded. No leaderboard, post-run-optimization-suggestion, admin-elevation, or reference/documentation page exists anywhere. `src/server/simulation/boids.ts`'s flocking-force calculation does a full pairwise scan (`for (const other of boids)` nested inside a per-boid loop) — confirmed O(N²), the exact pattern the user's prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`) replaced with a spatial-hash grid, per that project's own `docs/ARCHITEKTURA.md` ("Siatka Haszu Przestrzennego... Optymalizacja wyszukiwania sąsiadów z O(N²) do O(N)"). `users.role` (schema.ts) already has the `admin`/`member` enum; no elevation/toggle mechanism exists to change it from the app itself today (only direct DB access).
 - **2026-11-15 refresh — relevant to M-4 (F-07, S-24–S-26):** the simulation's spatial extent is two hardcoded module-level constants in `src/server/simulation/boids.ts` (`INITIAL_AREA_SIZE = 200` for x/y, `Z_DEPTH_RANGE = 200` for z), not a per-run parameter — every run uses the same fixed toroidal world size today. No camera/viewport concept exists anywhere in the render path; `simulation-canvas.tsx` and the server-run live-view path both render the entire world extent directly, with no pan/zoom/sub-region state. `admin_settings.parameterRanges` (the existing admin-configurable-range mechanism from S-22/S-04) is schema-flexible enough to add a new ranged parameter without a migration shape change, but `src/server/simulation/parameter-ranges.ts`'s `RANGED_PARAMETER_NAMES`/`DEFAULT_PARAMETER_RANGES` would need a new entry for area. No feedback/bug-report table or route exists anywhere in `schema.ts` or `src/server/api/routers/`. Deploy/infra's VPS is confirmed (2026-11-15, direct SSH inspection): 4 vCPU (AMD EPYC-Milan), 7.7GiB RAM (~6.1GiB available at the time of inspection), 232GB disk (187GB free), and the app's Docker container currently has no memory/CPU limit set (`docker inspect` reports unlimited) — today's `DEFAULT_MAX_OBJECT_COUNT = 500` (`parameter-ranges.ts`) was chosen to match pre-existing hardcoded bounds, not derived from this hardware. S-23's recent finding (spatial-hash grid narrowing effectiveness depends on the world-size-to-radius ratio) is directly relevant here: a configurable, potentially larger area would change that ratio and could make the existing grid optimization meaningfully more effective than it measured at the current fixed 200-unit world — worth revisiting once area becomes variable, not re-litigated now.
 - **2026-11-15 refresh — relevant to M-5 (S-27):** live, in-run parameter adjustment is absent on both execution paths today (confirmed by direct code inspection). Server-owned: `server-run-registry.ts`'s `LiveRun.params` is set once at construction (`startServerRun`/`resumeServerRun`) and only ever read inside `tick()` — no mutator exists, and no tRPC mutation (`simulation.ts`'s `start`/`startServer`/`stop`/`savePause`/`resume`/`watch`) updates a running run's params; the admin-settings mutation only writes global range ceilings, not a specific run's live values. The `watch` subscription (`watchServerRun`) is purely server→client push, with no input channel back into the run. Client-staged: `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime (its own inline comment states this explicitly) — no live-editing form exists, and changing a prop wouldn't reach the running closure anyway since the mount effect doesn't re-run. Because `LiveRun.params` is already a single mutable object field read fresh every 16ms tick, adding a mutator plus a tRPC mutation is additive to the existing registry — no Foundation is needed; S-27 folds this directly into its own vertical slice. The client-staged path would require restructuring the mount effect to read live values instead of closed-over props, a materially larger change — out of scope for M-5 (see Parked).
+- **2026-11-15 refresh — relevant to M-6 (S-28, S-29, S-30):** M-5 shipped, so `server-run-registry.ts` now has `applyLiveParams`/`updateRunParams` (a proven mutator + mutation pattern) and `LiveAdjustableParams` (a `Pick<ServerRunParams, ...>` type currently limited to the 5 weight/food/threshold fields). Investigated the three parked population-shape parameters directly: `crossbreedingEnabled` is already read fresh from `run.params` every tick inside the reproduction pass (`boids.ts`'s mating loop) — the exact same way the 5 already-live fields are — so it's excluded from `LiveAdjustableParams` only by the Pick's type-level allowlist, not by any architectural barrier; widening the Pick is the entire change. `boidCount` is only consumed once, at population creation (`createInitialPopulation`) — increasing it live means generating new boids with the same logic and appending them to the live `boids` array (not a `run.params` patch); decreasing it means culling, for which `applyHunger`'s `.filter((boid) => boid.lifespan > 0)` and `applyPredation`'s `.filter((boid) => !captured.has(boid))` are direct, already-tested patterns to copy — real work, but with a clean precedent. `flockCount` is the one NOT included in M-6: every boid's `flockId` is set once at birth (`BoidGenes.flockId`) and never re-derived per tick — changing flockCount mid-run has no patch option, it requires rewriting `flockId` (and recoloring) across the entire live population, much closer to "restart with new params" than a param patch; parked for a future milestone. Client-staged: unchanged from M-5's finding — `simulation-canvas.tsx`'s tick effect still closes over params as immutable-for-the-run; S-28 is the slice that does this restructuring.
 
 ## Foundations
 
@@ -545,6 +552,49 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** The real risk is concurrency correctness, not scope: `tick()` runs on a 16ms `setInterval` per run, so a tRPC mutation writing `run.params` must not race a tick already in flight (a half-written params object read mid-tick could produce an inconsistent step). Kept as the sole slice of its own milestone — rather than folded into an unrelated change — so this correctness concern gets focused implementation and review attention.
 - **Status:** done
 
+### S-28: Client-staged parameter-adjustment parity
+
+- **Outcome:** User changes a client-staged run's separation/alignment/cohesion weights, food regen rate, and protection threshold while it is actively running — the same capability M-5 (S-27) shipped for server-owned runs, now on the client-staged path.
+- **Change ID:** client-staged-live-parameter-parity
+- **PRD refs:** MS-01
+- **Prerequisites:** — (S-27's mutation/UI pattern exists as a reusable precedent, but this slice touches an entirely different execution path — no hard dependency)
+- **Parallel with:** S-29, S-30 — mutually independent, no shared Prerequisites
+- **Blockers:** —
+- **Unknowns:**
+  - `simulation-canvas.tsx`'s tick effect must be restructured to read live values (e.g. via refs) instead of closed-over immutable props — does this risk destabilizing the existing determinism/behavior for the OTHER parameters that stay fixed for the run (boidCount, flockCount, etc.), or can the restructuring be scoped narrowly to only the 5 newly-live fields? — Owner: team/plan. Block: no.
+  - Unlike S-27's panel (which has to defend against a ~150ms server subscription push overwriting an in-progress edit), the client-staged path has no competing push source — does this mean the dirty-tracking complexity S-27 built is unnecessary here, simplifying the UI? — Owner: team/plan. Block: no (a `/10x-research` or `/10x-plan` question, not a product blocker).
+  - Should the UI reuse the exact panel component/pattern from `ServerRunViewer`, or does `simulation-canvas.tsx`'s different rendering shell need its own version? — Owner: user. Block: no.
+- **Risk:** This is the milestone's one genuinely new architectural pattern — a tick-loop effect reading live, externally-mutable values instead of treating its inputs as fixed for the run's lifetime. Get the restructuring wrong and it risks the client-staged path's existing correctness (bit-for-bit reproducibility, lifespan/age/energy accumulation), not just the new feature. Sequenced first (north star) specifically so this risk surfaces early, not blended into other work.
+- **Status:** ready
+
+### S-29: Live-adjust crossbreeding toggle on a running simulation
+
+- **Outcome:** User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction events (mixed-flock pairs stop or start producing offspring).
+- **Change ID:** live-crossbreeding-toggle
+- **PRD refs:** MS-02
+- **Prerequisites:** — (`crossbreedingEnabled` is already read fresh from `run.params` every tick — confirmed via direct code inspection; the only gap is `LiveAdjustableParams`'s type-level allowlist)
+- **Parallel with:** S-28, S-30 — mutually independent, no shared Prerequisites
+- **Blockers:** —
+- **Unknowns:**
+  - Should this reuse S-27's exact mutation/UI mechanism (same `updateRunParams`-style call, same panel), or does a boolean toggle warrant a different UI control (a switch, not a numeric field) within the same panel? — Owner: user. Block: no (UI detail, not a product blocker).
+- **Risk:** Low — confirmed by direct code inspection that `crossbreedingEnabled` is structurally already "live" the same way the 5 fields S-27 shipped are; the change is closer to widening an allowlist than building new mechanism. The main risk is scope creep into reproducing more of S-27's ceremony (warnings, changelog entries) than a boolean toggle actually needs.
+- **Status:** ready
+
+### S-30: Live-adjust boid count on a running simulation
+
+- **Outcome:** User increases or decreases a running server-owned simulation's boid count while it is actively running, and sees the population size change reflected in the live view.
+- **Change ID:** live-boid-count-adjustment
+- **PRD refs:** MS-03
+- **Prerequisites:** — (`createInitialPopulation`'s generation logic and `applyHunger`/`applyPredation`'s cull-by-filter patterns both already exist as reusable precedents)
+- **Parallel with:** S-28, S-29 — mutually independent, no shared Prerequisites
+- **Blockers:** —
+- **Unknowns:**
+  - Increasing boidCount: generate new boids with the same logic `createInitialPopulation` uses — but what RNG/seed state do they draw from mid-run, and should they spawn at random positions across the world or clustered near the existing population? — Owner: user. Block: no.
+  - Decreasing boidCount: what's the cull rule — random selection, oldest-first, youngest-first, or lowest-energy-first? — Owner: user. Block: no.
+  - Should a live boidCount change be validated against the admin's live object-count cap (`maxObjectCount`, the same enforcement `start`/`stop` already apply), mirroring S-27's soft-range-check precedent? — Owner: user. Block: no.
+- **Risk:** Moderate — unlike S-27/S-29 (a `run.params` scalar patch), this mutates the live `boids` array itself, a structurally different and riskier operation (array identity, length changes mid-tick-read, interaction with existing per-tick sample arrays sized by population). Has real precedent to build on (`applyHunger`/`applyPredation`'s filter idiom), but deserves the same concurrency-correctness scrutiny S-27's impl-review applied to its own scalar patch.
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -583,6 +633,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-25       | area-aware-population-insight       | Area-aware population-health insight in run analysis                    | no                     | Unknowns resolved (new 5th score factor); still waiting on S-24 to land first |
 | S-26       | in-app-feedback-module               | In-app feedback/bug-report module                                        | yes                    | Unknowns resolved (GitHub Issues integration) — no prerequisites, ready to plan now |
 | S-27       | live-parameter-adjustment            | Live-adjust flocking weights, food regen rate, and protection threshold on a running server-owned simulation | yes                    | No prerequisites; all 3 Unknowns are non-blocking planning-level decisions — ready to plan now |
+| S-28       | client-staged-live-parameter-parity  | Bring live parameter adjustment to the client-staged execution path (parity with S-27) | yes                    | No prerequisites; north star of M-6 — the one slice with genuinely new architectural risk |
+| S-29       | live-crossbreeding-toggle            | Live-adjust the crossbreeding toggle on a running server-owned simulation | yes                    | No prerequisites; confirmed already structurally live, just excluded from the allowlist type |
+| S-30       | live-boid-count-adjustment           | Live-adjust boid count (increase/decrease) on a running server-owned simulation | yes                    | No prerequisites; real array-mutation work with existing cull/generation patterns to build on |
 
 ## Open Roadmap Questions
 
@@ -602,8 +655,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Diversity-index trend over time in the analysis view** — Why parked: explicit PRD Non-Goal (2026-11-14 extension) — only a single final genetic-diversity value is persisted; a trend would need a new per-tick series nothing downstream currently needs.
 - **Live, in-run parameter adjustment** — ~~Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-028) — the live simulation engine has no live-parameter-update path today; materially larger architectural change than the post-run suggestion (S-21), which ships instead.~~ Promoted into M-5's slice S-27 (2026-11-15), per the Non-Goal's own "revisit as its own future milestone" note — scoped to flocking weights + food regen rate + protection threshold on server-owned runs only (see the two narrower items below for what's still excluded).
 - **Full UI rewrite onto a new template** — Why parked: explicit PRD Non-Goal (2026-11-14 extension round 3, FR-032) — F-06 adopts a modern design direction incrementally on the existing shadcn/ui layer, not a wholesale replacement.
-- **Live parameter adjustment on client-staged runs** (M-5, 2026-11-15) — Why parked: `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime (its own inline comment states this explicitly); undoing that is a real structural change, not a small addition. M-5 ships server-owned-only; client-staged parity is deferred to a future milestone if there's demand.
-- **Live adjustment of population-shape parameters** (boidCount, flockCount, crossbreedingEnabled) (M-5, 2026-11-15) — Why parked: these require re-initializing the population/world state, not just patching a value read fresh every tick (`LiveRun.params`) — a structurally different mechanism than S-27's simple param patch. Out of scope for M-5; revisit as its own future milestone if there's demand.
+- **Live parameter adjustment on client-staged runs** — ~~Why parked (M-5, 2026-11-15): `simulation-canvas.tsx`'s tick-loop effect deliberately closes over its parameter props as fixed for the run's lifetime; undoing that is a real structural change, not a small addition.~~ Promoted into M-6's slice S-28 (2026-11-15).
+- **Live adjustment of population-shape parameters** — ~~Why parked (M-5, 2026-11-15): these require re-initializing the population/world state, not just patching a value read fresh every tick.~~ Partially promoted into M-6 (2026-11-15): `crossbreedingEnabled` (S-29) and `boidCount` (S-30) were investigated and found cheap enough to live-patch — see the narrower item below for what's still excluded.
+- **Live adjustment of `flockCount`** (M-6, 2026-11-15) — Why parked: investigated directly — every boid's `flockId` (and derived color) is set once at birth (`BoidGenes.flockId`) and never re-derived per tick; `createFlockColors`/`splitCountAcrossFlocks` only run at population-creation time. Changing `flockCount` mid-run has no patch option — it requires rewriting `flockId` and recoloring across the entire live population, much closer to "restart with new params" than a param patch. Revisit as its own future milestone if there's demand.
 
 (FR-015, FR-016, and FR-017 — previously parked here as nice-to-have — are promoted into M-2's slices S-13, S-12, and S-14 respectively; see `## Slices`.)
 
