@@ -406,8 +406,8 @@ export const simulationRouter = createTRPCRouter({
 				parameterChanges: z
 					.array(
 						z.object({
-							tick: z.number(),
-							field: z.string(),
+							tick: z.number().int().nonnegative(),
+							field: z.enum(RANGED_PARAMETER_NAMES),
 							oldValue: z.number(),
 							newValue: z.number(),
 						}),

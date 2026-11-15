@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
 import { adminSettings, simulationRuns, users } from "~/server/db/schema";
+import type { RangedParameterName } from "~/server/simulation/parameter-ranges";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import * as serverRunRegistry from "~/server/simulation/server-run-registry";
 import {
@@ -67,7 +68,7 @@ const VALID_STOP_EXTRAS = {
 	// stop() test below that doesn't exercise this field.
 	parameterChanges: [] as {
 		tick: number;
-		field: string;
+		field: RangedParameterName;
 		oldValue: number;
 		newValue: number;
 	}[],
@@ -420,9 +421,12 @@ describe("simulationRouter.stop authorization", () => {
 			},
 		});
 
-		const parameterChanges = [
-			{ tick: 5, field: "mutationMagnitude", oldValue: 0.2, newValue: 0 },
-		];
+		const parameterChanges: {
+			tick: number;
+			field: RangedParameterName;
+			oldValue: number;
+			newValue: number;
+		}[] = [{ tick: 5, field: "mutationMagnitude", oldValue: 0.2, newValue: 0 }];
 
 		await caller.simulation.stop({
 			runId,
