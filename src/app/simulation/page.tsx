@@ -79,9 +79,21 @@ export default function SimulationPage() {
 		},
 	});
 	const resumeMutation = api.simulation.resume.useMutation({
-		onSuccess: (_data, variables) => {
-			void utils.simulation.listRunning.invalidate();
-			void utils.simulation.listSaved.invalidate();
+		// Bug fix (found during S-24 Phase 4 manual verification): must AWAIT
+		// the invalidation before setting viewingRunId, not fire-and-forget it
+		// like savePauseMutation's onSuccess does. The seenRunningIds effect
+		// below already has this run's id from before it was paused — if
+		// viewingRunId is set while runningRunsQuery.data is still the stale
+		// (pre-resume, run-not-listed) snapshot, that effect's "a previously
+		// seen running id disappeared" check fires immediately and nulls
+		// viewingRunId right back out, so the viewer never appears without a
+		// manual re-click. Awaiting here ensures the list already includes
+		// this run by the time viewingRunId updates.
+		onSuccess: async (_data, variables) => {
+			await Promise.all([
+				utils.simulation.listRunning.invalidate(),
+				utils.simulation.listSaved.invalidate(),
+			]);
 			setViewingRunId(variables.runId);
 		},
 	});
