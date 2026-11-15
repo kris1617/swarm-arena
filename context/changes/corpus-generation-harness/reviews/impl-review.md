@@ -29,7 +29,7 @@
 - **Location**: scripts/corpus/harness.ts:154-180
 - **Detail**: No try/finally around the admin-range restore or the owner cleanup. If `caller.simulation.startServer(params)` throws (validation error, object-count cap, any TRPCError), the function exits before restoring `adminSettings.parameterRanges` and before deleting the fixture owner row. Since this module is built to be called repeatedly in a batch (S-33), a single mid-sweep rejection corrupts the shared `adminSettings` row — read by every real `startServer` call, not just this harness — until manually fixed, and leaks a fixture user row.
 - **Fix**: Wrap the `startServer` call in try/catch/finally: restore ranges unconditionally in `finally`; on catch, delete the fixture owner before rethrowing.
-- **Decision**: PENDING
+- **Decision**: FIXED (commit 9380a40)
 
 ### F2 — `collectAndCleanupCorpusRun` leaks the fixture owner if `getRunAnalysis` throws
 
@@ -39,7 +39,7 @@
 - **Location**: scripts/corpus/harness.ts:189-217
 - **Detail**: If `getRunAnalysis` throws (e.g. the documented/tested "run not stopped yet" case), `db.delete(users)` is never reached, leaking the fixture owner row. The one test exercising this path (`harness.test.ts:212-243`) papers over it with a manual `db.delete` in the test itself, which hides that real callers get the leak.
 - **Fix**: Move the cleanup into a `finally` block around the `getRunAnalysis` call and record construction, so the owner is always deleted regardless of success or throw.
-- **Decision**: PENDING
+- **Decision**: FIXED (commit 9380a40)
 
 ### F3 — No serialization around the shared `adminSettings` widen/restore for concurrent calls
 
@@ -58,7 +58,7 @@
   - Tradeoff: Adds concurrency-control code to a phase whose plan explicitly scoped batching out; no test here would exercise it meaningfully since this phase doesn't call it concurrently.
   - Confidence: MEDIUM — reasonable mutex shapes exist, but the right one depends on S-33's actual batching design, which doesn't exist yet.
   - Blind spot: Risk of building the wrong concurrency primitive and having to redo it in S-33 anyway.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED (Fix A — documented in plan.md Risk Notes for S-33 to design against)
 
 ### O1 — `getOrSeedAdminSettingsRanges` duplication is a faithful subset
 
