@@ -322,12 +322,12 @@ None — `simulationRuns.history` is a schema-less JSON `TEXT` column; `paramete
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `npm run typecheck`
-- [x] 3.2 Linting passes: `npm run check`
-- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — eb2d24d
+- [x] 3.2 Linting passes: `npm run check` — eb2d24d
+- [x] 3.3 `npx vitest run src/server/api/routers/simulation.test.ts` — eb2d24d
+- [x] 3.4 Full suite passes: `npm test` — eb2d24d
 
 #### Manual
 
-- [ ] 3.5 Completed run with a live edit shows a correctly-placed, correctly-labeled marker
-- [ ] 3.6 Completed run predating this change renders unchanged, no markers, no error
+- [x] 3.5 Completed run with a live edit shows a correctly-placed, correctly-labeled marker
+- [x] 3.6 Completed run predating this change renders unchanged, no markers, no error
