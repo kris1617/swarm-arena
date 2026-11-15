@@ -1,7 +1,7 @@
 ---
 change_id: leaderboard
 title: Leaderboard of the user's completed runs ranked by score
-status: implemented
+status: impl_reviewed
 created: 2026-11-14
 updated: 2026-11-15
 archived_at: null
