@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: modernization-and-polish
 milestone_seq: 3
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-3: Modernization and polish** — Status: open
+**M-3: Modernization and polish** — Status: done
 
 - **Intent:** Make the app look and feel like a real, modern application (branded login, a consistent design direction across every page, four reference/documentation pages), add two concrete capabilities the user asked for by name (a leaderboard, a run-specific post-run optimization suggestion), give the owner on-demand flexibility (temporary admin elevation), and port a proven performance optimization from the project's own prior Lua implementation (spatial-partitioning neighbor search). Main goal is quality — the user explicitly framed the current UI as not looking like "a common application UI," and the perf work is a proven port, not a guess, so both deserve doing right over doing fast.
 - **Source materials:** `context/foundation/prd.md` (v5) — a user-described scope round (2026-11-14, same day as M-2's close) covering FR-026 through FR-034.
@@ -521,6 +521,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **M-1: First working simulation loop** (`first-working-simulation-loop`) — closed 2026-11-14. Delivered the first end-to-end boids/predator simulation loop (configure, run, stop/resume, score) plus server-owned execution, a post-login run dashboard, and a per-run population-dynamics analysis view; all 5 foundations and 11 slices done.
 - **M-2: Insight and comparison** (`insight-and-comparison`) — closed 2026-11-14. Delivered the three remaining nice-to-have FRs M-1 deferred: side-by-side run comparison, a score-correlated parameter-change suggestion, and JSON/CSV run export; all 3 slices done. Every FR in the PRD (v4) is now implemented.
+- **M-3: Modernization and polish** (`modernization-and-polish`) — closed 2026-11-15. Delivered a shared app shell/design-token foundation and five pages built or restyled on it (branded login, dashboard, staging/live view, analysis/comparison, a new leaderboard, and four new reference/documentation pages), a run-specific post-run optimization suggestion, temporary admin elevation, and a spatial-hash neighbor-search optimization for the flocking engine; F-06 and all 9 slices (S-15–S-23) done. Every FR in the PRD (v5) is now implemented.
 
 ## Done
 
