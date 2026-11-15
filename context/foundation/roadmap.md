@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: live-in-run-parameter-adjustment
 milestone_seq: 5
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-5: Live in-run parameter adjustment** — Status: open
+**M-5: Live in-run parameter adjustment** — Status: done
 
 - **Intent:** Let the user tune a running simulation's most impactful parameters and see the effect immediately, instead of having to stop/reconfigure/restart — closing the gap the PRD itself previously parked as a Non-Goal ("no live, in-run parameter adjustment (v1)", FR-028) and explicitly flagged to "revisit as its own future milestone." Scoped to the server-owned execution path only (see Parked for why client-staged and population-shape parameters are excluded from this milestone). Main goal is quality — the real risk here is concurrency correctness (a parameter write racing a live, 16ms-interval tick), not speed to ship.
 - **Source materials:** user description (2026-11-15, immediately after M-4's close) — this was previously an explicit PRD Non-Goal (FR-028); the product-level requirement is captured in this charter rather than as a new FR, since the PRD's own Non-Goal already names the shape and the explicit revisit intent.
@@ -613,6 +613,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-2: Insight and comparison** (`insight-and-comparison`) — closed 2026-11-14. Delivered the three remaining nice-to-have FRs M-1 deferred: side-by-side run comparison, a score-correlated parameter-change suggestion, and JSON/CSV run export; all 3 slices done. Every FR in the PRD (v4) is now implemented.
 - **M-3: Modernization and polish** (`modernization-and-polish`) — closed 2026-11-15. Delivered a shared app shell/design-token foundation and five pages built or restyled on it (branded login, dashboard, staging/live view, analysis/comparison, a new leaderboard, and four new reference/documentation pages), a run-specific post-run optimization suggestion, temporary admin elevation, and a spatial-hash neighbor-search optimization for the flocking engine; F-06 and all 9 slices (S-15–S-23) done. Every FR in the PRD (v5) is now implemented.
 - **M-4: Area, camera, and ops limits** (`area-camera-and-ops-limits`) — closed 2026-11-15. Delivered VPS-measured capacity ceilings for area/object-count/concurrency (F-07), a configurable simulation area with a camera-limited render view (S-24), a new area-aware 5th score factor with backward-compatible run comparison and a formula-version marker (S-25), and an in-app GitHub-Issues-backed feedback module with a DB-backed retry queue (S-26); F-07 and all 3 slices (S-24–S-26) done.
+- **M-5: Live in-run parameter adjustment** (`live-in-run-parameter-adjustment`) — closed 2026-11-15. Delivered live mid-run tuning of a server-owned simulation's flocking weights, food regen rate, and protection threshold (soft-validated against admin ranges, server-side throttled), with a persisted change-log overlaid on the completed run's population chart; S-27 (the milestone's sole slice) done. Scoped to the server-owned execution path only — client-staged parity and population-shape parameter adjustment stay parked for a future milestone.
 
 ## Done
 
