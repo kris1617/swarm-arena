@@ -1,10 +1,10 @@
 ---
 change_id: live-parameter-adjustment
 title: Live-adjust flocking weights and food/threshold on a running simulation
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-15
-archived_at: null
+archived_at: 2026-11-15T16:05:15Z
 ---
 
 ## Notes
