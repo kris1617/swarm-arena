@@ -819,6 +819,7 @@ export const simulationRouter = createTRPCRouter({
 				foodRatioSamples: number[];
 				survivorGenes: BoidGenes[];
 				populationCountSamples?: number[];
+				geneticDiversitySamples?: number[];
 				parameterChanges?: {
 					tick: number;
 					field: string;

@@ -2080,6 +2080,97 @@ describe("simulationRouter.getRunAnalysis", () => {
 		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
 		expect(result.history?.parameterChanges).toBeUndefined();
 	});
+
+	// genetic-diversity-trend Phase 2: getRunAnalysis's guarded cast must pass
+	// geneticDiversitySamples through verbatim — same precedent as
+	// populationCountSamples/parameterChanges above.
+	it("returns geneticDiversitySamples verbatim when present in history", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const geneticDiversitySamples = [0.1, 0.2, 0.15];
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				history: {
+					phaseHistory: VALID_STOP_EXTRAS.phaseHistory,
+					foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+					survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+					populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+					geneticDiversitySamples,
+				},
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
+		expect(result.history?.geneticDiversitySamples).toEqual(
+			geneticDiversitySamples,
+		);
+	});
+
+	// genetic-diversity-trend Phase 2: a row predating this change has no
+	// geneticDiversitySamples key at all — the guarded cast must not crash,
+	// and the field must simply be absent/undefined on the returned history.
+	it("leaves geneticDiversitySamples undefined for a legacy row without crashing", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				history: {
+					phaseHistory: VALID_STOP_EXTRAS.phaseHistory,
+					foodRatioSamples: VALID_STOP_EXTRAS.foodRatioSamples,
+					survivorGenes: VALID_STOP_EXTRAS.survivingBoidGenes,
+					populationCountSamples: VALID_STOP_EXTRAS.populationCountSamples,
+				},
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getRunAnalysis({ runId: run.id });
+		expect(result.history?.geneticDiversitySamples).toBeUndefined();
+	});
 });
 
 describe("simulationRouter.getRunsComparison", () => {

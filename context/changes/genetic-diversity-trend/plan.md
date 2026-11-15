@@ -193,13 +193,13 @@ None — `history` is a schema-less JSON column; no DB migration needed, exactly
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [ ] 1.4 `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [ ] 1.5 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [ ] 1.6 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 1.7 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — 9a568da
+- [x] 1.2 Linting passes: `npm run check` — 9a568da
+- [x] 1.3 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts` — 9a568da
+- [x] 1.4 `npx vitest run src/server/simulation/server-run-registry.test.ts` — 9a568da
+- [x] 1.5 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` — 9a568da
+- [x] 1.6 `npx vitest run src/server/api/routers/simulation.test.ts` — 9a568da
+- [x] 1.7 Full suite passes: `npm test` — 9a568da
 
 ### Phase 2: Router read-back guard
 
