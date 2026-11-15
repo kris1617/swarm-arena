@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -13,6 +14,7 @@ import {
 } from "~/app/simulation/_components/camera";
 import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
+import { NumberField } from "~/components/ui/number-field";
 import { Switch } from "~/components/ui/switch";
 import {
 	type BoidGenes,
@@ -23,7 +25,12 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 } from "~/server/simulation/boids";
+import {
+	checkLiveParamRangesSoft,
+	DEFAULT_PARAMETER_RANGES,
+} from "~/server/simulation/parameter-ranges";
 import { createRng } from "~/server/simulation/rng";
+import type { LiveAdjustableParams } from "~/server/simulation/server-run-registry";
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import {
 	CANVAS_BACKGROUND,
@@ -31,6 +38,56 @@ import {
 	CANVAS_HIGHLIGHT_COLOR,
 } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
+
+// client-staged-live-parameter-parity Phase 2: the 5 fields this view's
+// live-edit panel exposes — same set `LiveAdjustableParams` carries on the
+// server-owned path (server-run-viewer.tsx), kept as a local tuple (rather
+// than `Object.keys` on a value) so iteration order is stable and
+// `satisfies` catches drift if the server-side type ever adds/removes a
+// field.
+const LIVE_FIELDS = [
+	"foodRegenRate",
+	"protectionThreshold",
+	"energyThreshold",
+	"mutationChance",
+	"mutationMagnitude",
+] as const satisfies readonly (keyof LiveAdjustableParams)[];
+
+type LiveField = (typeof LIVE_FIELDS)[number];
+
+type LiveFormValues = Record<LiveField, number>;
+
+const LIVE_FIELD_LABELS: Record<LiveField, string> = {
+	foodRegenRate: "Food regen rate",
+	protectionThreshold: "Protection threshold",
+	energyThreshold: "Energy threshold",
+	mutationChance: "Mutation chance",
+	mutationMagnitude: "Mutation magnitude",
+};
+
+// Mirrors server-run-viewer.tsx's identical grouping — the panel groups the
+// 5 fields by when a change actually takes effect, so a user isn't confused
+// about why the offspring-only fields don't visibly do anything until the
+// next birth.
+const IMMEDIATE_FIELDS = [
+	"foodRegenRate",
+	"protectionThreshold",
+] as const satisfies readonly LiveField[];
+
+const FUTURE_OFFSPRING_FIELDS = [
+	"energyThreshold",
+	"mutationChance",
+	"mutationMagnitude",
+] as const satisfies readonly LiveField[];
+
+// How long a field's Apply button stays disabled after a successful apply —
+// same constant/value as server-run-viewer.tsx's identical cooldown (there
+// is no server round trip on this client-staged path, but the UX pause
+// stays consistent across both live-edit panels).
+const APPLY_COOLDOWN_MS = 500;
+
+// How long a successfully-applied field keeps its success-flash styling.
+const FLASH_DURATION_MS = 1000;
 
 // S-24 Phase 2: these are now only the *initial* drawing-buffer size, kept
 // around as a sensible default/fallback (and for ServerRunViewer to seed its
@@ -360,6 +417,133 @@ export function SimulationCanvas({
 		redraw();
 	}
 
+	// client-staged-live-parameter-parity Phase 2: the 5 live-adjustable
+	// fields' source of truth for the tick loop — same ref-plus-state posture
+	// as showMinimapRef/showBoundaryRef above, and for the same reason: the
+	// mount effect's tick() closes over these at mount time (dependency array
+	// is `[runId]` only), so a later panel edit must land in a ref the loop
+	// re-reads every frame, not in a plain prop/state value the closure would
+	// never see. Initialized from the corresponding props here in the
+	// component body (not inside the mount effect) so they exist before that
+	// effect runs.
+	const foodRegenRateRef = useRef(foodRegenRate);
+	const protectionThresholdRef = useRef(protectionThreshold);
+	const energyThresholdRef = useRef(energyThreshold);
+	const mutationChanceRef = useRef(mutationChance);
+	const mutationMagnitudeRef = useRef(mutationMagnitude);
+
+	// The live-edit panel's own refs, keyed the same way as LIVE_FIELDS, so
+	// handleApplyLiveField can write to the right ref without a switch.
+	const liveFieldRefs: Record<LiveField, React.RefObject<number>> = {
+		foodRegenRate: foodRegenRateRef,
+		protectionThreshold: protectionThresholdRef,
+		energyThreshold: energyThresholdRef,
+		mutationChance: mutationChanceRef,
+		mutationMagnitude: mutationMagnitudeRef,
+	};
+
+	// client-staged-live-parameter-parity Phase 2: the panel's staged (not
+	// yet applied) draft values — seeded once from the initial props, same as
+	// the refs above. No dirty-tracking/subscription-sync machinery here
+	// (unlike server-run-viewer.tsx): this client-staged path has no
+	// competing writer pushing fresher values in, so there's nothing to
+	// diff against.
+	const [liveValues, setLiveValues] = useState<LiveFormValues>({
+		foodRegenRate,
+		protectionThreshold,
+		energyThreshold,
+		mutationChance,
+		mutationMagnitude,
+	});
+	const [fieldWarnings, setFieldWarnings] = useState<
+		Partial<Record<LiveField, string[]>>
+	>({});
+	const [flashFields, setFlashFields] = useState<ReadonlySet<LiveField>>(
+		new Set(),
+	);
+	const [cooldownFields, setCooldownFields] = useState<ReadonlySet<LiveField>>(
+		new Set(),
+	);
+
+	const rangesQuery = api.simulation.getParameterRanges.useQuery();
+	const liveRanges =
+		rangesQuery.data?.parameterRanges ?? DEFAULT_PARAMETER_RANGES;
+
+	function handleLiveFieldDraftChange(field: LiveField, value: number) {
+		setLiveValues((current) => ({ ...current, [field]: value }));
+	}
+
+	function handleApplyLiveField(field: LiveField, value: number) {
+		liveFieldRefs[field].current = value;
+		const warnings = checkLiveParamRangesSoft({ [field]: value }, liveRanges);
+		setFieldWarnings((current) => ({ ...current, [field]: warnings }));
+		setFlashFields(new Set([field]));
+		setTimeout(() => {
+			setFlashFields((current) => {
+				const next = new Set(current);
+				next.delete(field);
+				return next;
+			});
+		}, FLASH_DURATION_MS);
+		setCooldownFields((current) => new Set(current).add(field));
+		setTimeout(() => {
+			setCooldownFields((current) => {
+				const next = new Set(current);
+				next.delete(field);
+				return next;
+			});
+		}, APPLY_COOLDOWN_MS);
+	}
+
+	// Shared per-field render used by both grouped sub-sections below
+	// (IMMEDIATE_FIELDS/FUTURE_OFFSPRING_FIELDS) — mirrors
+	// server-run-viewer.tsx's renderLiveField shape (NumberField + warning +
+	// flash), but with its own per-field Apply button instead of one global
+	// Apply: there's no batched patch here, each field stages and applies
+	// independently.
+	function renderLiveField(field: LiveField) {
+		const warnings = fieldWarnings[field] ?? [];
+		const fieldRange = liveRanges[field];
+		const step =
+			field === "energyThreshold" || field === "protectionThreshold"
+				? "1"
+				: field === "mutationChance" || field === "mutationMagnitude"
+					? "0.05"
+					: "0.1";
+		return (
+			<div
+				className={cn(
+					"flex flex-col gap-1 rounded-xl transition-shadow",
+					flashFields.has(field) ? "ring-chart-2 ring-2" : "",
+				)}
+				key={field}
+			>
+				<NumberField
+					id={`live-param-${field}`}
+					label={LIVE_FIELD_LABELS[field]}
+					max={fieldRange.max}
+					min={fieldRange.min}
+					onChange={(value) => handleLiveFieldDraftChange(field, value)}
+					step={step}
+					value={liveValues[field]}
+				/>
+				<Button
+					className="bg-input text-foreground hover:bg-foreground/35 h-auto w-fit rounded-full px-4 py-1 text-xs font-semibold"
+					disabled={cooldownFields.has(field)}
+					onClick={() => handleApplyLiveField(field, liveValues[field])}
+					type="button"
+				>
+					{cooldownFields.has(field) ? "Applied" : "Apply"}
+				</Button>
+				{warnings.map((warning) => (
+					<p className="text-destructive text-xs" key={warning}>
+						{warning}
+					</p>
+				))}
+			</div>
+		);
+	}
+
 	// Resolves the camera for the current boids/predators snapshot and
 	// redraws. Called both from the tick loop below (new data) and from
 	// useCamera's onChange (pan/zoom/resize input between ticks). This
@@ -467,7 +651,7 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/protectionThreshold/foodStockInitial/foodRegenRate/flockCount/crossbreedingEnabled/energyThreshold/mutationChance/mutationMagnitude/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/foodStockInitial/flockCount/crossbreedingEnabled/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude are read via their refs (client-staged-live-parameter-parity Phase 2) so a panel edit reaches this closure without restarting the loop.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -534,15 +718,15 @@ export function SimulationCanvas({
 					},
 					timestamp,
 					{
-						foodRegenRate,
-						protectionThreshold,
+						foodRegenRate: foodRegenRateRef.current,
+						protectionThreshold: protectionThresholdRef.current,
 						maxDurationSeconds,
 						foodStockInitial,
 						rng: rngRef.current,
 						crossbreedingEnabled,
-						energyThreshold,
-						mutationChance,
-						mutationMagnitude,
+						energyThreshold: energyThresholdRef.current,
+						mutationChance: mutationChanceRef.current,
+						mutationMagnitude: mutationMagnitudeRef.current,
 						worldSize,
 					},
 				);
@@ -651,6 +835,21 @@ export function SimulationCanvas({
 						onCheckedChange={handleToggleBoundary}
 					/>
 				</label>
+			</div>
+			<div className="bg-input/40 flex w-full max-w-2xl flex-col gap-2 rounded-2xl p-3">
+				<p className="text-foreground text-sm font-semibold">Live parameters</p>
+				<p className="text-foreground text-sm font-semibold">
+					Takes effect immediately
+				</p>
+				<div className="flex flex-col gap-2">
+					{IMMEDIATE_FIELDS.map((field) => renderLiveField(field))}
+				</div>
+				<p className="text-foreground text-sm font-semibold">
+					Affects future offspring only
+				</p>
+				<div className="flex flex-col gap-2">
+					{FUTURE_OFFSPRING_FIELDS.map((field) => renderLiveField(field))}
+				</div>
 			</div>
 			{populationCapped ? (
 				<p className="text-muted-foreground text-sm">

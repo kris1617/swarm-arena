@@ -24,6 +24,14 @@ vi.mock("~/trpc/react", () => ({
 					};
 				},
 			},
+			// client-staged-live-parameter-parity Phase 2: the live-edit panel's
+			// NumberField bounds come from this query (same shape page.tsx's
+			// staging form already consumes) — stubbed `undefined` so the
+			// component falls back to DEFAULT_PARAMETER_RANGES, same as a real
+			// not-yet-resolved query.
+			getParameterRanges: {
+				useQuery: () => ({ data: undefined }),
+			},
 		},
 	},
 }));
@@ -228,6 +236,159 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 			"simulation tick failed:",
 			tickErrorInstance,
 		]);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+});
+
+// client-staged-live-parameter-parity Phase 2: the live-edit panel inside
+// SimulationCanvas — covers the 5-field/2-heading shape, a staged-then-
+// applied value reaching the ref the tick loop reads, and the soft
+// out-of-range warning.
+describe("SimulationCanvas live-edit panel", () => {
+	let rafMock: ReturnType<typeof vi.fn>;
+	let cafMock: ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		capturedStopOptions = {};
+		rafMock = vi.fn(() => 1);
+		cafMock = vi.fn();
+		vi.stubGlobal("requestAnimationFrame", rafMock);
+		vi.stubGlobal("cancelAnimationFrame", cafMock);
+
+		vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+			// biome-ignore lint/suspicious/noExplicitAny: fake context implements only the subset of CanvasRenderingContext2D that drawScene actually calls.
+			createFakeContext() as any,
+		);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	function setNumberFieldValue(
+		container: HTMLElement,
+		field: string,
+		value: string,
+	) {
+		const input = container.querySelector<HTMLInputElement>(
+			`#live-param-${field}`,
+		);
+		if (!input) {
+			throw new Error(`live-param-${field} input not found`);
+		}
+		const setter = Object.getOwnPropertyDescriptor(
+			HTMLInputElement.prototype,
+			"value",
+		)?.set;
+		setter?.call(input, value);
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		return input;
+	}
+
+	function clickApplyFor(container: HTMLElement, field: string) {
+		const input = container.querySelector<HTMLInputElement>(
+			`#live-param-${field}`,
+		);
+		const wrapper = input?.closest("label")?.parentElement;
+		const button = wrapper?.querySelector("button");
+		if (!button) {
+			throw new Error(`Apply button for ${field} not found`);
+		}
+		button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	}
+
+	it("renders exactly 5 live fields under the 2 expected headings", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		expect(container.textContent).toContain("Takes effect immediately");
+		expect(container.textContent).toContain("Affects future offspring only");
+
+		const liveFields = [
+			"foodRegenRate",
+			"protectionThreshold",
+			"energyThreshold",
+			"mutationChance",
+			"mutationMagnitude",
+		];
+		for (const field of liveFields) {
+			expect(container.querySelector(`#live-param-${field}`)).not.toBeNull();
+		}
+		expect(container.querySelectorAll("input[id^='live-param-']")).toHaveLength(
+			5,
+		);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("applying a staged value reaches the ref the tick loop reads", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		act(() => {
+			setNumberFieldValue(container, "mutationMagnitude", "0");
+		});
+		act(() => {
+			clickApplyFor(container, "mutationMagnitude");
+		});
+
+		// Drive one tick manually (rAF is mocked to never auto-fire) and
+		// inspect the options computeSingleRunTick was actually called with —
+		// the only way the applied value could reach it is via the ref,
+		// since the mount effect's dependency array is `[runId]` only.
+		const rafCallback = rafMock.mock.calls[0]?.[0] as
+			| ((timestamp: number) => void)
+			| undefined;
+		act(() => {
+			rafCallback?.(16);
+		});
+
+		const lastCall = vi.mocked(computeSingleRunTick).mock.calls.at(-1);
+		expect(lastCall?.[2]?.mutationMagnitude).toBe(0);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	it("applying an out-of-range value shows checkLiveParamRangesSoft's warning format", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		act(() => {
+			setNumberFieldValue(container, "mutationChance", "5");
+		});
+		act(() => {
+			clickApplyFor(container, "mutationChance");
+		});
+
+		expect(container.textContent).toContain(
+			"mutationChance (5) is outside the configured range 0-1",
+		);
 
 		act(() => {
 			root.unmount();

@@ -180,26 +180,26 @@ None — `parameterChanges` is a new optional key in a schema-less JSON `history
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `npm run typecheck`
-- [x] 1.2 Linting passes: `npm run check`
-- [x] 1.3 `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.4 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — b7d65e5
+- [x] 1.2 Linting passes: `npm run check` — b7d65e5
+- [x] 1.3 `npx vitest run src/server/api/routers/simulation.test.ts` — b7d65e5
+- [x] 1.4 Full suite passes: `npm test` — b7d65e5
 
 ### Phase 2: Client-staged live-adjust mechanism
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck`
+- [x] 2.2 Linting passes: `npm run check`
+- [x] 2.3 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx`
+- [x] 2.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 2.5 Panel shows 5 fields under 2 correctly-grouped headings
-- [ ] 2.6 mutationMagnitude=0 produces zero-deviation offspring genes
-- [ ] 2.7 High energyThreshold stops further reproduction
-- [ ] 2.8 Out-of-range value shows the expected warning text
+- [x] 2.5 Panel shows 5 fields under 2 correctly-grouped headings
+- [x] 2.6 mutationMagnitude=0 produces zero-deviation offspring genes
+- [x] 2.7 High energyThreshold stops further reproduction
+- [x] 2.8 Out-of-range value shows the expected warning text
 
 ### Phase 3: Changelog parity
 
