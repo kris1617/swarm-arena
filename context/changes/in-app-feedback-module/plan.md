@@ -300,14 +300,14 @@ New `feedback_reports` table, brand new with no pre-existing data — no backfil
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 Full suite still passes: `npm test`
-- [ ] 4.4 Hardcoded-value scan on touched files returns zero hits
+- [x] 4.1 Type checking passes: `npm run typecheck`
+- [x] 4.2 Linting passes: `npm run check`
+- [x] 4.3 Full suite still passes: `npm test`
+- [x] 4.4 Hardcoded-value scan on touched files returns zero hits
 
 #### Manual
 
-- [ ] 4.5 "Report feedback" visible in sidebar footer on every authenticated page, opens the form
-- [ ] 4.6 Valid bug report creates a real labeled GitHub issue with email/page/user-agent in the body; UI shows a working link
-- [ ] 4.7 A 6th report within an hour is rejected client-side before any GitHub call
-- [ ] 4.8 A broken token shows the queued confirmation; a restored token + next retry tick sends it successfully
+- [x] 4.5 "Report feedback" visible in sidebar footer on every authenticated page, opens the form
+- [x] 4.6 Valid bug report creates a real labeled GitHub issue with email/page/user-agent in the body; UI shows a working link
+- [x] 4.7 A 6th report within an hour is rejected client-side before any GitHub call
+- [x] 4.8 A broken token shows the queued confirmation; a restored token + next retry tick sends it successfully

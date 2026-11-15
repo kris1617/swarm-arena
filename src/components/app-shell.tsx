@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FeedbackSheet } from "~/components/feedback-sheet";
 import {
 	Sidebar,
 	SidebarContent,
@@ -48,6 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 					</SidebarMenu>
 				</SidebarContent>
 				<SidebarFooter>
+					<FeedbackSheet />
 					<form action={signOutAction}>
 						<SidebarMenuButton type="submit">Sign out</SidebarMenuButton>
 					</form>
