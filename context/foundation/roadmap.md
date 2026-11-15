@@ -78,7 +78,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-25 | area-aware-population-insight   | User sees, in a completed run's analysis, whether population health held up given the area used for that run | S-24            | MS-03                                                  | done |
 | S-26 | in-app-feedback-module          | User reports a new functionality idea or a bug from within the app, persisted for future roadmap consideration | —              | MS-04                                                  | done |
 | S-27 | live-parameter-adjustment       | User changes a running server-owned simulation's flocking weights, food regen rate, and protection threshold, with the change taking effect on the next tick | —              | MS-01                                                  | done |
-| S-28 | client-staged-live-parameter-parity | User changes a client-staged run's foodRegenRate, protectionThreshold, energyThreshold, mutationChance, and mutationMagnitude while it is actively running | S-31           | MS-01                                                  | proposed |
+| S-28 | client-staged-live-parameter-parity | User changes a client-staged run's foodRegenRate, protectionThreshold, energyThreshold, mutationChance, and mutationMagnitude while it is actively running | S-31           | MS-01                                                  | ready |
 | S-29 | live-crossbreeding-toggle       | User toggles crossbreeding on or off for a running server-owned simulation and sees the effect on subsequent reproduction | —              | MS-02                                                  | ready |
 | S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count while it is actively running | —              | MS-03                                                  | ready |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
@@ -566,7 +566,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Unlike S-27's panel (which has to defend against a ~150ms server subscription push overwriting an in-progress edit), the client-staged path has no competing push source — does this mean the dirty-tracking complexity S-27 built is unnecessary here, simplifying the UI? — Owner: team/plan. Block: no (a `/10x-research` or `/10x-plan` question, not a product blocker).
   - Should the UI reuse the exact panel component/pattern from `ServerRunViewer`, or does `simulation-canvas.tsx`'s different rendering shell need its own version? — Owner: user. Block: no.
 - **Risk:** This is the milestone's one genuinely new architectural pattern — a tick-loop effect reading live, externally-mutable values instead of treating its inputs as fixed for the run's lifetime. Get the restructuring wrong and it risks the client-staged path's existing correctness (bit-for-bit reproducibility, lifespan/age/energy accumulation), not just the new feature. Sequenced after S-31 specifically so this slice targets the verified-correct field set, not a repeat of S-27's defect.
-- **Status:** proposed
+- **Status:** ready
 
 ### S-29: Live-adjust crossbreeding toggle on a running simulation
 
