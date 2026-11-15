@@ -1,7 +1,7 @@
 ---
 change_id: genetic-diversity-trend
 title: Genetic-diversity trend over time in the analysis view
-status: implementing
+status: implemented
 created: 2026-11-15
 updated: 2026-11-15
 archived_at: null

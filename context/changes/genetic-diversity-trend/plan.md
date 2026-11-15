@@ -214,12 +214,12 @@ None — `history` is a schema-less JSON column; no DB migration needed, exactly
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/app/runs/[runId]/page.test.ts`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — d901606
+- [x] 3.2 Linting passes: `npm run check` — d901606
+- [x] 3.3 `npx vitest run src/app/runs/[runId]/page.test.ts` — d901606
+- [x] 3.4 Full suite passes: `npm test` — d901606
 
 #### Manual
 
-- [x] 3.5 A newly completed run's analysis view shows a varying genetic-diversity-over-time chart below the population chart
-- [x] 3.6 A pre-existing run's analysis view still renders correctly, with no new chart and no error
+- [x] 3.5 A newly completed run's analysis view shows a varying genetic-diversity-over-time chart below the population chart — d901606
+- [x] 3.6 A pre-existing run's analysis view still renders correctly, with no new chart and no error — d901606
