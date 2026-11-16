@@ -370,25 +370,34 @@ describe("startCorpusRun standalone mode (own widen/restore, concurrent)", () =>
 			pump(startCorpusRun(db, paramsB)),
 		]);
 
-		expect(resultA.runId).toBeTypeOf("number");
-		expect(resultB.runId).toBeTypeOf("number");
-		expect(resultA.ownerId).not.toBe(resultB.ownerId);
+		// impl-review F1: wrapped in try/finally so an assertion failure
+		// below can't skip cleanup and leak both fixture rows into later
+		// tests in this worker.
+		try {
+			expect(resultA.runId).toBeTypeOf("number");
+			expect(resultB.runId).toBeTypeOf("number");
+			expect(resultA.ownerId).not.toBe(resultB.ownerId);
 
-		// Both calls' own restores must have serialized correctly (via the
-		// lock) and landed back on the true original default — not the
-		// widened value either call left behind, and not some
-		// partially-restored/corrupted hybrid.
-		const rangesAfter = await readAdminRanges();
-		expect(rangesAfter.maxDurationSeconds).toEqual(
-			DEFAULT_PARAMETER_RANGES.maxDurationSeconds,
-		);
-
-		// Clean up both fixture runs/owners the same way other tests in this
-		// file do: stop, then collect+cleanup.
-		await pump(stopServerRun(resultA.runId));
-		await pump(stopServerRun(resultB.runId));
-		await pump(collectAndCleanupCorpusRun(db, resultA.ownerId, resultA.runId));
-		await pump(collectAndCleanupCorpusRun(db, resultB.ownerId, resultB.runId));
+			// Both calls' own restores must have serialized correctly (via the
+			// lock) and landed back on the true original default — not the
+			// widened value either call left behind, and not some
+			// partially-restored/corrupted hybrid.
+			const rangesAfter = await readAdminRanges();
+			expect(rangesAfter.maxDurationSeconds).toEqual(
+				DEFAULT_PARAMETER_RANGES.maxDurationSeconds,
+			);
+		} finally {
+			// Clean up both fixture runs/owners the same way other tests in
+			// this file do: stop, then collect+cleanup.
+			await pump(stopServerRun(resultA.runId));
+			await pump(stopServerRun(resultB.runId));
+			await pump(
+				collectAndCleanupCorpusRun(db, resultA.ownerId, resultA.runId),
+			);
+			await pump(
+				collectAndCleanupCorpusRun(db, resultB.ownerId, resultB.runId),
+			);
+		}
 	});
 });
 
