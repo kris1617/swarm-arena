@@ -1,10 +1,10 @@
 ---
 change_id: suggestion-quality-corpus-test
 title: Suggestion-quality test against the parameter-sweep corpus
-status: impl_reviewed
+status: archived
 created: 2026-11-16
 updated: 2026-11-16
-archived_at: null
+archived_at: 2026-11-16T14:48:10Z
 ---
 
 ## Notes
