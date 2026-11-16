@@ -1,7 +1,7 @@
 ---
 change_id: spatial-grid-dense-clustering-fallback
 title: Keep spatial-grid neighbor queries bounded when boids cluster densely
-status: implemented
+status: impl_reviewed
 created: 2026-11-16
 updated: 2026-11-16
 archived_at: null
