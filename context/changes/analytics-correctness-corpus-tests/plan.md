@@ -288,10 +288,10 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 4.1 Unit test passes: npx vitest run src/server/api/routers/simulation.listLeaderboard.corpus.test.ts
-- [ ] 4.2 Full suite stays green: npm test
-- [ ] 4.3 Type checking passes: npm run typecheck
-- [ ] 4.4 Linting passes: npm run check
+- [x] 4.1 Unit test passes: npx vitest run src/server/api/routers/simulation.listLeaderboard.corpus.test.ts
+- [x] 4.2 Full suite stays green: npm test
+- [x] 4.3 Type checking passes: npm run typecheck
+- [x] 4.4 Linting passes: npm run check
 
 ### Phase 5: Synthetic gap-closing cases
 
