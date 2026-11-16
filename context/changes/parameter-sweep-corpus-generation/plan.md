@@ -325,12 +325,12 @@ None — no schema changes. The exported corpus files are new, additive artifact
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `npm run typecheck`
-- [ ] 4.2 Linting passes: `npm run check`
-- [ ] 4.3 `npm test` still excludes the full generation
-- [ ] 4.4 `npm run corpus:generate` completes and produces all 20 JSON files + `index.csv`
+- [x] 4.1 Type checking passes: `npm run typecheck` — 52c4fc0
+- [x] 4.2 Linting passes: `npm run check` — 52c4fc0
+- [x] 4.3 `npm test` still excludes the full generation — 52c4fc0
+- [x] 4.4 `npm run corpus:generate` completes and produces all 20 JSON files + `index.csv` — 52c4fc0
 
 #### Manual
 
-- [ ] 4.5 Spot-check 2-3 generated JSON files' `phaseHistory` against predicted phase targeting
-- [ ] 4.6 Confirm all five `PopulationPhase` values appear somewhere across the corpus
+- [x] 4.5 Spot-check 2-3 generated JSON files' `phaseHistory` against predicted phase targeting — 52c4fc0
+- [x] 4.6 Confirm all five `PopulationPhase` values appear somewhere across the corpus — 52c4fc0
