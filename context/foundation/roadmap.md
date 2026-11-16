@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: none
 milestone_id: parameter-suggestion-analytics-corpus
 milestone_seq: 8
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-8: Parameter-suggestion & analytics validation corpus** — Status: open
+**M-8: Parameter-suggestion & analytics validation corpus** — Status: done
 
 - **Intent:** Build a reusable, varied-parameter corpus of simulation runs — generated once, exported to a fixture file, never needing regeneration — that lets the maintainer (and, going forward, the test suite) check whether the existing parameter-suggestion heuristic (FR-015) actually surfaces sensible correlated suggestions, and whether every per-run analytics function handles the full range of parameter combinations without error. This is test/validation infrastructure, not a new user-facing capability — the "user" for every item below is the project's own maintainer/test suite.
 - **Source materials:** user description (2026-11-15, immediately after M-7's close), clarified through a 4-question interview (custom-MVP-shape exception — this doesn't fit a familiar CRUD/SaaS pattern): corpus stored as an exported JSON/CSV fixture file (not live DB rows) so it survives a DB reset and needs no live app dependency to reuse; parameter variation is a structured sweep across known-impactful parameters (flocking weights, food regen rate, crossbreeding) deliberately targeting healthy-growth/crash/overshoot-recovery phases, not random sampling; ~20 total runs with up to 4 ticking in parallel, each capped at 60 minutes of simulated duration; the milestone produces both new automated tests (suggestion-quality + analytics-correctness regression checks) and a dataset the maintainer can explore manually.
@@ -762,6 +762,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-5: Live in-run parameter adjustment** (`live-in-run-parameter-adjustment`) — closed 2026-11-15. Delivered live mid-run tuning of a server-owned simulation's flocking weights, food regen rate, and protection threshold (soft-validated against admin ranges, server-side throttled), with a persisted change-log overlaid on the completed run's population chart; S-27 (the milestone's sole slice) done. Scoped to the server-owned execution path only — client-staged parity and population-shape parameter adjustment stay parked for a future milestone.
 - **M-6: Extended live tuning** (`extended-live-tuning`) — closed 2026-11-15. Delivered client-staged live-parameter parity (S-28), a live crossbreeding toggle on both execution paths (S-29, scope expanded from server-owned-only during planning), live boid-AND-predator count adjustment on the server-owned path (S-30, scope expanded from boid-only), and a correction to S-27's own live-adjustable field set (S-31); all 4 slices done. `flockCount` live-adjustment stays parked — investigated and found structurally invasive (every boid's `flockId`/color is set once at birth, never re-derived per tick).
 - **M-7: Genetic-diversity trend** (`genetic-diversity-trend`) — closed 2026-11-15. Delivered a per-tick genetic-diversity sample series across both execution paths and a new trend chart in the analysis view (S-32, the milestone's sole slice), reversing the PRD's own "No diversity-index trend over time" Non-Goal per its own revisit clause. Plan-review caught 2 critical gaps before implementation — the server-owned pause/resume snapshot path (the exact S-25 lesson bug class) and the client-staged execution path, both missing from the initial draft despite the Overview claiming both paths.
+- **M-8: Parameter-suggestion & analytics validation corpus** (`parameter-suggestion-analytics-corpus`) — closed 2026-11-16. Delivered a reusable, persisted structured-parameter-sweep corpus (F-08, S-33) and two regression suites against it: parameter-suggestion-heuristic quality (S-34) and per-run analytics correctness across the corpus's full parameter range (S-35). Every scope anchor (MS-01–MS-06) satisfied.
 
 ## Done
 
