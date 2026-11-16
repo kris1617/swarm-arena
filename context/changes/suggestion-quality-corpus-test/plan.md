@@ -191,9 +191,9 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 1.1 Unit test passes: npx vitest run src/server/simulation/corpus-fixture.test.ts
-- [ ] 1.2 Type checking passes: npm run typecheck
-- [ ] 1.3 Linting passes: npm run check
+- [x] 1.1 Unit test passes: npx vitest run src/server/simulation/corpus-fixture.test.ts — 10fac04
+- [x] 1.2 Type checking passes: npm run typecheck — 10fac04
+- [x] 1.3 Linting passes: npm run check — 10fac04
 
 ### Phase 2: Suggestion-quality corpus test
 
