@@ -534,7 +534,7 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 6.1 Full suite passes: npm test
-- [ ] 6.2 Serial gate stays green: npx vitest run --no-file-parallelism
-- [ ] 6.3 Type checking passes: npm run typecheck
-- [ ] 6.4 Linting passes: npm run check
+- [x] 6.1 Full suite passes: npm test — 398/398
+- [x] 6.2 Serial gate stays green: npx vitest run --no-file-parallelism — 398/398
+- [x] 6.3 Type checking passes: npm run typecheck
+- [x] 6.4 Linting passes: npm run check

@@ -2,7 +2,6 @@ import { TRPCError, tracked } from "@trpc/server";
 import { and, count, desc, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { env } from "~/env";
 import {
 	adminProcedure,
 	createTRPCRouter,
@@ -92,16 +91,6 @@ async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
 	const existing = await db.query.adminSettings.findFirst({
 		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
 	});
-	// pre-existing-admin-settings-flakes Phase 1: temporary diagnostic
-	// logging for a rare check-then-insert race investigation — gated so it
-	// is a no-op unless explicitly enabled, see src/env.js.
-	if (env.DEBUG_ADMIN_SETTINGS_RACE) {
-		console.error(
-			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} SELECT resolved: ${
-				existing ? "found" : "not-found"
-			}`,
-		);
-	}
 	if (existing) {
 		return {
 			parameterRanges: existing.parameterRanges as ParameterRanges,
@@ -111,22 +100,12 @@ async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
 	}
 	// First-run seed: insert the default row matching the pre-S-04 hardcoded
 	// bounds exactly, so nothing changes in practice until an admin edits it.
-	if (env.DEBUG_ADMIN_SETTINGS_RACE) {
-		console.error(
-			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} about to INSERT`,
-		);
-	}
 	await db.insert(adminSettings).values({
 		id: ADMIN_SETTINGS_ID,
 		parameterRanges: DEFAULT_PARAMETER_RANGES,
 		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
 		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	});
-	if (env.DEBUG_ADMIN_SETTINGS_RACE) {
-		console.error(
-			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} INSERT succeeded`,
-		);
-	}
 	return {
 		parameterRanges: DEFAULT_PARAMETER_RANGES,
 		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
