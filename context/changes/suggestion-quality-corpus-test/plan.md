@@ -199,10 +199,10 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 2.1 Unit test passes: npx vitest run src/server/simulation/parameter-suggestion.corpus.test.ts
-- [x] 2.2 Full suite stays green: npm test
-- [x] 2.3 Type checking passes: npm run typecheck
-- [x] 2.4 Linting passes: npm run check
+- [x] 2.1 Unit test passes: npx vitest run src/server/simulation/parameter-suggestion.corpus.test.ts — 773754a
+- [x] 2.2 Full suite stays green: npm test — 773754a
+- [x] 2.3 Type checking passes: npm run typecheck — 773754a
+- [x] 2.4 Linting passes: npm run check — 773754a
 
 ### Phase 3: Boolean-correlation regression case
 
