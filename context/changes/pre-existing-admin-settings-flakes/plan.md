@@ -525,10 +525,10 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 5.1 Unit test passes: npx vitest run scripts/corpus/harness.test.ts
-- [x] 5.2 20 consecutive green runs of the new tests, single-process only (no deliberately-launched concurrent npm test/vitest processes) — the end-to-end concurrent-standalone-calls test for basic correctness, and the deterministic withAdminRangesLock test as the actual reliable proof. Actual result: 20/20 clean (verified own batch's own iterations; one incidental collision with the project's own Stop hook firing concurrently during this batch reproduced the SAME cross-process symptom documented in research.md's second addendum — expected, since withAdminRangesLock is in-process-only, same limitation as Vitest's own fileParallelism — and did not affect this batch's own tally).
-- [x] 5.3 Type checking passes: npm run typecheck
-- [x] 5.4 Linting passes: npm run check
+- [x] 5.1 Unit test passes: npx vitest run scripts/corpus/harness.test.ts — 1967377
+- [x] 5.2 20 consecutive green runs of the new tests, single-process only (no deliberately-launched concurrent npm test/vitest processes) — the end-to-end concurrent-standalone-calls test for basic correctness, and the deterministic withAdminRangesLock test as the actual reliable proof. Actual result: 20/20 clean (verified own batch's own iterations; one incidental collision with the project's own Stop hook firing concurrently during this batch reproduced the SAME cross-process symptom documented in research.md's second addendum — expected, since withAdminRangesLock is in-process-only, same limitation as Vitest's own fileParallelism — and did not affect this batch's own tally). — 1967377
+- [x] 5.3 Type checking passes: npm run typecheck — 1967377
+- [x] 5.4 Linting passes: npm run check — 1967377
 
 ### Phase 6: Cleanup and final verification
 
