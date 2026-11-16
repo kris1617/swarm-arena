@@ -426,9 +426,9 @@ changes, no production behavior changes.
 
 #### Automated
 
-- [ ] 1.1 Unit tests pass: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts scripts/corpus/generate-sweep.smoke.test.ts
-- [ ] 1.2 Type checking passes: npm run typecheck
-- [ ] 1.3 Linting passes: npm run check
+- [x] 1.1 Unit tests pass: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts scripts/corpus/generate-sweep.smoke.test.ts — e347029
+- [x] 1.2 Type checking passes: npm run typecheck — e347029
+- [x] 1.3 Linting passes: npm run check — e347029
 
 ### Phase 2: Scope the corpus-prefix stray-owner assertion
 
