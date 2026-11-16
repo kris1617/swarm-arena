@@ -8,7 +8,7 @@
 // `simulationRuns` row with `...VALID_START_INPUT`-equivalent params plus
 // `seed`/`status`/`score`/`history`) — this change introduces no new
 // DB-row-shape convention.
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { simulationRuns, users } from "~/server/db/schema";
 import { loadCorpusFixture } from "~/server/simulation/corpus-fixture";
@@ -22,24 +22,24 @@ export type InsertedCorpusRun = { sweepIndex: number; runId: number };
 // against the same SQLite file in the default test suite, and SQL
 // `LIKE 'corpus-%@example.com'` is a substring match on the whole prefix,
 // so any `corpus-*`-prefixed email would also be swept up by that cleanup.
-const OWNER_EMAIL_LIKE_PATTERN = "db-fixture-%@example.com";
-
 function ownerEmail(): string {
 	return `db-fixture-${crypto.randomUUID()}@example.com`;
 }
 
 // Inserts one synthetic owner plus all 20 corpus runs as completed
-// `simulationRuns` rows, keyed back to each row's real `sweepIndex`. Runs a
-// defensive cleanup of any stray prior `db-fixture-%@example.com` owner
-// first — the same "clean before" discipline this project's other fixture
-// generators (`generate-sweep.smoke.test.ts`) already follow — so a
-// previous run's crash-abandoned fixture can't leak extra rows into this
-// run's assertions.
+// `simulationRuns` rows, keyed back to each row's real `sweepIndex`.
+// Deliberately does NOT run a defensive "delete stray prior rows" pass —
+// `ownerEmail()`'s random UUID already makes every call collision-proof
+// against a prior crashed run's leftovers, and several of this change's
+// test files call this concurrently under Vitest's default file
+// parallelism; a blanket prefix-based delete here previously raced across
+// those files (one file's delete could wipe another's still-in-use
+// owner+rows mid-test, confirmed via a reproducible SQLITE_CONSTRAINT_
+// FOREIGNKEY failure — impl-review F1). Every caller already cleans up
+// its own owner via `cleanupCorpusDbFixture`.
 export async function insertCorpusRunsAsCompleted(
 	db: DB,
 ): Promise<{ ownerId: string; runs: InsertedCorpusRun[] }> {
-	await db.delete(users).where(like(users.email, OWNER_EMAIL_LIKE_PATTERN));
-
 	const [owner] = await db
 		.insert(users)
 		.values({ email: ownerEmail() })

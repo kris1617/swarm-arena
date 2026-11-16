@@ -1,7 +1,7 @@
 ---
 change_id: analytics-correctness-corpus-tests
 title: Analytics-correctness tests against the parameter-sweep corpus
-status: implemented
+status: impl_reviewed
 created: 2026-11-16
 updated: 2026-11-16
 archived_at: null
