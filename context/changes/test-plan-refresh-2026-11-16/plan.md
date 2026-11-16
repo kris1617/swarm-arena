@@ -422,19 +422,19 @@ to manually verify.
 
 #### Automated
 
-- [x] 1.1 New/changed tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [x] 1.2 Full suite still passes: `npm test`
-- [x] 1.3 Typecheck passes: `npm run typecheck`
-- [x] 1.4 Lint passes: `npm run check`
+- [x] 1.1 New/changed tests pass: `npx vitest run src/server/api/routers/simulation.test.ts` — 4980e0f
+- [x] 1.2 Full suite still passes: `npm test` — 4980e0f
+- [x] 1.3 Typecheck passes: `npm run typecheck` — 4980e0f
+- [x] 1.4 Lint passes: `npm run check` — 4980e0f
 
 ### Phase 2: Client-staged live-param/crossbreeding behavioral tests
 
 #### Automated
 
-- [ ] 2.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [ ] 2.2 Full suite still passes: `npm test`
-- [ ] 2.3 Typecheck passes: `npm run typecheck`
-- [ ] 2.4 Lint passes: `npm run check`
+- [x] 2.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
+- [x] 2.2 Full suite still passes: `npm test`
+- [x] 2.3 Typecheck passes: `npm run typecheck`
+- [x] 2.4 Lint passes: `npm run check`
 
 ### Phase 3: Boid-count-growth initialization test (S-30)
 

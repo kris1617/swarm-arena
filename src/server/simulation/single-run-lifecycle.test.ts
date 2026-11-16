@@ -387,3 +387,194 @@ describe("computeSingleRunTick", () => {
 		expect(elapsedMs).toBeLessThan(5_000);
 	}, 30_000);
 });
+
+// test-plan-refresh-2026-11-16 Phase 2: mirrors the 6 live-param/
+// crossbreeding behavioral-effect tests Phase 1 added for the server-owned
+// path (simulation.test.ts's "simulationRouter.updateRunParams behavioral
+// effects" describe block) for the client-staged path instead. There's no
+// router or "live patch mid-run" concept for this pure function, so each
+// test here constructs two full tick sequences from tick 0 with different
+// params (a control and a test case) and compares their outcomes — never a
+// re-read of the patched field itself (lessons.md: "UI accepts input is not
+// feature verified"). mutationMagnitude is kept at 0.4, not the 0.9 Phase 1
+// found triggers a real non-terminating engine bug (tracked separately, out
+// of scope here).
+describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral effects", () => {
+	it("a higher foodRegenRate leaves MORE food than a lower one over the same simulated duration", () => {
+		function foodStockAfter(foodRegenRate: number) {
+			let state = buildState({ lastTimestamp: 0, foodStock: 100 });
+			const params = { ...PARAMS, foodRegenRate, foodStockInitial: 100 };
+			let timestamp = 0;
+			for (let i = 0; i < 5; i++) {
+				timestamp += 50;
+				state = computeSingleRunTick(state, timestamp, params);
+			}
+			return state.foodStock;
+		}
+
+		const highFoodStock = foodStockAfter(100);
+		const lowFoodStock = foodStockAfter(0);
+
+		// A higher regen rate must leave the run with MORE food than a lower
+		// one did, over the identical tick window — not merely that the field
+		// round-tripped through storage.
+		expect(highFoodStock).toBeGreaterThan(lowFoodStock);
+		expect(highFoodStock).toBeGreaterThan(100);
+		expect(lowFoodStock).toBeLessThan(100);
+	});
+
+	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", () => {
+		// Boid and predator start at the same position (distance 0): with
+		// every flocking weight zeroed (WEIGHTS/GENES above) and zero initial
+		// velocity, stepBoids' speed-clamp branch moves the boid in a fixed
+		// direction at its minSpeed, and stepPredators then steers the
+		// predator straight at the boid's new position at PREDATOR_MIN_SPEED
+		// — closing to well within CAPTURE_RADIUS (6) in a single tick. Same
+		// fixture, only protectionThreshold differs between the two runs.
+		function boidsAfterOneTick(protectionThreshold: number) {
+			const state = buildState({
+				boids: [buildBoid({ x: 0, y: 0, z: 0 })],
+				predators: [buildBoid({ x: 0, y: 0, z: 0 })],
+				lastTimestamp: 0,
+			});
+			const params = { ...PARAMS, protectionThreshold };
+			return computeSingleRunTick(state, 50, params).boids.length;
+		}
+
+		// Above the live boid count (1): the whole population is protected.
+		expect(boidsAfterOneTick(10)).toBe(1);
+		// Below the live boid count from the first tick on: predation can
+		// actually capture the boid.
+		expect(boidsAfterOneTick(0)).toBe(0);
+	});
+
+	it("setting energyThreshold above every boid's reachable energy prevents reproduction on a subsequent tick, compared to a control where it stays low", () => {
+		// Two opposite-gender, same-flock boids close enough to mate
+		// (MATE_DISTANCE_RADIUS=30) and already past MATURITY_AGE_SECONDS
+		// (5) — eligibility is read from the tick's own (already-aged)
+		// state, so a single tick is enough to evaluate reproduction.
+		function boidCountAfter(energyThreshold: number) {
+			const state = buildState({
+				boids: [
+					buildBoid({ x: 100, y: 0, energy: 60, age: 10, gender: "a" }),
+					buildBoid({ x: 105, y: 0, energy: 60, age: 10, gender: "b" }),
+				],
+				lastTimestamp: 0,
+			});
+			const params = { ...PARAMS, energyThreshold };
+			return computeSingleRunTick(state, 50, params).boids.length;
+		}
+
+		// Far above ENERGY_MAX (100) — reproduction stays permanently
+		// ineligible.
+		expect(boidCountAfter(99999)).toBe(2);
+		// Below both boids' energy (60) — eligible immediately.
+		expect(boidCountAfter(1)).toBeGreaterThan(2);
+	});
+
+	it("mutationMagnitude 0 produces zero-deviation offspring genes relative to the parent average; a nonzero chance with a safe magnitude produces measurable deviation", () => {
+		function newbornMaxSpeedAfter(
+			mutationChance: number,
+			mutationMagnitude: number,
+			seed: number,
+		) {
+			const state = buildState({
+				boids: [
+					buildBoid({
+						x: 100,
+						y: 0,
+						energy: 60,
+						age: 10,
+						gender: "a",
+						genes: { ...GENES, maxSpeed: 30 },
+					}),
+					buildBoid({
+						x: 105,
+						y: 0,
+						energy: 60,
+						age: 10,
+						gender: "b",
+						genes: { ...GENES, maxSpeed: 50 },
+					}),
+				],
+				lastTimestamp: 0,
+			});
+			const params = {
+				...PARAMS,
+				energyThreshold: 1,
+				mutationChance,
+				mutationMagnitude,
+				rng: createRng(seed),
+			};
+			const result = computeSingleRunTick(state, 50, params);
+			// Both original parents are already past age 0 (age: 10, plus this
+			// tick's small dt) — any boid with age === 0 is necessarily this
+			// tick's newborn.
+			const newborn = result.boids.find((b) => b.age === 0);
+			if (!newborn) {
+				throw new Error("expected a newborn this tick");
+			}
+			return newborn.genes.maxSpeed;
+		}
+
+		const parentMeanMaxSpeed = (30 + 50) / 2;
+
+		// mutationMagnitude 0 collapses blendNumber's jitter multiplier to
+		// exactly 1 regardless of mutationChance, so the offspring's maxSpeed
+		// must land exactly back on the parent average — not an
+		// approximation of it.
+		const zeroDeviationMaxSpeed = newbornMaxSpeedAfter(1, 0, 1);
+		expect(zeroDeviationMaxSpeed).toBeCloseTo(parentMeanMaxSpeed, 9);
+
+		// A real, nonzero chance with a safe magnitude (0.4, not the 0.9
+		// known to hang the engine) must produce at least one measurable
+		// deviation from that same average. Several seeds, not one, so the
+		// assertion doesn't depend on one seed's jitter roll happening to
+		// land close to the parent average.
+		const deviations = [1, 2, 3, 4, 5].map((seed) =>
+			Math.abs(newbornMaxSpeedAfter(1, 0.4, seed) - parentMeanMaxSpeed),
+		);
+		expect(Math.max(...deviations)).toBeGreaterThan(0.01);
+	});
+
+	it("toggling crossbreedingEnabled changes whether inter-flock reproduction occurs on a subsequent tick", () => {
+		// Two opposite-gender boids from DIFFERENT flocks, close enough to
+		// mate and already past maturity/energy eligibility — the only gate
+		// between them is crossbreedingEnabled.
+		function boidCountAfter(crossbreedingEnabled: boolean) {
+			const state = buildState({
+				boids: [
+					buildBoid({
+						x: 100,
+						y: 0,
+						energy: 60,
+						age: 10,
+						gender: "a",
+						genes: { ...GENES, flockId: 0 },
+					}),
+					buildBoid({
+						x: 105,
+						y: 0,
+						energy: 60,
+						age: 10,
+						gender: "b",
+						genes: { ...GENES, flockId: 1 },
+					}),
+				],
+				lastTimestamp: 0,
+			});
+			const params = {
+				...PARAMS,
+				crossbreedingEnabled,
+				energyThreshold: 1,
+			};
+			return computeSingleRunTick(state, 50, params).boids.length;
+		}
+
+		// Disabled: the cross-flock pair is the only eligible pair, and it's
+		// gated off — no reproduction occurs.
+		expect(boidCountAfter(false)).toBe(2);
+		// Enabled: the same pair is now eligible to mate.
+		expect(boidCountAfter(true)).toBeGreaterThan(2);
+	});
+});
