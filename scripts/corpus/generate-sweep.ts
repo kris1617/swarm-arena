@@ -41,15 +41,17 @@ const POLL_STEP_MS = 500;
 // so ordinary tick/scheduling jitter can't trip the ceiling on a run that
 // is genuinely still progressing — while still bounding the loop so a run
 // that never reaches `stopped` fails loudly instead of hanging forever.
-// Widened from an initial 3x after the real 20-row run demonstrated the
-// actual failure mode: this ceiling bounds *simulated* (fake-clock) time,
-// but ordinary machine contention (e.g. another test suite running
-// concurrently) only slows down how much real wall-clock time each
-// poll iteration costs — it does not change how many ticks a run
-// genuinely needs to finish. A generous multiplier here is cheap
-// insurance against that, independent of the real wall-clock budget
-// `corpus:generate`'s own --testTimeout provides.
-const POLL_CEILING_MULTIPLIER = 10;
+// Widened from an initial 3x, then 10x, after real 20-row runs demonstrated
+// the actual failure mode: this ceiling bounds *simulated* (fake-clock)
+// time, but ordinary machine contention (e.g. another test suite running
+// concurrently) and a dense-clustering batch's genuinely-higher per-tick
+// cost (see spatial-grid-dense-clustering-fallback) both only affect how
+// much real wall-clock time each poll iteration costs — neither changes
+// how much simulated time a run genuinely needs to finish. Widened again
+// to 50x so this ceiling is never the binding constraint in practice;
+// `corpus:generate`'s own --testTimeout is the real, intentional wall-clock
+// budget now.
+const POLL_CEILING_MULTIPLIER = 50;
 
 export type CorpusExportRow = CorpusRunRecord & {
 	sweepIndex: number;

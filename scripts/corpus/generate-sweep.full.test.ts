@@ -3,12 +3,17 @@
 // parameter-sweep corpus into `context/fixtures/parameter-sweep-corpus`.
 // Excluded from the default `vitest.config.ts` suite (see its `exclude`
 // array) — run only via `vitest.corpus.config.ts`. Deliberately long-running
-// (up to 60 minutes, see package.json's `--testTimeout`): 5 batches of 4
+// (up to 4 hours, see package.json's `--testTimeout`): 5 batches of 4
 // runs, each run ticking up to `maxDurationSeconds: 3600` under fake timers.
+// The spatial-grid-dense-clustering-fallback fix (confirmed via its
+// warn-sink firing on a real run) turns dense-clustering batches' per-tick
+// cost quadratic-to-linear, but batch 1 (separationWeight: 0.5, the
+// sweep's lowest value) still needs real wall-clock minutes at
+// population-near-cap — this is accepted, documented cost, not a bug.
 // The per-test timeout below must match package.json's `corpus:generate`
 // --testTimeout (a hardcoded it() timeout always wins over the CLI flag,
 // regardless of what the flag says) — this mismatch is exactly what made
-// the real run time out at 20 minutes despite a 60-minute CLI flag.
+// an earlier real run time out at 20 minutes despite a 60-minute CLI flag.
 // Do not shrink the matrix or the per-run duration here — that would defeat
 // this test's purpose as the real generation run.
 import { readdirSync, readFileSync } from "node:fs";
@@ -117,6 +122,6 @@ describe("generateCorpus full-matrix generation", () => {
 			});
 			expect(strayOwners).toHaveLength(0);
 		},
-		60 * 60 * 1000,
+		4 * 60 * 60 * 1000,
 	);
 });

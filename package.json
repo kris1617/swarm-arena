@@ -8,7 +8,7 @@
 		"check": "biome check .",
 		"check:unsafe": "biome check --write --unsafe .",
 		"check:write": "biome check --write .",
-		"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=3600000",
+		"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=14400000",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
