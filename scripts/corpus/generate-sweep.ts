@@ -19,6 +19,7 @@ import {
 	type DB,
 	ensureAdminRangesAdmitForBatch,
 	startCorpusRun,
+	withAdminRangesLock,
 } from "./harness";
 import { buildSweepMatrix, type SweepRunParams } from "./sweep-matrix";
 
@@ -170,76 +171,85 @@ async function runBatch(
 	csvRows: string[],
 ): Promise<void> {
 	const batchParamsList = batch.map(({ sweepIndex, ...params }) => params);
-	const originalRanges = await ensureAdminRangesAdmitForBatch(
-		db,
-		batchParamsList,
-	);
 
-	// impl-review finding (parameter-sweep-corpus-generation): if any call in
-	// the `Promise.all` below rejects, or `pollUntilAllStopped` throws after
-	// the ceiling, `started` runs that the harness DID insert are never
-	// passed to `collectAndCleanupCorpusRun` by this invocation — their
-	// fixture owner/run rows would otherwise leak until a *future*
-	// `generateCorpus` call's defensive top-of-run cleanup happens to catch
-	// them. `startedInBatch` is populated as each `startCorpusRun` resolves
-	// (not after `Promise.all` settles) so the `catch` below can clean up
-	// every run this batch actually started, even the ones whose later
-	// polling/collection step never ran.
-	const startedInBatch: { runId: number; ownerId: string }[] = [];
-	const collectedOwnerIds = new Set<string>();
-
-	try {
-		const started = await Promise.all(
-			batch.map(async (row) => {
-				const { sweepIndex, ...params } = row;
-				const { runId, ownerId } = await startCorpusRun(db, params, {
-					skipRangeWiden: true,
-				});
-				startedInBatch.push({ runId, ownerId });
-				return { sweepIndex, row, runId, ownerId };
-			}),
-		);
-
-		await pollUntilAllStopped(
+	// pre-existing-admin-settings-flakes Phase 4: the entire widen -> start ->
+	// poll -> collect -> restore cycle below is wrapped in
+	// `withAdminRangesLock` so this batch's writes to the shared
+	// `admin_settings.parameterRanges` row can't interleave with another
+	// concurrent caller's (standalone `startCorpusRun` or another `runBatch`)
+	// — see `withAdminRangesLock`'s own comment in harness.ts.
+	await withAdminRangesLock(async () => {
+		const originalRanges = await ensureAdminRangesAdmitForBatch(
 			db,
-			started.map((s) => s.runId),
-			Math.max(...batch.map((row) => row.maxDurationSeconds)),
+			batchParamsList,
 		);
 
-		for (const { row, runId, ownerId } of started) {
-			const record = await collectAndCleanupCorpusRun(db, ownerId, runId);
-			collectedOwnerIds.add(ownerId);
-			const exportRow = buildExportRow(record, row);
-			writeFileSync(
-				join(outDir, runFileName(exportRow.sweepIndex)),
-				gzipSync(JSON.stringify(exportRow, null, 2)),
+		// impl-review finding (parameter-sweep-corpus-generation): if any call in
+		// the `Promise.all` below rejects, or `pollUntilAllStopped` throws after
+		// the ceiling, `started` runs that the harness DID insert are never
+		// passed to `collectAndCleanupCorpusRun` by this invocation — their
+		// fixture owner/run rows would otherwise leak until a *future*
+		// `generateCorpus` call's defensive top-of-run cleanup happens to catch
+		// them. `startedInBatch` is populated as each `startCorpusRun` resolves
+		// (not after `Promise.all` settles) so the `catch` below can clean up
+		// every run this batch actually started, even the ones whose later
+		// polling/collection step never ran.
+		const startedInBatch: { runId: number; ownerId: string }[] = [];
+		const collectedOwnerIds = new Set<string>();
+
+		try {
+			const started = await Promise.all(
+				batch.map(async (row) => {
+					const { sweepIndex, ...params } = row;
+					const { runId, ownerId } = await startCorpusRun(db, params, {
+						skipRangeWiden: true,
+					});
+					startedInBatch.push({ runId, ownerId });
+					return { sweepIndex, row, runId, ownerId };
+				}),
 			);
-			csvRows.push(buildCsvLine(exportRow));
+
+			await pollUntilAllStopped(
+				db,
+				started.map((s) => s.runId),
+				Math.max(...batch.map((row) => row.maxDurationSeconds)),
+			);
+
+			for (const { row, runId, ownerId } of started) {
+				const record = await collectAndCleanupCorpusRun(db, ownerId, runId);
+				collectedOwnerIds.add(ownerId);
+				const exportRow = buildExportRow(record, row);
+				writeFileSync(
+					join(outDir, runFileName(exportRow.sweepIndex)),
+					gzipSync(JSON.stringify(exportRow, null, 2)),
+				);
+				csvRows.push(buildCsvLine(exportRow));
+			}
+		} catch (error) {
+			// Clean up every run this batch actually started but never reached
+			// `collectAndCleanupCorpusRun` for (a rejected start, or a
+			// `pollUntilAllStopped` ceiling throw, leaves these otherwise
+			// orphaned until some *future* `generateCorpus` call's defensive
+			// cleanup happens to catch them) — see this function's own comment
+			// above `startedInBatch`.
+			await Promise.all(
+				startedInBatch
+					.filter((s) => !collectedOwnerIds.has(s.ownerId))
+					.map((s) => db.delete(users).where(eq(users.id, s.ownerId))),
+			);
+			throw error;
+		} finally {
+			// `ensureAdminRangesAdmitForBatch` only widens and returns the
+			// pre-widen snapshot — it does not restore for the caller. Mirrors
+			// the exact update-call shape `startCorpusRun`'s own `finally`
+			// restore uses (harness.ts), written back whether the batch
+			// succeeded or threw: this row is shared with real traffic.
+			await db
+				.update(adminSettings)
+				.set({ parameterRanges: originalRanges })
+				.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
 		}
-	} catch (error) {
-		// Clean up every run this batch actually started but never reached
-		// `collectAndCleanupCorpusRun` for (a rejected start, or a
-		// `pollUntilAllStopped` ceiling throw, leaves these otherwise
-		// orphaned until some *future* `generateCorpus` call's defensive
-		// cleanup happens to catch them) — see this function's own comment
-		// above `startedInBatch`.
-		await Promise.all(
-			startedInBatch
-				.filter((s) => !collectedOwnerIds.has(s.ownerId))
-				.map((s) => db.delete(users).where(eq(users.id, s.ownerId))),
-		);
-		throw error;
-	} finally {
-		// `ensureAdminRangesAdmitForBatch` only widens and returns the
-		// pre-widen snapshot — it does not restore for the caller. Mirrors
-		// the exact update-call shape `startCorpusRun`'s own `finally`
-		// restore uses (harness.ts), written back whether the batch
-		// succeeded or threw: this row is shared with real traffic.
-		await db
-			.update(adminSettings)
-			.set({ parameterRanges: originalRanges })
-			.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
-	}
+	});
 }
 
 // Drives `matrix` (the full 20-row `buildSweepMatrix()` by default, or a

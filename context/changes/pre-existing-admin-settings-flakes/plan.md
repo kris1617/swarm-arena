@@ -490,8 +490,8 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: npm run typecheck
-- [ ] 4.2 Linting passes: npm run check
+- [x] 4.1 Type checking passes: npm run typecheck
+- [x] 4.2 Linting passes: npm run check
 
 ### Phase 5: Update the concurrent-batch test
 

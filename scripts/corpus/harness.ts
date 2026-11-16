@@ -187,6 +187,32 @@ export async function ensureAdminRangesAdmitForBatch(
 	return original;
 }
 
+// pre-existing-admin-settings-flakes Phase 4: a minimal, dependency-free
+// async mutex serializing the admin-ranges widen/restore critical section.
+// Confirmed this session (~25% failure rate in isolation) that two
+// concurrent callers of `ensureAdminRangesAdmit`/`ensureAdminRangesAdmitForBatch`
+// can interleave their widen/restore writes against the shared
+// `admin_settings.parameterRanges` row — an already-accepted risk from
+// `context/archive/2026-11-15-corpus-generation-harness/reviews/impl-review.md`.
+// Today only a deliberately-constructed test exercises two concurrent
+// callers, but this lock serializes any two callers wanting exclusive
+// access to the critical section, not just that one test.
+let adminRangesLock: Promise<void> = Promise.resolve();
+
+export async function withAdminRangesLock<T>(fn: () => Promise<T>): Promise<T> {
+	const previous = adminRangesLock;
+	let release!: () => void;
+	adminRangesLock = new Promise((resolve) => {
+		release = resolve;
+	});
+	await previous;
+	try {
+		return await fn();
+	} finally {
+		release();
+	}
+}
+
 function callerFor(db: DB, ownerId: string) {
 	return createCaller({
 		db,
@@ -237,35 +263,53 @@ export async function startCorpusRun(
 	// via `ensureAdminRangesAdmitForBatch` — running this call's own
 	// widen/restore on top would race its restore against the other calls
 	// in the batch, each stomping on the others' still-in-progress runs.
-	const restoreRanges = opts?.skipRangeWiden
-		? null
-		: await ensureAdminRangesAdmit(db, params);
+	// pre-existing-admin-settings-flakes Phase 4: the full widen -> start ->
+	// restore cycle, extracted so it can run either directly (batch callers,
+	// which already hold the lock around their own wider cycle) or wrapped in
+	// `withAdminRangesLock` (standalone callers) below.
+	const widenStartRestoreCycle = async (): Promise<{
+		runId: number;
+		ownerId: string;
+	}> => {
+		const restoreRanges = opts?.skipRangeWiden
+			? null
+			: await ensureAdminRangesAdmit(db, params);
 
-	try {
-		const caller = callerFor(db, owner.id);
-		const { runId } = await callProcedure(
-			caller.simulation.startServer(params),
-		);
-		return { runId, ownerId: owner.id };
-	} catch (err) {
-		// `startServer` never got to register a run — the fixture owner is
-		// the harness's own resource, so it cleans it up on this path too.
-		await db.delete(users).where(eq(users.id, owner.id));
-		throw err;
-	} finally {
-		// `checkAgainstAdminRanges` only runs at start time, never mid-tick,
-		// so restoring the admin ranges as soon as `startServer` settles —
-		// success or throw — cannot affect a run already in progress, and
-		// must happen either way: this row is shared with real traffic.
-		// Skipped entirely when the caller owns the batch-scoped
-		// widen/restore instead.
-		if (restoreRanges !== null) {
-			await db
-				.update(adminSettings)
-				.set({ parameterRanges: restoreRanges })
-				.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+		try {
+			const caller = callerFor(db, owner.id);
+			const { runId } = await callProcedure(
+				caller.simulation.startServer(params),
+			);
+			return { runId, ownerId: owner.id };
+		} catch (err) {
+			// `startServer` never got to register a run — the fixture owner is
+			// the harness's own resource, so it cleans it up on this path too.
+			await db.delete(users).where(eq(users.id, owner.id));
+			throw err;
+		} finally {
+			// `checkAgainstAdminRanges` only runs at start time, never mid-tick,
+			// so restoring the admin ranges as soon as `startServer` settles —
+			// success or throw — cannot affect a run already in progress, and
+			// must happen either way: this row is shared with real traffic.
+			// Skipped entirely when the caller owns the batch-scoped
+			// widen/restore instead.
+			if (restoreRanges !== null) {
+				await db
+					.update(adminSettings)
+					.set({ parameterRanges: restoreRanges })
+					.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+			}
 		}
-	}
+	};
+
+	// Only a standalone call (one that does its own widen/restore) needs the
+	// lock here — a batch call already runs inside its caller's own
+	// `withAdminRangesLock` (see `runBatch` in generate-sweep.ts), and nesting
+	// the lock again here would deadlock (the outer `fn` would await its own
+	// still-pending lock).
+	return opts?.skipRangeWiden
+		? widenStartRestoreCycle()
+		: withAdminRangesLock(widenStartRestoreCycle);
 }
 
 // Reads back a completed run's full analysis payload via the real
