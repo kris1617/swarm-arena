@@ -3,7 +3,7 @@ project: swarm-arena
 version: 1
 status: draft
 created: 2026-11-09
-updated: 2026-11-15
+updated: 2026-11-16
 prd_version: 5
 main_goal: quality
 top_blocker: none
@@ -86,8 +86,8 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-30 | live-boid-count-adjustment      | User increases or decreases a running server-owned simulation's boid count and predator count while it is actively running | —              | MS-03                                                  | done |
 | S-31 | correct-live-parameter-field-set | User's live-adjustment of a running server-owned simulation only exposes fields with a real, verified effect — removes 3 non-functional per-boid-genetic fields, adds 3 genuinely-global ones | —              | MS-01                                                  | done |
 | S-32 | genetic-diversity-trend        | User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the final value | —              | FR-025, MS-01                                          | done |
-| F-08 | corpus-generation-harness      | (foundation) A single simulation run can be generated end-to-end through the real app, exported to a fixture file, and cleaned up afterward | —              | MS-01, MS-06                                           | proposed |
-| S-33 | parameter-sweep-corpus-generation | Maintainer generates and persists a ~20-run structured-parameter-sweep corpus (up to 4 runs ticking in parallel, each capped at 60 simulated minutes) to a reusable fixture file | F-08           | MS-01, MS-02, MS-03, MS-06                             | proposed |
+| F-08 | corpus-generation-harness      | (foundation) A single simulation run can be generated end-to-end through the real app, exported to a fixture file, and cleaned up afterward | —              | MS-01, MS-06                                           | done |
+| S-33 | parameter-sweep-corpus-generation | Maintainer generates and persists a ~20-run structured-parameter-sweep corpus (up to 4 runs ticking in parallel, each capped at 60 simulated minutes) to a reusable fixture file | F-08           | MS-01, MS-02, MS-03, MS-06                             | done |
 | S-34 | suggestion-quality-corpus-test | Maintainer has an automated test asserting the parameter-suggestion heuristic produces a sensible, correlated suggestion against the persisted corpus | S-33           | MS-04                                                  | proposed |
 | S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | proposed |
 
@@ -234,10 +234,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** —
 - **Parallel with:** —
 - **Blockers:** —
-- **Unknowns:**
-  - Should the harness drive ticks via the same accelerated/fake-timer mechanism the existing test suite already uses (so a 60-simulated-minute run's `maxDurationSeconds` configuration is respected and exercised realistically without the generation script actually blocking for 60 real-world minutes), or via real wall-clock ticking? — Owner: team/plan. Block: no — the existing test suite's established `vi.useFakeTimers()`/`vi.advanceTimersByTimeAsync()` pattern is the obvious default; `/10x-plan` can confirm and detail it.
+- **Unknowns:** — (resolved during planning: fake-timer-driven ticking, confirmed against the existing `vi.useFakeTimers()`/`vi.advanceTimersByTimeAsync()` precedent; the admin-configured `maxDurationSeconds` range defaults to a max of 600s and must be raised-then-restored around each run's start, generically over whatever fields the caller's params need widened)
 - **Risk:** Low — reuses the existing server-owned execution engine and its already-tested `createCaller`-based test pattern; the main risk is ensuring real-time-equivalent behavior (scoring, phase classification) isn't accidentally distorted by however ticks are accelerated.
-- **Status:** proposed
+- **Status:** done
 
 ## Slices
 
@@ -654,7 +653,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
   - Exact parameter/level matrix for the structured sweep (which specific values of separation/alignment/cohesion weight, food regen rate, and crossbreeding on/off, and how they combine into ~20 runs) — Owner: team/plan. Block: no — `/10x-plan` can propose a concrete matrix grounded in the existing admin-configured ranges and the phase-quality model; the user can adjust.
   - Exact fixture-file format and location (e.g. `context/fixtures/` or a test-only directory, JSON vs. CSV, one file vs. one-per-run) — Owner: team/plan. Block: no.
 - **Risk:** Moderate — the first real exercise of F-08's harness at scale (4-way concurrent registration) and the first slice needing an explicit "clean before, clean after, keep only the export" lifecycle discipline; deserves the same care S-27's impl-review gave to concurrency/bounds, now applied to a batch-generation script instead of a single live-adjust mutation.
-- **Status:** proposed
+- **Status:** done
 
 ### S-34: Suggestion-quality test against the corpus
 
@@ -766,6 +765,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **F-08: (foundation) A single simulation run can be driven end-to-end through the real app's own execution path (not a bypass of the engine) with explicit parameters, allowed to tick to completion under a simulated-duration cap, have its persisted history/score captured, exported to a fixture-file record, and have its own DB/registry footprint cleaned up afterward — leaving no trace beyond the exported record.** — Archived 2026-11-15 → `context/archive/2026-11-15-corpus-generation-harness/`. Lesson: an impl-review caught two CRITICAL resource-leak bugs — `startCorpusRun` and `collectAndCleanupCorpusRun` left the shared `adminSettings` row widened and the fixture owner row undeleted whenever the wrapped tRPC call threw, leaking into state real traffic also reads — fixed with try/catch/finally before archiving. A third finding (concurrent calls can clobber each other's widened range, no serialization) was accepted as a documented risk for S-33 to design against, since this phase's own plan explicitly scoped the batch loop out.
 - **S-32: User sees, in a completed run's analysis view, how genetic diversity changed over the course of the run — not just the single final value.** — Archived 2026-11-15 → `context/archive/2026-11-15-genetic-diversity-trend/`. Lesson: —.
 - **S-30: User increases or decreases a running server-owned simulation's boid count AND predator count while it is actively running — both execution paths' object-shape, scope expanded during planning from boid-only, user's explicit choice, since `PredatorState` carries the identical energy/age shape `BoidState` does — and sees the population size change reflected in the live view.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-boid-count-adjustment/`. Lesson: —.
 - **S-29: User toggles crossbreeding on or off for a running simulation (both execution paths) and sees the effect on subsequent reproduction.** — Archived 2026-11-15 → `context/archive/2026-11-15-live-crossbreeding-toggle/`. Lesson: —.
@@ -805,3 +805,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-05: User can run several simulations in parallel and switch which one is actively viewed, without interrupting or slowing the others.** — Archived 2026-11-11 → `context/archive/2026-11-11-parallel-sim-switching/`. Lesson: —.
 - **S-01: User starts a simulation with basic boid flocking (one flock, no predators yet), watches it run in real time, stops it, and receives a basic score based on how long the population survived.** — Archived 2026-11-13 → `context/archive/2026-11-11-basic-flocking-loop/`. Lesson: verify a claimed commit-message fix is actually in that commit's diff before trusting it (see lessons.md).
 - **S-03: User sees population reproduce with inherited genes (including blended color) and can toggle inter-flock crossbreeding** — Archived 2026-11-13 → `context/archive/2026-11-13-genetic-inheritance-crossbreeding/`. Lesson: HTML number-input min/step mismatches and color-wheel hue-anchoring bugs only surface in a live manual check, not automated gates; a migration adding NOT NULL columns with no default will break this project's actual production push-based deploy procedure (see lessons.md).
+- **S-33: Maintainer generates a ~20-run structured-parameter-sweep corpus (varying flocking weights, food regen rate, and crossbreeding across a few levels each, deliberately targeting healthy-growth/crash/overshoot-recovery phases), with up to 4 runs registered and ticking concurrently at a time, each capped at 60 simulated minutes, using F-08's harness — then exports the full corpus to a reusable fixture file and cleans up every generation-time DB/registry artifact, leaving only the exported file behind.** — Archived 2026-11-15 → `context/archive/2026-11-15-parameter-sweep-corpus-generation/`. Lesson: a long (20+ minute) real run sharing the dev machine with this session's own Stop hook (which runs `npm test` on every turn) starved the run's DB throughput enough to blow even a widened polling ceiling — diagnosed only after isolated short reproductions kept succeeding while every long concurrent run failed identically; also, a fixture compressed by hand after generation (gzip) needs the generation code itself updated to produce that format, or a future re-run silently drifts back to what's committed (see lessons.md candidate).
