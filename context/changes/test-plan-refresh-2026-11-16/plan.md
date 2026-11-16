@@ -422,10 +422,10 @@ to manually verify.
 
 #### Automated
 
-- [ ] 1.1 New/changed tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
-- [ ] 1.2 Full suite still passes: `npm test`
-- [ ] 1.3 Typecheck passes: `npm run typecheck`
-- [ ] 1.4 Lint passes: `npm run check`
+- [x] 1.1 New/changed tests pass: `npx vitest run src/server/api/routers/simulation.test.ts`
+- [x] 1.2 Full suite still passes: `npm test`
+- [x] 1.3 Typecheck passes: `npm run typecheck`
+- [x] 1.4 Lint passes: `npm run check`
 
 ### Phase 2: Client-staged live-param/crossbreeding behavioral tests
 

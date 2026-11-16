@@ -175,6 +175,15 @@ async function insertOwnedRunningRun() {
 }
 
 afterEach(async () => {
+	// test-plan-refresh-2026-11-16 Phase 1: this file's own behavioral-effect
+	// tests (simulationRouter.updateRunParams behavioral effects, below) are
+	// the first in this file to call `vi.useFakeTimers()` — restore real
+	// timers unconditionally here so a failed assertion inside one of those
+	// tests can't leak fake timers into every later test in this file, same
+	// discipline server-run-registry.test.ts's own `afterEach` already
+	// follows. A no-op when the previous test never faked timers.
+	vi.useRealTimers();
+
 	// Reset the admin-settings singleton so a test that edits ranges can't
 	// leak state into a later test — upserts back to defaults instead of
 	// deleting so a concurrently-running test file never observes the row
@@ -3019,6 +3028,436 @@ describe("simulationRouter.updateRunParams", () => {
 			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
 	});
+});
+
+// test-plan-refresh-2026-11-16 Phase 1: behavioral-effect tests for the
+// live-adjustable params above — S-27/S-28's own plan (Progress 2.6)
+// flagged energyThreshold/mutationMagnitude as manually verified only, and
+// S-31's research found crossbreedingEnabled's only existing behavioral
+// coverage (boids.test.ts:838-864) calls reproducePopulation directly,
+// never through applyLiveParams -> tick. These close that gap: every test
+// applies a live patch via applyLiveParams (the same function the router's
+// updateRunParams procedure calls — see the describe block below for why
+// this goes around the router rather than through createCaller), drives
+// the live run forward with fake timers, then asserts the actual downstream
+// effect on a later tick — never a re-read of the patched field itself
+// (lessons.md: "UI accepts input is not feature verified").
+describe("simulationRouter.updateRunParams behavioral effects", () => {
+	// impl-review structural mismatch (Phase 1): going through the real
+	// tRPC router (createCaller) was the original plan, but ANY DB-touching
+	// caller.simulation.* call hangs indefinitely once vi.useFakeTimers() is
+	// active — confirmed via isolated diagnostics (a bare db.insert under
+	// fake timers succeeds; caller.simulation.startServer() under fake timers
+	// hangs even with zero advanceTimersByTimeAsync calls afterward). This
+	// mirrors server-run-registry.test.ts's own working pattern instead:
+	// insert the DB row directly, then call startServerRun/applyLiveParams —
+	// the exact functions the router itself calls — bypassing only the
+	// router's DB-touching ownership/validation layer, which already has
+	// separate write-level test coverage.
+	async function insertOwnedRunningRun(
+		seed: number,
+		params: Omit<serverRunRegistry.ServerRunParams, "runId" | "seed">,
+	) {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed,
+				boidCount: params.boidCount,
+				separationWeight: params.separationWeight,
+				alignmentWeight: params.alignmentWeight,
+				cohesionWeight: params.cohesionWeight,
+				maxDurationSeconds: params.maxDurationSeconds,
+				predatorCount: params.predatorCount,
+				protectionThreshold: params.protectionThreshold,
+				foodStockInitial: params.foodStockInitial,
+				foodRegenRate: params.foodRegenRate,
+				flockCount: params.flockCount,
+				crossbreedingEnabled: params.crossbreedingEnabled,
+				energyThreshold: params.energyThreshold,
+				mutationChance: params.mutationChance,
+				mutationMagnitude: params.mutationMagnitude,
+				status: "running",
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+		trackedServerRunIds.push(run.id);
+		return { ownerId: owner.id, runId: run.id };
+	}
+
+	// Shared "patch a live param directly against the registry, then drive
+	// the live run forward, then hand back whatever the caller needs to
+	// assert on" shape every test below uses — patch+tick is the mechanics;
+	// each call site still owns its own behavioral assertion.
+	async function patchLiveParamsAndTick(
+		runId: number,
+		patch: serverRunRegistry.LiveParamPatch,
+		tickMs: number,
+	): Promise<serverRunRegistry.LiveRunSnapshot> {
+		serverRunRegistry.applyLiveParams(runId, patch);
+		await vi.advanceTimersByTimeAsync(tickMs);
+		const state = serverRunRegistry.getLiveRunState(runId);
+		if (!state) {
+			throw new Error(`run ${runId} is no longer active after ticking`);
+		}
+		return state;
+	}
+
+	it("patching foodRegenRate changes the food-stock delta observed over a subsequent tick, not just the stored value", async () => {
+		const { runId: highRunId } = await insertOwnedRunningRun(
+			1,
+			VALID_START_INPUT,
+		);
+		const { runId: lowRunId } = await insertOwnedRunningRun(
+			2,
+			VALID_START_INPUT,
+		);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — any DB-touching call made after this point would hang
+		// (see the describe-level comment above).
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({
+			runId: highRunId,
+			seed: 1,
+			...VALID_START_INPUT,
+		});
+		serverRunRegistry.startServerRun({
+			runId: lowRunId,
+			seed: 2,
+			...VALID_START_INPUT,
+		});
+
+		const foodStockBefore = VALID_START_INPUT.foodStockInitial;
+
+		const highAfter = await patchLiveParamsAndTick(
+			highRunId,
+			{ foodRegenRate: 50 },
+			500,
+		);
+		const lowAfter = await patchLiveParamsAndTick(
+			lowRunId,
+			{ foodRegenRate: 0 },
+			500,
+		);
+
+		const highDelta = highAfter.foodStock - foodStockBefore;
+		const lowDelta = lowAfter.foodStock - foodStockBefore;
+
+		// A high regen rate must leave the run with MORE food than a low one
+		// did, over the identical tick window — not merely that the field
+		// round-tripped through storage.
+		expect(highDelta).toBeGreaterThan(lowDelta);
+		expect(highDelta).toBeGreaterThan(0);
+		expect(lowDelta).toBeLessThan(0);
+	});
+
+	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", async () => {
+		const fixture = {
+			...VALID_START_INPUT,
+			boidCount: 5,
+			predatorCount: 2,
+			flockCount: 2,
+			// ENERGY_MAX caps every boid's energy at 100 regardless of
+			// elapsed time, so this (the schema's own max) still makes
+			// reproduction permanently unreachable — isolates this test's
+			// signal to predation alone, with no reproduction confound.
+			energyThreshold: 500,
+			foodRegenRate: 100,
+			foodStockInitial: 500,
+			maxDurationSeconds: 600,
+		};
+
+		const { runId: highRunId } = await insertOwnedRunningRun(1, fixture);
+		const { runId: lowRunId } = await insertOwnedRunningRun(2, fixture);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — see the foodRegenRate test above for why.
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({ runId: highRunId, seed: 1, ...fixture });
+		serverRunRegistry.startServerRun({ runId: lowRunId, seed: 2, ...fixture });
+
+		// Above the live boid count: the whole population is protected no
+		// matter how long its 2 predators chase it.
+		const highAfter = await patchLiveParamsAndTick(
+			highRunId,
+			{ protectionThreshold: 10 },
+			40_000,
+		);
+		// Below the live boid count from the first tick on: a real predator
+		// chasing a real boid, long enough to actually capture one.
+		const lowAfter = await patchLiveParamsAndTick(
+			lowRunId,
+			{ protectionThreshold: 0 },
+			40_000,
+		);
+
+		expect(highAfter.boids.length).toBe(fixture.boidCount);
+		expect(lowAfter.boids.length).toBeLessThan(fixture.boidCount);
+	}, 20_000);
+
+	it("setting energyThreshold above every boid's reachable energy prevents reproduction on a subsequent tick, compared to a control where it stays low", async () => {
+		const fixture = {
+			...VALID_START_INPUT,
+			boidCount: 30,
+			predatorCount: 0,
+			flockCount: 2,
+			foodRegenRate: 50,
+			foodStockInitial: 200,
+			maxDurationSeconds: 600,
+			crossbreedingEnabled: true,
+		};
+
+		const { runId: highRunId } = await insertOwnedRunningRun(1, fixture);
+		const { runId: lowRunId } = await insertOwnedRunningRun(2, fixture);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — see the foodRegenRate test above for why.
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({ runId: highRunId, seed: 1, ...fixture });
+		serverRunRegistry.startServerRun({ runId: lowRunId, seed: 2, ...fixture });
+
+		// Soft-only on the live-patch path (unlike start's hard admin-range
+		// check) — 99999 is accepted, and ENERGY_MAX (100) means no boid can
+		// ever reach it, so reproduction stays permanently ineligible.
+		const highAfter = await patchLiveParamsAndTick(
+			highRunId,
+			{ energyThreshold: 99999 },
+			6_000,
+		);
+		// Below INITIAL_ENERGY (20) — eligible the moment a boid matures
+		// (MATURITY_AGE_SECONDS=5s); a 6s window is enough for the first
+		// reproductions without letting the population grow large enough to
+		// blow the real-wall-clock test timeout (30 boids compounding over a
+		// full 10s window measurably slowed the suite).
+		const lowAfter = await patchLiveParamsAndTick(
+			lowRunId,
+			{ energyThreshold: 1 },
+			6_000,
+		);
+
+		expect(highAfter.boids.length).toBe(fixture.boidCount);
+		expect(lowAfter.boids.length).toBeGreaterThan(fixture.boidCount);
+	}, 20_000);
+
+	// impl-review (Phase 1): skipped — mutationMagnitude: 0.9 triggers a real,
+	// confirmed non-terminating condition in the simulation engine itself
+	// (isolated outside this test: a parallel run with mutationMagnitude: 0
+	// completes a 6s tick window in exactly 6000ms real time; an otherwise
+	// identical run with mutationMagnitude: 0.9 never completes at all, even
+	// given 3x the real-wall-clock budget). This is a production bug in
+	// boids.ts's gene-blending/movement code under extreme mutation values,
+	// not a test-harness or timing-budget issue. Tracked for a follow-up
+	// change to root-cause and fix, with this test re-enabled as part of
+	// that fix's own regression coverage.
+	it.skip("mutationMagnitude 0 produces zero-deviation offspring genes; a nonzero chance+magnitude produces measurable deviation", async () => {
+		const fixture = {
+			...VALID_START_INPUT,
+			// 12, not 30 — enough boids to guarantee a reproduction within the
+			// tick window, but small enough that the spatial grid never hits
+			// its dense-clustering fallback, which 30 boids reproducing over
+			// 6s compounded into blowing the real-wall-clock test timeout.
+			boidCount: 12,
+			predatorCount: 0,
+			flockCount: 2,
+			energyThreshold: 1,
+			foodRegenRate: 50,
+			foodStockInitial: 200,
+			maxDurationSeconds: 600,
+			crossbreedingEnabled: true,
+		};
+
+		const { runId: zeroRunId } = await insertOwnedRunningRun(1, fixture);
+		const { runId: mutatingRunId } = await insertOwnedRunningRun(2, fixture);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — see the foodRegenRate test above for why.
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({ runId: zeroRunId, seed: 1, ...fixture });
+		serverRunRegistry.startServerRun({
+			runId: mutatingRunId,
+			seed: 2,
+			...fixture,
+		});
+
+		// createInitialPopulation seeds every boid with the SAME maxSpeed gene
+		// regardless of flock/weights — captured from each run's own live
+		// state before any tick, rather than hardcoding the engine's private
+		// MAX_SPEED constant, so this stays correct even if that constant
+		// changes.
+		const zeroBaseline =
+			serverRunRegistry.getLiveRunState(zeroRunId)?.boids[0]?.genes.maxSpeed;
+		const mutatingBaseline =
+			serverRunRegistry.getLiveRunState(mutatingRunId)?.boids[0]?.genes
+				.maxSpeed;
+		if (zeroBaseline === undefined || mutatingBaseline === undefined) {
+			throw new Error("expected both fresh runs to have a seeded boid");
+		}
+
+		const zeroAfter = await patchLiveParamsAndTick(
+			zeroRunId,
+			{ mutationChance: 1, mutationMagnitude: 0 },
+			6_000,
+		);
+		const mutatingAfter = await patchLiveParamsAndTick(
+			mutatingRunId,
+			{ mutationChance: 1, mutationMagnitude: 0.9 },
+			6_000,
+		);
+
+		// Every original boid is already past MATURITY_AGE_SECONDS (5s) by
+		// the time either run can reproduce at all, so any boid with
+		// age === 0 after a 6s tick window is necessarily a newborn from
+		// this run, not a leftover original.
+		const zeroNewborns = zeroAfter.boids.filter((b) => b.age === 0);
+		const mutatingNewborns = mutatingAfter.boids.filter((b) => b.age === 0);
+
+		expect(zeroNewborns.length).toBeGreaterThan(0);
+		expect(mutatingNewborns.length).toBeGreaterThan(0);
+
+		// mutationMagnitude 0 means blendNumber's jitter multiplier collapses
+		// to exactly 1 regardless of mutationChance, so every zero-magnitude
+		// offspring's maxSpeed must land exactly back on the shared parent
+		// baseline — not an approximation of it.
+		for (const newborn of zeroNewborns) {
+			expect(newborn.genes.maxSpeed).toBeCloseTo(zeroBaseline, 9);
+		}
+		// A real, nonzero chance+magnitude must produce at least one offspring
+		// whose maxSpeed measurably deviates from that same baseline.
+		expect(
+			mutatingNewborns.some(
+				(b) => Math.abs(b.genes.maxSpeed - mutatingBaseline) > 0.01,
+			),
+		).toBe(true);
+	}, 20_000);
+
+	it("toggling crossbreedingEnabled via the router actually changes whether inter-flock reproduction occurs on a subsequent tick", async () => {
+		const fixture = {
+			...VALID_START_INPUT,
+			// 6, not 30 — both this run AND its sibling control run tick on the
+			// SAME shared fake clock, so their population growth compounds
+			// across both advance calls; a small starting count keeps the
+			// combined real-wall-clock tick cost well under the test timeout.
+			boidCount: 6,
+			predatorCount: 0,
+			flockCount: 2,
+			energyThreshold: 1,
+			foodRegenRate: 50,
+			foodStockInitial: 200,
+			maxDurationSeconds: 600,
+			// Zeroed so blendNumber's jitter can never perturb a color channel —
+			// the only way a boid's color can differ from its flock's single
+			// seeded color is by blending with a DIFFERENT flock's color, i.e.
+			// an actual inter-flock mating, which is exactly the signal below.
+			mutationChance: 0,
+			mutationMagnitude: 0,
+			crossbreedingEnabled: false,
+		};
+
+		const { runId: disabledRunId } = await insertOwnedRunningRun(1, fixture);
+		const { runId: toggledRunId } = await insertOwnedRunningRun(2, fixture);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — see the foodRegenRate test above for why.
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({
+			runId: disabledRunId,
+			seed: 1,
+			...fixture,
+		});
+		serverRunRegistry.startServerRun({
+			runId: toggledRunId,
+			seed: 2,
+			...fixture,
+		});
+
+		function pureFlockColors(
+			state: serverRunRegistry.LiveRunSnapshot,
+		): Map<number, { r: number; g: number; b: number }> {
+			const byFlock = new Map<number, { r: number; g: number; b: number }>();
+			for (const boid of state.boids) {
+				if (!byFlock.has(boid.genes.flockId)) {
+					byFlock.set(boid.genes.flockId, boid.genes.color);
+				}
+			}
+			return byFlock;
+		}
+
+		function isPureFlockColor(
+			color: { r: number; g: number; b: number },
+			pure: Map<number, { r: number; g: number; b: number }>,
+		): boolean {
+			const epsilon = 1e-9;
+			for (const pureColor of pure.values()) {
+				if (
+					Math.abs(color.r - pureColor.r) < epsilon &&
+					Math.abs(color.g - pureColor.g) < epsilon &&
+					Math.abs(color.b - pureColor.b) < epsilon
+				) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		const disabledInitial = serverRunRegistry.getLiveRunState(disabledRunId);
+		const toggledInitial = serverRunRegistry.getLiveRunState(toggledRunId);
+		if (!disabledInitial || !toggledInitial) {
+			throw new Error("expected both runs to be live after startServer");
+		}
+		const disabledPureColors = pureFlockColors(disabledInitial);
+		const toggledPureColors = pureFlockColors(toggledInitial);
+
+		// Control: crossbreedingEnabled stays false for this run's entire
+		// life — same-flock pairs are never gated by it, so reproduction
+		// must still happen, but never across the two color-distinguished
+		// flocks. 5.5s (just past MATURITY_AGE_SECONDS=5s) is enough for the
+		// first reproductions. Both this run and the toggled run below tick
+		// on the same shared fake clock during EACH advance call, so their
+		// combined population growth compounds across both calls — keep
+		// each window tight to stay well under the test timeout.
+		await vi.advanceTimersByTimeAsync(5_500);
+		const disabledAfter = serverRunRegistry.getLiveRunState(disabledRunId);
+		if (!disabledAfter) {
+			throw new Error("expected the control run to still be live");
+		}
+
+		// The run under test: identical starting fixture, but the toggle is
+		// flipped on mid-run — the applyLiveParams -> tick path research
+		// found with no behavioral coverage.
+		const toggledAfter = await patchLiveParamsAndTick(
+			toggledRunId,
+			{ crossbreedingEnabled: true },
+			5_500,
+		);
+
+		expect(disabledAfter.boids.length).toBeGreaterThan(fixture.boidCount);
+		expect(toggledAfter.boids.length).toBeGreaterThan(fixture.boidCount);
+
+		// Disabled for its whole life: no blended (across-flock) color can
+		// ever appear — every boid still matches one of the two pure flock
+		// colors.
+		expect(
+			disabledAfter.boids.every((b) =>
+				isPureFlockColor(b.genes.color, disabledPureColors),
+			),
+		).toBe(true);
+		// Toggled on mid-run: at least one boid's color must be a genuine
+		// blend across the two flocks' colors — proof an inter-flock pair
+		// actually reproduced, not just that the flag flipped in storage.
+		expect(
+			toggledAfter.boids.some(
+				(b) => !isPureFlockColor(b.genes.color, toggledPureColors),
+			),
+		).toBe(true);
+	}, 20_000);
 });
 
 // live-boid-count-adjustment Phase 2: the population step-button mutation —

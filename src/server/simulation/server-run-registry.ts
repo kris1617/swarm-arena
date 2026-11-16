@@ -135,6 +135,11 @@ export type LiveRunSnapshot = {
 	predators: PredatorState[];
 	elapsedSeconds: number;
 	populationCapped: boolean;
+	// test-plan-refresh-2026-11-16 Phase 1: the run's current food-stock
+	// level — exposed so a behavioral test can observe foodRegenRate's
+	// actual tick-over-tick effect on the stock, not just the stored param.
+	// Mirrors `run.foodStock` (see `LiveRun`/`tick()` above) verbatim.
+	foodStock: number;
 	// live-parameter-adjustment (S-27): the run's *current* live-adjustable
 	// values — not the DB row's "started with" columns, which never change —
 	// so the live-edit panel can pre-fill from them.
@@ -151,6 +156,7 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 		predators: run.predators,
 		elapsedSeconds: run.elapsedSeconds,
 		populationCapped: run.populationCapped,
+		foodStock: run.foodStock,
 		liveParams: {
 			foodRegenRate: run.params.foodRegenRate,
 			protectionThreshold: run.params.protectionThreshold,
