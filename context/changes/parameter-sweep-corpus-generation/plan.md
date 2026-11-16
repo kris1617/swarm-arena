@@ -306,11 +306,11 @@ None — no schema changes. The exported corpus files are new, additive artifact
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run scripts/corpus/harness.test.ts`
-- [ ] 2.4 New tests confirm union-widen correctness and the concurrent-call race no longer occurs
-- [ ] 2.5 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — 9243217
+- [x] 2.2 Linting passes: `npm run check` — 9243217
+- [x] 2.3 `npx vitest run scripts/corpus/harness.test.ts` — 9243217
+- [x] 2.4 New tests confirm union-widen correctness and the concurrent-call race no longer occurs — 9243217
+- [x] 2.5 Full suite passes: `npm test` — 9243217
 
 ### Phase 3: Sweep matrix and batched generation script
 
