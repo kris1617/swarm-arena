@@ -30,6 +30,13 @@ export default defineConfig({
 			// just feedback.test.ts's own tests.
 			GITHUB_FEEDBACK_TOKEN: "test-token",
 		},
+		// vitest-parallel-flakiness: Vitest's default worker count (one per
+		// CPU core) causes CPU/IO contention under this suite's file
+		// parallelism, producing spurious testTimeout/hookTimeout failures on
+		// slow-but-correct tests. Confirmed-supported in the installed Vitest
+		// 5.1.0 — do NOT use `poolOptions`, which was removed in Vitest 4 and
+		// silently no-ops.
+		maxWorkers: 8,
 		server: {
 			// next-auth's lib/env.js does `import { NextRequest } from "next/server"`
 			// with no extension; Next ships no package.json "exports" map, so letting

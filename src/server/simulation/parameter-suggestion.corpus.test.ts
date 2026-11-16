@@ -31,5 +31,5 @@ describe("suggestParameterChange against the real parameter-sweep corpus", () =>
 		expect(result.confidence).toBe("medium");
 		expect(result.sampleSize).toBe(20);
 		expect(result.rationale).toContain("Food regen rate");
-	});
+	}, 15_000);
 });

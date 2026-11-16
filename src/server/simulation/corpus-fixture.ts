@@ -62,6 +62,13 @@ function readPersistedRecord(sweepIndex: number): PersistedCorpusRecord {
 	return JSON.parse(json) as PersistedCorpusRecord;
 }
 
+// vitest-parallel-flakiness Phase 4: the committed fixture files never
+// change during a test run, but this function is called from ≥9 places
+// across the suite — caching the computed result avoids a fresh
+// synchronous disk-read + gunzipSync of all 20 fixture files on every call,
+// cutting CPU/IO contention under Vitest's parallel-worker file execution.
+let cache: CorpusFixtureRow[] | undefined;
+
 // Loads the real, persisted 20-run parameter-sweep corpus into memory as
 // plain objects, each carrying its full reconstructed params (all 16
 // `RangedParameterName` fields) alongside its real persisted
@@ -71,7 +78,11 @@ function readPersistedRecord(sweepIndex: number): PersistedCorpusRecord {
 // uncollected run should break loudly, not silently return a short array
 // or a null score.
 export function loadCorpusFixture(): CorpusFixtureRow[] {
-	return buildSweepMatrix().map((row) => {
+	if (cache !== undefined) {
+		return cache;
+	}
+
+	cache = buildSweepMatrix().map((row) => {
 		const { sweepIndex, ...params } = row;
 		const record = readPersistedRecord(sweepIndex);
 
@@ -91,4 +102,6 @@ export function loadCorpusFixture(): CorpusFixtureRow[] {
 			endedViaExtinction: record.endedViaExtinction,
 		};
 	});
+
+	return cache;
 }

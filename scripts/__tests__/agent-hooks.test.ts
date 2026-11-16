@@ -203,7 +203,7 @@ describe("end-of-turn.sh (Stop)", () => {
 		);
 		expect(result.status).toBe(2);
 		expect(result.stderr).toContain("broken.ts");
-	});
+	}, 15_000);
 
 	it("passes (exit 0) even while the error is present, when stop_hook_active is true (retry guard)", () => {
 		writeFileSync(

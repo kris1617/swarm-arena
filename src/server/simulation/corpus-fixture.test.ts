@@ -27,7 +27,7 @@ const FULL_PARAM_FIELDS = [
 describe("loadCorpusFixture", () => {
 	it("returns exactly 20 rows", () => {
 		expect(loadCorpusFixture()).toHaveLength(20);
-	});
+	}, 15_000);
 
 	it("has sweepIndex 1..20, all present, no duplicates", () => {
 		const indices = loadCorpusFixture()

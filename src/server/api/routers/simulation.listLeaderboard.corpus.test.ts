@@ -27,7 +27,7 @@ describe("simulationRouter.listLeaderboard against the real corpus", () => {
 		const inserted = await insertCorpusRunsAsCompleted(db);
 		ownerId = inserted.ownerId;
 		runs = inserted.runs;
-	}, 30_000);
+	}, 45_000);
 
 	afterAll(async () => {
 		await cleanupCorpusDbFixture(db, ownerId);
