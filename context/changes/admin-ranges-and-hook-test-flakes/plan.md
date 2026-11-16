@@ -162,21 +162,21 @@ Prove the lock actually causes a skip under real concurrent load (not just in is
 
 #### Automated
 
-- [x] 1.1 Targeted file passes under full-suite load (2x): `npm test`
-- [x] 1.2 Typecheck passes: `npm run typecheck`
-- [x] 1.3 Lint passes: `npm run check`
+- [x] 1.1 Targeted file passes under full-suite load (2x): `npm test` — f6dd68b
+- [x] 1.2 Typecheck passes: `npm run typecheck` — f6dd68b
+- [x] 1.3 Lint passes: `npm run check` — f6dd68b
 
 ### Phase 2: Vitest-wide lock file + hook-side skip
 
 #### Automated
 
-- [ ] 2.1 Full suite passes with new globalSetup/globalTeardown (2x): `npm test`
-- [ ] 2.2 Typecheck passes: `npm run typecheck`
-- [ ] 2.3 Lint passes: `npm run check`
+- [x] 2.1 Full suite passes with new globalSetup/globalTeardown (2x): `npm test`
+- [x] 2.2 Typecheck passes: `npm run typecheck`
+- [x] 2.3 Lint passes: `npm run check`
 
 #### Manual
 
-- [ ] 2.4 Hook script's normal pass/fail report is unchanged when run alone
+- [x] 2.4 Hook script's normal pass/fail report is unchanged when run alone
 
 ### Phase 3: Deliberate concurrent-process verification + lessons.md note
 

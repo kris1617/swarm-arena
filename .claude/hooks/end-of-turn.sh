@@ -31,6 +31,7 @@ if [ "${#ROOTS[@]}" -eq 0 ]; then
 fi
 
 REPORT=""
+NOTES=""
 for ROOT in "${ROOTS[@]}"; do
   cd "$ROOT" || continue
 
@@ -56,11 +57,25 @@ $OUT
 "
   fi
 
+  # vitest.global-setup.ts holds this lock for the full lifetime of any
+  # top-level vitest invocation (manual `npm test`, or this hook's own
+  # nested run below). A live PID here means some OTHER vitest process is
+  # already running — this check runs strictly before the nested `npx
+  # vitest run` below starts, so it can never see this invocation's own
+  # not-yet-created lock. A dead PID is a stale lock from a crashed run
+  # (no globalTeardown): treat it as absent and proceed.
+  VITEST_LOCK="${TMPDIR:-/tmp}/claude-hooks/vitest.lock"
+  LOCK_PID=""
+  [ -f "$VITEST_LOCK" ] && LOCK_PID=$(cat "$VITEST_LOCK" 2>/dev/null)
+  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+    NOTES="$NOTES
+Tests skipped at $ROOT: another vitest process (pid $LOCK_PID) is already running.
+"
   # Whole unit suite runs in ~14s here (12 files, 76 tests) — fast enough to run in full
   # at end of turn, which also catches a red test in a module this turn only imported.
   # --passWithNoTests: vitest exits 1 on zero test files found, which would otherwise
   # falsely block every turn in a checkout that has none.
-  if ! OUT=$(npx --no-install vitest run --passWithNoTests 2>&1 </dev/null); then
+  elif ! OUT=$(npx --no-install vitest run --passWithNoTests 2>&1 </dev/null); then
     REPORT="$REPORT
 Test suite fails ($ROOT):
 $OUT
@@ -81,4 +96,6 @@ if [ -n "$REPORT" ]; then
 fi
 # Green: the registered checkouts are clean, start the next turn with an empty registry.
 [ -n "$SID" ] && : >"$REGISTRY" 2>/dev/null
+# Informational only (skipped, not failed) — never affects the exit code.
+[ -n "$NOTES" ] && jq -cn --arg m "$NOTES" '{systemMessage: $m}'
 exit 0

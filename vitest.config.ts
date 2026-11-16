@@ -6,6 +6,11 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// admin-ranges-and-hook-test-flakes: a PID-keyed lock held for the
+		// lifetime of this invocation, so .claude/hooks/end-of-turn.sh can
+		// detect an already-running `vitest` and skip its own nested run
+		// instead of racing it. See vitest.global-setup.ts.
+		globalSetup: ["./vitest.global-setup.ts"],
 		env: {
 			DATABASE_URL: "file:./db.sqlite",
 			NODE_ENV: "test",
