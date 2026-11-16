@@ -1,6 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
 
 import { like } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -40,13 +41,17 @@ describe("generateCorpus smoke test", () => {
 			await generateCorpus(db, outDir, matrix);
 
 			const files = readdirSync(outDir).sort();
-			expect(files).toEqual(["index.csv", "run-01.json", "run-02.json"]);
+			expect(files).toEqual(["index.csv", "run-01.json.gz", "run-02.json.gz"]);
 
 			const run1 = JSON.parse(
-				readFileSync(join(outDir, "run-01.json"), "utf-8"),
+				gunzipSync(readFileSync(join(outDir, "run-01.json.gz"))).toString(
+					"utf-8",
+				),
 			);
 			const run2 = JSON.parse(
-				readFileSync(join(outDir, "run-02.json"), "utf-8"),
+				gunzipSync(readFileSync(join(outDir, "run-02.json.gz"))).toString(
+					"utf-8",
+				),
 			);
 
 			for (const [run, row] of [
@@ -75,8 +80,8 @@ describe("generateCorpus smoke test", () => {
 			expect(lines[0]).toBe(
 				"sweepIndex,separationWeight,foodRegenRate,crossbreedingEnabled,score,finalGeneticDiversity,elapsedSeconds,endedViaExtinction,file",
 			);
-			expect(lines[1]).toContain(`run-01.json`);
-			expect(lines[2]).toContain(`run-02.json`);
+			expect(lines[1]).toContain(`run-01.json.gz`);
+			expect(lines[2]).toContain(`run-02.json.gz`);
 			expect(lines[1]?.startsWith(`${matrix[0]?.sweepIndex},`)).toBe(true);
 			expect(lines[2]?.startsWith(`${matrix[1]?.sweepIndex},`)).toBe(true);
 

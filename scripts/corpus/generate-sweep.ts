@@ -7,6 +7,7 @@
 // is Phase 4's (and this phase's own smoke test's) entry point.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 
 import { eq, inArray, like } from "drizzle-orm";
 import { vi } from "vitest";
@@ -62,8 +63,15 @@ export type CorpusExportRow = CorpusRunRecord & {
 	endedViaExtinction: boolean;
 };
 
+// impl-review finding (parameter-sweep-corpus-generation): the real 20-row
+// corpus's per-run JSON is highly repetitive (phaseHistory strings, boid
+// gene arrays) and compresses ~300x with gzip — 289MB of raw JSON becomes
+// ~916KB. Writing `.gz` directly here (rather than relying on a manual
+// post-processing step, as the first real run originally did) keeps a
+// future `npm run corpus:generate` re-run reproducing exactly what's
+// committed, instead of silently drifting back to uncompressed output.
 function runFileName(sweepIndex: number): string {
-	return `run-${String(sweepIndex).padStart(2, "0")}.json`;
+	return `run-${String(sweepIndex).padStart(2, "0")}.json.gz`;
 }
 
 // `CorpusRunRecord.history` is `unknown` (schema-less JSON column, per
@@ -167,6 +175,19 @@ async function runBatch(
 		batchParamsList,
 	);
 
+	// impl-review finding (parameter-sweep-corpus-generation): if any call in
+	// the `Promise.all` below rejects, or `pollUntilAllStopped` throws after
+	// the ceiling, `started` runs that the harness DID insert are never
+	// passed to `collectAndCleanupCorpusRun` by this invocation — their
+	// fixture owner/run rows would otherwise leak until a *future*
+	// `generateCorpus` call's defensive top-of-run cleanup happens to catch
+	// them. `startedInBatch` is populated as each `startCorpusRun` resolves
+	// (not after `Promise.all` settles) so the `catch` below can clean up
+	// every run this batch actually started, even the ones whose later
+	// polling/collection step never ran.
+	const startedInBatch: { runId: number; ownerId: string }[] = [];
+	const collectedOwnerIds = new Set<string>();
+
 	try {
 		const started = await Promise.all(
 			batch.map(async (row) => {
@@ -174,6 +195,7 @@ async function runBatch(
 				const { runId, ownerId } = await startCorpusRun(db, params, {
 					skipRangeWiden: true,
 				});
+				startedInBatch.push({ runId, ownerId });
 				return { sweepIndex, row, runId, ownerId };
 			}),
 		);
@@ -186,13 +208,27 @@ async function runBatch(
 
 		for (const { row, runId, ownerId } of started) {
 			const record = await collectAndCleanupCorpusRun(db, ownerId, runId);
+			collectedOwnerIds.add(ownerId);
 			const exportRow = buildExportRow(record, row);
 			writeFileSync(
 				join(outDir, runFileName(exportRow.sweepIndex)),
-				JSON.stringify(exportRow, null, 2),
+				gzipSync(JSON.stringify(exportRow, null, 2)),
 			);
 			csvRows.push(buildCsvLine(exportRow));
 		}
+	} catch (error) {
+		// Clean up every run this batch actually started but never reached
+		// `collectAndCleanupCorpusRun` for (a rejected start, or a
+		// `pollUntilAllStopped` ceiling throw, leaves these otherwise
+		// orphaned until some *future* `generateCorpus` call's defensive
+		// cleanup happens to catch them) — see this function's own comment
+		// above `startedInBatch`.
+		await Promise.all(
+			startedInBatch
+				.filter((s) => !collectedOwnerIds.has(s.ownerId))
+				.map((s) => db.delete(users).where(eq(users.id, s.ownerId))),
+		);
+		throw error;
 	} finally {
 		// `ensureAdminRangesAdmitForBatch` only widens and returns the
 		// pre-widen snapshot — it does not restore for the caller. Mirrors

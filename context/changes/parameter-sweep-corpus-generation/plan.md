@@ -25,7 +25,7 @@ Generate and export the full ~20-run structured parameter-sweep corpus (roadmap 
 
 ## Desired End State
 
-Running `npm run corpus:generate` once produces `context/fixtures/parameter-sweep-corpus/run-01.json` through `run-20.json` (each a `CorpusRunRecord`-shaped export of one completed run) plus `context/fixtures/parameter-sweep-corpus/index.csv` (one row per run: swept params, score, `finalGeneticDiversity`, `elapsedSeconds`, whether it ended via extinction, and its JSON filename). No DB rows or live registry entries from generation survive the run. Re-running `npm test` is unaffected (the generation test is excluded from the default suite). The corpus, once generated, is committed to the repo so S-34/S-35 never need to regenerate it.
+Running `npm run corpus:generate` once produces `context/fixtures/parameter-sweep-corpus/run-01.json.gz` through `run-20.json.gz` (each a gzip-compressed `CorpusRunRecord`-shaped export of one completed run — impl-review: raw JSON compresses ~300x given its repetitive structure, avoiding a 289MB addition to repo size for ~916KB) plus `context/fixtures/parameter-sweep-corpus/index.csv` (one row per run: swept params, score, `finalGeneticDiversity`, `elapsedSeconds`, whether it ended via extinction, and its JSON filename). No DB rows or live registry entries from generation survive the run. Re-running `npm test` is unaffected (the generation test is excluded from the default suite). The corpus, once generated, is committed to the repo so S-34/S-35 never need to regenerate it.
 
 ### Verification
 
@@ -226,7 +226,7 @@ Wire a discoverable `corpus:generate` npm script (excluded from the default `npm
 
 **Intent**: A discoverable, manually-invoked command that runs the full-generation test through the dedicated config from item 2, raising the timeout well past Vitest's 5-second default, since even with Phase 1's fix this is a genuinely long one-time run (up to 5 sequential batches, each needing to tick up to 225,000 times per run in the worst case before any extinction shortcut applies).
 
-**Contract**: `"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=3600000"` (60 minutes per test — widened from an initial 20-minute budget after the real run showed ordinary machine contention, such as another test suite running concurrently, can slow real wall-clock throughput enough to starve a shorter budget even though per-tick computation itself is fast; not a CI budget).
+**Contract**: `"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=14400000"` (4 hours per test — widened twice, from an initial 20-minute budget to 60 minutes then to 4 hours, after real runs showed ordinary machine contention, such as another test suite running concurrently, can slow real wall-clock throughput enough to starve a shorter budget even though per-tick computation itself is fast; not a CI budget).
 
 #### 4. The full-matrix generation test
 
@@ -243,7 +243,7 @@ Wire a discoverable `corpus:generate` npm script (excluded from the default `npm
 - Type checking passes: `npm run typecheck`
 - Linting passes: `npm run check`
 - `npm test` still excludes `generate-sweep.full.test.ts` but still runs `generate-sweep.smoke.test.ts` (confirm `npm test` completes in roughly its prior duration, not 20+ minutes longer)
-- `npm run corpus:generate` completes successfully and produces `context/fixtures/parameter-sweep-corpus/run-01.json` through `run-20.json` plus `index.csv`
+- `npm run corpus:generate` completes successfully and produces `context/fixtures/parameter-sweep-corpus/run-01.json.gz` through `run-20.json.gz` plus `index.csv`
 
 #### Manual Verification:
 

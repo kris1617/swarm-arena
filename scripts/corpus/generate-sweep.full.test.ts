@@ -18,6 +18,7 @@
 // this test's purpose as the real generation run.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
 
 import { like } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -60,16 +61,16 @@ describe("generateCorpus full-matrix generation", () => {
 
 			const files = readdirSync(OUT_DIR).sort();
 			const expectedRunFiles = matrix.map(
-				(row) => `run-${String(row.sweepIndex).padStart(2, "0")}.json`,
+				(row) => `run-${String(row.sweepIndex).padStart(2, "0")}.json.gz`,
 			);
 			expect(files).toEqual(["index.csv", ...expectedRunFiles].sort());
 
 			const seenPhases = new Set<PopulationPhase>();
 
 			for (const row of matrix) {
-				const fileName = `run-${String(row.sweepIndex).padStart(2, "0")}.json`;
+				const fileName = `run-${String(row.sweepIndex).padStart(2, "0")}.json.gz`;
 				const record = JSON.parse(
-					readFileSync(join(OUT_DIR, fileName), "utf-8"),
+					gunzipSync(readFileSync(join(OUT_DIR, fileName))).toString("utf-8"),
 				);
 
 				expect(record.sweepIndex).toBe(row.sweepIndex);
@@ -108,7 +109,7 @@ describe("generateCorpus full-matrix generation", () => {
 			const dataLines = lines.slice(1);
 			expect(dataLines).toHaveLength(20);
 			for (const row of matrix) {
-				const fileName = `run-${String(row.sweepIndex).padStart(2, "0")}.json`;
+				const fileName = `run-${String(row.sweepIndex).padStart(2, "0")}.json.gz`;
 				expect(
 					dataLines.some(
 						(line) =>
