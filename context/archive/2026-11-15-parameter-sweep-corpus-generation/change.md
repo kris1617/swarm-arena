@@ -1,10 +1,10 @@
 ---
 change_id: parameter-sweep-corpus-generation
 title: Generate and export the full parameter-sweep corpus
-status: impl_reviewed
+status: archived
 created: 2026-11-15
 updated: 2026-11-16
-archived_at: null
+archived_at: 2026-11-16T14:06:32Z
 ---
 
 ## Notes
