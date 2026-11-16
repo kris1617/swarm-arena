@@ -9,7 +9,109 @@ tags: [research, codebase, admin-settings, flaky-tests, race-condition, contenti
 status: complete
 last_updated: 2026-11-16
 last_updated_by: Claude Sonnet 5
+last_updated_note: "Two addenda below: the first found a different crash site (FK violation) than originally hypothesized; the second traced that to cross-process test-execution contamination, not a real single-process bug — see the second addendum's Conclusion for the final, reconciled finding."
 ---
+
+## Addendum (2026-11-16, during Phase 2 implementation): Bug 1's real root cause
+
+Phase 1's instrumentation and Phase 2's bounded reproduction attempt
+(see plan.md Phase 3) **disproved this document's own original hypothesis**
+for Bug 1. The instrumentation around `getOrSeedAdminSettings`'s
+check-then-insert showed, across every captured failure, that the
+function's own SELECT always found the row — its insert branch was never
+reached. The actual error, captured via a temporary diagnostic catch
+added directly to the failing test, is:
+
+```
+LibsqlError: SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed
+  at insertRunningSimulation (src/server/api/routers/simulation.ts:308)
+  insert into ".bootstrap-scaffold_simulation_run" (..., "userId", ...)
+  params: ["test-user-id", ...]
+```
+
+`SESSION.user.id` (`simulation.test.ts:87`) is a fabricated literal,
+`"test-user-id"`, with no corresponding row in `users` — unlike every
+other fixture user in this file, which is inserted for real via
+`db.insert(users).values({ email: ... })` before use. `SESSION`'s own
+comment (`:79-85`) documents a now-stale assumption: when written, no
+code path reachable through this fabricated session touched a
+foreign-key-checked table. `insertRunningSimulation`'s insert into
+`simulation_run` (added later, references `users.id`) does.
+
+**Unresolved at the time this addendum was first written**: the file has
+47 call sites reaching the same `insertRunningSimulation` insert via the
+same `SESSION`, but only one specific test was ever observed failing this
+way, and why foreign-key enforcement appeared intermittent for the same
+code path was not yet explained.
+
+## Second addendum (2026-11-16, later the same session): the mystery resolved — cross-process contamination, not a single-process bug
+
+Further instrumentation (logging the actual `boidCount.max` value
+`getOrSeedAdminSettings` returned, not just found/not-found) directly
+confirmed a **stale read**: a failing run showed `boidCount.max=500` (the
+untouched default) immediately after `updateParameterRanges` had just
+written `max: 20` and been fully awaited — `checkAgainstAdminRanges`
+validated against the stale value, let `boidCount: 50` through, and
+*that* unvalidated value reached the real `insertRunningSimulation`
+insert, which is what actually threw (the FK violation from the first
+addendum, or in other captures, nothing — the insert just silently
+succeeded with a bad config).
+
+This stale-read symptom was independently reproduced in `harness.test.ts`
+too (`ensureAdminRangesAdmit`'s own "widens only the fields..." test:
+expected `max: 3600`, got `max: 600`, the default) — at first this looked
+like confirmation of a genuine, shared, single-process read-after-write
+bug affecting both files. It was not. Tracing the timing of every
+captured failure revealed each one coincided with a **second, concurrent
+process** also touching `admin_settings`:
+
+- Several captures coincided with this research's *own* deliberate
+  "create load via concurrent `npm test` invocations" methodology — each
+  `npm test` is a **separate OS process**, and Vitest's `fileParallelism:
+  false` (the `vitest-parallel-flakiness` fix) only serializes files
+  *within one process's* Vitest run. Two separate `npm test` processes
+  running at the same time each get their own independent
+  "serialized-shared-state" project with zero coordination between them —
+  recreating the exact cross-file race `vitest-parallel-flakiness` fixed,
+  just one level up, at the cross-*process* level instead of
+  cross-worker-within-one-process.
+- One capture coincided with this project's own Stop hook (`.claude/hooks/*`),
+  which runs its own test invocation automatically at the end of every
+  agent turn — an uncontrollable second process from the perspective of
+  whatever reproduction attempt happens to be running in the background at
+  that moment.
+
+**Decisive test**: a 40-attempt batch of `simulation.test.ts` +
+`harness.test.ts` together, run strictly one at a time with no other
+`vitest`/`npm test` process verified running (`pgrep` checked immediately
+before starting), came back **40/40 clean, zero failures** — a dramatic
+contrast to every earlier measurement (ranging from ~15% to ~80%
+depending on how much concurrent noise was present at the time).
+
+**Conclusion**: Bug 1, as originally hypothesized (a TOCTOU in
+`getOrSeedAdminSettings`/`getOrSeedAdminSettingsRanges`'s check-then-insert),
+is very likely **not a real single-process bug**. Every observed failure
+throughout this entire investigation — and, in retrospect, likely several
+observed during `vitest-parallel-flakiness`'s own Phase 5 stress-testing
+too — is adequately explained by cross-process contamination: either
+self-inflicted (running multiple `npm test` invocations concurrently to
+"create load") or environmental (this repo's own Stop hook firing an
+uncontrollable second test process at every turn boundary). The
+underlying `SESSION.user.id = "test-user-id"` fragility (first addendum)
+is still real and still worth fixing as a hygiene improvement — a
+fabricated session id with no corresponding `users` row is a landmine
+regardless of how often it's actually triggered — but it is not, and was
+likely never, a flaky-test-causing bug under correct single-process test
+execution.
+
+**New operational finding, independent of any code bug**: this project's
+test suite (and by extension any project sharing the same `db.sqlite`
+single-file-SQLite-for-tests setup) must never have two `vitest run`/`npm
+test` invocations active against the same database file at the same time
+— including the Stop hook's own automatic invocation overlapping with a
+manually-started one. `vitest-parallel-flakiness`'s Projects-based
+serialization only protects against concurrency *within* one Vitest
+process; it provides no protection at all across separate OS processes.
 
 # Research: Root cause of two pre-existing flaky tests surfaced by vitest-parallel-flakiness's stress testing
 

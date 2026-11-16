@@ -1,6 +1,14 @@
 import type { TRPCError } from "@trpc/server";
 import { and, count, eq } from "drizzle-orm";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
@@ -77,16 +85,35 @@ const VALID_STOP_EXTRAS = {
 
 // A minimal but type-correct session (see the `declare module "next-auth"`
 // augmentation in ~/server/auth/config.ts) — just enough for
-// `protectedProcedure`'s middleware to pass. The FR-018 combined-cap check
-// (S-04: now a runtime check against `adminSettings.maxObjectCount`
-// inside `insertRunningSimulation`, not a static zod `.refine()`) does
-// read the DB to fetch/seed `adminSettings` — but never reaches a FK on
-// this fabricated session's userId, since `adminSettings` has no such
-// reference.
-const SESSION = {
-	user: { id: "test-user-id", role: "member" as const, elevatedUntil: null },
-	expires: new Date(Date.now() + 60_000).toISOString(),
+// `protectedProcedure`'s middleware to pass. Its `user.id` used to be a
+// fabricated literal with no corresponding `users` row — fine for most call
+// sites, but `insertRunningSimulation`'s insert into `simulation_run`
+// references `users.id`, so a fabricated id intermittently threw a FOREIGN
+// KEY constraint violation when a test actually reached that path. The real
+// row is inserted once in `beforeAll` below and its generated id assigned
+// here, same pattern as every other fixture owner in this file.
+let SESSION: {
+	user: { id: string; role: "member"; elevatedUntil: null };
+	expires: string;
 };
+
+beforeAll(async () => {
+	const [sessionUser] = await db
+		.insert(users)
+		.values({ email: `session-fixture-${crypto.randomUUID()}@example.com` })
+		.returning({ id: users.id });
+	if (!sessionUser) {
+		throw new Error("failed to insert SESSION fixture user");
+	}
+	SESSION = {
+		user: { id: sessionUser.id, role: "member", elevatedUntil: null },
+		expires: new Date(Date.now() + 60_000).toISOString(),
+	};
+});
+
+afterAll(async () => {
+	await db.delete(users).where(eq(users.id, SESSION.user.id));
+});
 
 // Owner ids from fixtures inserted by `insertOwnedRunningRun()` in this test
 // run, so `afterEach` can clean each one up via cascade delete.
