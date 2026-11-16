@@ -301,4 +301,40 @@ describe("computeSingleRunTick", () => {
 		// produces no offspring, per boids.ts's reproducePopulation contract.
 		expect(result.boids).toHaveLength(2);
 	});
+
+	// parameter-sweep-corpus-generation Phase 1: before this phase,
+	// cohesionSamples/foodRatioSamples/populationCountSamples/
+	// populationDensitySamples/geneticDiversitySamples/phaseHistory were each
+	// rebuilt via `[...array, next]` every tick — a full copy per tick — and
+	// phaseHistoryWindow additionally `.map()`'d over the entire grown
+	// history every tick, making total cost grow faster than linearly with
+	// tick count. A corpus run needs up to 225,000 ticks
+	// (TICK_INTERVAL_MS=16 x maxDurationSeconds=3600); this test proves
+	// several thousand ticks complete well within a generous wall-clock
+	// budget, not an exact duration (timing assertions are inherently
+	// approximate, so the budget below is wide margin, not a tight bound).
+	it("completes several thousand ticks well within a generous wall-clock budget", () => {
+		const params = { ...PARAMS, maxDurationSeconds: 1_000_000 };
+		const tickCount = 20_000;
+
+		const startedAt = Date.now();
+		let timestamp = 16;
+		let state: ReturnType<typeof computeSingleRunTick> = computeSingleRunTick(
+			buildState({ lastTimestamp: 0 }),
+			timestamp,
+			params,
+		);
+		for (let i = 1; i < tickCount; i++) {
+			timestamp += 16;
+			state = computeSingleRunTick(state, timestamp, params);
+		}
+		const elapsedMs = Date.now() - startedAt;
+
+		expect(state.cohesionSamples).toHaveLength(tickCount);
+		expect(state.shouldStop).toBe(false);
+		// Generous budget: the O(n^2) pre-fix behavior would blow well past
+		// this for 20,000 ticks; the O(1)-amortized mutate-in-place fix
+		// finishes in a small fraction of it.
+		expect(elapsedMs).toBeLessThan(5_000);
+	}, 30_000);
 });

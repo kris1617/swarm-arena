@@ -946,6 +946,74 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// parameter-sweep-corpus-generation Phase 1: computeSingleRunTick now
+	// mutates its six sample arrays (cohesionSamples, foodRatioSamples,
+	// populationCountSamples, populationDensitySamples,
+	// geneticDiversitySamples, phaseHistory) in place and returns the same
+	// reference, rather than rebuilding a fresh array every tick. That makes
+	// `snapshotServerRun`'s returned arrays live references into whatever the
+	// run was using — this test proves nothing can retroactively change the
+	// values already captured in a snapshot once it's taken: snapshotting one
+	// run clears that run's own interval (no further mutation can reach its
+	// arrays), and a second, still-ticking run's arrays are entirely separate
+	// objects, so ticking it further must never perturb the first run's
+	// already-snapshotted values.
+	it("snapshotted sample arrays are not retroactively mutated by a different run still ticking", async () => {
+		vi.useFakeTimers();
+		const { runId: snapshotRunId } = await insertOwnedRunningRun(14);
+		const { runId: otherRunId } = await insertOwnedRunningRun(14);
+		activeRunIds.push(otherRunId);
+
+		startServerRun({
+			runId: snapshotRunId,
+			seed: 14,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		startServerRun({
+			runId: otherRunId,
+			seed: 14,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(160);
+
+		const snapshot = snapshotServerRun(snapshotRunId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+		const capturedCohesionSamples = [...snapshot.cohesionSamples];
+		const capturedFoodRatioSamples = [...snapshot.foodRatioSamples];
+		const capturedPopulationCountSamples = [...snapshot.populationCountSamples];
+		const capturedPopulationDensitySamples = [
+			...snapshot.populationDensitySamples,
+		];
+		const capturedGeneticDiversitySamples = [
+			...snapshot.geneticDiversitySamples,
+		];
+		const capturedPhaseHistory = [...snapshot.phaseHistory];
+
+		// Only `otherRunId` is still registered/ticking; `snapshotRunId`'s
+		// interval was cleared by `snapshotServerRun` above.
+		await vi.advanceTimersByTimeAsync(320);
+
+		expect(snapshot.cohesionSamples).toEqual(capturedCohesionSamples);
+		expect(snapshot.foodRatioSamples).toEqual(capturedFoodRatioSamples);
+		expect(snapshot.populationCountSamples).toEqual(
+			capturedPopulationCountSamples,
+		);
+		expect(snapshot.populationDensitySamples).toEqual(
+			capturedPopulationDensitySamples,
+		);
+		expect(snapshot.geneticDiversitySamples).toEqual(
+			capturedGeneticDiversitySamples,
+		);
+		expect(snapshot.phaseHistory).toEqual(capturedPhaseHistory);
+
+		await stopServerRun(otherRunId);
+		activeRunIds.length = 0;
+	});
+
 	// impl-review (area-aware-population-insight, F1): a `savedState` row
 	// written by `savePause` before this field existed has no
 	// `populationDensitySamples` key — the cast at this function's call site

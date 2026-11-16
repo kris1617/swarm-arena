@@ -1290,7 +1290,10 @@ export type PopulationPhase =
 	| "crash"
 	| "recovery";
 
-const PHASE_WINDOW_SIZE = 20;
+// Exported so single-run-lifecycle.ts can window its phaseHistoryWindow
+// build to the same size this function actually reads, instead of
+// hardcoding a second, driftable copy of this literal.
+export const PHASE_WINDOW_SIZE = 20;
 const OVERSHOOT_FOOD_RATIO_THRESHOLD = 0.3;
 const CRASH_POPULATION_DROP_THRESHOLD = 0.1; // 10% decline over the window
 

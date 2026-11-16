@@ -3,6 +3,7 @@ import {
 	classifyPopulationPhase,
 	computeCohesion,
 	computeGeneticDiversity,
+	PHASE_WINDOW_SIZE,
 	type PopulationPhase,
 	type PredatorState,
 	runTick,
@@ -121,18 +122,21 @@ export function computeSingleRunTick(
 		},
 	);
 
-	const nextCohesionSamples = [
-		...state.cohesionSamples,
-		computeCohesion(nextBoids, params.worldSize),
-	];
-	const nextFoodRatioSamples = [
-		...state.foodRatioSamples,
-		foodAvailabilityRatio,
-	];
-	const nextPopulationCountSamples = [
-		...state.populationCountSamples,
-		nextBoids.length,
-	];
+	// Mutate-in-place growth: these six arrays are never read for referential
+	// identity/immutability by either consumer (simulation-canvas.tsx's refs,
+	// server-run-registry.ts's reassigned `run` object), so pushing onto the
+	// caller-owned array and returning that same reference turns per-tick
+	// cost from O(current length) (full-array-copy rebuild) to O(1)
+	// amortized. Safe per the plan's snapshot/resume re-check: snapshotServerRun
+	// clears the run's interval before handing back these references (no
+	// further mutation can occur afterward), and resumeServerRun only ever
+	// receives a freshly-deserialized DB snapshot, never a live reference.
+	const nextCohesionSamples = state.cohesionSamples;
+	nextCohesionSamples.push(computeCohesion(nextBoids, params.worldSize));
+	const nextFoodRatioSamples = state.foodRatioSamples;
+	nextFoodRatioSamples.push(foodAvailabilityRatio);
+	const nextPopulationCountSamples = state.populationCountSamples;
+	nextPopulationCountSamples.push(nextBoids.length);
 	// S-25 (FR-010 full, FR-035): one raw density sample per tick — combined
 	// boid+predator population ÷ the run's full configured 3D volume.
 	// Normalization against the run's own first sample happens once, inside
@@ -140,29 +144,42 @@ export function computeSingleRunTick(
 	const volume = params.worldSize.x * params.worldSize.y * params.worldSize.z;
 	const rawDensity =
 		volume > 0 ? (nextBoids.length + nextPredators.length) / volume : 0;
-	const nextPopulationDensitySamples = [
-		...state.populationDensitySamples,
-		rawDensity,
-	];
+	const nextPopulationDensitySamples = state.populationDensitySamples;
+	nextPopulationDensitySamples.push(rawDensity);
 	// genetic-diversity-trend Phase 1: one per-tick sample, computed from the
 	// tick's resulting boid population's genes — same `nextBoids` array the
 	// other per-tick computations above already read.
-	const nextGeneticDiversitySamples = [
-		...state.geneticDiversitySamples,
+	const nextGeneticDiversitySamples = state.geneticDiversitySamples;
+	nextGeneticDiversitySamples.push(
 		computeGeneticDiversity(nextBoids.map((b) => b.genes)),
-	];
-	const phaseHistoryWindow = nextPopulationCountSamples.map(
+	);
+	// classifyPopulationPhase only ever reads its last PHASE_WINDOW_SIZE
+	// entries internally (boids.ts's own `history.slice(-PHASE_WINDOW_SIZE)`),
+	// so building phaseHistoryWindow from the full history here was pure
+	// per-tick waste once the arrays grow long. Each tick takes a fresh
+	// slice (never cached across ticks) since nextPopulationCountSamples/
+	// nextFoodRatioSamples are now the same mutated array object tick over
+	// tick — `.slice` itself always returns a new array, so this stays
+	// correct as long as it's taken fresh here, which it is.
+	const windowedPopulationCountSamples = nextPopulationCountSamples.slice(
+		-PHASE_WINDOW_SIZE,
+	);
+	const windowedFoodRatioSamples = nextFoodRatioSamples.slice(
+		-PHASE_WINDOW_SIZE,
+	);
+	const phaseHistoryWindow = windowedPopulationCountSamples.map(
 		(populationCount, index) => ({
 			populationCount,
 			foodAvailabilityRatio:
-				nextFoodRatioSamples[index] ?? foodAvailabilityRatio,
+				windowedFoodRatioSamples[index] ?? foodAvailabilityRatio,
 		}),
 	);
 	const nextPhase = classifyPopulationPhase(
 		phaseHistoryWindow,
 		state.phaseHistory.at(-1) ?? null,
 	);
-	const nextPhaseHistory = [...state.phaseHistory, nextPhase];
+	const nextPhaseHistory = state.phaseHistory;
+	nextPhaseHistory.push(nextPhase);
 
 	const nextElapsedSeconds = state.elapsedSeconds + dtSeconds;
 	const shouldStop =
