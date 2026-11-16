@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
-import { adminSettings, simulationRuns, users } from "~/server/db/schema";
+import { resetAdminSettingsToDefaults } from "~/server/db/admin-settings-test-reset";
+import { simulationRuns, users } from "~/server/db/schema";
 import type { RangedParameterName } from "~/server/simulation/parameter-ranges";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import * as serverRunRegistry from "~/server/simulation/server-run-registry";
@@ -148,9 +149,10 @@ async function insertOwnedRunningRun() {
 
 afterEach(async () => {
 	// Reset the admin-settings singleton so a test that edits ranges can't
-	// leak state into a later test — `getOrSeedAdminSettings` reseeds the
-	// default row on next read.
-	await db.delete(adminSettings);
+	// leak state into a later test — upserts back to defaults instead of
+	// deleting so a concurrently-running test file never observes the row
+	// as briefly absent (see admin-settings-test-reset.ts).
+	await resetAdminSettingsToDefaults(db);
 
 	for (const runId of trackedServerRunIds) {
 		await stopServerRun(runId);

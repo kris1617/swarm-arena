@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
-import { adminSettings, simulationRuns, users } from "~/server/db/schema";
+import { resetAdminSettingsToDefaults } from "~/server/db/admin-settings-test-reset";
+import { simulationRuns, users } from "~/server/db/schema";
 import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import { stopServerRun } from "~/server/simulation/server-run-registry";
 import {
@@ -70,9 +71,10 @@ async function pump<T>(promise: Promise<T>): Promise<T> {
 afterEach(async () => {
 	vi.useRealTimers();
 	// Same reset discipline as simulation.test.ts's afterEach — a test that
-	// widens ranges can't leak state into a later test; getOrSeedAdminSettings
-	// (and this module's own duplicate) reseeds the default row on next read.
-	await db.delete(adminSettings);
+	// widens ranges can't leak state into a later test. Upserts back to
+	// defaults instead of deleting so a concurrently-running test file never
+	// observes the row as briefly absent (see admin-settings-test-reset.ts).
+	await resetAdminSettingsToDefaults(db);
 });
 
 describe("ensureAdminRangesAdmit", () => {

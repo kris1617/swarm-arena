@@ -7,7 +7,8 @@ import { like } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
-import { adminSettings, users } from "~/server/db/schema";
+import { resetAdminSettingsToDefaults } from "~/server/db/admin-settings-test-reset";
+import { users } from "~/server/db/schema";
 import { generateCorpus } from "./generate-sweep";
 import { buildSweepMatrix, type SweepRunParams } from "./sweep-matrix";
 
@@ -24,8 +25,11 @@ function buildSmokeMatrix(): SweepRunParams[] {
 afterEach(async () => {
 	vi.useRealTimers();
 	// Same reset discipline harness.test.ts's own afterEach uses — a run
-	// that widened admin ranges can't leak state into a later test.
-	await db.delete(adminSettings);
+	// that widened admin ranges can't leak state into a later test. Upserts
+	// back to defaults instead of deleting so a concurrently-running test
+	// file never observes the row as briefly absent (see
+	// admin-settings-test-reset.ts).
+	await resetAdminSettingsToDefaults(db);
 	// Defensive — the orchestrator's own `collectAndCleanupCorpusRun`
 	// already deletes each fixture owner, but a test that threw mid-run
 	// could leave one behind otherwise.
