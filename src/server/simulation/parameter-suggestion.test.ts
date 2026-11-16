@@ -162,4 +162,27 @@ describe("suggestParameterChange", () => {
 			expect(result.rationale).toContain("6");
 		}
 	});
+
+	it("picks a boolean parameter (crossbreedingEnabled) when it has the strongest correlation", () => {
+		// crossbreedingEnabled is the only field that varies — RANGED_PARAMETER_NAMES
+		// grew to include booleans after the heuristic was built on a
+		// "numeric-only" assumption an archived plan-review asserted; this
+		// confirms suggestParameterChange's `Number()` coercion lets a boolean
+		// candidate actually win. `true` rows score far higher than `false`
+		// rows, an unambiguous, large gap so the assertion isn't sensitive to
+		// iteration-order tie-breaking.
+		const crossbreedingValues = [true, false, true, false, true];
+		const scores = [100, 10, 100, 10, 100];
+
+		const rows = scores.map((score, i) =>
+			makeRow(score, { crossbreedingEnabled: crossbreedingValues[i] }),
+		);
+
+		const result = suggestParameterChange(rows);
+		expect(result.status).toBe("ok");
+		if (result.status === "ok") {
+			expect(result.parameter).toBe("crossbreedingEnabled");
+			expect(result.direction).toBe("increase");
+		}
+	});
 });

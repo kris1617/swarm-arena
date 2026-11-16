@@ -208,7 +208,7 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 3.1 Unit test passes: npx vitest run src/server/simulation/parameter-suggestion.test.ts
-- [ ] 3.2 Full suite stays green: npm test
-- [ ] 3.3 Type checking passes: npm run typecheck
-- [ ] 3.4 Linting passes: npm run check
+- [x] 3.1 Unit test passes: npx vitest run src/server/simulation/parameter-suggestion.test.ts
+- [x] 3.2 Full suite stays green: npm test
+- [x] 3.3 Type checking passes: npm run typecheck
+- [x] 3.4 Linting passes: npm run check
