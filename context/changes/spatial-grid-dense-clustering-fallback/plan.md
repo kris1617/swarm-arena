@@ -268,8 +268,8 @@ None — no schema changes, no persisted-data migration. The new `hasWarnedDense
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts src/server/simulation/server-run-registry.test.ts` (existing + new persistence tests)
-- [ ] 3.4 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` (existing tests, plus new multi-tick persistence test)
-- [ ] 3.5 Full suite passes: `npm test`
+- [x] 3.1 Type checking passes: `npm run typecheck` — 6907911
+- [x] 3.2 Linting passes: `npm run check` — 6907911
+- [x] 3.3 `npx vitest run src/server/simulation/single-run-lifecycle.test.ts src/server/simulation/server-run-registry.test.ts` (existing + new persistence tests) — 6907911
+- [x] 3.4 `npx vitest run src/app/simulation/_components/simulation-canvas.test.tsx` (existing tests, plus new multi-tick persistence test) — 6907911
+- [x] 3.5 Full suite passes: `npm test` — 6907911
