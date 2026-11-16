@@ -40,6 +40,13 @@ describe("generateCorpus smoke test", () => {
 	it("writes per-run JSON files and an index.csv, and leaves no fixture owners behind", async () => {
 		const outDir = mkdtempSync(join(tmpdir(), "corpus-smoke-"));
 		try {
+			const baselineIds = new Set(
+				(
+					await db.query.users.findMany({
+						where: (t, { like }) => like(t.email, "corpus-%@example.com"),
+					})
+				).map((u) => u.id),
+			);
 			const matrix = buildSmokeMatrix();
 
 			await generateCorpus(db, outDir, matrix);
@@ -89,10 +96,11 @@ describe("generateCorpus smoke test", () => {
 			expect(lines[1]?.startsWith(`${matrix[0]?.sweepIndex},`)).toBe(true);
 			expect(lines[2]?.startsWith(`${matrix[1]?.sweepIndex},`)).toBe(true);
 
-			const strayOwners = await db.query.users.findMany({
+			const afterOwners = await db.query.users.findMany({
 				where: (t, { like }) => like(t.email, "corpus-%@example.com"),
 			});
-			expect(strayOwners).toHaveLength(0);
+			const newStrayOwners = afterOwners.filter((u) => !baselineIds.has(u.id));
+			expect(newStrayOwners).toHaveLength(0);
 		} finally {
 			rmSync(outDir, { recursive: true, force: true });
 		}

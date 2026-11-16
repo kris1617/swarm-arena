@@ -434,9 +434,9 @@ changes, no production behavior changes.
 
 #### Automated
 
-- [ ] 2.1 Unit test passes: npx vitest run scripts/corpus/generate-sweep.smoke.test.ts
-- [ ] 2.2 Type checking passes: npm run typecheck
-- [ ] 2.3 Linting passes: npm run check
+- [x] 2.1 Unit test passes: npx vitest run scripts/corpus/generate-sweep.smoke.test.ts
+- [x] 2.2 Type checking passes: npm run typecheck
+- [x] 2.3 Linting passes: npm run check
 
 ### Phase 3: Scope retry-worker.test.ts's assertions to its own report IDs
 
