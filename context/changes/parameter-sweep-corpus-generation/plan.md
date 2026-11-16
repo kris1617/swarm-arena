@@ -296,11 +296,11 @@ None — no schema changes. The exported corpus files are new, additive artifact
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 Full suite passes: `npm test`
-- [ ] 1.4 New regression test demonstrates snapshot/resume array independence
-- [ ] 1.5 New/extended test proves a several-thousand-tick run completes well within the existing test timeout
+- [x] 1.1 Type checking passes: `npm run typecheck` — 247632c
+- [x] 1.2 Linting passes: `npm run check` — 247632c
+- [x] 1.3 Full suite passes: `npm test` — 247632c
+- [x] 1.4 New regression test demonstrates snapshot/resume array independence — 247632c
+- [x] 1.5 New/extended test proves a several-thousand-tick run completes well within the existing test timeout — 247632c
 
 ### Phase 2: Batch-safe admin-range widening
 
