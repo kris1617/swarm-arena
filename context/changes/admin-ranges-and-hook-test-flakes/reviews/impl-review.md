@@ -29,7 +29,7 @@
 - **Location**: `.claude/hooks/end-of-turn.sh:70`, `vitest.global-setup.ts`
 - **Detail**: The lock liveness check (`kill -0 "$LOCK_PID"`) distinguishes only "dead" from "alive." If a crashed vitest process leaves a stale lock and the OS later reassigns that same PID to an unrelated process before the hook's next check, the hook would wrongly treat it as "another vitest is running" and skip its own tests — potentially repeatedly, until that unrelated process also exits. Neither `plan.md`'s "Critical Implementation Details" nor the new `lessons.md` entry names this exact failure mode; both describe only "dead vs. alive" and "two genuinely concurrent vitest processes," not "alive but the wrong process." Practical severity is low (narrow timing window, local single-user dev tooling, worst case is a skipped test run with a visible `systemMessage`, never silent corruption) — but documentation currently doesn't claim to cover this gap, so it would overstate accuracy to call it already acknowledged.
 - **Fix**: Add a one-line note to the `lessons.md` entry (or `plan.md`) naming PID-reuse as an additional narrow, accepted edge case. No code change needed given the low practical severity on a local, single-user dev box.
-- **Decision**: PENDING
+- **Decision**: FIXED — added to lessons.md's existing entry.
 
 ## Notes
 
