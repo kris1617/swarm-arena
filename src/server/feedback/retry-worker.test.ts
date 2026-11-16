@@ -90,7 +90,10 @@ describe("startFeedbackRetryWorker", () => {
 		startFeedbackRetryWorker();
 		await vi.advanceTimersByTimeAsync(RETRY_INTERVAL_MS);
 
-		expect(mockedAttemptSendReport).toHaveBeenCalledTimes(1);
+		const callsForThisReport = mockedAttemptSendReport.mock.calls.filter(
+			(call) => call[1] === reportId,
+		);
+		expect(callsForThisReport).toHaveLength(1);
 		expect(mockedAttemptSendReport).toHaveBeenCalledWith(
 			db,
 			reportId,
@@ -104,13 +107,19 @@ describe("startFeedbackRetryWorker", () => {
 		mockedAttemptSendReport.mockResolvedValue({ sent: false });
 
 		const ownerId = await insertOwnerUser();
-		await insertReport(ownerId, "sent");
-		await insertReport(ownerId, "abandoned");
+		const sentReportId = await insertReport(ownerId, "sent");
+		const abandonedReportId = await insertReport(ownerId, "abandoned");
 
 		startFeedbackRetryWorker();
 		await vi.advanceTimersByTimeAsync(RETRY_INTERVAL_MS);
 
-		expect(mockedAttemptSendReport).not.toHaveBeenCalled();
+		// Tolerates an unrelated pending row from another concurrently-running
+		// test file being passed to the mock — this test only asserts that
+		// its own non-pending rows were never passed to it.
+		const callsForThisTestsRows = mockedAttemptSendReport.mock.calls.filter(
+			(call) => call[1] === sentReportId || call[1] === abandonedReportId,
+		);
+		expect(callsForThisTestsRows).toHaveLength(0);
 	});
 
 	it("calling startFeedbackRetryWorker twice does not register a second interval", async () => {
@@ -128,7 +137,10 @@ describe("startFeedbackRetryWorker", () => {
 		// If a second interval had been registered, the same pending row would
 		// have been picked up by both intervals on this one tick, calling
 		// attemptSendReport twice for it instead of once.
-		expect(mockedAttemptSendReport).toHaveBeenCalledTimes(1);
+		const callsForThisReport = mockedAttemptSendReport.mock.calls.filter(
+			(call) => call[1] === reportId,
+		);
+		expect(callsForThisReport).toHaveLength(1);
 		expect(mockedAttemptSendReport).toHaveBeenCalledWith(
 			db,
 			reportId,
