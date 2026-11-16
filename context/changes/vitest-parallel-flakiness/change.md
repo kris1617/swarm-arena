@@ -1,7 +1,7 @@
 ---
 change_id: vitest-parallel-flakiness
 title: Make plain npm test reliable under Vitest's default file parallelism
-status: implementing
+status: implemented
 created: 2026-11-16
 updated: 2026-11-16
 archived_at: null
