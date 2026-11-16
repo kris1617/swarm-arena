@@ -226,7 +226,7 @@ Wire a discoverable `corpus:generate` npm script (excluded from the default `npm
 
 **Intent**: A discoverable, manually-invoked command that runs the full-generation test through the dedicated config from item 2, raising the timeout well past Vitest's 5-second default, since even with Phase 1's fix this is a genuinely long one-time run (up to 5 sequential batches, each needing to tick up to 225,000 times per run in the worst case before any extinction shortcut applies).
 
-**Contract**: `"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=1200000"` (20 minutes per test — generous headroom for a one-time manual run, not a CI budget).
+**Contract**: `"corpus:generate": "vitest run --config vitest.corpus.config.ts --testTimeout=3600000"` (60 minutes per test — widened from an initial 20-minute budget after the real run showed ordinary machine contention, such as another test suite running concurrently, can slow real wall-clock throughput enough to starve a shorter budget even though per-tick computation itself is fast; not a CI budget).
 
 #### 4. The full-matrix generation test
 
