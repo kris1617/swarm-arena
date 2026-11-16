@@ -1,9 +1,9 @@
 ---
 change_id: admin-ranges-and-hook-test-flakes
 title: Fix two pre-existing flaky tests (admin-ranges + Stop hook self-test)
-status: preparing
+status: planned
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-17
 archived_at: null
 ---
 
