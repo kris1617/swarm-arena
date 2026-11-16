@@ -21,11 +21,13 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 	reproducePopulation,
+	runTick,
 	segmentCompletedCycles,
 	stepBoids,
 	stepPredators,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
+import type { DenseClusterWarnSink } from "~/server/simulation/spatial-grid";
 
 const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
@@ -1417,6 +1419,181 @@ describe("computeScore", () => {
 		expect(computeScore(10, 0.8, 0, 0.8, 1)).toBe(0);
 		expect(computeScore(10, 0.8, 0.8, 0, 1)).toBe(0);
 		expect(computeScore(10, 0.8, 0.8, 0.8, 0)).toBe(0);
+	});
+});
+
+// Phase 2 (spatial-grid-dense-clustering-fallback): proves the warn-sink
+// threaded through stepBoids/applyPredation/reproducePopulation's own
+// queryRadius calls, and that runTick surfaces a combined signal. A dense
+// cluster here means "more than DENSE_CLUSTER_CANDIDATE_CAP (64) items in
+// one query's candidate set" — colocating every individual at the same
+// point guarantees that regardless of exact count, so a population well
+// above 64 (not literally 10,000+) is enough to trigger the cap
+// deterministically without the O(n^2) query cost a much larger count would
+// add to this suite.
+describe("dense-cluster warn-sink (Phase 2)", () => {
+	const DENSE_COUNT = 80;
+
+	function makeDenseBoids(count: number): BoidState[] {
+		return Array.from({ length: count }, () =>
+			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+		);
+	}
+
+	function makeDensePredators(count: number): PredatorState[] {
+		return Array.from({ length: count }, () =>
+			makePredator({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 1000 }),
+		);
+	}
+
+	function makeDenseEligibleIndividuals(count: number): BoidState[] {
+		return Array.from({ length: count }, (_, i) => ({
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 1000,
+			genes: makeGenes(),
+			energy: 100,
+			age: MATURITY_AGE_SECONDS,
+			gender: i % 2 === 0 ? "a" : "b",
+		}));
+	}
+
+	it("stepBoids trips its own warn-sink when a dense boid-boid neighbor query is truncated", () => {
+		const boids = makeDenseBoids(DENSE_COUNT);
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		stepBoids(boids, 0.1, WORLD_SIZE, [], warnSink);
+
+		expect(warnSink.triggered).toBe(true);
+	});
+
+	it("stepBoids trips its own warn-sink when a dense boid-predator flee-detection query is truncated", () => {
+		// A single boid with no boid neighbors of its own, but a dense cluster
+		// of predators all within PREDATOR_DETECTION_RADIUS — isolates the
+		// second (predator) queryRadius call from the first (boid-boid) one.
+		const boid = makeDenseBoids(1);
+		const predators = makeDensePredators(DENSE_COUNT);
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		stepBoids(boid, 0.1, WORLD_SIZE, predators, warnSink);
+
+		expect(warnSink.triggered).toBe(true);
+	});
+
+	it("applyPredation trips its own warn-sink when a dense boid query is truncated", () => {
+		const boids = makeDenseBoids(DENSE_COUNT);
+		const predators = makeDensePredators(1);
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		applyPredation(boids, predators, 0, WORLD_SIZE, warnSink);
+
+		expect(warnSink.triggered).toBe(true);
+	});
+
+	it("reproducePopulation trips its own warn-sink when a dense mate-scan query is truncated", () => {
+		const population = makeDenseEligibleIndividuals(DENSE_COUNT);
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		reproducePopulation(
+			population,
+			createRng(1),
+			{
+				crossbreedingEnabled: true,
+				energyThreshold: 50,
+				mutationChance: 0,
+				mutationMagnitude: 0.2,
+				populationCap: 100_000,
+				totalOtherPopulationCount: 0,
+				warnSink,
+			},
+			WORLD_SIZE,
+		);
+
+		expect(warnSink.triggered).toBe(true);
+	});
+
+	it("runTick surfaces hasWarnedDenseClustering: true when any internal queryRadius call truncates", () => {
+		const result = runTick(
+			{
+				boids: makeDenseBoids(DENSE_COUNT),
+				predators: makeDensePredators(DENSE_COUNT),
+				foodStock: 1000,
+			},
+			{
+				dtSeconds: 0.1,
+				foodRegenRate: 5,
+				protectionThreshold: 0,
+				rng: createRng(1),
+				crossbreedingEnabled: true,
+				energyThreshold: 1000, // unreachable this tick — isolates the signal to stepBoids/applyPredation, not reproduction.
+				mutationChance: 0,
+				mutationMagnitude: 0.2,
+				populationCap: 100_000,
+				foodStockInitial: 1000,
+				worldSize: WORLD_SIZE,
+			},
+		);
+
+		expect(result.hasWarnedDenseClustering).toBe(true);
+	});
+
+	it("omitting warnSink leaves stepBoids/applyPredation/reproducePopulation behavior exactly as before (no tracking, no behavior change)", () => {
+		const boids = makeDenseBoids(DENSE_COUNT);
+
+		const withoutSink = stepBoids(boids, 0.1, WORLD_SIZE);
+		const withUntriggeredSink = stepBoids(boids, 0.1, WORLD_SIZE, [], {
+			triggered: false,
+		});
+
+		expect(withoutSink).toEqual(withUntriggeredSink);
+	});
+
+	it("runTick on normal-density existing fixtures reports hasWarnedDenseClustering: false and leaves every other field unchanged", () => {
+		const boids = createInitialPopulation(
+			10,
+			createRng(1),
+			100,
+			1,
+			[WEIGHTS],
+			WORLD_SIZE,
+		);
+		const predators = createInitialPredators(
+			2,
+			createRng(2),
+			100,
+			1,
+			[WEIGHTS],
+			WORLD_SIZE,
+		);
+		const params = {
+			dtSeconds: 0.1,
+			foodRegenRate: 5,
+			protectionThreshold: 0,
+			rng: createRng(3),
+			crossbreedingEnabled: true,
+			energyThreshold: 50,
+			mutationChance: 0.1,
+			mutationMagnitude: 0.2,
+			populationCap: 500,
+			foodStockInitial: 20,
+			worldSize: WORLD_SIZE,
+		};
+
+		const a = runTick(
+			{ boids, predators, foodStock: 20 },
+			{ ...params, rng: createRng(3) },
+		);
+		const b = runTick(
+			{ boids, predators, foodStock: 20 },
+			{ ...params, rng: createRng(3) },
+		);
+
+		expect(a.hasWarnedDenseClustering).toBe(false);
+		expect(a).toEqual(b);
 	});
 });
 

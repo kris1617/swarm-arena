@@ -1,4 +1,7 @@
-import { buildSpatialGrid } from "~/server/simulation/spatial-grid";
+import {
+	buildSpatialGrid,
+	type DenseClusterWarnSink,
+} from "~/server/simulation/spatial-grid";
 import { BOID_FILL_COLOR, PREDATOR_FILL_COLOR } from "~/styles/theme-colors";
 
 export type FlockWeights = {
@@ -459,6 +462,7 @@ export function stepBoids(
 	dtSeconds: number,
 	worldSize: WorldSize,
 	predators: PredatorState[] = [],
+	warnSink?: DenseClusterWarnSink,
 ): BoidState[] {
 	// Built once from this tick's starting positions, before any boid's new
 	// position is computed below — positions read through these grids are
@@ -505,6 +509,7 @@ export function stepBoids(
 		for (const otherIndex of boidGrid.queryRadius(
 			{ x: boid.x, y: boid.y, z: boid.z },
 			NEIGHBOR_RADIUS,
+			warnSink,
 		)) {
 			if (otherIndex === boidIndex) {
 				continue;
@@ -597,6 +602,7 @@ export function stepBoids(
 		for (const predatorIndex of predatorGrid?.queryRadius(
 			{ x: boid.x, y: boid.y, z: boid.z },
 			PREDATOR_DETECTION_RADIUS,
+			warnSink,
 		) ?? []) {
 			const predator = predators[predatorIndex];
 			if (!predator) {
@@ -818,6 +824,7 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 		mutationMagnitude: number;
 		populationCap: number;
 		totalOtherPopulationCount: number;
+		warnSink?: DenseClusterWarnSink;
 	},
 	worldSize: WorldSize,
 ): { population: T[]; capped: boolean } {
@@ -877,6 +884,7 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 		for (const j of mateGrid.queryRadius(
 			{ x: parentA.x, y: parentA.y, z: parentA.z },
 			MATE_DISTANCE_RADIUS,
+			params.warnSink,
 		)) {
 			if (j <= i || paired.has(j)) {
 				continue;
@@ -976,6 +984,7 @@ export function applyPredation(
 	predators: PredatorState[],
 	protectionThreshold: number,
 	worldSize: WorldSize,
+	warnSink?: DenseClusterWarnSink,
 ): BoidState[] {
 	if (boids.length <= protectionThreshold) {
 		return boids;
@@ -1000,6 +1009,7 @@ export function applyPredation(
 		for (const boidIndex of boidGrid.queryRadius(
 			{ x: predator.x, y: predator.y, z: predator.z },
 			CAPTURE_RADIUS,
+			warnSink,
 		)) {
 			const boid = boids[boidIndex];
 			if (!boid || captured.has(boid)) {
@@ -1065,12 +1075,24 @@ export function runTick(
 	// S-04 (FR-010 full): exposed for the "resource management" scoring
 	// factor — this value was already computed below, just never returned.
 	foodAvailabilityRatio: number;
+	// Phase 2 (dense-cluster fallback): true when any of this tick's four
+	// queryRadius-backed calls (stepBoids' boid-boid and boid-predator
+	// queries, applyPredation's boid query, and either reproducePopulation
+	// call's mate query) truncated a dense-cluster candidate set. One shared
+	// sink per tick (created fresh below) so a single tick's worth of
+	// truncation, in any of the three functions, is visible as one combined
+	// signal rather than four separate ones the caller would have to OR
+	// together itself.
+	hasWarnedDenseClustering: boolean;
 } {
+	const warnSink: DenseClusterWarnSink = { triggered: false };
+
 	const steeredBoids = stepBoids(
 		state.boids,
 		params.dtSeconds,
 		params.worldSize,
 		state.predators,
+		warnSink,
 	);
 	const steeredPredators = stepPredators(
 		state.predators,
@@ -1089,6 +1111,7 @@ export function runTick(
 		steeredPredators,
 		params.protectionThreshold,
 		params.worldSize,
+		warnSink,
 	);
 
 	// Every surviving individual gains energy and ages by dtSeconds this
@@ -1136,6 +1159,7 @@ export function runTick(
 				mutationMagnitude: params.mutationMagnitude,
 				populationCap: params.populationCap,
 				totalOtherPopulationCount: agedPredators.length,
+				warnSink,
 			},
 			params.worldSize,
 		);
@@ -1150,6 +1174,7 @@ export function runTick(
 				mutationMagnitude: params.mutationMagnitude,
 				populationCap: params.populationCap,
 				totalOtherPopulationCount: agedBoids.length,
+				warnSink,
 			},
 			params.worldSize,
 		);
@@ -1160,6 +1185,7 @@ export function runTick(
 		foodStock: nextFoodStock,
 		populationCapped: boidsCapped || predatorsCapped,
 		foodAvailabilityRatio,
+		hasWarnedDenseClustering: warnSink.triggered,
 	};
 }
 
