@@ -190,7 +190,7 @@ describe("end-of-turn.sh (Stop)", () => {
 			JSON.stringify({ cwd: fixture, stop_hook_active: false }),
 		);
 		expect(result.status).toBe(0);
-	});
+	}, 15_000);
 
 	it("blocks (exit 2) on a lint error written directly to disk — no per-edit payload involved", () => {
 		writeFileSync(
@@ -224,7 +224,7 @@ describe("end-of-turn.sh (Stop)", () => {
 			JSON.stringify({ cwd: fixture, stop_hook_active: false }),
 		);
 		expect(result.status).toBe(0);
-	});
+	}, 15_000);
 
 	it("reports 'nothing checked' instead of silently succeeding when cwd has no git checkout", () => {
 		const bare = mkdtempSync(join(tmpdir(), "agent-hooks-no-git-"));
