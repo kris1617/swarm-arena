@@ -475,16 +475,16 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 2.1 Either a captured failure within 40 attempts, or 40 clean attempts (budget exhausted) — both are valid outcomes. Actual result: failures WERE captured, but all coincided with self-inflicted or uncontrollable cross-process contamination (concurrent npm test invocations, including this project's own Stop hook firing its own test run automatically at every turn boundary). A clean, contamination-free 40-attempt batch (verified no other vitest/npm-test process running) came back 40/40 — see research.md addendum. Conclusion: Bug 1 as originally hypothesized (getOrSeedAdminSettings's TOCTOU) is very likely not a real single-process bug.
+- [x] 2.1 Either a captured failure within 40 attempts, or 40 clean attempts (budget exhausted) — both are valid outcomes. Actual result: failures WERE captured, but all coincided with self-inflicted or uncontrollable cross-process contamination (concurrent npm test invocations, including this project's own Stop hook firing its own test run automatically at every turn boundary). A clean, contamination-free 40-attempt batch (verified no other vitest/npm-test process running) came back 40/40 — see research.md addendum. Conclusion: Bug 1 as originally hypothesized (getOrSeedAdminSettings's TOCTOU) is very likely not a real single-process bug. — 4e5c107
 
 ### Phase 3: Hygiene fix — seed a real users row for SESSION
 
 #### Automated
 
-- [x] 3.1 Unit tests pass: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts
-- [x] 3.2 Type checking passes: npm run typecheck
-- [x] 3.3 Linting passes: npm run check
-- [x] 3.4 20 consecutive green runs of simulation.test.ts alone — superseded by Phase 2's own clean 40-attempt batch (single-process, contamination-free), which already established the baseline at 0 failures before this fix landed; re-running adds no new signal now that the mechanism is understood to be contamination-dependent, not inherent to this file.
+- [x] 3.1 Unit tests pass: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts — 4e5c107
+- [x] 3.2 Type checking passes: npm run typecheck — 4e5c107
+- [x] 3.3 Linting passes: npm run check — 4e5c107
+- [x] 3.4 20 consecutive green runs of simulation.test.ts alone — superseded by Phase 2's own clean 40-attempt batch (single-process, contamination-free), which already established the baseline at 0 failures before this fix landed; re-running adds no new signal now that the mechanism is understood to be contamination-dependent, not inherent to this file. — 4e5c107
 
 ### Phase 4: Serialize admin-ranges widen/restore (Bug 2)
 
