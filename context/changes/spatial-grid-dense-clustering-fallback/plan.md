@@ -250,10 +250,10 @@ None — no schema changes, no persisted-data migration. The new `hasWarnedDense
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `npm run typecheck`
-- [ ] 1.2 Linting passes: `npm run check`
-- [ ] 1.3 `npx vitest run src/server/simulation/spatial-grid.test.ts` (existing + 2 new tests)
-- [ ] 1.4 Full suite passes: `npm test`
+- [x] 1.1 Type checking passes: `npm run typecheck` — a054b16
+- [x] 1.2 Linting passes: `npm run check` — a054b16
+- [x] 1.3 `npx vitest run src/server/simulation/spatial-grid.test.ts` (existing + 2 new tests) — a054b16
+- [x] 1.4 Full suite passes: `npm test` — a054b16
 
 ### Phase 2: Thread the warn-sink through `boids.ts`'s three call sites
 
