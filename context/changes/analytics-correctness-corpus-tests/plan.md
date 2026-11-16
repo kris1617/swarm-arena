@@ -279,10 +279,10 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 3.1 Unit test passes: npx vitest run src/server/api/routers/simulation.getRunsComparison.corpus.test.ts
-- [ ] 3.2 Full suite stays green: npm test
-- [ ] 3.3 Type checking passes: npm run typecheck
-- [ ] 3.4 Linting passes: npm run check
+- [x] 3.1 Unit test passes: npx vitest run src/server/api/routers/simulation.getRunsComparison.corpus.test.ts
+- [x] 3.2 Full suite stays green: npm test
+- [x] 3.3 Type checking passes: npm run typecheck
+- [x] 3.4 Linting passes: npm run check
 
 ### Phase 4: listLeaderboard corpus-correctness test
 
