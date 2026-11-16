@@ -25,12 +25,27 @@
 // one-off utility.
 export type Position3 = { x: number; y: number; z: number };
 
+// A dense cluster (many items sharing one cell neighborhood) can otherwise
+// return a candidate list whose size is unbounded by anything but item
+// count, turning the per-boid exact-filter pass that follows into O(N) work
+// again. Capping bounds that cost uniformly for every caller; the warn-sink
+// below lets a caller notice when the cap actually bit for a given query.
+export const DENSE_CLUSTER_CANDIDATE_CAP = 64;
+
+export type DenseClusterWarnSink = { triggered: boolean };
+
 export type SpatialGrid = {
 	// Candidate indices into the array `buildSpatialGrid` was given, sorted
 	// ascending. Still narrows only by cell, not by true distance — callers
 	// must exact-filter the result themselves, exactly as they did against
-	// the full array before this grid existed.
-	queryRadius(position: Position3, radius: number): number[];
+	// the full array before this grid existed. Truncated to
+	// DENSE_CLUSTER_CANDIDATE_CAP when the pre-cap result is larger; pass
+	// `warnSink` to learn whether a given call truncated.
+	queryRadius(
+		position: Position3,
+		radius: number,
+		warnSink?: DenseClusterWarnSink,
+	): number[];
 };
 
 function axisCellCount(worldSize: number, cellSize: number): number {
@@ -77,7 +92,11 @@ export function buildSpatialGrid<T>(
 	}
 
 	return {
-		queryRadius(position: Position3, radius: number): number[] {
+		queryRadius(
+			position: Position3,
+			radius: number,
+			warnSink?: DenseClusterWarnSink,
+		): number[] {
 			const centerX = axisCellIndex(position.x, cellSize, dimX);
 			const centerY = axisCellIndex(position.y, cellSize, dimY);
 			const centerZ = axisCellIndex(position.z, cellSize, dimZ);
@@ -114,6 +133,14 @@ export function buildSpatialGrid<T>(
 			}
 
 			result.sort((a, b) => a - b);
+
+			if (result.length > DENSE_CLUSTER_CANDIDATE_CAP) {
+				if (warnSink) {
+					warnSink.triggered = true;
+				}
+				return result.slice(0, DENSE_CLUSTER_CANDIDATE_CAP);
+			}
+
 			return result;
 		},
 	};

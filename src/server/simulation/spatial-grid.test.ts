@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSpatialGrid } from "~/server/simulation/spatial-grid";
+import {
+	buildSpatialGrid,
+	DENSE_CLUSTER_CANDIDATE_CAP,
+	type DenseClusterWarnSink,
+} from "~/server/simulation/spatial-grid";
 
 type Point = { x: number; y: number; z: number };
 
@@ -101,5 +105,44 @@ describe("buildSpatialGrid", () => {
 		// the adjacent cell ring (range = ceil(5/10) = 1, offsets -1/0/1),
 		// nowhere near cell 5 on either wrap direction.
 		expect(grid.queryRadius(point(0, 0), 5)).not.toContain(1);
+	});
+
+	it("caps a dense cluster's candidates at DENSE_CLUSTER_CANDIDATE_CAP and stays fast", () => {
+		const items = Array.from({ length: 10_000 }, () => point(5, 5));
+		const grid = buildSpatialGrid(items, (p) => p, 10, {
+			x: 100,
+			y: 100,
+			z: 100,
+		});
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		const start = performance.now();
+		const candidates = grid.queryRadius(point(5, 5), 5, warnSink);
+		const durationMs = performance.now() - start;
+
+		expect(candidates.length).toBe(DENSE_CLUSTER_CANDIDATE_CAP);
+		// Generous budget — under full-suite parallel CPU contention a tight
+		// (e.g. 5ms) budget flakes even though the cap logic itself is correct;
+		// 100ms is still orders of magnitude faster than an uncapped scan over
+		// this many candidates would need once downstream callers (mate-scan,
+		// force computation) process them, while the length assertion above
+		// is the real, non-timing-dependent proof the cap works.
+		expect(durationMs).toBeLessThan(100);
+		expect(warnSink.triggered).toBe(true);
+	});
+
+	it("leaves a normal-density query's candidates and warn-sink untouched", () => {
+		const items = [point(1, 1), point(2, 2), point(50, 50)];
+		const grid = buildSpatialGrid(items, (p) => p, 10, {
+			x: 100,
+			y: 100,
+			z: 100,
+		});
+		const warnSink: DenseClusterWarnSink = { triggered: false };
+
+		const candidates = grid.queryRadius(point(0, 0), 5, warnSink);
+
+		expect(candidates).toEqual([0, 1]);
+		expect(warnSink.triggered).toBe(false);
 	});
 });
