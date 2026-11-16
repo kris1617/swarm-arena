@@ -450,9 +450,9 @@ changes, no production behavior changes.
 
 #### Automated
 
-- [x] 4.1 Unit tests pass: npx vitest run src/server/simulation/corpus-fixture.test.ts src/server/simulation/parameter-suggestion.corpus.test.ts scripts/__tests__/agent-hooks.test.ts src/server/api/routers/simulation.listLeaderboard.corpus.test.ts src/server/api/routers/simulation.getRunsComparison.corpus.test.ts
-- [x] 4.2 Type checking passes: npm run typecheck
-- [x] 4.3 Linting passes: npm run check
+- [x] 4.1 Unit tests pass: npx vitest run src/server/simulation/corpus-fixture.test.ts src/server/simulation/parameter-suggestion.corpus.test.ts scripts/__tests__/agent-hooks.test.ts src/server/api/routers/simulation.listLeaderboard.corpus.test.ts src/server/api/routers/simulation.getRunsComparison.corpus.test.ts — 51370a5
+- [x] 4.2 Type checking passes: npm run typecheck — 51370a5
+- [x] 4.3 Linting passes: npm run check — 51370a5
 
 ### Phase 5: Stress-test verification
 
