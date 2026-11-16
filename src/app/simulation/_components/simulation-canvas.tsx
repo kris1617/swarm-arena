@@ -390,6 +390,10 @@ export function SimulationCanvas({
 	const elapsedSecondsRef = useRef(0);
 	const rafIdRef = useRef<number>(0);
 	const lastTimestampRef = useRef<number | null>(null);
+	// spatial-grid-dense-clustering-fallback Phase 3: no UI reads this (unlike
+	// populationCapped below), so it follows lastTimestampRef's plain-ref
+	// pattern rather than useState's.
+	const hasWarnedDenseClusteringRef = useRef(false);
 	const hasStoppedRef = useRef(false);
 	const [status, setStatus] = useState<"running" | "stopped">("running");
 	const [tickError, setTickError] = useState<string | null>(null);
@@ -806,6 +810,7 @@ export function SimulationCanvas({
 						phaseHistory: phaseHistoryRef.current,
 						elapsedSeconds: elapsedSecondsRef.current,
 						lastTimestamp: lastTimestampRef.current,
+						hasWarnedDenseClustering: hasWarnedDenseClusteringRef.current,
 					},
 					timestamp,
 					{
@@ -833,6 +838,7 @@ export function SimulationCanvas({
 				phaseHistoryRef.current = result.phaseHistory;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;
+				hasWarnedDenseClusteringRef.current = result.hasWarnedDenseClustering;
 				setPopulationCapped(result.populationCapped);
 
 				redraw();

@@ -254,6 +254,57 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 		container.remove();
 	});
 
+	// spatial-grid-dense-clustering-fallback Phase 3: 80 colocated boids
+	// (same positions, lifespan 1000) guarantees stepBoids' own queryRadius
+	// candidate set exceeds DENSE_CLUSTER_CANDIDATE_CAP (64), tripping
+	// runTick's warn-sink every tick — proves the client-staged path's own
+	// hasWarnedDenseClusteringRef flips exactly once and console.warn's call
+	// count stays at 1 across many subsequent driven ticks.
+	it("flips hasWarnedDenseClusteringRef exactly once and logs console.warn exactly once across many dense-clustering ticks", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+		const warnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => undefined);
+
+		act(() => {
+			root.render(
+				<SimulationCanvas
+					{...BASE_PROPS}
+					boidCount={80}
+					xyArea={1}
+					zDepth={1}
+				/>,
+			);
+		});
+
+		let timestamp = 16;
+		for (let i = 0; i < 10; i++) {
+			const callback = capturedCallback;
+			act(() => {
+				callback?.(timestamp);
+			});
+			timestamp += 16;
+		}
+
+		const lastResult = vi.mocked(computeSingleRunTick).mock.results.at(-1);
+		if (lastResult?.type !== "return") {
+			throw new Error("expected computeSingleRunTick's last call to return");
+		}
+		expect(lastResult.value.hasWarnedDenseClustering).toBe(true);
+		expect(warnSpy).toHaveBeenCalledTimes(1);
+		expect(warnSpy).toHaveBeenCalledWith(
+			"dense clustering truncated a spatial-grid query this tick",
+		);
+
+		warnSpy.mockRestore();
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
 	it("stops the loop and shows a visible error when a tick throws", () => {
 		const container = document.createElement("div");
 		document.body.appendChild(container);

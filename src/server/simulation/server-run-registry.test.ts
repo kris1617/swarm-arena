@@ -305,6 +305,59 @@ describe("server-run-registry", () => {
 		activeRunIds.length = 0; // registry entry already removed by finishRun
 	});
 
+	// spatial-grid-dense-clustering-fallback Phase 3: starts two dense,
+	// colocated-boid runs ticking together (mirrors this file's own
+	// "resumeServerRun reconstructs ticking that continues..." pattern of
+	// driving two runs via vi.advanceTimersByTimeAsync) and proves
+	// console.warn fires exactly once per run despite many tripping ticks.
+	it("logs console.warn exactly once per run even with many dense-clustering ticks, across two runs ticking together", async () => {
+		vi.useFakeTimers();
+		const warnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => undefined);
+		const { runId: runIdA } = await insertOwnedRunningRun(40);
+		const { runId: runIdB } = await insertOwnedRunningRun(41);
+		activeRunIds.push(runIdA, runIdB);
+
+		// boidCount: 80 colocated boids (createInitialPopulation places them
+		// uniformly at random, not colocated — so instead rely on a tiny
+		// xyArea/zDepth world, which packs the same count of randomly-placed
+		// boids into a volume dense enough to exceed
+		// DENSE_CLUSTER_CANDIDATE_CAP (64) in a boid-boid neighbor query).
+		startServerRun({
+			runId: runIdA,
+			seed: 40,
+			...BASE_PARAMS,
+			boidCount: 80,
+			predatorCount: 0,
+			maxDurationSeconds: 600,
+			xyArea: 1,
+			zDepth: 1,
+		});
+		startServerRun({
+			runId: runIdB,
+			seed: 41,
+			...BASE_PARAMS,
+			boidCount: 80,
+			predatorCount: 0,
+			maxDurationSeconds: 600,
+			xyArea: 1,
+			zDepth: 1,
+		});
+
+		await vi.advanceTimersByTimeAsync(320); // ~20 ticks each, many of which trip the warn-sink
+
+		expect(warnSpy).toHaveBeenCalledTimes(2);
+		expect(warnSpy).toHaveBeenCalledWith(
+			"dense clustering truncated a spatial-grid query this tick",
+		);
+
+		await stopServerRun(runIdA);
+		await stopServerRun(runIdB);
+		activeRunIds.length = 0;
+		warnSpy.mockRestore();
+	});
+
 	it("stops the run on a population wipe (zero boids) without crashing", async () => {
 		vi.useFakeTimers();
 		const { runId } = await insertOwnedRunningRun(4);
@@ -1195,6 +1248,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 			elapsedSeconds: 0,
 			lastTimestamp: null,
 			populationCapped: false,
+			hasWarnedDenseClustering: false,
 		};
 	}
 

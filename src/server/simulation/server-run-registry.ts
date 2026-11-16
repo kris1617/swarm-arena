@@ -109,6 +109,10 @@ type LiveRun = {
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
 	populationCapped: boolean;
+	// spatial-grid-dense-clustering-fallback Phase 3: persisted the same way
+	// populationCapped/lastTimestamp are — reassigned from
+	// computeSingleRunTick's result every tick, read back in on resume.
+	hasWarnedDenseClustering: boolean;
 	intervalId: ReturnType<typeof setInterval>;
 };
 
@@ -452,6 +456,7 @@ function tick(runId: number): void {
 				phaseHistory: run.phaseHistory,
 				elapsedSeconds: run.elapsedSeconds,
 				lastTimestamp: run.lastTimestamp,
+				hasWarnedDenseClustering: run.hasWarnedDenseClustering,
 			},
 			Date.now(),
 			{
@@ -484,6 +489,7 @@ function tick(runId: number): void {
 		run.elapsedSeconds = result.elapsedSeconds;
 		run.lastTimestamp = result.lastTimestamp;
 		run.populationCapped = result.populationCapped;
+		run.hasWarnedDenseClustering = result.hasWarnedDenseClustering;
 
 		if (result.shouldStop) {
 			const score = computeScore(
@@ -576,6 +582,7 @@ export function startServerRun(params: ServerRunParams): void {
 		elapsedSeconds: 0,
 		lastTimestamp: null,
 		populationCapped: false,
+		hasWarnedDenseClustering: false,
 		intervalId: setInterval(() => tick(params.runId), TICK_INTERVAL_MS),
 	};
 	registry.set(params.runId, run);
@@ -634,6 +641,10 @@ export type ServerRunSnapshot = {
 	elapsedSeconds: number;
 	lastTimestamp: number | null;
 	populationCapped: boolean;
+	// spatial-grid-dense-clustering-fallback Phase 3: persisted alongside
+	// populationCapped so a resumed run doesn't re-log the warning for a
+	// condition it already tripped before the pause.
+	hasWarnedDenseClustering: boolean;
 };
 
 // The pause half of save/resume: stops ticking and hands back everything
@@ -665,6 +676,7 @@ export function snapshotServerRun(
 		elapsedSeconds: run.elapsedSeconds,
 		lastTimestamp: run.lastTimestamp,
 		populationCapped: run.populationCapped,
+		hasWarnedDenseClustering: run.hasWarnedDenseClustering,
 	};
 }
 
@@ -732,6 +744,13 @@ export function resumeServerRun(
 		elapsedSeconds: snapshot.elapsedSeconds,
 		lastTimestamp: snapshot.lastTimestamp,
 		populationCapped: snapshot.populationCapped,
+		// spatial-grid-dense-clustering-fallback Phase 3: a `savedState` row
+		// written before this field existed has no `hasWarnedDenseClustering`
+		// key despite `ServerRunSnapshot`'s type claiming otherwise — same
+		// `?? false` fallback pattern as the other post-hoc-added fields on
+		// this snapshot (populationDensitySamples, geneticDiversitySamples,
+		// parameterChanges) use for the identical reason.
+		hasWarnedDenseClustering: snapshot.hasWarnedDenseClustering ?? false,
 		intervalId: setInterval(() => tick(runId), TICK_INTERVAL_MS),
 	};
 	registry.set(runId, run);

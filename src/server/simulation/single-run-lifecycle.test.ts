@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
 	type BoidGenes,
@@ -86,6 +86,7 @@ function buildState(
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: 0,
+		hasWarnedDenseClustering: false,
 		...overrides,
 	};
 }
@@ -300,6 +301,54 @@ describe("computeSingleRunTick", () => {
 		// The capped pair still gets marked paired (no double-mating) and
 		// produces no offspring, per boids.ts's reproducePopulation contract.
 		expect(result.boids).toHaveLength(2);
+	});
+
+	// spatial-grid-dense-clustering-fallback Phase 3: a population of 80
+	// boids colocated at the same point guarantees stepBoids' own
+	// queryRadius candidate set exceeds DENSE_CLUSTER_CANDIDATE_CAP (64),
+	// tripping runTick's warn-sink (boids.test.ts's "dense-cluster warn-sink
+	// (Phase 2)" describe block establishes this exact pattern/count).
+	it("flips hasWarnedDenseClustering to true and logs console.warn exactly once on the first tripping tick, then stays true with no further warn calls across many subsequent ticks", () => {
+		const warnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => undefined);
+		const denseBoids = Array.from({ length: 80 }, () =>
+			buildBoid({ x: 0, y: 0, z: 0 }),
+		);
+		let state = buildState({ boids: denseBoids, lastTimestamp: 0 });
+		let timestamp = 50;
+
+		let result = computeSingleRunTick(state, timestamp, PARAMS);
+		expect(result.hasWarnedDenseClustering).toBe(true);
+		expect(warnSpy).toHaveBeenCalledTimes(1);
+
+		for (let i = 0; i < 10; i++) {
+			state = result;
+			timestamp += 50;
+			result = computeSingleRunTick(state, timestamp, PARAMS);
+			expect(result.hasWarnedDenseClustering).toBe(true);
+		}
+		// Still exactly one call across the whole run, not one per tripping tick.
+		expect(warnSpy).toHaveBeenCalledTimes(1);
+
+		warnSpy.mockRestore();
+	});
+
+	it("never calls console.warn and keeps hasWarnedDenseClustering false for a sparse, non-tripping population", () => {
+		const warnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => undefined);
+		let state = buildState({ lastTimestamp: 0 });
+		let timestamp = 0;
+
+		for (let i = 0; i < 5; i++) {
+			timestamp += 50;
+			state = computeSingleRunTick(state, timestamp, PARAMS);
+			expect(state.hasWarnedDenseClustering).toBe(false);
+		}
+		expect(warnSpy).not.toHaveBeenCalled();
+
+		warnSpy.mockRestore();
 	});
 
 	// parameter-sweep-corpus-generation Phase 1: before this phase,

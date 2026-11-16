@@ -44,6 +44,11 @@ export function computeSingleRunTick(
 		phaseHistory: PopulationPhase[];
 		elapsedSeconds: number;
 		lastTimestamp: number | null;
+		// spatial-grid-dense-clustering-fallback Phase 3: persisted across
+		// ticks the same way lastTimestamp/populationCapped are — once a run
+		// has ever tripped runTick's dense-clustering warn-sink, later ticks
+		// must not log the warning again for that same run.
+		hasWarnedDenseClustering: boolean;
 	},
 	timestamp: number,
 	params: {
@@ -83,6 +88,9 @@ export function computeSingleRunTick(
 	// itself, so the canvas/RAF shell never needs to reach past this
 	// decision core.
 	populationCapped: boolean;
+	// spatial-grid-dense-clustering-fallback Phase 3: persisted sticky flag —
+	// once true for a run, stays true for every later tick of that run.
+	hasWarnedDenseClustering: boolean;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -101,6 +109,7 @@ export function computeSingleRunTick(
 		foodStock: nextFoodStock,
 		populationCapped,
 		foodAvailabilityRatio,
+		hasWarnedDenseClustering: tickHasWarnedDenseClustering,
 	} = runTick(
 		{
 			boids: state.boids,
@@ -185,6 +194,15 @@ export function computeSingleRunTick(
 	const shouldStop =
 		nextElapsedSeconds >= params.maxDurationSeconds || nextBoids.length === 0;
 
+	// spatial-grid-dense-clustering-fallback Phase 3: log once, the first
+	// tick this run ever trips runTick's warn-sink — never again afterward,
+	// regardless of whether later ticks keep tripping it.
+	if (tickHasWarnedDenseClustering && !state.hasWarnedDenseClustering) {
+		console.warn("dense clustering truncated a spatial-grid query this tick");
+	}
+	const nextHasWarnedDenseClustering =
+		state.hasWarnedDenseClustering || tickHasWarnedDenseClustering;
+
 	return {
 		boids: nextBoids,
 		predators: nextPredators,
@@ -199,5 +217,6 @@ export function computeSingleRunTick(
 		lastTimestamp: timestamp,
 		shouldStop,
 		populationCapped,
+		hasWarnedDenseClustering: nextHasWarnedDenseClustering,
 	};
 }
