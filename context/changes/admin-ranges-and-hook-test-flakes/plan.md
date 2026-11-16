@@ -170,16 +170,16 @@ Prove the lock actually causes a skip under real concurrent load (not just in is
 
 #### Automated
 
-- [x] 2.1 Full suite passes with new globalSetup/globalTeardown (2x): `npm test`
-- [x] 2.2 Typecheck passes: `npm run typecheck`
-- [x] 2.3 Lint passes: `npm run check`
+- [x] 2.1 Full suite passes with new globalSetup/globalTeardown (2x): `npm test` — 99e68fb
+- [x] 2.2 Typecheck passes: `npm run typecheck` — 99e68fb
+- [x] 2.3 Lint passes: `npm run check` — 99e68fb
 
 #### Manual
 
-- [x] 2.4 Hook script's normal pass/fail report is unchanged when run alone
+- [x] 2.4 Hook script's normal pass/fail report is unchanged when run alone — 99e68fb
 
 ### Phase 3: Deliberate concurrent-process verification + lessons.md note
 
 #### Manual
 
-- [ ] 3.1 Deliberate concurrent-process check confirms the lock causes a detectable skip
+- [x] 3.1 Deliberate concurrent-process check confirms the lock causes a detectable skip
