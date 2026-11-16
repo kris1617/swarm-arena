@@ -65,8 +65,26 @@ async function getOrSeedAdminSettingsRanges(db: DB): Promise<ParameterRanges> {
 	const existing = await db.query.adminSettings.findFirst({
 		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
 	});
+	// pre-existing-admin-settings-flakes Phase 1: temporary diagnostic
+	// logging for a rare check-then-insert race investigation — mirrors
+	// simulation.ts's getOrSeedAdminSettings gating, but this module cannot
+	// import `~/env` (see this file's own module-boundary comments), so it
+	// reads process.env directly.
+	const debugRace = process.env.DEBUG_ADMIN_SETTINGS_RACE === "true";
+	if (debugRace) {
+		console.error(
+			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} SELECT resolved: ${
+				existing ? "found" : "not-found"
+			}`,
+		);
+	}
 	if (existing) {
 		return existing.parameterRanges as ParameterRanges;
+	}
+	if (debugRace) {
+		console.error(
+			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} about to INSERT`,
+		);
 	}
 	await db.insert(adminSettings).values({
 		id: ADMIN_SETTINGS_ID,
@@ -74,6 +92,11 @@ async function getOrSeedAdminSettingsRanges(db: DB): Promise<ParameterRanges> {
 		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
 		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	});
+	if (debugRace) {
+		console.error(
+			`[ADMIN_SETTINGS_RACE] ${process.hrtime.bigint()} INSERT succeeded`,
+		);
+	}
 	return DEFAULT_PARAMETER_RANGES;
 }
 

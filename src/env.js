@@ -43,6 +43,15 @@ export const env = createEnv({
 		// server-side only to create Issues in kris1617/swarm-arena — never
 		// exposed to the client.
 		GITHUB_FEEDBACK_TOKEN: z.string().min(1),
+		// pre-existing-admin-settings-flakes: gates temporary diagnostic
+		// logging in getOrSeedAdminSettings, added to investigate a rare
+		// check-then-insert race (see
+		// context/changes/pre-existing-admin-settings-flakes). Defaults to
+		// disabled — never set this in a deployed environment.
+		DEBUG_ADMIN_SETTINGS_RACE: z
+			.string()
+			.optional()
+			.transform((v) => v === "true"),
 	},
 
 	/**
@@ -69,6 +78,7 @@ export const env = createEnv({
 		E2E_TEST_AUTH_SECRET: process.env.E2E_TEST_AUTH_SECRET,
 		ALLOW_SELF_ELEVATION: process.env.ALLOW_SELF_ELEVATION,
 		GITHUB_FEEDBACK_TOKEN: process.env.GITHUB_FEEDBACK_TOKEN,
+		DEBUG_ADMIN_SETTINGS_RACE: process.env.DEBUG_ADMIN_SETTINGS_RACE,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
 	/**
