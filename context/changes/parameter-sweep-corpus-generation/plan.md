@@ -316,10 +316,10 @@ None — no schema changes. The exported corpus files are new, additive artifact
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `npm run typecheck`
-- [ ] 3.2 Linting passes: `npm run check`
-- [ ] 3.3 `npx vitest run scripts/corpus/sweep-matrix.test.ts`
-- [ ] 3.4 `npx vitest run scripts/corpus/generate-sweep.smoke.test.ts` (reduced smoke case)
+- [x] 3.1 Type checking passes: `npm run typecheck` — 55481e8
+- [x] 3.2 Linting passes: `npm run check` — 55481e8
+- [x] 3.3 `npx vitest run scripts/corpus/sweep-matrix.test.ts` — 55481e8
+- [x] 3.4 `npx vitest run scripts/corpus/generate-sweep.smoke.test.ts` (reduced smoke case) — 55481e8
 
 ### Phase 4: npm script wiring, real run, and verification
 
