@@ -259,10 +259,10 @@ None — no schema changes, no persisted-data migration. The new `hasWarnedDense
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `npm run typecheck`
-- [ ] 2.2 Linting passes: `npm run check`
-- [ ] 2.3 `npx vitest run src/server/simulation/boids.test.ts` (existing + new dense/sparse tests)
-- [ ] 2.4 Full suite passes: `npm test`
+- [x] 2.1 Type checking passes: `npm run typecheck` — a2a4081
+- [x] 2.2 Linting passes: `npm run check` — a2a4081
+- [x] 2.3 `npx vitest run src/server/simulation/boids.test.ts` (existing + new dense/sparse tests) — a2a4081
+- [x] 2.4 Full suite passes: `npm test` — a2a4081
 
 ### Phase 3: Persist the warned-flag across ticks on both execution paths
 
