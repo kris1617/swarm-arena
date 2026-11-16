@@ -182,4 +182,4 @@ Prove the lock actually causes a skip under real concurrent load (not just in is
 
 #### Manual
 
-- [x] 3.1 Deliberate concurrent-process check confirms the lock causes a detectable skip
+- [x] 3.1 Deliberate concurrent-process check confirms the lock causes a detectable skip — 8a7fc10
