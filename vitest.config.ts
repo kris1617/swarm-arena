@@ -6,18 +6,6 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		// .claude/skills/** ships its own node:test-style *.test.mjs files (run by the
-		// 10x-cli toolkit itself, not this app) — exclude them, same category as the
-		// context/, CLAUDE.md, .claude excludes already in biome.jsonc.
-		// tests/e2e/**/*.spec.ts are Playwright specs, run by `npx playwright
-		// test`, not Vitest — Vitest's default include glob also matches
-		// `*.spec.ts`, so exclude the E2E directory explicitly.
-		exclude: [
-			"**/node_modules/**",
-			".claude/**",
-			"tests/e2e/**",
-			"scripts/corpus/generate-sweep.full.test.ts",
-		],
 		env: {
 			DATABASE_URL: "file:./db.sqlite",
 			NODE_ENV: "test",
@@ -30,13 +18,6 @@ export default defineConfig({
 			// just feedback.test.ts's own tests.
 			GITHUB_FEEDBACK_TOKEN: "test-token",
 		},
-		// vitest-parallel-flakiness: Vitest's default worker count (one per
-		// CPU core) causes CPU/IO contention under this suite's file
-		// parallelism, producing spurious testTimeout/hookTimeout failures on
-		// slow-but-correct tests. Confirmed-supported in the installed Vitest
-		// 5.1.0 — do NOT use `poolOptions`, which was removed in Vitest 4 and
-		// silently no-ops.
-		maxWorkers: 8,
 		server: {
 			// next-auth's lib/env.js does `import { NextRequest } from "next/server"`
 			// with no extension; Next ships no package.json "exports" map, so letting
@@ -47,5 +28,59 @@ export default defineConfig({
 				inline: [/next-auth/, /@auth\/.*/],
 			},
 		},
+		projects: [
+			{
+				extends: true,
+				test: {
+					name: "serialized-shared-state",
+					// vitest-parallel-flakiness: these 3 files all read/write the
+					// shared admin_settings singleton row and/or insert
+					// corpus-*@example.com fixture owners — concurrent execution
+					// between them causes write-write corruption of
+					// admin_settings.parameterRanges and false-positive
+					// stray-owner assertions that no amount of in-test scoping
+					// can fully eliminate while they can run in the same window.
+					// Vitest's Projects feature serializes just this group;
+					// everything else stays on the parallel "default" project
+					// below.
+					include: [
+						"src/server/api/routers/simulation.test.ts",
+						"scripts/corpus/harness.test.ts",
+						"scripts/corpus/generate-sweep.smoke.test.ts",
+					],
+					fileParallelism: false,
+				},
+			},
+			{
+				extends: true,
+				test: {
+					name: "default",
+					// .claude/skills/** ships its own node:test-style *.test.mjs files (run by the
+					// 10x-cli toolkit itself, not this app) — exclude them, same category as the
+					// context/, CLAUDE.md, .claude excludes already in biome.jsonc.
+					// tests/e2e/**/*.spec.ts are Playwright specs, run by `npx playwright
+					// test`, not Vitest — Vitest's default include glob also matches
+					// `*.spec.ts`, so exclude the E2E directory explicitly.
+					// The 3 files in the "serialized-shared-state" project above are
+					// also excluded here so they aren't double-run.
+					exclude: [
+						"**/node_modules/**",
+						".claude/**",
+						"tests/e2e/**",
+						"scripts/corpus/generate-sweep.full.test.ts",
+						"src/server/api/routers/simulation.test.ts",
+						"scripts/corpus/harness.test.ts",
+						"scripts/corpus/generate-sweep.smoke.test.ts",
+					],
+					// vitest-parallel-flakiness: Vitest's default worker count (one per
+					// CPU core) causes CPU/IO contention under this suite's file
+					// parallelism, producing spurious testTimeout/hookTimeout failures on
+					// slow-but-correct tests. Confirmed-supported in the installed Vitest
+					// 5.1.0 — do NOT use `poolOptions`, which was removed in Vitest 4 and
+					// silently no-ops.
+					maxWorkers: 8,
+				},
+			},
+		],
 	},
 });
