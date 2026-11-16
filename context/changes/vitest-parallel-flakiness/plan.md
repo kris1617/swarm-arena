@@ -442,9 +442,9 @@ changes, no production behavior changes.
 
 #### Automated
 
-- [x] 3.1 Unit test passes: npx vitest run src/server/feedback/retry-worker.test.ts
-- [x] 3.2 Type checking passes: npm run typecheck
-- [x] 3.3 Linting passes: npm run check
+- [x] 3.1 Unit test passes: npx vitest run src/server/feedback/retry-worker.test.ts — 36ccad4
+- [x] 3.2 Type checking passes: npm run typecheck — 36ccad4
+- [x] 3.3 Linting passes: npm run check — 36ccad4
 
 ### Phase 4: Cut contention — memoize the corpus fixture, cap workers, bump known-slow timeouts
 
