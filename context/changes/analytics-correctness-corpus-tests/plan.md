@@ -262,9 +262,9 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 1.1 Unit test passes: npx vitest run src/server/api/routers/corpus-db-fixture.test.ts
-- [x] 1.2 Type checking passes: npm run typecheck
-- [x] 1.3 Linting passes: npm run check
+- [x] 1.1 Unit test passes: npx vitest run src/server/api/routers/corpus-db-fixture.test.ts — 10e0ed5
+- [x] 1.2 Type checking passes: npm run typecheck — 10e0ed5
+- [x] 1.3 Linting passes: npm run check — 10e0ed5
 
 ### Phase 2: getRunAnalysis corpus-correctness test
 
