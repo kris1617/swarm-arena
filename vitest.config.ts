@@ -12,7 +12,12 @@ export default defineConfig({
 		// tests/e2e/**/*.spec.ts are Playwright specs, run by `npx playwright
 		// test`, not Vitest — Vitest's default include glob also matches
 		// `*.spec.ts`, so exclude the E2E directory explicitly.
-		exclude: ["**/node_modules/**", ".claude/**", "tests/e2e/**"],
+		exclude: [
+			"**/node_modules/**",
+			".claude/**",
+			"tests/e2e/**",
+			"scripts/corpus/generate-sweep.full.test.ts",
+		],
 		env: {
 			DATABASE_URL: "file:./db.sqlite",
 			NODE_ENV: "test",
