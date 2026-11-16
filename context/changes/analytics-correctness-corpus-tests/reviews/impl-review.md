@@ -5,7 +5,7 @@
 - **Scope**: Full plan
 - **Reviewed phases**: 1, 2, 3, 4, 5
 - **Date**: 2026-11-16
-- **Verdict**: NEEDS ATTENTION
+- **Verdict**: NEEDS ATTENTION (resolved — see Decisions below)
 - **Findings**: 1 critical, 0 warnings, 1 observation
 
 ## Verdicts
@@ -35,7 +35,7 @@
 
 - **Fix**: Remove the blanket defensive `db.delete(users).where(like(...))` from `insertCorpusRunsAsCompleted` entirely. Each call already gets a collision-proof fresh owner via `ownerEmail()`'s UUID, and every caller already cleans up its own owner via `cleanupCorpusDbFixture` in `afterAll`/`finally`. Dropping the pre-delete removes the only cross-file write that can touch another file's still-in-use rows, eliminating the race without needing `--no-file-parallelism` or any config change.
 
-- **Decision**: PENDING
+- **Decision**: FIXED (commit 25a3161) — re-verified 3/3 green under default parallelism (previously 3/3 reproducibly red), full suite 396/396 under `--no-file-parallelism`, typecheck and check clean.
 
 ### F2 — Phase 5 added two boids.test.ts cases instead of the planned one
 
@@ -45,4 +45,4 @@
 - **Location**: src/server/simulation/boids.test.ts
 - **Detail**: The plan described one synthetic case (a short, declining history still classifies as `"establishment"`). The implementation added two: a plain 19-entry short history, and the 5-entry sharply-declining one. Both stay within the phase's stated intent (proving the length-guard, not the decline pattern, controls the result) and touch no production code — benign scope tightening, not creep.
 - **Fix**: None needed — no action required.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED (no action needed)
