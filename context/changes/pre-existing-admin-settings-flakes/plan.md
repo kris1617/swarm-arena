@@ -340,32 +340,60 @@ caller — it only changes behavior for genuinely concurrent callers
 
 ---
 
-## Phase 5: Update the concurrent-batch test
+## Phase 5: Add a test proving the lock actually works
 
 ### Overview
 
-`harness.test.ts`'s "lets two concurrent batch-mode calls" test should now
-prove deterministic, serialized success instead of a race — same
-black-box assertion (both calls succeed, final ranges are correct), now
-backed by a lock instead of luck.
+**Revised after empirical verification.** The existing "lets two
+concurrent batch-mode calls" test already uses the recommended
+`skipRangeWiden: true` pattern (pre-widen once via
+`ensureAdminRangesAdmitForBatch`, then both concurrent `startCorpusRun`
+calls skip their own widen/restore entirely) — it was never racing on
+`admin_settings` in the first place, by design. A clean 15-run isolated
+batch (single-process, no contamination) confirmed 15/15 green,
+independent of Phase 4's lock. Wrapping this test's own sequence in
+`withAdminRangesLock` (the original plan) would have been a no-op: there
+is no second concurrent widen call for it to serialize against.
+
+The actual code path Phase 4's lock protects — two **standalone**
+(non-`skipRangeWiden`) `startCorpusRun` calls, each doing its own
+individual widen/restore — has no existing test at all. This phase adds
+one.
 
 ### Changes Required:
 
-#### 1. Confirm/adjust the concurrent-batch test's assertions
+**Implementation note (added during Phase 5 itself)**: the end-to-end
+test described below was built first, but its deliberate-break check
+revealed natural `Promise.all` scheduling doesn't reliably force the
+exact interleaving the lock protects against — 18/18 attempts passed even
+with the lock temporarily removed. A second, smaller test was added
+(`describe("withAdminRangesLock", ...)`) that proves the lock's own
+serialization property directly and deterministically (two concurrent
+callers' critical sections provably never overlap) — its break check
+reliably goes red when the lock is removed. Both tests are kept: the
+end-to-end one for basic correctness coverage of the real call path, the
+direct one as the actual, reliable proof the lock works.
+
+#### 1. New test: two concurrent standalone `startCorpusRun` calls
 
 **File**: `scripts/corpus/harness.test.ts`
 
-**Intent**: Read the existing test (`startCorpusRun batch mode (skipRangeWiden)`
-describe block). If it calls `ensureAdminRangesAdmitForBatch`/`startCorpusRun`
-directly (not through `runBatch`), it bypasses Phase 4's lock entirely —
-wrap its own two concurrent call sequences in `withAdminRangesLock` the
-same way `runBatch` now does, so the test actually exercises the fix
-rather than the unlocked primitives.
+**Intent**: Add a new test (sibling to the existing "lets two concurrent
+batch-mode calls" test, same `describe` block or a new one — pick
+whichever keeps the file's existing organization cleanest) that fires two
+concurrent `startCorpusRun` calls WITHOUT `skipRangeWiden` (the default,
+each doing its own `ensureAdminRangesAdmit` widen and its own restore in
+`finally`), each needing a wider range than default (mirroring the
+existing test's `paramsA`/`paramsB` shape with two different
+out-of-default-range values). Assert both calls succeed, and that the
+final restored range after both complete is back to the true original
+default (not a partially-restored or corrupted hybrid) — this is the
+exact failure mode Phase 4's lock prevents (one call's restore undoing
+the other's still-needed widen mid-flight).
 
-**Contract**: The test's existing assertions (both calls succeed, the
-final restored range is correct) stay the same in spirit — only the
-test's own call sequence gains the lock wrapper so it's testing the fixed
-code path.
+**Contract**: No change to `startCorpusRun`/`ensureAdminRangesAdmit`
+production code in this phase (already done in Phase 4) — purely a new
+test exercising the already-fixed path.
 
 ### Success Criteria:
 
@@ -493,14 +521,14 @@ Not applicable — no schema, data, or API changes.
 - [x] 4.1 Type checking passes: npm run typecheck — ce53b47
 - [x] 4.2 Linting passes: npm run check — ce53b47
 
-### Phase 5: Update the concurrent-batch test
+### Phase 5: Add a test proving the lock actually works
 
 #### Automated
 
-- [ ] 5.1 Unit test passes: npx vitest run scripts/corpus/harness.test.ts
-- [ ] 5.2 20 consecutive green runs of the concurrent-batch test
-- [ ] 5.3 Type checking passes: npm run typecheck
-- [ ] 5.4 Linting passes: npm run check
+- [x] 5.1 Unit test passes: npx vitest run scripts/corpus/harness.test.ts
+- [x] 5.2 20 consecutive green runs of the new tests, single-process only (no deliberately-launched concurrent npm test/vitest processes) — the end-to-end concurrent-standalone-calls test for basic correctness, and the deterministic withAdminRangesLock test as the actual reliable proof. Actual result: 20/20 clean (verified own batch's own iterations; one incidental collision with the project's own Stop hook firing concurrently during this batch reproduced the SAME cross-process symptom documented in research.md's second addendum — expected, since withAdminRangesLock is in-process-only, same limitation as Vitest's own fileParallelism — and did not affect this batch's own tally).
+- [x] 5.3 Type checking passes: npm run typecheck
+- [x] 5.4 Linting passes: npm run check
 
 ### Phase 6: Cleanup and final verification
 

@@ -11,6 +11,7 @@ import {
 	ensureAdminRangesAdmitForBatch,
 	type StartCorpusRunParams,
 	startCorpusRun,
+	withAdminRangesLock,
 } from "./harness";
 
 const VALID_START_INPUT: StartCorpusRunParams = {
@@ -338,5 +339,101 @@ describe("startCorpusRun batch mode (skipRangeWiden)", () => {
 		await pump(stopServerRun(resultB.runId));
 		await pump(collectAndCleanupCorpusRun(db, resultA.ownerId, resultA.runId));
 		await pump(collectAndCleanupCorpusRun(db, resultB.ownerId, resultB.runId));
+	});
+});
+
+describe("startCorpusRun standalone mode (own widen/restore, concurrent)", () => {
+	// Unlike the batch-mode test above (both calls pass `skipRangeWiden: true`
+	// and share a single pre-widen done before `Promise.all` even starts),
+	// this exercises the actual path Phase 4's `withAdminRangesLock` protects:
+	// two concurrent STANDALONE `startCorpusRun` calls, each doing its own
+	// internal widen (`ensureAdminRangesAdmit`) and its own restore in
+	// `finally`. Without the lock, one call's restore-to-its-own-snapshot can
+	// clobber the other call's still-in-progress widen, corrupting the shared
+	// `admin_settings.parameterRanges` row.
+	it("lets two concurrent standalone startCorpusRun calls both succeed and restores the true original range afterward", async () => {
+		vi.useFakeTimers();
+
+		const paramsA: StartCorpusRunParams = {
+			...VALID_START_INPUT,
+			// Default ceiling is 600 — both values exceed it, so each call's own
+			// widen must independently admit it.
+			maxDurationSeconds: 1000,
+		};
+		const paramsB: StartCorpusRunParams = {
+			...VALID_START_INPUT,
+			maxDurationSeconds: 3600,
+		};
+
+		const [resultA, resultB] = await Promise.all([
+			pump(startCorpusRun(db, paramsA)),
+			pump(startCorpusRun(db, paramsB)),
+		]);
+
+		expect(resultA.runId).toBeTypeOf("number");
+		expect(resultB.runId).toBeTypeOf("number");
+		expect(resultA.ownerId).not.toBe(resultB.ownerId);
+
+		// Both calls' own restores must have serialized correctly (via the
+		// lock) and landed back on the true original default — not the
+		// widened value either call left behind, and not some
+		// partially-restored/corrupted hybrid.
+		const rangesAfter = await readAdminRanges();
+		expect(rangesAfter.maxDurationSeconds).toEqual(
+			DEFAULT_PARAMETER_RANGES.maxDurationSeconds,
+		);
+
+		// Clean up both fixture runs/owners the same way other tests in this
+		// file do: stop, then collect+cleanup.
+		await pump(stopServerRun(resultA.runId));
+		await pump(stopServerRun(resultB.runId));
+		await pump(collectAndCleanupCorpusRun(db, resultA.ownerId, resultA.runId));
+		await pump(collectAndCleanupCorpusRun(db, resultB.ownerId, resultB.runId));
+	});
+});
+
+describe("withAdminRangesLock", () => {
+	// The end-to-end concurrent-startCorpusRun test above exercises the real
+	// call path, but natural Promise.all scheduling doesn't reliably force
+	// the exact interleaving the lock protects against (confirmed: 18/18
+	// clean even with the lock temporarily removed during this phase's own
+	// deliberate-break check). This test instead proves the lock's own
+	// serialization property directly and deterministically: two concurrent
+	// callers must never have their critical sections overlap, regardless of
+	// scheduling.
+	it("never lets two concurrent critical sections overlap", async () => {
+		const events: string[] = [];
+		let releaseFirst: (() => void) | undefined;
+
+		const first = withAdminRangesLock(async () => {
+			events.push("first-enter");
+			await new Promise<void>((resolve) => {
+				releaseFirst = resolve;
+			});
+			events.push("first-exit");
+		});
+
+		// Give `first` a tick to actually enter its critical section before
+		// starting `second`, so `second` is guaranteed to be the one waiting.
+		await Promise.resolve();
+
+		const second = withAdminRangesLock(async () => {
+			events.push("second-enter");
+			events.push("second-exit");
+		});
+
+		// `second` must not have entered yet — `first` is still holding the
+		// lock (blocked on its own un-resolved promise).
+		expect(events).toEqual(["first-enter"]);
+
+		releaseFirst?.();
+		await Promise.all([first, second]);
+
+		expect(events).toEqual([
+			"first-enter",
+			"first-exit",
+			"second-enter",
+			"second-exit",
+		]);
 	});
 });
