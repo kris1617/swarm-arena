@@ -1150,6 +1150,48 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// spatial-grid-dense-clustering-fallback Phase 3: same regression shape
+	// as the populationDensitySamples/geneticDiversitySamples tests above —
+	// a `savedState` row written before this field existed has no
+	// `hasWarnedDenseClustering` key, so `resumeServerRun` must not crash
+	// when reconstructing it (falling back to `false` via `?? false`), and a
+	// subsequent tick must succeed rather than crashing.
+	it("resuming a snapshot missing hasWarnedDenseClustering (pre-change data) does not crash the run", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(14);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 14,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		// Simulate a pre-change saved row: strip the field entirely rather
+		// than setting it to `undefined`, matching what a real pre-change
+		// JSON blob actually looks like (the key is simply absent, not
+		// present-as-undefined).
+		const legacySnapshot = { ...snapshot } as Partial<ServerRunSnapshot>;
+		legacySnapshot.hasWarnedDenseClustering = undefined;
+		delete (legacySnapshot as Record<string, unknown>).hasWarnedDenseClustering;
+
+		resumeServerRun(runId, legacySnapshot as ServerRunSnapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		// If the resumed tick had thrown, tick()'s catch block would have
+		// called finishRun and removed the run from the live registry.
+		expect(getLiveRunState(runId)).toBeDefined();
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
 	// The test above proves continuity when no rng-driven branch (reproduction)
 	// fires in the window — it would pass even if resumeServerRun forgot to
 	// restore the RNG's state, since plain movement never calls `rng()`. This
