@@ -1,7 +1,7 @@
 ---
 change_id: pre-existing-admin-settings-flakes
 title: Fix two pre-existing flaky tests surfaced by vitest-parallel-flakiness's stress testing
-status: implementing
+status: implemented
 created: 2026-11-16
 updated: 2026-11-16
 archived_at: null
