@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 
-import { like } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
@@ -30,10 +30,6 @@ afterEach(async () => {
 	// file never observes the row as briefly absent (see
 	// admin-settings-test-reset.ts).
 	await resetAdminSettingsToDefaults(db);
-	// Defensive — the orchestrator's own `collectAndCleanupCorpusRun`
-	// already deletes each fixture owner, but a test that threw mid-run
-	// could leave one behind otherwise.
-	await db.delete(users).where(like(users.email, "corpus-%@example.com"));
 });
 
 describe("generateCorpus smoke test", () => {
@@ -100,6 +96,18 @@ describe("generateCorpus smoke test", () => {
 				where: (t, { like }) => like(t.email, "corpus-%@example.com"),
 			});
 			const newStrayOwners = afterOwners.filter((u) => !baselineIds.has(u.id));
+			if (newStrayOwners.length > 0) {
+				// Defensive, scoped-by-ID cleanup for a genuine leak from this
+				// test's own run — never a blanket email-prefix delete, which
+				// would also catch harness.test.ts's concurrently-running
+				// fixture owners (same shared db.sqlite, different worker).
+				await db.delete(users).where(
+					inArray(
+						users.id,
+						newStrayOwners.map((u) => u.id),
+					),
+				);
+			}
 			expect(newStrayOwners).toHaveLength(0);
 		} finally {
 			rmSync(outDir, { recursive: true, force: true });
