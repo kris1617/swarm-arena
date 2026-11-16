@@ -297,7 +297,7 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [x] 5.1 Unit test passes: npx vitest run src/server/simulation/boids.test.ts src/app/runs/[runId]/page.test.ts
-- [x] 5.2 Full suite stays green: npm test
-- [x] 5.3 Type checking passes: npm run typecheck
-- [x] 5.4 Linting passes: npm run check
+- [x] 5.1 Unit test passes: npx vitest run src/server/simulation/boids.test.ts src/app/runs/[runId]/page.test.ts — 2ea3b38
+- [x] 5.2 Full suite stays green: npm test — 2ea3b38
+- [x] 5.3 Type checking passes: npm run typecheck — 2ea3b38
+- [x] 5.4 Linting passes: npm run check — 2ea3b38
