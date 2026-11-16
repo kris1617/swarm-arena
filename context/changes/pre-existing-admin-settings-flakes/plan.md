@@ -461,9 +461,9 @@ Not applicable — no schema, data, or API changes.
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: npm run typecheck
-- [ ] 1.2 Linting passes: npm run check
-- [ ] 1.3 Existing tests still pass with the flag unset: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts
+- [x] 1.1 Type checking passes: npm run typecheck — 5483f3d
+- [x] 1.2 Linting passes: npm run check — 5483f3d
+- [x] 1.3 Existing tests still pass with the flag unset: npx vitest run src/server/api/routers/simulation.test.ts scripts/corpus/harness.test.ts — 5483f3d
 
 ### Phase 2: Reproduce under load (bounded attempts)
 
