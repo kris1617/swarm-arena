@@ -16,4 +16,11 @@ describe("buildDiversityChartData", () => {
 	it("returns undefined for an older run without samples", () => {
 		expect(buildDiversityChartData(undefined)).toBeUndefined();
 	});
+
+	it("returns an empty array, not undefined, for a run with zero samples", () => {
+		const result = buildDiversityChartData([]);
+
+		expect(result).toEqual([]);
+		expect(result).not.toBeUndefined();
+	});
 });

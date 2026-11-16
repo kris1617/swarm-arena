@@ -1214,6 +1214,19 @@ describe("classifyPopulationPhase", () => {
 		expect(classifyPopulationPhase(shortHistory, null)).toBe("establishment");
 	});
 
+	it("classifies as establishment below the window even when the short history itself looks like a crash", () => {
+		// Proves the length guard, not the decline pattern, controls the
+		// result: this data shape would classify as "crash" at full window
+		// size (see the crash case below), but at 5 samples it never reaches
+		// that check.
+		const shortDecliningHistory = Array.from({ length: 5 }, (_, i) =>
+			sample(200 - i * 30, 0.1),
+		);
+		expect(classifyPopulationPhase(shortDecliningHistory, null)).toBe(
+			"establishment",
+		);
+	});
+
 	it("classifies as growth when population is rising and food is abundant", () => {
 		const history = Array.from({ length: WINDOW }, (_, i) =>
 			sample(50 + i * 5, 0.9),
