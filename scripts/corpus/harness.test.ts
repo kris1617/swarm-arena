@@ -7,6 +7,7 @@ import { stopServerRun } from "~/server/simulation/server-run-registry";
 import {
 	collectAndCleanupCorpusRun,
 	ensureAdminRangesAdmit,
+	ensureAdminRangesAdmitForBatch,
 	type StartCorpusRunParams,
 	startCorpusRun,
 } from "./harness";
@@ -105,6 +106,50 @@ describe("ensureAdminRangesAdmit", () => {
 		expect(widened.maxDurationSeconds.max).toBe(
 			DEFAULT_PARAMETER_RANGES.maxDurationSeconds.max,
 		);
+	});
+});
+
+describe("ensureAdminRangesAdmitForBatch", () => {
+	it("widens to the union across several param sets and returns the pre-widen snapshot", async () => {
+		const original = await ensureAdminRangesAdmitForBatch(db, [
+			// Default ceiling is 600 — this alone needs widening.
+			{ maxDurationSeconds: 1000 },
+			// A second entry needing a *wider* ceiling than the first — the
+			// union must reflect this one, not the first entry's value.
+			{ maxDurationSeconds: 3600 },
+			// A field only this third entry touches, already in range (10
+			// is within the default 1-500 boidCount range) — must stay
+			// untouched.
+			{ boidCount: 10 },
+		]);
+
+		expect(original).toEqual(DEFAULT_PARAMETER_RANGES);
+
+		const widened = await readAdminRanges();
+
+		expect(widened.maxDurationSeconds).toEqual({
+			min: DEFAULT_PARAMETER_RANGES.maxDurationSeconds.min,
+			max: 3600,
+			default: DEFAULT_PARAMETER_RANGES.maxDurationSeconds.default,
+		});
+		expect(widened.boidCount).toEqual(DEFAULT_PARAMETER_RANGES.boidCount);
+	});
+
+	it("writes the union exactly once (not once per entry)", async () => {
+		const updateSpy = vi.spyOn(db, "update");
+
+		await ensureAdminRangesAdmitForBatch(db, [
+			{ maxDurationSeconds: 1000 },
+			{ maxDurationSeconds: 3600 },
+			{ maxDurationSeconds: 5000 },
+		]);
+
+		expect(updateSpy).toHaveBeenCalledTimes(1);
+
+		const widened = await readAdminRanges();
+		expect(widened.maxDurationSeconds.max).toBe(5000);
+
+		updateSpy.mockRestore();
 	});
 });
 
@@ -243,5 +288,53 @@ describe("startCorpusRun / collectAndCleanupCorpusRun round trip", () => {
 			where: (t, { eq: eqFn }) => eqFn(t.id, owner.id),
 		});
 		expect(ownerRow).toBeUndefined();
+	});
+});
+
+describe("startCorpusRun batch mode (skipRangeWiden)", () => {
+	// Reproduces the race described in the plan's Current State Analysis:
+	// two concurrent `startCorpusRun` calls that each individually need a
+	// wider admin range than the default would otherwise each widen then
+	// restore on their own, racing each other's restore against the other
+	// call's still-in-progress `startServer`. Pre-widening once via
+	// `ensureAdminRangesAdmitForBatch` and having both calls opt out of
+	// their own widen/restore (`skipRangeWiden: true`) must let both
+	// succeed with neither spuriously rejected by the admin-range gate.
+	it("lets two concurrent batch-mode calls both succeed when both need a wider range than default", async () => {
+		vi.useFakeTimers();
+
+		const paramsA: StartCorpusRunParams = {
+			...VALID_START_INPUT,
+			// Default ceiling is 600 — both values exceed it, so neither call
+			// would pass `checkAgainstAdminRanges` without the batch widen.
+			maxDurationSeconds: 1000,
+		};
+		const paramsB: StartCorpusRunParams = {
+			...VALID_START_INPUT,
+			maxDurationSeconds: 3600,
+		};
+
+		await ensureAdminRangesAdmitForBatch(db, [paramsA, paramsB]);
+
+		const [resultA, resultB] = await Promise.all([
+			pump(startCorpusRun(db, paramsA, { skipRangeWiden: true })),
+			pump(startCorpusRun(db, paramsB, { skipRangeWiden: true })),
+		]);
+
+		expect(resultA.runId).toBeTypeOf("number");
+		expect(resultB.runId).toBeTypeOf("number");
+		expect(resultA.ownerId).not.toBe(resultB.ownerId);
+
+		// Neither call restored the shared row on its own — it's still the
+		// batch-widened union, wide enough for both.
+		const rangesDuring = await readAdminRanges();
+		expect(rangesDuring.maxDurationSeconds.max).toBe(3600);
+
+		// Clean up both fixture runs/owners the same way other tests in this
+		// file do: stop, then collect+cleanup.
+		await pump(stopServerRun(resultA.runId));
+		await pump(stopServerRun(resultB.runId));
+		await pump(collectAndCleanupCorpusRun(db, resultA.ownerId, resultA.runId));
+		await pump(collectAndCleanupCorpusRun(db, resultB.ownerId, resultB.runId));
 	});
 });

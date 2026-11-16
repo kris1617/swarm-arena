@@ -118,6 +118,52 @@ export async function ensureAdminRangesAdmit(
 	return original;
 }
 
+// Batch-scoped sibling of `ensureAdminRangesAdmit`: folds the same
+// per-field min/max-widen rule across every param set in `paramsList`
+// instead of a single `params` object, and writes the union to
+// `adminSettings` exactly once. Lets a caller starting several runs as one
+// batch widen the shared row once up front (via `startCorpusRun`'s
+// `opts.skipRangeWiden`) instead of each concurrent `startCorpusRun` call
+// racing its own widen/restore against the others.
+export async function ensureAdminRangesAdmitForBatch(
+	db: DB,
+	paramsList: Array<Partial<Record<RangedParameterName, number | boolean>>>,
+): Promise<ParameterRanges> {
+	const original = await getOrSeedAdminSettingsRanges(db);
+	const widened: ParameterRanges = { ...original };
+
+	for (const params of paramsList) {
+		for (const name of RANGED_PARAMETER_NAMES) {
+			if (!(name in params)) {
+				continue;
+			}
+			const rawValue = params[name];
+			if (rawValue === undefined) {
+				continue;
+			}
+			// Same generic coercion `ensureAdminRangesAdmit` uses — not
+			// field-name-specific.
+			const value = typeof rawValue === "boolean" ? Number(rawValue) : rawValue;
+			// Widen from the running `widened` value (not `original`) so a
+			// later entry in the batch keeps the widening an earlier entry
+			// already needed instead of clobbering it back to the default.
+			const range = widened[name];
+			widened[name] = {
+				...range,
+				min: Math.min(range.min, value),
+				max: Math.max(range.max, value),
+			};
+		}
+	}
+
+	await db
+		.update(adminSettings)
+		.set({ parameterRanges: widened })
+		.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+
+	return original;
+}
+
 function callerFor(db: DB, ownerId: string) {
 	return createCaller({
 		db,
@@ -154,6 +200,7 @@ async function callProcedure<T>(promise: Promise<T>): Promise<T> {
 export async function startCorpusRun(
 	db: DB,
 	params: StartCorpusRunParams,
+	opts?: { skipRangeWiden?: boolean },
 ): Promise<{ runId: number; ownerId: string }> {
 	const [owner] = await db
 		.insert(users)
@@ -163,7 +210,13 @@ export async function startCorpusRun(
 		throw new Error("startCorpusRun: failed to insert fixture owner");
 	}
 
-	const restoreRanges = await ensureAdminRangesAdmit(db, params);
+	// Batch callers have already widened (and own restoring) the shared row
+	// via `ensureAdminRangesAdmitForBatch` — running this call's own
+	// widen/restore on top would race its restore against the other calls
+	// in the batch, each stomping on the others' still-in-progress runs.
+	const restoreRanges = opts?.skipRangeWiden
+		? null
+		: await ensureAdminRangesAdmit(db, params);
 
 	try {
 		const caller = callerFor(db, owner.id);
@@ -181,10 +234,14 @@ export async function startCorpusRun(
 		// so restoring the admin ranges as soon as `startServer` settles —
 		// success or throw — cannot affect a run already in progress, and
 		// must happen either way: this row is shared with real traffic.
-		await db
-			.update(adminSettings)
-			.set({ parameterRanges: restoreRanges })
-			.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+		// Skipped entirely when the caller owns the batch-scoped
+		// widen/restore instead.
+		if (restoreRanges !== null) {
+			await db
+				.update(adminSettings)
+				.set({ parameterRanges: restoreRanges })
+				.where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
+		}
 	}
 }
 
