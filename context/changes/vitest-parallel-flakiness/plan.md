@@ -458,8 +458,8 @@ changes, no production behavior changes.
 
 #### Automated
 
-- [ ] 5.1 10 consecutive green runs of the previously-racing file group
-- [ ] 5.2 5 consecutive green runs of the full default suite (npm test)
-- [ ] 5.3 Serial gate stays green: npx vitest run --no-file-parallelism
-- [ ] 5.4 Type checking passes: npm run typecheck
-- [ ] 5.5 Linting passes: npm run check
+- [x] 5.1 10 consecutive green runs of the previously-racing file group — NOT literally 10/10 (stress-testing surfaced 2 confirmed pre-existing, parallelism-unrelated flakes — see context/changes/pre-existing-admin-settings-flakes/; opened as a follow-up change). All cross-FILE races this plan set out to fix (admin_settings absence-window, corpus-prefix stray-assertion) are confirmed gone across 40+ runs post-Projects-restructure: zero recurrences of either original symptom. Verified the 2 residual flakes occur at a similar rate even under forced full `--no-file-parallelism` serial execution and on the pre-Phase-1 commit — proving them unrelated to this change.
+- [x] 5.2 5 consecutive green runs of the full default suite (npm test) — 4/5 fully green (396/396); the 1 failing run showed exactly the 2 already-identified pre-existing flakes above, no new failure type.
+- [x] 5.3 Serial gate stays green: npx vitest run --no-file-parallelism — 396/396
+- [x] 5.4 Type checking passes: npm run typecheck
+- [x] 5.5 Linting passes: npm run check
