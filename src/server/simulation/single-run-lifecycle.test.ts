@@ -578,3 +578,85 @@ describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral
 		expect(boidCountAfter(true)).toBeGreaterThan(2);
 	});
 });
+
+// test-plan-refresh-2026-11-16 Phase 4 (S-32): the existing genetic-diversity
+// sample test above (line ~143) only proves two call sites of
+// computeGeneticDiversity agree with each other — it never checks the series
+// against an independently-known true diversity. These two tests build
+// populations whose true diversity is a mathematical fact about the fixture
+// itself (zero-variance: every boid's genes are the exact same object;
+// positive-variance: boids have deliberately distinct gene values across
+// multiple numeric fields and color), never by calling
+// computeGeneticDiversity again.
+describe("computeSingleRunTick genetic-diversity series oracle", () => {
+	it("keeps every sample at exactly 0 across several ticks for a population with zero genetic variance", () => {
+		// All three boids share the exact same GENES object reference — the
+		// true diversity of an identical-genes population is 0 by definition,
+		// independent of whatever computeGeneticDiversity computes.
+		let state = buildState({
+			boids: [buildBoid(), buildBoid(), buildBoid()],
+			lastTimestamp: 0,
+		});
+		let timestamp = 0;
+
+		for (let i = 0; i < 5; i++) {
+			timestamp += 50;
+			state = computeSingleRunTick(state, timestamp, PARAMS);
+		}
+
+		expect(state.geneticDiversitySamples).toHaveLength(5);
+		for (const sample of state.geneticDiversitySamples) {
+			expect(sample).toBeCloseTo(0, 9);
+		}
+	});
+
+	it("keeps every sample measurably above 0 across several ticks for a population with deliberately distinct genes", () => {
+		// Three boids whose genes differ across multiple numeric fields and
+		// color — a population with known positive variance, so the true
+		// diversity is mathematically > 0 regardless of the function under
+		// test.
+		let state = buildState({
+			boids: [
+				buildBoid({
+					genes: {
+						...GENES,
+						maxSpeed: 20,
+						minSpeed: 5,
+						maxLifespan: 50,
+						color: { r: 255, g: 0, b: 0 },
+					},
+				}),
+				buildBoid({
+					genes: {
+						...GENES,
+						maxSpeed: 60,
+						minSpeed: 25,
+						maxLifespan: 150,
+						color: { r: 0, g: 255, b: 0 },
+					},
+				}),
+				buildBoid({
+					genes: {
+						...GENES,
+						maxSpeed: 100,
+						minSpeed: 45,
+						maxLifespan: 250,
+						color: { r: 0, g: 0, b: 255 },
+					},
+				}),
+			],
+			lastTimestamp: 0,
+		});
+		let timestamp = 0;
+
+		for (let i = 0; i < 5; i++) {
+			timestamp += 50;
+			state = computeSingleRunTick(state, timestamp, PARAMS);
+		}
+
+		expect(state.geneticDiversitySamples).toHaveLength(5);
+		for (const sample of state.geneticDiversitySamples) {
+			expect(sample).toBeGreaterThan(0);
+		}
+	});
+});
