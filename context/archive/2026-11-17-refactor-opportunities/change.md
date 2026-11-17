@@ -1,10 +1,10 @@
 ---
 change_id: refactor-opportunities
 title: Refactor opportunities for sim-engine's technical debt (10xArchitect M4L4 artifact)
-status: impl_reviewed
+status: archived
 created: 2026-11-17
 updated: 2026-11-17
-archived_at: null
+archived_at: 2026-11-17T11:56:31Z
 ---
 
 ## Notes
