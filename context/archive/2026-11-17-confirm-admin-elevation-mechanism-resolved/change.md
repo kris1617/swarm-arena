@@ -1,10 +1,10 @@
 ---
 change_id: confirm-admin-elevation-mechanism-resolved
 title: Confirm admin-elevation mechanism is resolved
-status: impl_reviewed
+status: archived
 created: 2026-11-17
 updated: 2026-11-17
-archived_at: null
+archived_at: 2026-11-17T09:04:48Z
 ---
 
 ## Notes
