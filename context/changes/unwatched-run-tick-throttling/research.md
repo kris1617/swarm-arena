@@ -89,6 +89,9 @@ The change's own Notes assumed S-25 added a "formula-version marker" column to c
 ## Open for /10x-plan to resolve
 
 - Exact multiplier value and its justification.
-- Exact schema shape for "ever throttled" (new `simulationRuns` column vs. a flag inside the existing `history` JSON, given the schema-less-JSON convention point above).
 - Exact viewer-count data structure and its decrement path (loop-exit vs. explicit teardown) inside `watchServerRun`.
 - Whether to exclude throttled runs from leaderboard/parameter-suggestion queries outright, or flag-and-include (matching the existing legacy-row disclaimer pattern).
+
+## Decided (2026-11-17, user)
+
+- **Marker schema: new typed DB column on `simulationRuns`** (e.g. `wasEverThrottled: boolean`), not a JSON-presence flag inside `history`. Deliberately diverges from S-25's JSON-presence convention — chosen for direct SQL filterability in the leaderboard's `ORDER BY`/`WHERE` and the parameter-suggestion heuristic's row selection, which a JSON-blob flag would require fetch-then-filter-in-JS to replicate (same friction `areaPopulationDensity` already has today). `/10x-plan` must specify the migration, the exact column name/type, and the write path that sets it to `true` the first time a throttle multiplier is actually applied to a tick (not merely whenever viewer-count reaches zero, since a run could go unwatched without ever having the multiplier engaged, depending on how the plan sequences the multiplier-application logic).
