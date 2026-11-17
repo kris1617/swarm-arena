@@ -516,19 +516,23 @@ function tick(runId: number): void {
 		);
 
 		if (result.wasThrottledThisTick && !run.wasEverThrottledWritten) {
-			run.wasEverThrottledWritten = true;
 			void db
 				.update(simulationRuns)
 				.set({ wasEverThrottled: true })
 				.where(eq(simulationRuns.id, runId))
+				.then(() => {
+					// impl-review F1 (2026-11-17): only latch the write-once guard
+					// on success — if the update fails, leave it false so the
+					// next throttled tick retries, rather than letting a failed
+					// write get stuck as false forever.
+					run.wasEverThrottledWritten = true;
+				})
 				.catch((error: unknown) => {
 					// Mirrors finishRun's fire-and-forget posture: this write
 					// happens from inside a synchronous interval callback, so an
 					// uncaught rejection here would be an unhandled promise
-					// rejection. A failed write here leaves the row's
-					// wasEverThrottled flag stuck at false even though the run
-					// was in fact throttled — a known, logged gap, not silently
-					// swallowed.
+					// rejection. A failed write is retried on the next throttled
+					// tick (the guard above stays false), not silently swallowed.
 					console.error(
 						`server run ${runId}: failed to write wasEverThrottled=true:`,
 						error,
