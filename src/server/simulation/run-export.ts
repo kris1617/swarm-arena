@@ -23,6 +23,10 @@ export type RunExportRow = {
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
+	// unwatched-run-tick-throttling Phase 3: sticky comparability marker,
+	// carried through so an exported row discloses whether it was ever
+	// ticked at the throttled speed multiplier while unwatched.
+	wasEverThrottled: boolean;
 	history: unknown; // schema-less JSON column, passed through as-is for JSON mode
 };
 
@@ -49,6 +53,7 @@ const CSV_COLUMNS = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
+	"wasEverThrottled",
 ] as const satisfies readonly (keyof RunExportRow)[];
 
 function csvValue(value: RunExportRow[(typeof CSV_COLUMNS)[number]]): string {

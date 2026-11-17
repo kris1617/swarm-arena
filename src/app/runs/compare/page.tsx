@@ -62,6 +62,7 @@ type OkRow = {
 		phaseQuality: number;
 		areaPopulationDensity: number | null;
 	} | null;
+	wasEverThrottled: boolean;
 };
 
 type ComparisonRow = ErroredRow | OkRow;
@@ -144,6 +145,18 @@ export default function RunsComparePage() {
 						Run #{row.runId} was scored before the area-population-density
 						factor existed — its score and this run&apos;s other runs may not be
 						directly comparable.
+					</p>
+				))}
+
+			{okRows
+				.filter((row) => row.wasEverThrottled)
+				.map((row) => (
+					<p
+						className="text-foreground/70 text-sm"
+						key={`throttled-${row.runId}`}
+					>
+						Run #{row.runId} ticked at an accelerated rate while unwatched — its
+						score may not be directly comparable.
 					</p>
 				))}
 

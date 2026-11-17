@@ -712,6 +712,12 @@ export const simulationRouter = createTRPCRouter({
 				score: simulationRuns.score,
 				stoppedAt: simulationRuns.stoppedAt,
 				history: simulationRuns.history,
+				// unwatched-run-tick-throttling Phase 3: surfaced so the client
+				// can badge a run that isn't directly comparable to one that
+				// never used this feature — same real-column treatment as
+				// every other selected field here, unlike the derived
+				// scoredWithAreaFactor below.
+				wasEverThrottled: simulationRuns.wasEverThrottled,
 			})
 			.from(simulationRuns)
 			.where(
@@ -764,6 +770,10 @@ export const simulationRouter = createTRPCRouter({
 					mutationMagnitude: simulationRuns.mutationMagnitude,
 					xyArea: simulationRuns.xyArea,
 					zDepth: simulationRuns.zDepth,
+					// unwatched-run-tick-throttling Phase 3: included so throttled
+					// rows can be counted (flag-and-include, not excluded from
+					// the correlation input) and disclosed in the rationale.
+					wasEverThrottled: simulationRuns.wasEverThrottled,
 				})
 				.from(simulationRuns)
 				.where(
@@ -778,13 +788,17 @@ export const simulationRouter = createTRPCRouter({
 			// `startServer`'s catch-block failure path (above) can leave one
 			// null — exclude rather than let `suggestParameterChange` see a
 			// non-numeric score.
-			const inputRows: SuggestionInputRow[] = rows
-				.filter(
-					(row): row is typeof row & { score: number } => row.score !== null,
-				)
-				.map((row) => ({ ...row, score: row.score }));
+			const scoredRows = rows.filter(
+				(row): row is typeof row & { score: number } => row.score !== null,
+			);
+			const throttledCount = scoredRows.filter(
+				(row) => row.wasEverThrottled,
+			).length;
+			const inputRows: SuggestionInputRow[] = scoredRows.map(
+				({ wasEverThrottled, ...row }) => ({ ...row, score: row.score }),
+			);
 
-			return suggestParameterChange(inputRows);
+			return suggestParameterChange(inputRows, throttledCount);
 		},
 	),
 
@@ -901,6 +915,11 @@ export const simulationRouter = createTRPCRouter({
 							phaseQuality: number;
 							areaPopulationDensity: number | null;
 						} | null;
+						// unwatched-run-tick-throttling Phase 3: sticky comparability
+						// marker, sourced directly from the DB column, so the
+						// comparison page can disclaim this row the same way it
+						// already disclaims a legacy (pre-area-factor) row.
+						wasEverThrottled: boolean;
 				  }
 			> = [];
 
@@ -972,6 +991,7 @@ export const simulationRouter = createTRPCRouter({
 						protectionThreshold: run.protectionThreshold,
 					},
 					breakdown,
+					wasEverThrottled: run.wasEverThrottled,
 				});
 			}
 

@@ -24,6 +24,7 @@ const SAMPLE_RUN: RunExportRow = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
+	wasEverThrottled: false,
 	history: {
 		phaseHistory: ["establishment"],
 		foodRatioSamples: [0.5],
@@ -100,13 +101,35 @@ describe("buildRunExport", () => {
 		expect(lines).toHaveLength(2);
 
 		expect(lines[0]).toBe(
-			"id,status,score,startedAt,stoppedAt,boidCount,separationWeight,alignmentWeight,cohesionWeight,maxDurationSeconds,predatorCount,protectionThreshold,foodStockInitial,foodRegenRate,flockCount,crossbreedingEnabled,energyThreshold,mutationChance,mutationMagnitude",
+			"id,status,score,startedAt,stoppedAt,boidCount,separationWeight,alignmentWeight,cohesionWeight,maxDurationSeconds,predatorCount,protectionThreshold,foodStockInitial,foodRegenRate,flockCount,crossbreedingEnabled,energyThreshold,mutationChance,mutationMagnitude,wasEverThrottled",
 		);
 		expect(lines[1]).toBe(
-			"42,stopped,0.75,2026-01-01T00:00:00.000Z,2026-01-01T00:05:00.000Z,10,1,1,1,60,2,3,100,1,2,true,50,0.1,0.2",
+			"42,stopped,0.75,2026-01-01T00:00:00.000Z,2026-01-01T00:05:00.000Z,10,1,1,1,60,2,3,100,1,2,true,50,0.1,0.2,false",
 		);
 		expect(result.body).not.toContain("history");
 		expect(result.body).not.toContain("establishment");
+	});
+
+	// unwatched-run-tick-throttling Phase 3: the export is a close cousin of
+	// run-comparison's disclosure need — proves the marker survives both
+	// serialization modes, true and false.
+	it("includes wasEverThrottled in both JSON and CSV mode", () => {
+		const throttledRun = { ...SAMPLE_RUN, wasEverThrottled: true };
+
+		const jsonResult = buildRunExport(throttledRun, "json");
+		const parsedJson = JSON.parse(jsonResult.body) as Record<string, unknown>;
+		expect(parsedJson.wasEverThrottled).toBe(true);
+
+		const csvResult = buildRunExport(throttledRun, "csv");
+		const [, row] = csvResult.body.trim().split("\n");
+		expect(row).toContain("true");
+
+		const nonThrottledJson = buildRunExport(SAMPLE_RUN, "json");
+		const parsedNonThrottled = JSON.parse(nonThrottledJson.body) as Record<
+			string,
+			unknown
+		>;
+		expect(parsedNonThrottled.wasEverThrottled).toBe(false);
 	});
 
 	it("serializes a null stoppedAt/score as the literal string null in CSV mode", () => {

@@ -1595,6 +1595,60 @@ describe("simulationRouter.listLeaderboard", () => {
 			expect(row).not.toHaveProperty("history");
 		}
 	});
+
+	// unwatched-run-tick-throttling Phase 3: wasEverThrottled is a real
+	// column (unlike the derived scoredWithAreaFactor above) — this just
+	// proves it passes straight through on the returned row.
+	it("surfaces wasEverThrottled matching the DB value", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [throttledRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.9,
+				stoppedAt: new Date(),
+				wasEverThrottled: true,
+			})
+			.returning({ id: simulationRuns.id });
+		const [normalRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 2,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.1,
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.listLeaderboard();
+		expect(result.find((r) => r.id === throttledRun?.id)).toMatchObject({
+			wasEverThrottled: true,
+		});
+		expect(result.find((r) => r.id === normalRun?.id)).toMatchObject({
+			wasEverThrottled: false,
+		});
+	});
 });
 
 describe("simulationRouter.getParameterSuggestion", () => {
@@ -1787,6 +1841,94 @@ describe("simulationRouter.getParameterSuggestion", () => {
 		).rejects.toMatchObject({
 			code: "UNAUTHORIZED",
 		} satisfies Partial<TRPCError>);
+	});
+
+	// unwatched-run-tick-throttling Phase 3: flag-and-include — throttled
+	// rows still feed the correlation, but the rationale must disclose how
+	// many were included.
+	it("includes throttled rows in the correlation input and discloses the count in the rationale", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const boidCounts = [10, 20, 30, 40, 50, 60];
+		const scores = [1, 2, 3, 4, 5, 6];
+		// First two runs were throttled while unwatched — still included.
+		const throttledFlags = [true, true, false, false, false, false];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				boidCount: boidCounts[i] as number,
+				status: "stopped",
+				score: scores[i],
+				stoppedAt: new Date(),
+				wasEverThrottled: throttledFlags[i],
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result.status).toBe("ok");
+		if (result.status === "ok") {
+			// Both throttled rows still feed the correlation.
+			expect(result.sampleSize).toBe(6);
+			expect(result.rationale).toContain(
+				"2 run(s) ticked at an accelerated rate while unwatched",
+			);
+		}
+	});
+
+	it("omits the throttled-run disclosure clause when no selected row was ever throttled", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const boidCounts = [10, 20, 30, 40, 50, 60];
+		const scores = [1, 2, 3, 4, 5, 6];
+		for (let i = 0; i < scores.length; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				boidCount: boidCounts[i] as number,
+				status: "stopped",
+				score: scores[i],
+				stoppedAt: new Date(),
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.getParameterSuggestion();
+		expect(result.status).toBe("ok");
+		if (result.status === "ok") {
+			expect(result.rationale).not.toContain("accelerated rate");
+		}
 	});
 });
 
@@ -2237,9 +2379,10 @@ describe("simulationRouter.getRunsComparison", () => {
 		overrides: {
 			score?: number | null;
 			history?: unknown;
+			wasEverThrottled?: boolean;
 		} = {},
 	) {
-		const { score = 0.5, history = null } = overrides;
+		const { score = 0.5, history = null, wasEverThrottled = false } = overrides;
 		const [run] = await db
 			.insert(simulationRuns)
 			.values({
@@ -2250,6 +2393,7 @@ describe("simulationRouter.getRunsComparison", () => {
 				score,
 				stoppedAt: new Date(),
 				history,
+				wasEverThrottled,
 			})
 			.returning({ id: simulationRuns.id });
 		if (!run) throw new Error("failed to insert fixture run");
@@ -2548,6 +2692,32 @@ describe("simulationRouter.getRunsComparison", () => {
 				phaseQuality: expect.any(Number),
 				areaPopulationDensity: null,
 			},
+		});
+	});
+
+	// unwatched-run-tick-throttling Phase 3: wasEverThrottled is a real
+	// column, sourced directly from the DB row, sibling to `breakdown`.
+	it("surfaces wasEverThrottled matching the DB value for each row", async () => {
+		const { ownerId, caller } = await insertOwnerAndCaller();
+
+		const throttledRunId = await insertStoppedRun(ownerId, {
+			score: 0.6,
+			wasEverThrottled: true,
+		});
+		const normalRunId = await insertStoppedRun(ownerId, {
+			score: 0.4,
+			wasEverThrottled: false,
+		});
+
+		const result = await caller.simulation.getRunsComparison({
+			runIds: [throttledRunId, normalRunId],
+		});
+
+		expect(result.find((r) => r.runId === throttledRunId)).toMatchObject({
+			wasEverThrottled: true,
+		});
+		expect(result.find((r) => r.runId === normalRunId)).toMatchObject({
+			wasEverThrottled: false,
 		});
 	});
 });

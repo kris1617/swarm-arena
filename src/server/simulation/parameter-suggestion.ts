@@ -98,14 +98,23 @@ function buildRationale(
 	direction: "increase" | "decrease",
 	correlation: number,
 	sampleSize: number,
+	throttledCount?: number,
 ): string {
 	const label = PARAMETER_LABELS[parameter];
 	const qualifier = direction === "increase" ? "higher" : "lower";
-	return `Across your last ${sampleSize} runs, ${qualifier} ${label} correlated with a better score (r = ${correlation.toFixed(2)}).`;
+	const base = `Across your last ${sampleSize} runs, ${qualifier} ${label} correlated with a better score (r = ${correlation.toFixed(2)}).`;
+	// unwatched-run-tick-throttling Phase 3: flag-and-include decision —
+	// throttled runs still feed the correlation input, but the rationale
+	// discloses how many so the statistical skew is visible, not hidden.
+	if (throttledCount && throttledCount > 0) {
+		return `${base} (includes ${throttledCount} run(s) ticked at an accelerated rate while unwatched.)`;
+	}
+	return base;
 }
 
 export function suggestParameterChange(
 	rows: SuggestionInputRow[],
+	throttledCount?: number,
 ): ParameterSuggestion {
 	if (rows.length < MIN_SAMPLE_SIZE) {
 		return { status: "insufficient-data" };
@@ -155,6 +164,7 @@ export function suggestParameterChange(
 			direction,
 			best.correlation,
 			sampleSize,
+			throttledCount,
 		),
 	};
 }

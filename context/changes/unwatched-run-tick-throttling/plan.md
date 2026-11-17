@@ -400,14 +400,14 @@ throttled).
 
 #### Automated
 
-- [ ] 3.1 Integration tests: listLeaderboard, getParameterSuggestion, getRunsComparison, and run-export each surface wasEverThrottled correctly
-- [ ] 3.2 Typecheck passes: `npm run typecheck`
-- [ ] 3.3 Lint passes: `npm run check`
-- [ ] 3.4 Full suite passes: `npm test`
+- [x] 3.1 Integration tests: listLeaderboard, getParameterSuggestion, getRunsComparison, and run-export each surface wasEverThrottled correctly
+- [x] 3.2 Typecheck passes: `npm run typecheck`
+- [x] 3.3 Lint passes: `npm run check`
+- [x] 3.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 3.5 Leaderboard badge, run-comparison disclaimer, parameter-suggestion rationale, and exported JSON/CSV all visibly disclose a throttled run
+- [x] 3.5 Leaderboard badge, run-comparison disclaimer, parameter-suggestion rationale, and exported JSON/CSV all visibly disclose a throttled run
 
 ### Phase 4: Validation
 

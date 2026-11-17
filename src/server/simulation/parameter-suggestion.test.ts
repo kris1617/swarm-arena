@@ -185,4 +185,43 @@ describe("suggestParameterChange", () => {
 			expect(result.direction).toBe("increase");
 		}
 	});
+
+	// unwatched-run-tick-throttling Phase 3: the optional throttledCount
+	// param composes a disclosure clause into the rationale without
+	// affecting the correlation math itself.
+	it("appends a disclosure clause to the rationale when throttledCount > 0", () => {
+		const boidCounts = [10, 20, 30, 40, 50, 60];
+		const scores = [1, 2, 3, 4, 5, 6];
+		const rows = scores.map((score, i) =>
+			makeRow(score, { boidCount: boidCounts[i] }),
+		);
+
+		const result = suggestParameterChange(rows, 2);
+		expect(result.status).toBe("ok");
+		if (result.status === "ok") {
+			expect(result.rationale).toContain(
+				"2 run(s) ticked at an accelerated rate while unwatched",
+			);
+		}
+	});
+
+	it("omits the disclosure clause when throttledCount is 0 or omitted", () => {
+		const boidCounts = [10, 20, 30, 40, 50, 60];
+		const scores = [1, 2, 3, 4, 5, 6];
+		const rows = scores.map((score, i) =>
+			makeRow(score, { boidCount: boidCounts[i] }),
+		);
+
+		const resultOmitted = suggestParameterChange(rows);
+		expect(resultOmitted.status).toBe("ok");
+		if (resultOmitted.status === "ok") {
+			expect(resultOmitted.rationale).not.toContain("accelerated rate");
+		}
+
+		const resultZero = suggestParameterChange(rows, 0);
+		expect(resultZero.status).toBe("ok");
+		if (resultZero.status === "ok") {
+			expect(resultZero.rationale).not.toContain("accelerated rate");
+		}
+	});
 });
