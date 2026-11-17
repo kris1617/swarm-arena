@@ -335,9 +335,9 @@ Status cell.
 
 #### Automated
 
-- [x] 1.1 New test file passes: `npx vitest run src/server/simulation/server-run-registry-capacity.test.ts`
-- [x] 1.2 Typecheck passes: `npm run typecheck`
-- [x] 1.3 Lint passes: `npm run check`
+- [x] 1.1 New test file passes: `npx vitest run src/server/simulation/server-run-registry-capacity.test.ts` — 8e848ef
+- [x] 1.2 Typecheck passes: `npm run typecheck` — 8e848ef
+- [x] 1.3 Lint passes: `npm run check` — 8e848ef
 
 ### Phase 2: Admission-time-gap scenario + cookbook update
 
