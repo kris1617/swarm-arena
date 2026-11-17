@@ -270,8 +270,8 @@ no data the workflow owns).
 
 #### Automated
 
-- [x] 2.1 `npx biome check .github/workflows/review.yml` passes
-- [x] 2.2 Workflow YAML parses cleanly
+- [x] 2.1 `npx biome check .github/workflows/review.yml` passes — edb0faa
+- [x] 2.2 Workflow YAML parses cleanly — edb0faa
 - [ ] 2.3 `ai-cr:passed`/`ai-cr:failed` labels exist after first real run
 
 #### Manual
