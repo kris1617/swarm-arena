@@ -1,7 +1,7 @@
 ---
 change_id: testing-wallclock-optimization-guardrail
 title: Wall-clock-aware optimization guardrail
-status: planned
+status: implementing
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null

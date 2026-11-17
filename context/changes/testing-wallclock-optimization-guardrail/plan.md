@@ -193,10 +193,10 @@ Progress is fully `[x]`.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
+- [x] 1.1 Typecheck passes: `npm run typecheck`
+- [x] 1.2 Lint passes: `npm run check`
 
 #### Manual
 
-- [ ] 1.3 §5 new gate row names both required checks and cites the real incident accurately
-- [ ] 1.4 `lessons.md` entry accurately reflects research.md's findings
+- [x] 1.3 §5 new gate row names both required checks and cites the real incident accurately
+- [x] 1.4 `lessons.md` entry accurately reflects research.md's findings

@@ -129,6 +129,7 @@ phase lands; before that, the gate is `planned`.
 | post-edit hook | not wired, not planned | — | not applicable — no rollout phase proposes one |
 | visual diff (deterministic) | not wired, not planned | — | not applicable — risk #3/#4 are addressed structurally, not visually |
 | pre-prod smoke | not wired, not planned | optional | environment-specific failures; the VPS deploy (`.github/workflows/deploy.yml`) has no gate at all today |
+| wall-clock comparison for simulation-engine perf changes | manual, pre-merge: `pipeline-perf.test.ts` must pass AND the author must run `npm run perf:baseline` (or a representative config subset) and compare against the latest `context/foundation/perf-baseline.json` entry — no CI wiring (see §3 Phase 8's `benchmark (non-CI-gating)` classification) | required after §3 Phase 10 | a change that passes `pipeline-perf.test.ts`'s structural guard while regressing real wall-clock cost (confirmed incident: `archive/2026-11-15-spatial-hash-performance-optimization/plan.md`) |
 
 `.github/workflows/deploy.yml` now gates `deploy` behind a `test` job (build, typecheck, check, migrate, test) via `needs: test` — closing the gap Phase 5 was opened to fix.
 
