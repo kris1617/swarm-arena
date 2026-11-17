@@ -242,7 +242,11 @@ export default function RunAnalysisPage() {
 
 			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
 				<h2 className="font-semibold">Final genetic diversity</h2>
-				<p>{finalGeneticDiversity.toFixed(3)}</p>
+				{history ? (
+					<p>{finalGeneticDiversity.toFixed(3)}</p>
+				) : (
+					<p>No final genetic-diversity value recorded for this run.</p>
+				)}
 			</section>
 		</div>
 	);
