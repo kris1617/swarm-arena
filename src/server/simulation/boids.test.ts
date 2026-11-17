@@ -161,6 +161,34 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 		);
 	});
 
+	// Characterization test (refactor-opportunities Phase 2): pins today's
+	// exact flock-0 seed color as a literal value — the tests above only
+	// assert shape/distinctness/determinism, so a same-shape relocation of
+	// the underlying BOID_FILL_COLOR constant that silently changed the
+	// actual value would still pass them unnoticed. Value captured by
+	// running this exact scenario against the pre-relocation code (flock 0
+	// reuses BOID_FILL_COLOR = "#38bdf8" verbatim via hexToUnitColor), same
+	// precedent as the "byte-for-byte identical output" fixture at :560.
+	it("pins flock 0's exact seeded color at a fixed seed (regression: relocating the underlying constant must not change the value)", () => {
+		const flockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS, WEIGHTS];
+		const boids = createInitialPopulation(
+			10,
+			createRng(7),
+			100,
+			3,
+			flockWeights,
+			WORLD_SIZE,
+		);
+		const flock0Color = boids.find((boid) => boid.genes.flockId === 0)?.genes
+			.color;
+
+		expect(flock0Color).toEqual({
+			r: 0.2196078431372549,
+			g: 0.7411764705882353,
+			b: 0.9725490196078431,
+		});
+	});
+
 	it("keeps flock 0 and flock 1 visually distinguishable at flockCount=2 (regression: the hue spread used to start at a fixed 0° regardless of flock 0's actual hue, so flockCount=2 could land flock 1 within ~18° of flock 0 on the color wheel — anchoring the spread at flock 0's own hue fixes this)", () => {
 		const twoFlockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS];
 		const boids = createInitialPopulation(

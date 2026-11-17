@@ -1,8 +1,11 @@
 import {
+	BOID_SEED_COLOR,
+	PREDATOR_SEED_COLOR,
+} from "~/server/simulation/seed-colors";
+import {
 	buildSpatialGrid,
 	type DenseClusterWarnSink,
 } from "~/server/simulation/spatial-grid";
-import { BOID_FILL_COLOR, PREDATOR_FILL_COLOR } from "~/styles/theme-colors";
 
 export type FlockWeights = {
 	separation: number;
@@ -191,10 +194,10 @@ function wrappedMidpoint(a: number, b: number, range: number): number {
 }
 
 // Converts a "#rrggbb" hex string into unit-interval [0,1] RGB.
-// BOID_FILL_COLOR/PREDATOR_FILL_COLOR (src/styles/theme-colors.ts) are plain
-// hex strings for canvas's ctx.fillStyle, while BoidGenes.color stays in
-// [0,1] like the rest of this module's normalized math, so flock 0 can seed
-// from them exactly.
+// BOID_SEED_COLOR/PREDATOR_SEED_COLOR (src/server/simulation/seed-colors.ts)
+// are plain hex strings for canvas's ctx.fillStyle, while BoidGenes.color
+// stays in [0,1] like the rest of this module's normalized math, so flock 0
+// can seed from them exactly.
 function hexToUnitColor(hex: string): { r: number; g: number; b: number } {
 	const value = hex.replace("#", "");
 	return {
@@ -248,7 +251,7 @@ const FLOCK_COLOR_SATURATION = 0.7;
 const FLOCK_COLOR_LIGHTNESS = 0.55;
 
 // Standard RGB->hue extraction (degrees), used so the hue spread below can
-// start from flock 0's ACTUAL hue rather than a fixed 0°. BOID_FILL_COLOR's
+// start from flock 0's ACTUAL hue rather than a fixed 0°. BOID_SEED_COLOR's
 // hue is ~198° — spreading flocks 1..N-1 from 0° independently of that (e.g.
 // flockCount=2 landing flock 1 at exactly 180°) put flock 1 only 18° away
 // from flock 0 on the color wheel, visually near-identical. Anchoring the
@@ -282,7 +285,7 @@ function rgbToHueDegrees({
 	return hue < 0 ? hue + 360 : hue;
 }
 
-// Flock 0 reuses `seedColorHex` (BOID_FILL_COLOR/PREDATOR_FILL_COLOR) for
+// Flock 0 reuses `seedColorHex` (BOID_SEED_COLOR/PREDATOR_SEED_COLOR) for
 // continuity with the pre-genetics engine; flocks 1..N-1 get hues evenly
 // spread around the color wheel, anchored at flock 0's own hue (see
 // rgbToHueDegrees above), so any flockCount in [2,4] (decision #1) stays
@@ -328,7 +331,7 @@ export function createInitialPopulation(
 	worldSize: WorldSize,
 ): BoidState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
-	const colors = createFlockColors(flockCount, BOID_FILL_COLOR);
+	const colors = createFlockColors(flockCount, BOID_SEED_COLOR);
 	const boids: BoidState[] = [];
 	for (let flockId = 0; flockId < flockCount; flockId++) {
 		const weights = flockWeights[flockId];
@@ -377,7 +380,7 @@ export function createInitialPredators(
 	worldSize: WorldSize,
 ): PredatorState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
-	const colors = createFlockColors(flockCount, PREDATOR_FILL_COLOR);
+	const colors = createFlockColors(flockCount, PREDATOR_SEED_COLOR);
 	const predators: PredatorState[] = [];
 	for (let flockId = 0; flockId < flockCount; flockId++) {
 		const weights = flockWeights[flockId];

@@ -10,12 +10,17 @@
 // (#15162c), and this change preserves that existing visual distinction
 // rather than merging the two.
 export const CANVAS_BACKGROUND = "#1e293b";
-export const BOID_FILL_COLOR = "#38bdf8";
-// Warm tone (red/orange family) contrasting with the cool blue BOID_FILL_COLOR
-// against CANVAS_BACKGROUND — a "predator = danger" visual convention, paired
-// with a distinct shape (not color alone) for robustness, including for
-// colorblind users.
-export const PREDATOR_FILL_COLOR = "#f97316";
+// BOID_FILL_COLOR/PREDATOR_FILL_COLOR are re-exported from
+// src/server/simulation/seed-colors.ts (the simulation engine's own
+// source of truth for these two values — see that file's comment) rather
+// than hand-duplicated here. Warm tone (red/orange family) contrasting
+// with the cool blue boid color against CANVAS_BACKGROUND — a
+// "predator = danger" visual convention, paired with a distinct shape (not
+// color alone) for robustness, including for colorblind users.
+export {
+	BOID_SEED_COLOR as BOID_FILL_COLOR,
+	PREDATOR_SEED_COLOR as PREDATOR_FILL_COLOR,
+} from "~/server/simulation/seed-colors";
 // S-24 Phase 3: canvas-readable mirror of --border (oklch(1 0 0 / 20%) —
 // white at 20% opacity), the same subtle line this canvas's own CSS border
 // already uses via the `border-border/20` Tailwind class. Used for the
