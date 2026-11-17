@@ -413,5 +413,5 @@ throttled).
 
 #### Manual
 
-- [ ] 4.1 perf-baseline comparison run shows no regression on the watched foreground run
-- [ ] 4.2 §6.10 cookbook entry added to test-plan.md
+- [x] 4.1 perf-baseline comparison run shows no regression on the watched foreground run
+- [x] 4.2 §6.10 cookbook entry added to test-plan.md

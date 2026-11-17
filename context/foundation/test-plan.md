@@ -447,6 +447,43 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
 - Reference: `src/server/simulation/server-run-registry-capacity.test.ts`.
 - Run command: `npx vitest run src/server/simulation/server-run-registry-capacity.test.ts`.
 
+### 6.10 Validating a dt-multiplier/speed-throttling change doesn't regress per-tick cost
+
+- Location: no committed script — this is a one-off manual check, not a
+  repeatable harness, because the thing being validated (a fixed
+  `speedMultiplier` scaling `dtSeconds` before it reaches `runTick`) is a
+  pure-math change to one value passed into `computeSingleRunTick`, not a
+  change to the tick-grid's own shape that `scripts/perf-baseline.ts`
+  (§6.8) measures.
+- What to check, and why it's two separate numbers, not one: (1) per-tick
+  wall-clock cost at the same object count with `speedMultiplier: 1` vs. a
+  higher value — this should be ~1.0x (same `runTick` physics work
+  regardless of the simulated `dt` fed into it); a regression here would
+  mean the multiplier itself is accidentally doing extra work, not just
+  scaling a number. (2) real ticks needed to reach `shouldStop` — this
+  SHOULD scale down roughly by the multiplier (a 3x multiplier reaches
+  `maxDurationSeconds` in ~1/3 the real ticks). The actual "CPU relief"
+  this feature (S-36, `unwatched-run-tick-throttling`) provides is case
+  (2): the throttled run frees its CPU slot sooner in real wall-clock
+  time, not a lower per-tick cost — confirming this distinction up front
+  avoids chasing a nonexistent per-tick optimization.
+- Measured 2026-11-17 (`unwatched-run-tick-throttling` Phase 4, 3x
+  multiplier, 200 combined objects, area 200, `maxDurationSeconds: 10`):
+  per-tick cost ratio (3x/1x) = 0.989 (no regression, as expected); real
+  ticks to stop: 626 (1x) vs. 210 (3x) = 2.98x fewer ticks (≈3x, as
+  expected).
+- Pattern: construct one `TickState`/`TickParams` pair (reuse
+  `createInitialPopulation`/`createInitialPredators` from `boids.ts`, same
+  construction as §6.8's benchmark), drive `computeSingleRunTick` in a
+  loop with `performance.now()` bracketing for case (1), and drive it
+  until `result.shouldStop` for case (2) — same "drive the tick core
+  directly, never through the registry/scheduler" discipline as §6.8.
+- Run command: none committed; re-derive the ad hoc script from this
+  section's description if a future multiplier-value change needs
+  re-validating (see `git log` for `unwatched-run-tick-throttling` Phase 4
+  if the exact script is needed as a starting point — it was a scratch
+  file, not committed).
+
 ## 7. What We Deliberately Don't Test
 
 No exclusions were agreed. Asked directly (Phase 2 interview Q5) what test
