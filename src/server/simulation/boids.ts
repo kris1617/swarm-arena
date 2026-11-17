@@ -1026,6 +1026,22 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 				continue;
 			}
 
+			// per-tribe-behavior-weights p5: both parents must find each
+			// other's color within their own matePreference tolerance
+			// (ported from the Lua reference's Boid.lua mate-match, which
+			// requires colorDist < self.matePreference AND
+			// colorDist < other.matePreference for both sides).
+			const colorDistSq = Color.distanceSq(
+				parentA.genes.color,
+				parentB.genes.color,
+			);
+			if (
+				colorDistSq > parentA.genes.matePreference ** 2 ||
+				colorDistSq > parentB.genes.matePreference ** 2
+			) {
+				continue;
+			}
+
 			// Match found — pair both parents this tick (no double-mating),
 			// then stop scanning for parentA (first-match, not best-match).
 			// The cap is already enforced by the outer loop's early-exit guard

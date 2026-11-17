@@ -3628,6 +3628,24 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 			...fixture,
 		});
 
+		// per-tribe-behavior-weights Phase 5 fix: matePreference is still
+		// seeded via rng() at spawn (not yet wired from TribeConfig), so with
+		// these fixed seeds a boid's randomly-seeded matePreference can be
+		// too low to clear the color distance between the two flocks' very
+		// different seed colors — gating the exact cross-flock pairing this
+		// test's own signal (color blending) depends on, independent of the
+		// crossbreedingEnabled variable actually under test here. Force every
+		// boid's matePreference high enough to never gate, isolating the
+		// variable this test is about. `getLiveRunState` returns the
+		// registry's own live boid array (not a copy), so mutating in place
+		// here reaches the run `startServerRun` already registered.
+		for (const runId of [disabledRunId, toggledRunId]) {
+			const live = serverRunRegistry.getLiveRunState(runId);
+			for (const boid of live?.boids ?? []) {
+				boid.genes.matePreference = 10;
+			}
+		}
+
 		function pureFlockColors(
 			state: serverRunRegistry.LiveRunSnapshot,
 		): Map<number, { r: number; g: number; b: number }> {

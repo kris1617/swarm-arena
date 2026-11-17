@@ -1158,6 +1158,59 @@ describe("reproducePopulation", () => {
 		},
 	);
 
+	it("mate-preference gate (Phase 5): an in-range, opposite-gender pair with very different colors does NOT pair when either parent's matePreference is too low", () => {
+		const population = [
+			makeIndividual({
+				x: 0,
+				gender: "a",
+				genes: { color: { r: 0, g: 0, b: 0 }, matePreference: 0.1 },
+			}),
+			makeIndividual({
+				x: MATE_DISTANCE_RADIUS - 1,
+				gender: "b",
+				genes: { color: { r: 1, g: 1, b: 1 }, matePreference: 10 },
+			}),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+			WORLD_SIZE,
+		);
+
+		// colorDistSq = 3 (1^2 * 3 channels); parentA's matePreference^2 =
+		// 0.01, so parentA rejects the match even though parentB's own
+		// threshold (100) would accept it — both sides must agree.
+		expect(result.population).toHaveLength(2);
+	});
+
+	it("mate-preference gate (Phase 5): the same very-different-colored pair DOES pair when both parents' matePreference is high enough", () => {
+		const population = [
+			makeIndividual({
+				x: 0,
+				gender: "a",
+				genes: { color: { r: 0, g: 0, b: 0 }, matePreference: 10 },
+			}),
+			makeIndividual({
+				x: MATE_DISTANCE_RADIUS - 1,
+				gender: "b",
+				genes: { color: { r: 1, g: 1, b: 1 }, matePreference: 10 },
+			}),
+		];
+
+		const result = reproducePopulation(
+			population,
+			createRng(1),
+			BASE_REPRODUCTION_PARAMS,
+			WORLD_SIZE,
+		);
+
+		// colorDistSq = 3; both matePreference^2 = 100, well above 3, so the
+		// pair mates.
+		expect(result.population).toHaveLength(3);
+	});
+
 	it("predators reproduce under the identical helper (decision #5's symmetry)", () => {
 		const population: PredatorState[] = [
 			makeIndividual({ x: 0, gender: "a" }),

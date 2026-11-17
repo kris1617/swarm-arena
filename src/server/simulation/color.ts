@@ -90,4 +90,18 @@ export class Color {
 	static fromJSON(json: ColorJSON): Color {
 		return new Color(json.r, json.g, json.b);
 	}
+
+	// Squared euclidean distance between two colors' r/g/b channels (no
+	// sqrt — callers compare against a squared threshold, e.g.
+	// matePreference² in boids.ts's mate-match gate). Accepts the bare
+	// ColorJSON shape directly (not just Color instances), matching
+	// fromJSON above: BoidGenes.color is stored as a plain {r,g,b} object
+	// (see file header), so callers pass genes.color straight through
+	// without constructing a Color first.
+	static distanceSq(a: ColorJSON, b: ColorJSON): number {
+		const dr = a.r - b.r;
+		const dg = a.g - b.g;
+		const db = a.b - b.b;
+		return dr * dr + dg * dg + db * db;
+	}
 }

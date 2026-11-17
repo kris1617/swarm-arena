@@ -546,13 +546,13 @@ neighbor search complexity.
 
 ### Phase 4: Engine — burst mechanic
 #### Automated
-- [x] 4.1 npm run typecheck passes
-- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 4.1 npm run typecheck passes — 52b8999
+- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes — 52b8999
 
 ### Phase 5: Engine — mate-preference selector
 #### Automated
-- [ ] 5.1 npm run typecheck passes
-- [ ] 5.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 5.1 npm run typecheck passes
+- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 6: Live adjustment
 #### Automated
