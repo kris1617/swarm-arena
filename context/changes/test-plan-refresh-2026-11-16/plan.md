@@ -458,10 +458,10 @@ to manually verify.
 
 #### Automated
 
-- [x] 5.1 Full suite passes: `npm test`
-- [x] 5.2 Typecheck passes: `npm run typecheck`
-- [x] 5.3 Lint passes: `npm run check`
+- [x] 5.1 Full suite passes: `npm test` — 469c8b4
+- [x] 5.2 Typecheck passes: `npm run typecheck` — 469c8b4
+- [x] 5.3 Lint passes: `npm run check` — 469c8b4
 
 #### Manual
 
-- [ ] 5.4 `context/foundation/test-plan.md` §6.7 reads clearly as a standalone pattern description
+- [x] 5.4 `context/foundation/test-plan.md` §6.7 reads clearly as a standalone pattern description — 469c8b4
