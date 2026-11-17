@@ -1,0 +1,20 @@
+diff --git a/src/server/api/routers/user.ts b/src/server/api/routers/user.ts
+index 1111111..2222222 100644
+--- a/src/server/api/routers/user.ts
++++ b/src/server/api/routers/user.ts
+@@ -10,6 +10,14 @@ export const userRouter = createTRPCRouter({
+     return ctx.db.query.users.findFirst({
+       where: eq(users.id, ctx.session.user.id),
+     });
+   }),
++
++  searchByEmail: protectedProcedure
++    .input(z.object({ email: z.string() }))
++    .query(async ({ ctx, input }) => {
++      // DEMO: intentionally vulnerable to prove the reviewer catches it.
++      const rows = await ctx.db.run(
++        `SELECT * FROM users WHERE email = '${input.email}'`,
++      );
++      return rows;
++    }),
+ });
