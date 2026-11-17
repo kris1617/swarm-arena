@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-17 (Phase 9 shipped — concurrent-load capacity test; §6.9 cookbook entry added)
+> Last updated: 2026-11-17 (Phase 10 shipped — wall-clock-aware optimization guardrail; §5 Quality Gate added. All 10 rollout phases now complete.)
 
 ## 1. Strategy
 
@@ -80,7 +80,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | complete | `context/changes/test-plan-refresh-2026-11-16/` |
 | 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | complete | `context/changes/testing-perf-baseline/` |
 | 9 | Concurrent-load capacity test | Extend `server-run-registry.test.ts`'s existing fake-timer-driven concurrent-tick pattern to 4 simultaneous server-owned runs (matching `MAX_PARALLEL_RUNS`); prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling — Phase 8's single-process-interleaved harness structurally cannot observe this risk (research.md, 2026-11-17) | #9 | integration | complete | `context/changes/testing-concurrent-load-capacity/` |
-| 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | planned | `context/changes/testing-wallclock-optimization-guardrail/` |
+| 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | complete | `context/changes/testing-wallclock-optimization-guardrail/` |
 
 **Status vocabulary** (fixed — parser literals):
 
