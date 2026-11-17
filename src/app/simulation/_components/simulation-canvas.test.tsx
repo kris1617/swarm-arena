@@ -60,11 +60,29 @@ vi.mock("~/server/simulation/single-run-lifecycle", async () => {
 import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 import { colorToCss, SimulationCanvas } from "./simulation-canvas";
 
+// per-tribe-behavior-weights Phase 2: one TribeConfig per flock (flockCount
+// below is 2), replacing the old single shared `weights` prop — zero
+// separation/alignment/cohesion matches the old BASE_PROPS.weights value
+// exactly, so existing assertions keep their same steering behavior.
+const BASE_TRIBE_CONFIG = {
+	separation: 0,
+	alignment: 0,
+	cohesion: 0,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
+
 const BASE_PROPS = {
 	runId: 1,
 	seed: 1,
 	boidCount: 1,
-	weights: { separation: 0, alignment: 0, cohesion: 0 },
+	tribeConfigs: [BASE_TRIBE_CONFIG, BASE_TRIBE_CONFIG],
 	maxDurationSeconds: 100,
 	predatorCount: 0,
 	protectionThreshold: 0,

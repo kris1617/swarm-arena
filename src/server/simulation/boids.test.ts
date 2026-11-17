@@ -25,12 +25,32 @@ import {
 	segmentCompletedCycles,
 	stepBoids,
 	stepPredators,
+	type TribeConfig,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import type { DenseClusterWarnSink } from "~/server/simulation/spatial-grid";
 
 const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
+
+// per-tribe-behavior-weights Phase 2: createInitialPopulation/
+// createInitialPredators now take `TribeConfig[]`, not `FlockWeights[]` —
+// matches WEIGHTS' separation/alignment/cohesion plus the module's old
+// MAX_SPEED/MIN_SPEED constants (40/15) so every existing fixture below
+// keeps producing byte-for-byte identical genes/output.
+const TRIBE_CONFIG: TribeConfig = {
+	separation: WEIGHTS.separation,
+	alignment: WEIGHTS.alignment,
+	cohesion: WEIGHTS.cohesion,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
 // file — most of these tests exercise steering/lifespan/wrapping, not
@@ -87,7 +107,7 @@ describe("createInitialPopulation", () => {
 			createRng(42),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const b = createInitialPopulation(
@@ -95,24 +115,102 @@ describe("createInitialPopulation", () => {
 			createRng(42),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 
 		expect(a).toEqual(b);
 	});
+
+	// per-tribe-behavior-weights Phase 2 (plan's Success Criteria): each
+	// flock's boids must seed their separationWeight/maxSpeed genes from
+	// THEIR OWN tribe's config, not a shared value replicated across every
+	// flock — the exact regression the old `FlockWeights[]` parameter
+	// (every flock reading the same weights) would reintroduce.
+	it("seeds each flock's genes from its own tribe's config, not a shared value", () => {
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, separation: 0.5, maxSpeed: 20, minSpeed: 5 },
+			{ ...TRIBE_CONFIG, separation: 4, maxSpeed: 90, minSpeed: 60 },
+		];
+
+		const boids = createInitialPopulation(
+			20,
+			createRng(11),
+			100,
+			2,
+			tribeConfigs,
+			WORLD_SIZE,
+		);
+
+		const flock0 = boids.filter((boid) => boid.genes.flockId === 0);
+		const flock1 = boids.filter((boid) => boid.genes.flockId === 1);
+		expect(flock0.length).toBeGreaterThan(0);
+		expect(flock1.length).toBeGreaterThan(0);
+
+		for (const boid of flock0) {
+			expect(boid.genes.separationWeight).toBe(0.5);
+			expect(boid.genes.maxSpeed).toBe(20);
+			expect(boid.genes.minSpeed).toBe(5);
+		}
+		for (const boid of flock1) {
+			expect(boid.genes.separationWeight).toBe(4);
+			expect(boid.genes.maxSpeed).toBe(90);
+			expect(boid.genes.minSpeed).toBe(60);
+		}
+	});
+});
+
+describe("createInitialPredators (per-tribe seeding)", () => {
+	// Symmetric with the createInitialPopulation test above — predators get
+	// the same per-tribe seeding (decision #5: one shared rule, not a
+	// "simpler" predator path).
+	it("seeds each flock's predator genes from its own tribe's config, not a shared value", () => {
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, separation: 0.5, maxSpeed: 20, minSpeed: 5 },
+			{ ...TRIBE_CONFIG, separation: 4, maxSpeed: 90, minSpeed: 60 },
+		];
+
+		const predators = createInitialPredators(
+			20,
+			createRng(11),
+			100,
+			2,
+			tribeConfigs,
+			WORLD_SIZE,
+		);
+
+		const flock0 = predators.filter((predator) => predator.genes.flockId === 0);
+		const flock1 = predators.filter((predator) => predator.genes.flockId === 1);
+		expect(flock0.length).toBeGreaterThan(0);
+		expect(flock1.length).toBeGreaterThan(0);
+
+		for (const predator of flock0) {
+			expect(predator.genes.separationWeight).toBe(0.5);
+			expect(predator.genes.maxSpeed).toBe(20);
+			expect(predator.genes.minSpeed).toBe(5);
+		}
+		for (const predator of flock1) {
+			expect(predator.genes.separationWeight).toBe(4);
+			expect(predator.genes.maxSpeed).toBe(90);
+			expect(predator.genes.minSpeed).toBe(60);
+		}
+	});
 });
 
 describe("createInitialPopulation / createInitialPredators flock split", () => {
 	it("splits count evenly across flockCount and assigns distinct, deterministic colors per flock", () => {
-		const flockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS, WEIGHTS];
+		const tribeConfigs: TribeConfig[] = [
+			TRIBE_CONFIG,
+			TRIBE_CONFIG,
+			TRIBE_CONFIG,
+		];
 
 		const boids = createInitialPopulation(
 			10,
 			createRng(7),
 			100,
 			3,
-			flockWeights,
+			tribeConfigs,
 			WORLD_SIZE,
 		);
 		const predators = createInitialPredators(
@@ -120,7 +218,7 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 			createRng(7),
 			100,
 			3,
-			flockWeights,
+			tribeConfigs,
 			WORLD_SIZE,
 		);
 
@@ -153,7 +251,7 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 			createRng(7),
 			100,
 			3,
-			flockWeights,
+			tribeConfigs,
 			WORLD_SIZE,
 		);
 		expect(boidsAgain.map((boid) => boid.genes.color)).toEqual(
@@ -170,13 +268,17 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 	// reuses BOID_FILL_COLOR = "#38bdf8" verbatim via hexToUnitColor), same
 	// precedent as the "byte-for-byte identical output" fixture at :560.
 	it("pins flock 0's exact seeded color at a fixed seed (regression: relocating the underlying constant must not change the value)", () => {
-		const flockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS, WEIGHTS];
+		const tribeConfigs: TribeConfig[] = [
+			TRIBE_CONFIG,
+			TRIBE_CONFIG,
+			TRIBE_CONFIG,
+		];
 		const boids = createInitialPopulation(
 			10,
 			createRng(7),
 			100,
 			3,
-			flockWeights,
+			tribeConfigs,
 			WORLD_SIZE,
 		);
 		const flock0Color = boids.find((boid) => boid.genes.flockId === 0)?.genes
@@ -190,13 +292,13 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 	});
 
 	it("keeps flock 0 and flock 1 visually distinguishable at flockCount=2 (regression: the hue spread used to start at a fixed 0° regardless of flock 0's actual hue, so flockCount=2 could land flock 1 within ~18° of flock 0 on the color wheel — anchoring the spread at flock 0's own hue fixes this)", () => {
-		const twoFlockWeights: FlockWeights[] = [WEIGHTS, WEIGHTS];
+		const twoTribeConfigs: TribeConfig[] = [TRIBE_CONFIG, TRIBE_CONFIG];
 		const boids = createInitialPopulation(
 			20,
 			createRng(3),
 			100,
 			2,
-			twoFlockWeights,
+			twoTribeConfigs,
 			WORLD_SIZE,
 		);
 		const flock0Color = boids.find((boid) => boid.genes.flockId === 0)?.genes
@@ -227,7 +329,7 @@ describe("stepBoids", () => {
 			createRng(1),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 
@@ -510,7 +612,7 @@ describe("stepBoids", () => {
 				createRng(seed),
 				1000,
 				1,
-				[WEIGHTS],
+				[TRIBE_CONFIG],
 				WORLD_SIZE,
 			);
 			for (let i = 0; i < 2000; i++) {
@@ -565,7 +667,7 @@ describe("stepBoids", () => {
 			createRng(42),
 			1000,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const dt = 0.016;
@@ -591,7 +693,7 @@ describe("worldSize parameterization (S-24)", () => {
 			createRng(123),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const stepped = stepBoids(boids, 0.1, WORLD_SIZE);
@@ -664,7 +766,7 @@ describe("worldSize parameterization (S-24)", () => {
 				createRng(7),
 				100,
 				1,
-				[WEIGHTS],
+				[TRIBE_CONFIG],
 				nonDefaultWorld,
 			);
 			for (let i = 0; i < 50; i++) {
@@ -1057,7 +1159,7 @@ describe("predator-prey dynamics", () => {
 			createRng(1),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 
@@ -1599,7 +1701,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			createRng(1),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const predators = createInitialPredators(
@@ -1607,7 +1709,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			createRng(2),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const params = {

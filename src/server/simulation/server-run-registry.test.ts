@@ -645,10 +645,10 @@ describe("adjustLivePopulation", () => {
 			expect(boid.age).toBe(0);
 			expect(boid.genes.flockId).toBeGreaterThanOrEqual(0);
 			expect(boid.genes.flockId).toBeLessThan(BASE_PARAMS.flockCount);
-			// BASE_PARAMS seeds every flock with the same separation/
-			// alignment/cohesion weight (adjustLivePopulation's flockWeights
-			// derivation, server-run-registry.ts ~line 305), so every added
-			// boid's genes must carry those exact run-level weights.
+			// BASE_PARAMS' DEFAULT_TRIBE_CONFIG entries are identical across
+			// every flock (adjustLivePopulation now reads `run.params.
+			// tribeConfigs` directly, per-tribe-behavior-weights Phase 2), so
+			// every added boid's genes must carry those exact weights.
 			expect(boid.genes.separationWeight).toBe(BASE_PARAMS.separationWeight);
 			expect(boid.genes.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
 			expect(boid.genes.cohesionWeight).toBe(BASE_PARAMS.cohesionWeight);
@@ -704,10 +704,12 @@ describe("adjustLivePopulation", () => {
 			// newborn predator would pass the length-only check undetected.
 			// createInitialPredators (boids.ts) is symmetric with
 			// createInitialPopulation per its own "no simpler predator path"
-			// comment, so predator genes carry the identical BoidGenes shape --
-			// the only per-species difference is maxSpeed/minSpeed using
-			// PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED instead of boids' own
-			// MAX_SPEED/MIN_SPEED.
+			// comment, so predator genes carry the identical BoidGenes shape.
+			// per-tribe-behavior-weights Phase 2: both species now seed
+			// maxSpeed/minSpeed from the SAME tribe's TribeConfig (there is no
+			// longer a species-specific PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED
+			// constant read at seeding time) -- DEFAULT_TRIBE_CONFIG's
+			// maxSpeed/minSpeed (40/15) apply to predators too.
 			expect(predator.energy).toBe(INITIAL_ENERGY);
 			expect(predator.age).toBe(0);
 			expect(predator.genes.flockId).toBeGreaterThanOrEqual(0);
@@ -717,10 +719,11 @@ describe("adjustLivePopulation", () => {
 			);
 			expect(predator.genes.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
 			expect(predator.genes.cohesionWeight).toBe(BASE_PARAMS.cohesionWeight);
-			// PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED (boids.ts) -- not exported,
-			// pinned here as the module's own documented constants.
-			expect(predator.genes.maxSpeed).toBe(55);
-			expect(predator.genes.minSpeed).toBe(20);
+			// DEFAULT_TRIBE_CONFIG.maxSpeed/minSpeed (this file, top) -- the
+			// tribe's own configured cruise-speed bounds, seeded identically
+			// for predators as for boids as of Phase 2.
+			expect(predator.genes.maxSpeed).toBe(DEFAULT_TRIBE_CONFIG.maxSpeed);
+			expect(predator.genes.minSpeed).toBe(DEFAULT_TRIBE_CONFIG.minSpeed);
 			expect(predator.genes.maxLifespan).toBe(600);
 			expect(Number.isFinite(predator.genes.matePreference)).toBe(true);
 		}

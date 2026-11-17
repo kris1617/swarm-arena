@@ -21,9 +21,9 @@ import {
 	type BoidState,
 	createInitialPopulation,
 	createInitialPredators,
-	type FlockWeights,
 	type PopulationPhase,
 	type PredatorState,
+	type TribeConfig,
 } from "~/server/simulation/boids";
 import { Color } from "~/server/simulation/color";
 import {
@@ -136,7 +136,12 @@ type SimulationCanvasProps = {
 	runId: number;
 	seed: number;
 	boidCount: number;
-	weights: FlockWeights;
+	// per-tribe-behavior-weights Phase 2: one TribeConfig per flock, index =
+	// flockId — replaces the single shared `weights: FlockWeights` prop
+	// (every flock used to start from identical weights/speed bounds; now
+	// each flock seeds from its own tribe's config, same as the server-owned
+	// path).
+	tribeConfigs: TribeConfig[];
 	maxDurationSeconds: number;
 	predatorCount: number;
 	protectionThreshold: number;
@@ -335,7 +340,7 @@ export function SimulationCanvas({
 	runId,
 	seed,
 	boidCount,
-	weights,
+	tribeConfigs,
 	maxDurationSeconds,
 	predatorCount,
 	protectionThreshold,
@@ -735,7 +740,7 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/weights/maxDurationSeconds/predatorCount/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude/crossbreedingEnabled are read via their refs (client-staged-live-parameter-parity Phase 2, live-crossbreeding-toggle Phase 3) so a panel edit reaches this closure without restarting the loop.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/tribeConfigs/maxDurationSeconds/predatorCount/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude/crossbreedingEnabled are read via their refs (client-staged-live-parameter-parity Phase 2, live-crossbreeding-toggle Phase 3) so a panel edit reaches this closure without restarting the loop.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -747,18 +752,16 @@ export function SimulationCanvas({
 		// doesn't cut the run shorter than the duration the member chose.
 		const maxLifespan = Math.max(60, maxDurationSeconds);
 		rngRef.current = createRng(seed);
-		// Per the plan's "Important design decision": all flocks in a run
-		// start from the SAME FlockWeights values — N copies of this one
-		// weights prop, not per-flock weight variance. Divergence comes from
-		// createInitialPopulation's per-flock seed colors and from mutation
-		// during reproduction, not from different starting weights.
-		const flockWeights = Array.from({ length: flockCount }, () => weights);
+		// per-tribe-behavior-weights Phase 2: each flock seeds from its own
+		// `tribeConfigs[flockId]` (the caller — simulation/page.tsx's
+		// `buildStartInput` — already built this array, one entry per
+		// flock), not a single shared weights value replicated N times.
 		boidsRef.current = createInitialPopulation(
 			boidCount,
 			rngRef.current,
 			maxLifespan,
 			flockCount,
-			flockWeights,
+			tribeConfigs,
 			worldSize,
 		);
 		predatorsRef.current = createInitialPredators(
@@ -766,7 +769,7 @@ export function SimulationCanvas({
 			rngRef.current,
 			maxLifespan,
 			flockCount,
-			flockWeights,
+			tribeConfigs,
 			worldSize,
 		);
 		foodStockRef.current = foodStockInitial;

@@ -4,10 +4,25 @@ import {
 	createInitialPopulation,
 	createInitialPredators,
 	runTick,
+	type TribeConfig,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 
-const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
+// per-tribe-behavior-weights Phase 2: createInitialPopulation/
+// createInitialPredators now take `TribeConfig[]`, not `FlockWeights[]`.
+const TRIBE_CONFIG: TribeConfig = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both
 // samples (never short-circuited by the "flock at/below threshold" guard).
@@ -36,7 +51,7 @@ function buildState(boidCount: number, predatorCount: number) {
 			createRng(1),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		),
 		predators: createInitialPredators(
@@ -44,7 +59,7 @@ function buildState(boidCount: number, predatorCount: number) {
 			createRng(2),
 			100,
 			1,
-			[WEIGHTS],
+			[TRIBE_CONFIG],
 			WORLD_SIZE,
 		),
 		foodStock: 1000,

@@ -13,7 +13,6 @@ import {
 	computeScore,
 	createInitialPopulation,
 	createInitialPredators,
-	type FlockWeights,
 	type PopulationPhase,
 	type PredatorState,
 	type TribeConfig,
@@ -64,12 +63,10 @@ export type ServerRunParams = {
 	// zDepth covers z.
 	xyArea: number;
 	zDepth: number;
-	// per-tribe-behavior-weights Phase 1: type-only addition — not yet read
-	// by `createInitialPopulation`/`createInitialPredators` or threaded
-	// through `startServerRun`/`adjustLivePopulation`; that wiring is
-	// Phase 2's job. Declared here now only so `startInputSchema`'s now-
-	// required `tribeConfigs` field type-checks against every caller that
-	// builds a `ServerRunParams`-shaped object for `startServer`.
+	// per-tribe-behavior-weights: one TribeConfig per flock, index = flockId.
+	// Phase 1 declared this type-only; Phase 2 wired it into
+	// `startServerRun`/`adjustLivePopulation`'s `createInitialPopulation`/
+	// `createInitialPredators` calls below.
 	tribeConfigs: TribeConfig[];
 };
 
@@ -331,17 +328,14 @@ export function adjustLivePopulation(
 		return { status: "applied" };
 	}
 
-	// Same derivation startServerRun uses (lines ~365-380) — growth needs to
-	// generate new individuals exactly as the initial population was seeded.
+	// Same derivation startServerRun uses — growth needs to generate new
+	// individuals exactly as the initial population was seeded. per-tribe-
+	// behavior-weights Phase 2 (plan-review F2): reads the run's real
+	// per-tribe `tribeConfigs`, not a flat array rebuilt from the run-level
+	// separation/alignment/cohesion scalars — otherwise a boid/predator added
+	// to a running simulation mid-run would seed with stale/default weights
+	// instead of its tribe's actual configured values.
 	const maxLifespan = Math.max(60, run.params.maxDurationSeconds);
-	const flockWeights: FlockWeights[] = Array.from(
-		{ length: run.params.flockCount },
-		() => ({
-			separation: run.params.separationWeight,
-			alignment: run.params.alignmentWeight,
-			cohesion: run.params.cohesionWeight,
-		}),
-	);
 	const worldSize = {
 		x: run.params.xyArea,
 		y: run.params.xyArea,
@@ -358,7 +352,7 @@ export function adjustLivePopulation(
 				run.rng,
 				maxLifespan,
 				run.params.flockCount,
-				flockWeights,
+				run.params.tribeConfigs,
 				worldSize,
 			);
 			clusterNewIndividuals(generated, run.boids, worldSize);
@@ -377,7 +371,7 @@ export function adjustLivePopulation(
 				run.rng,
 				maxLifespan,
 				run.params.flockCount,
-				flockWeights,
+				run.params.tribeConfigs,
 				worldSize,
 			);
 			clusterNewIndividuals(generated, run.predators, worldSize);
@@ -619,26 +613,23 @@ export function startServerRun(params: ServerRunParams): void {
 	// derivation simulation-canvas.tsx's init effect uses.
 	const maxLifespan = Math.max(60, params.maxDurationSeconds);
 	const rng = createRng(params.seed);
-	const flockWeights: FlockWeights[] = Array.from(
-		{ length: params.flockCount },
-		() => ({
-			separation: params.separationWeight,
-			alignment: params.alignmentWeight,
-			cohesion: params.cohesionWeight,
-		}),
-	);
 
 	const worldSize = {
 		x: params.xyArea,
 		y: params.xyArea,
 		z: params.zDepth,
 	};
+	// per-tribe-behavior-weights Phase 2: seeds from the run's real
+	// per-tribe `params.tribeConfigs`, not a flat array rebuilt from the
+	// run-level separation/alignment/cohesion scalars — those scalars are
+	// still stored on `params` (unchanged this phase) but no longer drive
+	// seeding.
 	const boids = createInitialPopulation(
 		params.boidCount,
 		rng,
 		maxLifespan,
 		params.flockCount,
-		flockWeights,
+		params.tribeConfigs,
 		worldSize,
 	);
 	const predators = createInitialPredators(
@@ -646,7 +637,7 @@ export function startServerRun(params: ServerRunParams): void {
 		rng,
 		maxLifespan,
 		params.flockCount,
-		flockWeights,
+		params.tribeConfigs,
 		worldSize,
 	);
 

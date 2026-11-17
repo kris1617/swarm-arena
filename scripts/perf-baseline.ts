@@ -31,6 +31,7 @@ import {
 	createInitialPredators,
 	type PopulationPhase,
 	type PredatorState,
+	type TribeConfig,
 	type WorldSize,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
@@ -63,7 +64,25 @@ function splitObjectCount(objectCount: number): {
 // reuses the existing confirmed-safe constants rather than inventing new
 // ones (see that file's comments on why protectionThreshold: 0 and a
 // generous food stock are load-bearing for a stable scan shape).
-const WEIGHTS = { separation: 1, alignment: 1, cohesion: 1 };
+//
+// per-tribe-behavior-weights Phase 2 (ADAPT): createInitialPopulation/
+// createInitialPredators now take `TribeConfig[]`, not `FlockWeights[]` —
+// widened from the old 3-field weights literal, same separation/alignment/
+// cohesion/maxSpeed/minSpeed values as every other `TRIBE_CONFIG` fixture
+// this change introduced, so the benchmark's per-tick cost is unaffected.
+const TRIBE_CONFIG: TribeConfig = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
 const MAX_LIFESPAN = 100;
 const FLOCK_COUNT = 1;
 
@@ -112,7 +131,7 @@ function createTickState(
 		createRng(1 + seedOffset),
 		MAX_LIFESPAN,
 		FLOCK_COUNT,
-		[WEIGHTS],
+		[TRIBE_CONFIG],
 		worldSize,
 	);
 	const predators: PredatorState[] = createInitialPredators(
@@ -120,7 +139,7 @@ function createTickState(
 		createRng(2 + seedOffset),
 		MAX_LIFESPAN,
 		FLOCK_COUNT,
-		[WEIGHTS],
+		[TRIBE_CONFIG],
 		worldSize,
 	);
 

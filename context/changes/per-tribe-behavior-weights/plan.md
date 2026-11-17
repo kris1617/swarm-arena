@@ -529,14 +529,14 @@ neighbor search complexity.
 
 ### Phase 1: Data model & schema
 #### Automated
-- [x] 1.1 npm run typecheck passes
-- [x] 1.2 npm run check passes
-- [x] 1.3 npx vitest run src/server/api/routers/simulation.test.ts passes
+- [x] 1.1 npm run typecheck passes — 331e4ab
+- [x] 1.2 npm run check passes — 331e4ab
+- [x] 1.3 npx vitest run src/server/api/routers/simulation.test.ts passes — 331e4ab
 
 ### Phase 2: Engine — weights and speed bounds per tribe
 #### Automated
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 2.1 npm run typecheck passes
+- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 3: Engine — per-tribe perception radii
 #### Automated

@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
+import type { TribeConfig } from "~/server/simulation/boids";
 import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import { api } from "~/trpc/react";
 
@@ -14,7 +15,10 @@ type ActiveRun = {
 	runId: number;
 	seed: number;
 	boidCount: number;
-	weights: { separation: number; alignment: number; cohesion: number };
+	// per-tribe-behavior-weights Phase 2: one TribeConfig per flock, index =
+	// flockId — replaces the single shared `weights` value (every flock used
+	// to seed from identical weights).
+	tribeConfigs: TribeConfig[];
 	maxDurationSeconds: number;
 	predatorCount: number;
 	protectionThreshold: number;
@@ -262,11 +266,11 @@ export default function SimulationPage() {
 				// by) the server, not the raw form state, so the client-side
 				// simulation never runs with a value the server didn't accept.
 				boidCount: variables.boidCount,
-				weights: {
-					separation: separationWeight,
-					alignment: alignmentWeight,
-					cohesion: cohesionWeight,
-				},
+				// Use the clamped tribeConfigs actually sent to the server
+				// (buildStartInput's bridge value), not the raw form state —
+				// same "server-accepted value, not raw form state" rule this
+				// block already follows for every other field below.
+				tribeConfigs: variables.tribeConfigs,
 				maxDurationSeconds,
 				predatorCount: variables.predatorCount,
 				protectionThreshold: variables.protectionThreshold,
@@ -413,7 +417,7 @@ export default function SimulationPage() {
 					protectionThreshold={activeRun.protectionThreshold}
 					runId={activeRun.runId}
 					seed={activeRun.seed}
-					weights={activeRun.weights}
+					tribeConfigs={activeRun.tribeConfigs}
 					xyArea={activeRun.xyArea}
 					zDepth={activeRun.zDepth}
 				/>

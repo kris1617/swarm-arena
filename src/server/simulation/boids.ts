@@ -14,20 +14,22 @@ export type FlockWeights = {
 	cohesion: number;
 };
 
-// per-tribe-behavior-weights Phase 1: the per-tribe config shape that seeds a
+// per-tribe-behavior-weights: the per-tribe config shape that seeds a
 // tribe's boids' genes at spawn and reproduction — extends FlockWeights with
 // the dimensions research identified as missing. Indexed by flockId (one
-// entry per tribe), same convention `FlockWeights[]`/`flockWeights[flockId]`
-// already use in createInitialPopulation/createInitialPredators below.
-// `matePreference` here is the *starting* value new boids in that tribe
-// spawn with — matePreference itself stays a per-boid heritable gene
-// (BoidGenes.matePreference), exactly like separationWeight/alignmentWeight/
-// cohesionWeight already work.
+// entry per tribe), same convention `TribeConfig[]`/`tribeConfigs[flockId]`
+// createInitialPopulation/createInitialPredators below now use (Phase 1
+// introduced the type; Phase 2 wired `.separation`/`.alignment`/`.cohesion`/
+// `.maxSpeed`/`.minSpeed` into those two functions, replacing their old
+// `FlockWeights[]` parameter). `matePreference` here is the *starting* value
+// new boids in that tribe spawn with — matePreference itself stays a
+// per-boid heritable gene (BoidGenes.matePreference), exactly like
+// separationWeight/alignmentWeight/cohesionWeight already work.
 //
-// Data-model only this phase — NOT YET wired into createInitialPopulation/
-// createInitialPredators, stepBoids' force calculation, burst, mate
-// preference, or live-adjustment (Phases 2-6). FlockWeights itself is
-// untouched; this type lives alongside it.
+// `neighborRadius`/`separationRadius`/`predatorDetectionRadius`/`burstMult`/
+// `burstCostMult` remain NOT YET wired — those are Phases 3+'s job
+// (perception radii, burst, stepBoids' force calculation, live-adjustment).
+// FlockWeights itself is untouched; this type lives alongside it.
 export type TribeConfig = {
 	separation: number;
 	alignment: number;
@@ -122,12 +124,6 @@ const COHESION_REFERENCE_RADIUS = 100;
 // boid can be outweighed into ignoring (unlike SEPARATION_RADIUS's unit-
 // vector push, whose magnitude doesn't grow as distance shrinks).
 const MIN_SEPARATION_DISTANCE = 4;
-// Cruise-speed bounds applied after steering every tick. Unit-vector steering
-// forces are tiny relative to dt, so without a floor boids settle near their
-// (also tiny) initial random velocity and barely move — this keeps motion
-// lively regardless of how steering nets out, the standard Reynolds-boids fix.
-const MIN_SPEED = 15;
-const MAX_SPEED = 40;
 // Steering forces are unit vectors (magnitude ~1); scaled by this before dt
 // so a boid cruising at MIN_SPEED-MAX_SPEED can actually be redirected within
 // a few ticks instead of the steering nudge being negligible next to speed.
@@ -318,25 +314,32 @@ function splitCountAcrossFlocks(count: number, flockCount: number): number[] {
 	);
 }
 
-// Each boid's genes seed from its flock's FlockWeights exactly (FR-006: "the
+// Each boid's genes seed from its flock's TribeConfig exactly (FR-006: "the
 // flock defines only the average values individuals start from") — no
 // variance at gen 0; mutation only happens at birth via reproduction
 // (Phase 2's `inheritGenes`), never at initial seeding.
+//
+// per-tribe-behavior-weights Phase 2: `flockWeights: FlockWeights[]` ->
+// `tribeConfigs: TribeConfig[]` — each flock now seeds its own
+// separation/alignment/cohesion weights AND its own maxSpeed/minSpeed cruise
+// bounds from its tribe's config, rather than every flock sharing the same
+// weights (the old `FlockWeights[]` param) and the same global MAX_SPEED/
+// MIN_SPEED constants regardless of flock.
 export function createInitialPopulation(
 	count: number,
 	rng: () => number,
 	maxLifespan: number,
 	flockCount: number,
-	flockWeights: FlockWeights[],
+	tribeConfigs: TribeConfig[],
 	worldSize: WorldSize,
 ): BoidState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
 	const colors = createFlockColors(flockCount, BOID_SEED_COLOR);
 	const boids: BoidState[] = [];
 	for (let flockId = 0; flockId < flockCount; flockId++) {
-		const weights = flockWeights[flockId];
+		const tribeConfig = tribeConfigs[flockId];
 		const color = colors[flockId];
-		if (!weights || !color) {
+		if (!tribeConfig || !color) {
 			continue;
 		}
 		const flockSize = countsPerFlock[flockId] ?? 0;
@@ -352,11 +355,11 @@ export function createInitialPopulation(
 				genes: {
 					color,
 					flockId,
-					separationWeight: weights.separation,
-					alignmentWeight: weights.alignment,
-					cohesionWeight: weights.cohesion,
-					maxSpeed: MAX_SPEED,
-					minSpeed: MIN_SPEED,
+					separationWeight: tribeConfig.separation,
+					alignmentWeight: tribeConfig.alignment,
+					cohesionWeight: tribeConfig.cohesion,
+					maxSpeed: tribeConfig.maxSpeed,
+					minSpeed: tribeConfig.minSpeed,
 					maxLifespan,
 					matePreference: rng(),
 				},
@@ -376,16 +379,16 @@ export function createInitialPredators(
 	rng: () => number,
 	maxLifespan: number,
 	flockCount: number,
-	flockWeights: FlockWeights[],
+	tribeConfigs: TribeConfig[],
 	worldSize: WorldSize,
 ): PredatorState[] {
 	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
 	const colors = createFlockColors(flockCount, PREDATOR_SEED_COLOR);
 	const predators: PredatorState[] = [];
 	for (let flockId = 0; flockId < flockCount; flockId++) {
-		const weights = flockWeights[flockId];
+		const tribeConfig = tribeConfigs[flockId];
 		const color = colors[flockId];
-		if (!weights || !color) {
+		if (!tribeConfig || !color) {
 			continue;
 		}
 		const flockSize = countsPerFlock[flockId] ?? 0;
@@ -401,11 +404,11 @@ export function createInitialPredators(
 				genes: {
 					color,
 					flockId,
-					separationWeight: weights.separation,
-					alignmentWeight: weights.alignment,
-					cohesionWeight: weights.cohesion,
-					maxSpeed: PREDATOR_MAX_SPEED,
-					minSpeed: PREDATOR_MIN_SPEED,
+					separationWeight: tribeConfig.separation,
+					alignmentWeight: tribeConfig.alignment,
+					cohesionWeight: tribeConfig.cohesion,
+					maxSpeed: tribeConfig.maxSpeed,
+					minSpeed: tribeConfig.minSpeed,
 					maxLifespan,
 					matePreference: rng(),
 				},
@@ -659,10 +662,10 @@ export function stepBoids(
 		// Steering only changes heading; speed is clamped to a cruise range
 		// every tick so boids keep moving regardless of how small or large
 		// the net steering force happened to be this frame. The clamp bounds
-		// are now this boid's own genes.minSpeed/maxSpeed (seeded from the
-		// engine's MIN_SPEED/MAX_SPEED at spawn) rather than the global
-		// constants directly, so a mutated descendant can cruise outside the
-		// range its ancestors started in.
+		// are this boid's own genes.minSpeed/maxSpeed (per-tribe-behavior-
+		// weights Phase 2: seeded from its tribe's own TribeConfig.minSpeed/
+		// maxSpeed at spawn, not a shared global constant), so a mutated
+		// descendant can cruise outside the range its ancestors started in.
 		const speed = Math.hypot(steeredVx, steeredVy, steeredVz);
 		const clampedSpeed = Math.min(
 			Math.max(speed, boid.genes.minSpeed),
