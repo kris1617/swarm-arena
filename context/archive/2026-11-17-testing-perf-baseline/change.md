@@ -1,10 +1,10 @@
 ---
 change_id: testing-perf-baseline
 title: Reproducible performance baseline
-status: impl_reviewed
+status: archived
 created: 2026-11-17
 updated: 2026-11-17
-archived_at: null
+archived_at: 2026-11-17T06:29:13Z
 ---
 
 ## Notes
