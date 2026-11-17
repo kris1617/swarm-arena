@@ -16,6 +16,25 @@ type LiveParams = {
 	crossbreedingEnabled: boolean;
 };
 
+// per-tribe-behavior-weights Phase 6 (plan F4): a minimal stand-in for
+// `TribeConfig` (boids.ts) — this file hand-duplicates its own fixture
+// types rather than importing the real ones (see `LiveParams` above), so
+// this mirrors that same convention rather than reaching into a
+// server-only module from a component test.
+type TribeConfigFixture = {
+	separation: number;
+	alignment: number;
+	cohesion: number;
+	maxSpeed: number;
+	minSpeed: number;
+	matePreference: number;
+	neighborRadius: number;
+	separationRadius: number;
+	predatorDetectionRadius: number;
+	burstMult: number;
+	burstCostMult: number;
+};
+
 type CapturedWatchOptions = {
 	onData?: (envelope: {
 		id: string;
@@ -23,6 +42,15 @@ type CapturedWatchOptions = {
 			boids: unknown[];
 			predators: unknown[];
 			liveParams: LiveParams;
+			// per-tribe-behavior-weights Phase 6 (plan F4): sibling to
+			// `liveParams` on the real `LiveRunSnapshot` (server-run-registry.ts),
+			// not nested inside it — `tribeConfigs` has its own dedicated
+			// live-edit path (`applyLiveTribeConfigs`), separate from
+			// `LiveAdjustableParams`. Optional here: this component doesn't
+			// read it yet (no tribeConfigs UI this phase — Phase 8's job), so
+			// no existing call site below needs updating; kept so a fixture
+			// that does want to assert on it can type-check.
+			tribeConfigs?: TribeConfigFixture[];
 		};
 	}) => void;
 	onError?: (error: { message: string }) => void;

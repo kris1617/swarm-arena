@@ -48,6 +48,7 @@ import {
 	// that procedure's body for the alias in use.
 	adjustLivePopulation as adjustLivePopulationRegistry,
 	applyLiveParams,
+	applyLiveTribeConfigs,
 	getLiveRunState,
 	isServerRunActive,
 	resumeServerRun,
@@ -76,6 +77,25 @@ function pickComparability(
 // boid+predator cap (`.refine(... <= 500)`) moved into that same runtime
 // check, against `adminSettings.maxObjectCount`, for the same reason: it
 // can no longer be a static zod literal.
+// per-tribe-behavior-weights Phase 6: extracted so `updateTribeConfigs`
+// (below) validates a live-edit patch against the exact same per-tribe
+// shape `start`/`startServer` validate at creation time, rather than
+// hand-duplicating this object schema a second time and risking the two
+// drifting apart.
+const tribeConfigSchema = z.object({
+	separation: z.number().finite(),
+	alignment: z.number().finite(),
+	cohesion: z.number().finite(),
+	maxSpeed: z.number().finite(),
+	minSpeed: z.number().finite(),
+	matePreference: z.number().finite(),
+	neighborRadius: z.number().finite(),
+	separationRadius: z.number().finite(),
+	predatorDetectionRadius: z.number().finite(),
+	burstMult: z.number().finite(),
+	burstCostMult: z.number().finite(),
+});
+
 const startInputSchema = z.object({
 	boidCount: z.number().int().positive(),
 	separationWeight: z.number().finite(),
@@ -100,21 +120,7 @@ const startInputSchema = z.object({
 	// sibling `flockCount` field inside this z.object, so the
 	// length-matches-flockCount check lives in `checkAgainstAdminRanges`
 	// below instead, alongside the per-tribe range checks.
-	tribeConfigs: z.array(
-		z.object({
-			separation: z.number().finite(),
-			alignment: z.number().finite(),
-			cohesion: z.number().finite(),
-			maxSpeed: z.number().finite(),
-			minSpeed: z.number().finite(),
-			matePreference: z.number().finite(),
-			neighborRadius: z.number().finite(),
-			separationRadius: z.number().finite(),
-			predatorDetectionRadius: z.number().finite(),
-			burstMult: z.number().finite(),
-			burstCostMult: z.number().finite(),
-		}),
-	),
+	tribeConfigs: z.array(tribeConfigSchema),
 });
 
 // Singleton row id for `adminSettings` — see schema.ts's comment on the
@@ -553,7 +559,15 @@ export const simulationRouter = createTRPCRouter({
 					.array(
 						z.object({
 							tick: z.number().int().nonnegative(),
-							field: z.enum(RANGED_PARAMETER_NAMES),
+							// per-tribe-behavior-weights Phase 6: widened by one literal
+							// — "tribeConfigs" — to match `ParameterChangeEntry.field`'s
+							// own widened union (server-run-registry.ts). The
+							// client-staged path (this procedure's caller) never
+							// actually produces a "tribeConfigs" entry itself (F3 scope:
+							// it never touches `applyLiveTribeConfigs`), but this input
+							// schema must still accept the full shape of what it's
+							// typed to receive.
+							field: z.enum([...RANGED_PARAMETER_NAMES, "tribeConfigs"]),
 							oldValue: z.number(),
 							newValue: z.number(),
 						}),
@@ -1158,6 +1172,77 @@ export const simulationRouter = createTRPCRouter({
 			// Apply cooldown is UI-only and doesn't stop a direct call from
 			// pushing unbounded `parameterChanges` entries — this is the real
 			// gate. A well-behaved client never hits it in practice.
+			if (result.status === "throttled") {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: `Try again in ${result.retryAfterMs}ms`,
+				});
+			}
+			return { ok: true, warnings };
+		}),
+
+	// per-tribe-behavior-weights Phase 6: a dedicated live-edit mutation for
+	// `tribeConfigs`, mirroring `updateRunParams`'s ownership/active-run
+	// check shape exactly, but validated against the same per-tribe shape
+	// `start`/`startServer` validate at creation time (`tribeConfigSchema`)
+	// rather than `updateRunParams`'s per-field-optional patch shape — an
+	// array field replaces wholesale, it isn't patched field-by-field.
+	// Range validation is soft (warn, don't block), same posture as
+	// `updateRunParams`/`adjustLivePopulation`'s existing live-edit paths —
+	// only the length-matches-flockCount check is hard, since a length
+	// mismatch would silently misindex `tribeConfigs[boid.genes.flockId]`
+	// reads elsewhere (boids.ts), not merely tune a soft bound.
+	updateTribeConfigs: protectedProcedure
+		.input(
+			z.object({
+				runId: z.number(),
+				tribeConfigs: z.array(tribeConfigSchema).min(1),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+			});
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "running" || !isServerRunActive(input.runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not an active server-run simulation",
+				});
+			}
+			if (input.tribeConfigs.length !== run.flockCount) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `tribeConfigs must have exactly ${run.flockCount} entries (one per flock), got ${input.tribeConfigs.length}`,
+				});
+			}
+
+			const { parameterRanges } = await getOrSeedAdminSettings(ctx.db);
+			const warnings: string[] = [];
+			for (const [index, tribeConfig] of input.tribeConfigs.entries()) {
+				for (const name of TRIBE_RANGED_FIELD_NAMES) {
+					const value = tribeConfig[name];
+					const range = parameterRanges[name];
+					if (value < range.min || value > range.max) {
+						warnings.push(
+							`tribe ${index}: ${name} (${value}) is outside the configured range ${range.min}-${range.max}`,
+						);
+					}
+				}
+			}
+
+			const result = applyLiveTribeConfigs(input.runId, input.tribeConfigs);
+			if (result.status === "not-found") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer active",
+				});
+			}
 			if (result.status === "throttled") {
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",

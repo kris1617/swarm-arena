@@ -551,13 +551,13 @@ neighbor search complexity.
 
 ### Phase 5: Engine — mate-preference selector
 #### Automated
-- [x] 5.1 npm run typecheck passes
-- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 5.1 npm run typecheck passes — 69cff75
+- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts passes — 69cff75
 
 ### Phase 6: Live adjustment
 #### Automated
-- [ ] 6.1 npm run typecheck passes
-- [ ] 6.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
+- [x] 6.1 npm run typecheck passes
+- [x] 6.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
 
 ### Phase 7: Diversity metric expansion
 #### Automated

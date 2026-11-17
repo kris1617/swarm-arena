@@ -12,6 +12,7 @@ import {
 import {
 	adjustLivePopulation,
 	applyLiveParams,
+	applyLiveTribeConfigs,
 	getLiveRunState,
 	type ParameterChangeEntry,
 	resumeServerRun,
@@ -924,6 +925,201 @@ describe("adjustLivePopulation", () => {
 		// still succeed rather than being throttled by the no-op.
 		const second = adjustLivePopulation(runId, "boid", 3);
 		expect(second).toEqual({ status: "applied" });
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+});
+
+// per-tribe-behavior-weights Phase 6. UI-accepts-input-is-not-feature-
+// verified (lessons.md): these tests prove a live tribeConfigs edit actually
+// reaches a READ site, not just that `run.params.tribeConfigs` gets
+// reassigned — the second test below exercises an actual read (a newly
+// grown individual) rather than only inspecting the stored value.
+//
+// per-tribe-behavior-weights Phase 6 (structural finding — see this phase's
+// final report): `reproducePopulation` (boids.ts, mating-based
+// reproduction) takes no `tribeConfigs` parameter and never reads it —
+// offspring genes are derived entirely from `inheritGenes`'s parent-gene
+// blend, independent of any tribe config, live-edited or not. This was
+// already true before this phase (Phase 2 only wired `tribeConfigs` into
+// `createInitialPopulation`/`createInitialPredators`/`stepBoids`/
+// `adjustLivePopulation`, never into `reproducePopulation` itself). So
+// "a mating-produced offspring's weight genes reseed from a live-edited
+// tribeConfigs" is not a true statement about this codebase and is not
+// asserted below — what IS true, and is asserted here, is that a brand-new
+// individual seeded via `adjustLivePopulation` (which does read
+// `run.params.tribeConfigs` fresh) picks up a live edit applied beforehand.
+describe("applyLiveTribeConfigs", () => {
+	it("returns not-found for an unregistered runId", () => {
+		expect(applyLiveTribeConfigs(999_999, [DEFAULT_TRIBE_CONFIG])).toEqual({
+			status: "not-found",
+		});
+	});
+
+	it("replaces run.params.tribeConfigs wholesale, reflected immediately in getLiveRunState", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(50);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 50,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const newTribeConfigs = [
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 99, neighborRadius: 120 },
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 12, neighborRadius: 5 },
+		];
+		const applied = applyLiveTribeConfigs(runId, newTribeConfigs);
+		expect(applied).toEqual({ status: "applied" });
+
+		const state = getLiveRunState(runId);
+		expect(state?.tribeConfigs).toEqual(newTribeConfigs);
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "tribeConfigs",
+			oldValue: 0,
+			newValue: 1,
+		});
+		activeRunIds.length = 0;
+	});
+
+	it("does NOT change an already-alive boid's own genes", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(51);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 51,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const beforeGenes = before.boids.map((b) => ({ ...b.genes }));
+
+		applyLiveTribeConfigs(runId, [
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 999, minSpeed: 998 },
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 999, minSpeed: 998 },
+		]);
+
+		const after = getLiveRunState(runId);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		expect(after.boids).toHaveLength(beforeGenes.length);
+		for (const [index, boid] of after.boids.entries()) {
+			expect(boid.genes).toEqual(beforeGenes[index]);
+		}
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("a boid grown via adjustLivePopulation AFTER a live tribeConfigs edit is seeded from the NEW config, not the one at run start", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(52);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 52,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const beforeCount = before.boids.length;
+
+		const newTribeConfigs = [
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 77, minSpeed: 11 },
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 77, minSpeed: 11 },
+		];
+		expect(applyLiveTribeConfigs(runId, newTribeConfigs)).toEqual({
+			status: "applied",
+		});
+
+		// Past PARAM_UPDATE_THROTTLE_MS so the growth call below isn't
+		// throttled by the tribeConfigs edit's own `lastParamUpdateAt` write
+		// (both share the same throttle window — see this function's comment).
+		await vi.advanceTimersByTimeAsync(500);
+
+		const result = adjustLivePopulation(runId, "boid", 2);
+		expect(result).toEqual({ status: "applied" });
+
+		const after = getLiveRunState(runId);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		const added = after.boids.slice(beforeCount);
+		expect(added).toHaveLength(2);
+		for (const boid of added) {
+			expect(boid.genes.maxSpeed).toBe(77);
+			expect(boid.genes.minSpeed).toBe(11);
+		}
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("throttles a second call within PARAM_UPDATE_THROTTLE_MS of the first", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(53);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 53,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		expect(
+			applyLiveTribeConfigs(runId, [
+				{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 55 },
+				{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 55 },
+			]),
+		).toEqual({ status: "applied" });
+
+		const second = applyLiveTribeConfigs(runId, [
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 66 },
+			{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 66 },
+		]);
+		expect(second.status).toBe("throttled");
+		if (second.status === "throttled") {
+			expect(second.retryAfterMs).toBeGreaterThan(0);
+		}
+		// The throttled call must not have changed params.
+		expect(getLiveRunState(runId)?.tribeConfigs[0]?.maxSpeed).toBe(55);
+
+		await vi.advanceTimersByTimeAsync(500);
+		expect(
+			applyLiveTribeConfigs(runId, [
+				{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 77 },
+				{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 77 },
+			]),
+		).toEqual({ status: "applied" });
+		expect(getLiveRunState(runId)?.tribeConfigs[0]?.maxSpeed).toBe(77);
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;

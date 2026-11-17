@@ -90,7 +90,17 @@ export type ParameterChangeEntry = {
 	// count change (`adjustLivePopulation`'s changelog entry), alongside the
 	// existing scalar `LiveAdjustableParams` fields `applyLiveParams` writes —
 	// `LiveAdjustableParams`/`applyLiveParams` themselves stay untouched.
-	field: keyof LiveAdjustableParams | "boidCount" | "predatorCount";
+	// per-tribe-behavior-weights Phase 6: widened again for
+	// `applyLiveTribeConfigs`'s own changelog entry — "tribeConfigs" marks a
+	// wholesale array replacement, not a per-field numeric diff (the array
+	// shape doesn't fit `oldValue`/`newValue: number` cleanly, so this entry
+	// is a simplified boolean-style marker like `crossbreedingEnabled`'s
+	// 0/1 coercion below, not a real before/after value).
+	field:
+		| keyof LiveAdjustableParams
+		| "boidCount"
+		| "predatorCount"
+		| "tribeConfigs";
 	oldValue: number;
 	newValue: number;
 };
@@ -173,6 +183,12 @@ export type LiveRunSnapshot = {
 	// values — not the DB row's "started with" columns, which never change —
 	// so the live-edit panel can pre-fill from them.
 	liveParams: LiveAdjustableParams;
+	// per-tribe-behavior-weights Phase 6: the run's *current* per-tribe
+	// config — sibling to `liveParams`, not nested inside it, since
+	// `tribeConfigs` is explicitly NOT part of `LiveAdjustableParams` (it has
+	// its own dedicated live-edit path, `applyLiveTribeConfigs`, below) —
+	// exposed the same way so a future live-edit panel can pre-fill from it.
+	tribeConfigs: TribeConfig[];
 };
 
 export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
@@ -194,6 +210,7 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 			mutationMagnitude: run.params.mutationMagnitude,
 			crossbreedingEnabled: run.params.crossbreedingEnabled,
 		},
+		tribeConfigs: run.params.tribeConfigs,
 	};
 }
 
@@ -250,6 +267,65 @@ export function applyLiveParams(
 		});
 	}
 	run.params = { ...run.params, ...patch };
+	run.lastParamUpdateAt = now;
+	return { status: "applied" };
+}
+
+// per-tribe-behavior-weights Phase 6: a dedicated live-edit path for
+// `tribeConfigs`, sibling to `applyLiveParams`/`adjustLivePopulation` — not
+// folded into `applyLiveParams` itself because `ParameterChangeEntry.
+// oldValue/newValue: number` can't represent an array-shaped diff cleanly.
+// Shares `applyLiveParams`'s not-found/throttle checks and
+// `lastParamUpdateAt` update (same `PARAM_UPDATE_THROTTLE_MS` floor, same
+// shared throttle window — a direct/malicious caller can't bypass it by
+// alternating between this and the other two live-edit mutations), but
+// replaces `run.params.tribeConfigs` wholesale rather than diffing
+// field-by-field. `tick()` reads `run.params.tribeConfigs` straight off the
+// mutable `run.params` object every tick (see its own `params.tribeConfigs:
+// run.params.tribeConfigs` call below), so this patch is visible to
+// per-tick behavior (stepBoids' perception radii/burst, agedBoids' burst
+// cost) starting the very next tick — the same "live edit visible on the
+// next read, not frozen at creation" guarantee `applyLiveParams` already
+// gives its own fields. It does NOT retroactively change any already-alive
+// individual's own heritable genes (separationWeight/alignmentWeight/
+// cohesionWeight/maxSpeed/minSpeed), which are set once at birth and never
+// re-read from `tribeConfigs` afterward — same "affects the future, not
+// already-alive individuals" semantic `mutationChance`/`mutationMagnitude`
+// already established. A *new* individual seeded via `adjustLivePopulation`
+// after this patch (createInitialPopulation/createInitialPredators, which
+// read `run.params.tribeConfigs` directly) does pick up the new config.
+export function applyLiveTribeConfigs(
+	runId: number,
+	patch: TribeConfig[],
+): ApplyLiveParamsResult {
+	const run = registry.get(runId);
+	if (!run) {
+		return { status: "not-found" };
+	}
+	const now = Date.now();
+	if (run.lastParamUpdateAt !== null) {
+		const elapsed = now - run.lastParamUpdateAt;
+		if (elapsed < PARAM_UPDATE_THROTTLE_MS) {
+			return {
+				status: "throttled",
+				retryAfterMs: PARAM_UPDATE_THROTTLE_MS - elapsed,
+			};
+		}
+	}
+	const tick = run.populationCountSamples.length;
+	// Simplified marker entry, not a per-field diff — see this function's own
+	// comment above for why. Mirrors `crossbreedingEnabled`'s 0/1 coercion in
+	// `applyLiveParams`: `oldValue: 0, newValue: 1` reads as "changed" to any
+	// consumer of the existing numeric changelog shape (e.g. the analysis
+	// view's ReferenceLine overlay), without claiming a real before/after
+	// numeric value that doesn't exist for an array field.
+	run.parameterChanges.push({
+		tick,
+		field: "tribeConfigs",
+		oldValue: 0,
+		newValue: 1,
+	});
+	run.params = { ...run.params, tribeConfigs: patch };
 	run.lastParamUpdateAt = now;
 	return { status: "applied" };
 }
