@@ -574,9 +574,9 @@ neighbor search complexity.
 
 ### Phase 9: Backward compatibility & verification
 #### Automated
-- [x] 9.1 npm run typecheck passes
-- [x] 9.2 npm test passes (full suite)
+- [x] 9.1 npm run typecheck passes — e87863a
+- [x] 9.2 npm test passes (full suite) — e87863a
 #### Manual
-- [x] 9.3 Spawn-time gene inspection confirms per-tribe values reach genes
-- [x] 9.4 Live-edit reflected in new offspring only, not existing boids
-- [x] 9.5 Legacy run analysis page shows no error / no misleading display
+- [x] 9.3 Spawn-time gene inspection confirms per-tribe values reach genes — e87863a
+- [x] 9.4 Live-edit reflected in new offspring only, not existing boids — e87863a
+- [x] 9.5 Legacy run analysis page shows no error / no misleading display — e87863a

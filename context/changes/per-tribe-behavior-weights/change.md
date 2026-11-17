@@ -1,7 +1,7 @@
 ---
 change_id: per-tribe-behavior-weights
 title: Per-tribe boid behavior data model (F-09)
-status: implementing
+status: implemented
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null
