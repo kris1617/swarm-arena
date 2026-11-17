@@ -190,11 +190,11 @@ verified.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — ad7c382
+- [x] 1.2 Lint passes: `npm run check` — ad7c382
+- [x] 1.3 Full suite still passes: `npm test` — ad7c382
 
 #### Manual
 
-- [x] 1.4 Null-history run (e.g. `/runs/41`) shows the new message, not `0.000`
-- [x] 1.5 History-present run still shows the real numeric value
+- [x] 1.4 Null-history run (e.g. `/runs/41`) shows the new message, not `0.000` — ad7c382
+- [x] 1.5 History-present run still shows the real numeric value — ad7c382
