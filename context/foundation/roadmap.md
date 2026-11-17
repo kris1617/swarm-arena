@@ -7,9 +7,9 @@ updated: 2026-11-17
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
-milestone_id: roadmap-question-resolution
-milestone_seq: 9
-milestone_status: done
+milestone_id: per-tribe-config-and-predator-expansion
+milestone_seq: 10
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,23 +20,25 @@ milestone_status: done
 
 ## Milestone
 
-**M-9: Resolve remaining roadmap questions** — Status: done
+**M-10: Per-tribe configuration and predator expansion** — Status: open
 
-- **Intent:** Close out the three items still listed under `## Open Roadmap Questions` — two of which the project already resolved in practice but never formally closed out (per-run history's retroactive scope; the admin-elevation mechanism), and one genuinely unresolved technical decision (whether unwatched server-owned runs should tick faster than real time so they don't compete for CPU against the one the user is actively watching) — so the roadmap accurately reflects the project's real state before further milestone work begins.
-- **Source materials:** user description (2026-11-17), anchors below
-- **Done when:** S-36, S-37, and S-38 are all `done`.
+- **Intent:** Fix the reported default-parameter start failure, then extend the simulation's configuration model from "one shared setting per run" to "settings that vary per tribe" — for boid behavior, food, and predators — following the per-tribe pattern already proven in the user's own prior LÖVE2D/Lua boids implementation (`/mnt/Kids/boids_final/game/src/config.lua`), and finally add a second, distinct predator tribe with a configurable prey target (boids only, or boids and predators) — a predation relationship that does not exist in the Lua reference or anywhere in the current codebase.
+- **Source materials:** user description (2026-11-17) + reference implementation at `/mnt/Kids/boids_final/game/src/config.lua` and `Predator.lua`, anchors below
+- **Done when:** S-39 through S-43 are all `done` (F-09 is this milestone's sole foundation).
 - **Scope anchors:**
-  - MS-01: Confirm and formally close Open Roadmap Question #4 — per-run history (F-05) applies forward-only, not retroactively, to already-archived runs.
-  - MS-02: Confirm and formally close Open Roadmap Question #6 — temporary admin elevation (FR-030/S-22) already uses a time-boxed, self-service mechanism.
-  - MS-03: Decide and implement whether unwatched server-owned simulation runs should tick faster than real time so they don't compete for CPU against the actively-watched run (Open Roadmap Question #8) — a change to the core tick-timing/determinism model every existing scored/analyzed/compared run depends on.
+  - MS-01: Fix the bug where starting a simulation with the form's own default parameter values does not work.
+  - MS-02: Boid tribes get their own per-tribe behavior configuration (at minimum separation/alignment/cohesion weight), not one value shared across every tribe in a run — mirroring the Lua reference's per-tribe `config.lua` entries.
+  - MS-03: Food gets per-tribe configuration (stock/regen), not one shared pool/rate for the whole run.
+  - MS-04: Predators get per-tribe configuration, the same way boids do.
+  - MS-05: A second predator tribe can be added to a run with a configurable prey target — boids only, or boids and predators — a mechanic new relative to both the Lua reference (single global predator type, boids-only hunting) and the current codebase.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability. M-9 closed out the roadmap's own bookkeeping — confirming two already-resolved design questions and deciding a genuinely open one (unwatched-run tick throttling). M-10 turns toward the simulation's configuration model itself: every boid in a run shares one global behavior-weight set regardless of tribe, and every predator shares one global tuning — the user's own prior Lua/LÖVE2D implementation of this same simulation already proved a richer, per-tribe model works (distinct color, speed, force, and per-behavior perception/multipliers per tribe), so this milestone first fixes a reported start-up failure, then brings that per-tribe differentiation to boids, food, and predators, and finally introduces a predation relationship — predator-on-predator — that exists in neither the Lua reference nor the current codebase.
 
 ## North star
 
-**S-36: Unwatched-run tick throttling** — this milestone doesn't have a single product hypothesis to validate like prior ones; it's a mix of formally closing two already-resolved questions (S-37, S-38) and one genuinely open technical decision. S-36 carries the "north star" label here because it's the one item with real design risk — a change to the core tick-timing/determinism model every existing scored/analyzed/compared run depends on — sequenced first (by the quality main-goal bias) so the milestone's hard part isn't deferred behind the two quick confirmations.
+**S-39: Fix default-parameter simulation start** — the smallest, most load-bearing fix in this milestone: the app is reportedly unusable with its own defaults today, which also blocks verifying every other slice in this milestone end-to-end. Sequenced first per the user's own explicit pick.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -90,6 +92,12 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | done |
 | S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | done |
 | S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | done |
+| S-39 | fix-default-start-failure | User starts a simulation using the form's own default values, with no error and no unexplained failure | —              | MS-01                                                  | in-progress |
+| F-09 | per-tribe-behavior-weights | (foundation) A boid's separation/alignment/cohesion weights can be set per flock/tribe at run-start, not one shared value for every tribe | —              | MS-02                                                  | proposed |
+| S-40 | per-tribe-boid-behavior-config | User configures separation/alignment/cohesion weight per boid tribe before starting a run, and sees tribes behave visibly differently | S-39, F-09     | MS-02                                                  | blocked |
+| S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | blocked |
+| S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning independently, the way boid tribes already can | S-39           | MS-04                                                  | blocked |
+| S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators | S-42           | MS-05                                                  | blocked |
 
 ## Streams
 
@@ -112,10 +120,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | O      | Diversity trend (M-7)             | `S-32`                                   | Standalone — no foundation prerequisite; mirrors the already-shipped per-tick sample-array pattern (`populationCountSamples` et al.) exactly, so no new Foundation is needed. |
 | P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
 | Q      | Roadmap-question resolution (M-9) | `S-36`, `S-37`, `S-38`           | All three are independent, no foundation prerequisite — each closes a different open roadmap question. `S-36` carries M-9's north star despite being `blocked` pending its own Unknown; `S-37`/`S-38` are quick, unblocked confirmations. |
+| R      | Per-tribe config & predator expansion (M-10) | `S-39` → `F-09` → `S-40`, `S-39` → `S-41`, `S-39` → `S-42` → `S-43` | Carries M-10's north star (`S-39`), the only unblocked item. `S-40`/`S-41`/`S-42` can run in parallel once `S-39` lands (each needs its own design decision resolved first); `S-43` is the sole item gated behind another slice (`S-42`), since a second predator tribe needs per-tribe predator config to exist first. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer); no baseline change for M-9 either (S-36 is a pure engine-level change to the already-existing server-owned tick scheduler; S-37/S-38 are documentation/verification-only against already-shipped code, no new layer touched).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer); no baseline change for M-9 either (S-36 is a pure engine-level change to the already-existing server-owned tick scheduler; S-37/S-38 are documentation/verification-only against already-shipped code, no new layer touched); refreshed again `2026-11-17` for M-10 (per-tribe config, predator expansion) — confirmed `boidCount`/`predatorCount` and `flockId`/`flockCount` already exist (`src/server/simulation/boids.ts`, 33 references), so the tribe *concept* is already present at the boid level, but `separationWeight`/`alignmentWeight`/`cohesionWeight` and all food settings remain single global values shared by every boid in a run regardless of tribe (confirmed via `src/app/simulation/page.tsx`'s single `useState` per parameter and `startInputSchema` in `src/server/api/routers/simulation.ts`); no per-tribe predator concept exists at all, and `Predator:hunt()` in the Lua reference confirms the prior implementation never had one either — no new layer, but a real change to the per-tick flocking-force calculation every boid already runs through.
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -123,7 +132,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Data:** partial — Drizzle/SQLite configured, but `src/server/db/schema.ts` only has the example `.bootstrap-scaffold_post` table; no simulation/user/score tables.
 - **Auth:** absent — no `next-auth` in `package.json` or `src/`, despite `tech-stack.md` planning it.
 - **Deploy / infra:** present — live in production at `https://swarmarena.hopto.org` (Docker + Caddy + GitHub Actions auto-deploy, per `infrastructure.md` / `deploy-plan.md`). `tech-stack.md` already names the reason this matters for F-03/F-04: a persistent container (not serverless) is required precisely for "an always-on simulation loop and any WebSocket/SSE push to the live view" — the deploy target was chosen anticipating this extension.
-- **Observability:** absent — no logging/error-tracking library found.
+- **Observability:** absent — no logging/error-tracking library found (confirmed again 2026-11-17: no `sentry`/`datadog`/`otel` dependency in `package.json`; the in-app feedback module is user-reported bug intake, not automated error tracking).
 - **2026-11-14 refresh — relevant to F-03/F-04 specifically:** simulation execution today is 100% client-side, `requestAnimationFrame`-driven (`src/app/simulation/_components/simulation-canvas.tsx`, `src/app/simulation/multi/_components/multi-simulation-stage.tsx`); no server-owned tick loop exists. `simulationRuns` (`src/server/db/schema.ts`) persists only run configuration and terminal fields (status/score/timestamps) — no live per-tick state. No push/subscription mechanism exists (`src/server/api/routers/simulation.ts` has only `start`/`stop` mutations; no tRPC subscription, SSE route, or WebSocket handler found). The existing `computeMultiRunTick` (`src/server/simulation/multi-run-lifecycle.ts`) already separates "tick every running slot" from "render only the active slot's output" — the closest in-repo precedent for the tick/render split F-03/F-04 need, even though it currently runs client-side only.
 - **2026-11-14 refresh (second) — relevant to S-09/F-05/S-10/S-11:** no dashboard or post-login landing page exists — `/simulation` is both the staging form and the only run-related page; there is no route a logged-in user is redirected to. `listRunning`/`listSaved` (`src/server/api/routers/simulation.ts`) already return the caller's own rows filtered by status, so a run-list dashboard is additive UI, not new backend capability. No run-analysis UI or endpoint exists anywhere. Confirmed via code inspection: `computeScore`'s callers (`stop` resolver, `server-run-registry.ts`'s `tick()`/`stopServerRun`) consume `phaseHistory`/`foodRatioSamples`/survivor genes only to compute the final score number — none of those arrays are persisted; `simulationRuns.score` is the only thing written back. An analysis view has nothing to read until F-05 persists them.
 - **2026-11-14 refresh (third) — relevant to M-3 (F-06, S-15–S-23):** the app uses shadcn/ui primitives (`Button`, `Input`, `Switch` in `src/components/ui/`) and a design-token system (`src/styles/globals.css`), but no shared app shell/sidebar-nav layout exists — every page (`login`, `dashboard`, `simulation`, `runs/[runId]`, `runs/compare`) is an independent `<main>` with its own ad hoc Tailwind classes, not a common layout. The login page (`src/app/login/page.tsx`) is generic/default-looking, not branded. No leaderboard, post-run-optimization-suggestion, admin-elevation, or reference/documentation page exists anywhere. `src/server/simulation/boids.ts`'s flocking-force calculation does a full pairwise scan (`for (const other of boids)` nested inside a per-boid loop) — confirmed O(N²), the exact pattern the user's prior LÖVE2D/Lua implementation (`/mnt/Kids/boids_final/game/`) replaced with a spatial-hash grid, per that project's own `docs/ARCHITEKTURA.md` ("Siatka Haszu Przestrzennego... Optymalizacja wyszukiwania sąsiadów z O(N²) do O(N)"). `users.role` (schema.ts) already has the `admin`/`member` enum; no elevation/toggle mechanism exists to change it from the app itself today (only direct DB access).
@@ -238,6 +247,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** — (resolved during planning: fake-timer-driven ticking, confirmed against the existing `vi.useFakeTimers()`/`vi.advanceTimersByTimeAsync()` precedent; the admin-configured `maxDurationSeconds` range defaults to a max of 600s and must be raised-then-restored around each run's start, generically over whatever fields the caller's params need widened)
 - **Risk:** Low — reuses the existing server-owned execution engine and its already-tested `createCaller`-based test pattern; the main risk is ensuring real-time-equivalent behavior (scoring, phase classification) isn't accidentally distorted by however ticks are accelerated.
 - **Status:** done
+
+### F-09: Per-tribe boid behavior data model
+
+- **Outcome:** (foundation) A boid's separation/alignment/cohesion weights can be configured per flock/tribe at run-start time, instead of one shared value applied to every flock in the run.
+- **Change ID:** per-tribe-behavior-weights
+- **PRD refs:** MS-02
+- **Unlocks:** S-40
+- **Prerequisites:** —
+- **Parallel with:** S-39
+- **Blockers:** —
+- **Unknowns:** — (how far per-tribe scope should extend beyond these 3 weights — e.g. matching the Lua reference's per-tribe perception radii and multipliers — is S-40's own Unknown, not this foundation's; this foundation covers only the minimal schema/plumbing S-40 needs to proceed)
+- **Risk:** Low-medium — touches the run-start input schema and the per-tick force calculation every boid already goes through every frame; must not regress already-started runs that still use a single shared weight set.
+- **Status:** proposed
 
 ## Slices
 
@@ -718,6 +740,73 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low — verification-only.
 - **Status:** done
 
+### S-39: Fix default-parameter simulation start
+
+- **Outcome:** User can start a simulation using the form's own default values, with no error and no unexplained failure.
+- **Change ID:** fix-default-start-failure
+- **PRD refs:** MS-01
+- **Prerequisites:** —
+- **Parallel with:** F-09
+- **Blockers:** —
+- **Unknowns:**
+  - What is the actual failure mode — a server-side rejection, a silent no-op, a client-side crash, or something else? Owner: team (research). Block: no — exactly what `/10x-research` resolves before `/10x-plan`; not a cross-cutting decision.
+- **Risk:** Likely low effort once reproduced, but currently zero confirmed repro — a dev-server HMR reload-loop artifact blocked one live-reproduction attempt this session, and a static review of `startInputSchema`/`checkAgainstAdminRanges`/the seeded `admin_settings` row found no rule that should reject the UI's literal default values. Needs a clean research pass before planning.
+- **Status:** in-progress
+
+### S-40: Per-tribe boid behavior config
+
+- **Outcome:** User configures separation/alignment/cohesion weight (and any other per-behavior knobs decided in scope) independently for each boid tribe before starting a run, and sees tribes behave visibly differently from each other.
+- **Change ID:** per-tribe-boid-behavior-config
+- **PRD refs:** MS-02
+- **Prerequisites:** S-39 (a working start flow to verify against), F-09
+- **Parallel with:** S-41, S-42
+- **Blockers:** —
+- **Unknowns:**
+  - Which specific per-tribe knobs are in scope — just the 3 existing global weights (separation/alignment/cohesion) per tribe, or fuller Lua-reference parity (also per-behavior perception radii, burst/food/predator-avoidance multipliers, `matePreference`)? Owner: user. Block: yes.
+  - Does per-tribe differentiation extend to genetics — independently-evolving mutation rates per tribe — or stay a static run-start configuration only? Owner: user. Block: yes (also Open Roadmap Question #9).
+- **Risk:** Medium — the per-tick flocking-force calculation (`boids.ts`) currently reads one shared weight set for every boid; this is a real physics-engine change, not just a new form field.
+- **Status:** blocked
+
+### S-41: Per-tribe food config
+
+- **Outcome:** User configures food stock and regeneration rate independently per boid tribe, instead of one shared food pool/rate for the whole run.
+- **Change ID:** per-tribe-food-config
+- **PRD refs:** MS-03
+- **Prerequisites:** S-39
+- **Parallel with:** S-40, S-42
+- **Blockers:** —
+- **Unknowns:**
+  - Does per-tribe food mean genuinely separate food pools (each tribe only eats food spawned/tracked for it), or just per-tribe stock/regen *settings* feeding one pool any tribe can eat from? These have very different implementation shapes. Owner: user. Block: yes.
+- **Risk:** Medium — depends heavily on the Unknown above; a separate-pools design touches the food-spawn/consumption loop, a shared-pool-with-per-tribe-rates design is closer to a config-only change.
+- **Status:** blocked
+
+### S-42: Per-tribe predator config
+
+- **Outcome:** User configures a predator tribe's own behavior tuning (e.g. speed, perception, hunt aggressiveness) independently, the way boid tribes already can — laying the groundwork for a second, distinct predator tribe.
+- **Change ID:** per-tribe-predator-config
+- **PRD refs:** MS-04
+- **Prerequisites:** S-39
+- **Parallel with:** S-40, S-41
+- **Blockers:** —
+- **Unknowns:**
+  - Do predator tribes reproduce with independently-evolving genetics (mirroring boid flocks' crossbreeding system), or is per-tribe tuning static, set once at run-start with no divergence over time? Owner: user. Block: yes.
+- **Risk:** Medium — same category of change as S-40 but on the predator side of the engine; also the direct prerequisite for S-43's second predator tribe.
+- **Status:** blocked
+
+### S-43: Second predator tribe with configurable prey target
+
+- **Outcome:** User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and sees that tribe hunt accordingly.
+- **Change ID:** second-predator-tribe-prey-target
+- **PRD refs:** MS-05
+- **Prerequisites:** S-42
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:**
+  - What happens when a predator preys on another predator — does the eaten predator simply die (the same terminal state as a preyed-on boid), and how does that register in the existing per-run score/analysis metrics (today scoped entirely to boid survival/resources/genetics)? Owner: user. Block: yes.
+  - Should the existing 5-factor score formula account for inter-predator predation at all in v1, or stay unaffected (a purely simulation/visual mechanic for now)? Owner: user. Block: yes (also Open Roadmap Question #10).
+- **Risk:** High — the most novel piece in this milestone, with no precedent in the Lua reference or anywhere in the current codebase; the scoring/analysis interaction is the real unknown, not the hunting AI itself.
+- **Status:** blocked
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -768,6 +857,12 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-36       | unwatched-run-tick-throttling        | Decide and implement CPU-fair tick throttling for unwatched server-owned runs | yes                     | Run `/10x-plan unwatched-run-tick-throttling` |
 | S-37       | confirm-run-history-retroactive-scope | Confirm and close: per-run history is forward-only, not retroactive | yes                     | Run `/10x-plan confirm-run-history-retroactive-scope` |
 | S-38       | confirm-admin-elevation-mechanism-resolved | Confirm and close: admin-elevation mechanism already resolved (time-boxed, self-service) | yes                     | Run `/10x-plan confirm-admin-elevation-mechanism-resolved` |
+| S-39       | fix-default-start-failure         | Fix: starting a simulation with default parameter values doesn't work | yes                     | Run `/10x-plan fix-default-start-failure` — this milestone's recommended next move |
+| F-09       | per-tribe-behavior-weights        | Add per-tribe (per-flock) separation/alignment/cohesion weight storage | no                      | Waiting on S-39 (sequencing only, no hard dependency) |
+| S-40       | per-tribe-boid-behavior-config    | User configures separation/alignment/cohesion weight per boid tribe | no                      | Blocked on 2 Unknowns — see slice |
+| S-41       | per-tribe-food-config             | User configures food stock/regen rate per boid tribe | no                      | Blocked on 1 Unknown — see slice |
+| S-42       | per-tribe-predator-config         | User configures a predator tribe's own behavior tuning | no                      | Blocked on 1 Unknown — see slice |
+| S-43       | second-predator-tribe-prey-target | User adds a second predator tribe with a boids-only or boids-and-predators prey target | no                      | Waiting on S-42; blocked on 2 Unknowns — see slice |
 
 ## Open Roadmap Questions
 
@@ -779,6 +874,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 6. ~~What exact mechanism should temporary admin elevation (FR-030/S-22) use — a self-service toggle, a time-boxed grant, or something else?~~ — **Resolved 2026-11-17 via `confirm-admin-elevation-mechanism-resolved` (M-9's S-38).** Confirmed the time-boxed, self-service mechanism shipped during S-22's own planning (`context/archive/2026-11-14-temporary-admin-elevation/plan.md`) is still fully live and unmodified — re-verified every component (the `elevatedUntil` column, `isEffectivelyAdmin` helper, both authorization sites, all 5 tRPC procedures, the `ALLOW_SELF_ELEVATION` safety flag, the `/admin/elevation` UI, and full test coverage) against current code. No gap found; no code change needed.
 7. **Beyond the `next-shadcn-admin-dashboard` structural reference, which specific pages get restyled first, and in what order?** — Owner: roadmap (this decomposition). Resolved for sequencing purposes: `S-15` (login) first as the north star, then `S-16`–`S-20` in any order/parallel — see Streams row G. Per PRD Open Question #7.
 8. **Should unwatched server-owned runs be allowed to tick faster than real time (not throttled to the live-view's 16ms cadence), so background runs don't compete for CPU against the one the user is actively watching?** — Owner: user. Block: yes — **now tracked as M-9's S-36** (`unwatched-run-tick-throttling`, 2026-11-17), blocked on deciding the exact throttling mechanism and its effect on score comparability against pre-existing runs.
+9. **How far should per-tribe differentiation go — just behavior weights (separation/alignment/cohesion), or also independently-evolving genetics/mutation rates per tribe, extending the existing crossbreeding system?** — Owner: user. Block: S-40, S-42.
+10. **Should inter-predator predation (S-43) affect the existing 5-factor score formula, or remain a purely simulation/visual mechanic with no scoring impact for v1?** — Owner: user. Block: S-43.
 
 ## Parked
 
