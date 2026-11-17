@@ -484,8 +484,8 @@ backfills automatically with no data migration needed, same as
 
 #### Manual
 
-- [ ] 2.9 Manually-aged stale row is swept after dev-server restart
-- [ ] 2.10 A currently-active run is not touched by the sweep
+- [x] 2.9 Manually-aged stale row is swept after dev-server restart
+- [x] 2.10 A currently-active run is not touched by the sweep
 
 ### Phase 3: Surface the auto-stopped marker across the UI
 
