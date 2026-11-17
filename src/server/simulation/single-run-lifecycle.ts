@@ -7,6 +7,7 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 	runTick,
+	type TribeConfig,
 	type WorldSize,
 } from "~/server/simulation/boids";
 
@@ -69,6 +70,14 @@ export function computeSingleRunTick(
 		// into runTick/computeCohesion below instead of their old hardcoded
 		// 200-unit assumption.
 		worldSize: WorldSize;
+		// per-tribe-behavior-weights Phase 3: one TribeConfig per flock,
+		// index = flockId — threaded straight into runTick's own
+		// `params.tribeConfigs` (its own comment explains why it has no
+		// default), same convention as worldSize just above. Both callers
+		// (simulation-canvas.tsx's props, server-run-registry.ts's
+		// `run.tribeConfigs`) already have this value in scope from the same
+		// place they get worldSize.
+		tribeConfigs: TribeConfig[];
 		// unwatched-run-tick-throttling Phase 2: scales the computed
 		// dtSeconds before the MAX_DT_SECONDS clamp, applied by the caller
 		// (server-run-registry.ts's tick()) when a run has had zero watchers
@@ -144,6 +153,7 @@ export function computeSingleRunTick(
 			populationCap: 500,
 			foodStockInitial: params.foodStockInitial,
 			worldSize: params.worldSize,
+			tribeConfigs: params.tribeConfigs,
 		},
 	);
 

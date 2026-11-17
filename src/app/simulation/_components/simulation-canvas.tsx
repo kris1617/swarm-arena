@@ -817,6 +817,7 @@ export function SimulationCanvas({
 						mutationChance: mutationChanceRef.current,
 						mutationMagnitude: mutationMagnitudeRef.current,
 						worldSize,
+						tribeConfigs,
 					},
 				);
 

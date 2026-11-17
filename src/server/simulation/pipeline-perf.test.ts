@@ -42,6 +42,12 @@ const BASE_PARAMS = {
 	populationCap: 500,
 	foodStockInitial: 1000,
 	worldSize: WORLD_SIZE,
+	// per-tribe-behavior-weights Phase 3: runTick now requires tribeConfigs
+	// (no default, same convention as worldSize) — this file's single-flock
+	// fixtures all use TRIBE_CONFIG, matching the old global constants
+	// exactly, so grid sizing/behavior (and thus the Math.hypot call-count
+	// scaling-shape this suite measures) is unchanged.
+	tribeConfigs: [TRIBE_CONFIG],
 };
 
 function buildState(boidCount: number, predatorCount: number) {

@@ -4,6 +4,7 @@ import {
 	type BoidGenes,
 	type BoidState,
 	computeGeneticDiversity,
+	type TribeConfig,
 } from "~/server/simulation/boids";
 import { createRng } from "~/server/simulation/rng";
 import {
@@ -30,6 +31,27 @@ const PARAMS = {
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
 	worldSize: { x: 200, y: 200, z: 200 },
+	// per-tribe-behavior-weights Phase 3: computeSingleRunTick/runTick now
+	// require tribeConfigs (no default, same convention as worldSize) — this
+	// file's fixtures all use flockId 0 (see GENES below), so one entry
+	// matching the old global NEIGHBOR_RADIUS/SEPARATION_RADIUS/
+	// PREDATOR_DETECTION_RADIUS constants keeps every pre-existing test's
+	// behavior unchanged.
+	tribeConfigs: [
+		{
+			separation: WEIGHTS.separation,
+			alignment: WEIGHTS.alignment,
+			cohesion: WEIGHTS.cohesion,
+			maxSpeed: 40,
+			minSpeed: 15,
+			matePreference: 0.5,
+			neighborRadius: 70,
+			separationRadius: 25,
+			predatorDetectionRadius: 50,
+			burstMult: 1,
+			burstCostMult: 1,
+		} satisfies TribeConfig,
+	],
 };
 
 const GENES: BoidGenes = {

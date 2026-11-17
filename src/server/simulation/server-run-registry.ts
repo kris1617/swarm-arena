@@ -546,6 +546,7 @@ function tick(runId: number): void {
 					y: run.params.xyArea,
 					z: run.params.zDepth,
 				},
+				tribeConfigs: run.params.tribeConfigs,
 				speedMultiplier: isThrottled ? THROTTLE_SPEED_MULTIPLIER : 1,
 			},
 		);

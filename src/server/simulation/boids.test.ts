@@ -681,6 +681,75 @@ describe("stepBoids", () => {
 	}, 15000);
 });
 
+// per-tribe-behavior-weights Phase 3: the plan's own named Success
+// Criterion — "a boid in a tribe with a small separationRadius ignores a
+// neighbor at a distance that a large-radius tribe's identical boid would
+// react to". Exercises the optional 6th `tribeConfigs` param directly
+// (every other stepBoids call in this file omits it, relying on the
+// fallback-to-global-constants default — see stepBoids' own comment).
+describe("stepBoids (per-tribe-behavior-weights Phase 3: per-tribe perception radii)", () => {
+	it("a boid in a tribe with a small separationRadius ignores a neighbor that an identical boid in a large-radius tribe reacts to", () => {
+		const weights = { separation: 1, alignment: 0, cohesion: 0 };
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, separationRadius: 5 },
+			{ ...TRIBE_CONFIG, separationRadius: 50 },
+		];
+		// Strictly between the two tribes' separationRadius (5 and 50), and
+		// well inside both tribes' shared neighborRadius (70) so the neighbor
+		// is "seen" either way — only the separation contribution differs.
+		const distance = 10;
+
+		function buildSubject(flockId: number): BoidState {
+			return {
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 100,
+				genes: makeGenes(weights, { flockId }),
+				energy: 0,
+				age: 0,
+				gender: "a",
+			};
+		}
+		const neighbor = makeBoid(
+			{ x: distance, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 100 },
+			weights,
+		);
+
+		const smallRadiusSubject = buildSubject(0);
+		const largeRadiusSubject = buildSubject(1);
+
+		const [steppedSmall] = stepBoids(
+			[smallRadiusSubject, neighbor],
+			0.1,
+			WORLD_SIZE,
+			[],
+			undefined,
+			tribeConfigs,
+		);
+		const [steppedLarge] = stepBoids(
+			[largeRadiusSubject, neighbor],
+			0.1,
+			WORLD_SIZE,
+			[],
+			undefined,
+			tribeConfigs,
+		);
+
+		// Small-radius tribe (separationRadius=5 < distance=10): no
+		// separation force applies, so steering is zero and the boid falls
+		// back to the speed-clamp floor's fixed fallback direction (+x).
+		expect(steppedSmall?.vx).toBeGreaterThan(0);
+		// Large-radius tribe (separationRadius=50 > distance=10): separation
+		// pushes the boid away from the neighbor (which sits at +x), so the
+		// resulting velocity points in -x instead.
+		expect(steppedLarge?.vx).toBeLessThan(0);
+	});
+});
+
 // S-24 (configurable-area-and-camera-view) Phase 1: proves the
 // INITIAL_AREA_SIZE/Z_DEPTH_RANGE -> worldSize refactor is behavior-
 // preserving at the default (200/200/200) world and genuinely
@@ -1678,6 +1747,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 				populationCap: 100_000,
 				foodStockInitial: 1000,
 				worldSize: WORLD_SIZE,
+				tribeConfigs: [TRIBE_CONFIG],
 			},
 		);
 
@@ -1724,6 +1794,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			populationCap: 500,
 			foodStockInitial: 20,
 			worldSize: WORLD_SIZE,
+			tribeConfigs: [TRIBE_CONFIG],
 		};
 
 		const a = runTick(

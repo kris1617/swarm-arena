@@ -42,6 +42,11 @@ const PARAMS = {
 	populationCap: 500,
 	foodStockInitial: 20,
 	worldSize: WORLD_SIZE,
+	// per-tribe-behavior-weights Phase 3: runTick now requires tribeConfigs
+	// (no default, same convention as worldSize) — this file's single-flock
+	// fixtures all use TRIBE_CONFIG, matching the old global constants
+	// exactly, so grid sizing/behavior is unchanged.
+	tribeConfigs: [TRIBE_CONFIG],
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -425,6 +430,7 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 				populationCap: 500,
 				foodStockInitial: 20,
 				worldSize: WORLD_SIZE,
+				tribeConfigs: [TRIBE_CONFIG],
 			},
 		);
 

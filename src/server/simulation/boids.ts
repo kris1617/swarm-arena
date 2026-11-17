@@ -463,22 +463,56 @@ function resolveOverlaps(
 	return resolved;
 }
 
+// per-tribe-behavior-weights Phase 3: `stepBoids`'s own grid-build calls need
+// ONE shared cell size per grid (one grid build per population per tick,
+// never per-flock grids), sized to the LARGEST radius any present tribe
+// actually queries with — a cell size smaller than some tribe's radius would
+// make that tribe's `queryRadius` call miss real candidates in neighboring
+// cells. Falls back to the pre-Phase-3 global constant when `tribeConfigs`
+// is empty (callers that don't care about per-tribe radii, e.g. most of
+// boids.test.ts's direct stepBoids calls, keep today's exact behavior).
+function maxTribeRadius(
+	tribeConfigs: TribeConfig[],
+	field: "neighborRadius" | "predatorDetectionRadius",
+	fallback: number,
+): number {
+	if (tribeConfigs.length === 0) {
+		return fallback;
+	}
+	return Math.max(...tribeConfigs.map((config) => config[field]));
+}
+
 export function stepBoids(
 	boids: BoidState[],
 	dtSeconds: number,
 	worldSize: WorldSize,
 	predators: PredatorState[] = [],
 	warnSink?: DenseClusterWarnSink,
+	// per-tribe-behavior-weights Phase 3: one TribeConfig per flock, index =
+	// flockId — same convention as createInitialPopulation/createInitialPredators.
+	// Optional, defaulting to `[]` (which falls back to the pre-Phase-3 global
+	// NEIGHBOR_RADIUS/SEPARATION_RADIUS/PREDATOR_DETECTION_RADIUS constants
+	// below) so every pre-existing call site in this file and its tests keeps
+	// compiling and behaving exactly as before; runTick (the real production
+	// composition point) always passes the run's actual tribeConfigs.
+	tribeConfigs: TribeConfig[] = [],
 ): BoidState[] {
 	// Built once from this tick's starting positions, before any boid's new
 	// position is computed below — positions read through these grids are
 	// never mutated mid-map (the `.map()` callback only ever reads `boids`/
 	// `predators`, assembling a brand-new array), so a single snapshot grid
 	// is safe here, unlike `resolveOverlaps` below (see its own comment).
+	//
+	// Cell size is the largest neighborRadius/predatorDetectionRadius across
+	// all tribes present this run, not a single global constant — a boid
+	// whose own tribe has a smaller radius still gets an exact-filtered
+	// result below (see the per-boid loop), it just queries a grid sized for
+	// the widest tribe sharing it. This keeps ONE grid build per population
+	// per tick (the rejected alternative is a separate grid per flock).
 	const boidGrid = buildSpatialGrid(
 		boids,
 		(b) => ({ x: b.x, y: b.y, z: b.z }),
-		NEIGHBOR_RADIUS,
+		maxTribeRadius(tribeConfigs, "neighborRadius", NEIGHBOR_RADIUS),
 		worldSize,
 	);
 	const predatorGrid =
@@ -486,7 +520,11 @@ export function stepBoids(
 			? buildSpatialGrid(
 					predators,
 					(p) => ({ x: p.x, y: p.y, z: p.z }),
-					PREDATOR_DETECTION_RADIUS,
+					maxTribeRadius(
+						tribeConfigs,
+						"predatorDetectionRadius",
+						PREDATOR_DETECTION_RADIUS,
+					),
 					worldSize,
 				)
 			: null;
@@ -512,9 +550,24 @@ export function stepBoids(
 		let sumDY = 0;
 		let sumDZ = 0;
 
+		// per-tribe-behavior-weights Phase 3: THIS boid's own tribe's radii —
+		// a candidate contributes to separation/alignment/cohesion based on
+		// the QUERYING boid's perception range, never the candidate's.
+		// Falls back to the pre-Phase-3 global constants when `tribeConfigs`
+		// is empty or (defensively, shouldn't happen given Phase 1's
+		// length validation) this boid's flockId has no corresponding entry —
+		// same "don't let a missing config silently zero out a boid's
+		// behavior" reasoning as createInitialPopulation's `if (!tribeConfig)
+		// continue` guard, except here the boid already exists mid-run, so
+		// falling back to the old shared constants (not skipping the boid
+		// entirely) is the consistent choice.
+		const tribeConfig = tribeConfigs[boid.genes.flockId];
+		const neighborRadius = tribeConfig?.neighborRadius ?? NEIGHBOR_RADIUS;
+		const separationRadius = tribeConfig?.separationRadius ?? SEPARATION_RADIUS;
+
 		for (const otherIndex of boidGrid.queryRadius(
 			{ x: boid.x, y: boid.y, z: boid.z },
-			NEIGHBOR_RADIUS,
+			neighborRadius,
 			warnSink,
 		)) {
 			if (otherIndex === boidIndex) {
@@ -528,7 +581,7 @@ export function stepBoids(
 			const dy = wrappedDelta(boid.y - other.y, worldSize.y);
 			const dz = wrappedDelta(boid.z - other.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
-			if (dist > NEIGHBOR_RADIUS) {
+			if (dist > neighborRadius) {
 				continue;
 			}
 
@@ -540,7 +593,7 @@ export function stepBoids(
 			sumDY += -dy;
 			sumDZ += -dz;
 
-			if (dist <= SEPARATION_RADIUS && dist > 0) {
+			if (dist <= separationRadius && dist > 0) {
 				sepSumX += dx / dist;
 				sepSumY += dy / dist;
 				sepSumZ += dz / dist;
@@ -605,9 +658,13 @@ export function stepBoids(
 		let nearestPredatorDx = 0;
 		let nearestPredatorDy = 0;
 		let nearestPredatorDz = 0;
+		// per-tribe-behavior-weights Phase 3: same "querying boid's own tribe"
+		// rule as neighborRadius/separationRadius above.
+		const predatorDetectionRadius =
+			tribeConfig?.predatorDetectionRadius ?? PREDATOR_DETECTION_RADIUS;
 		for (const predatorIndex of predatorGrid?.queryRadius(
 			{ x: boid.x, y: boid.y, z: boid.z },
-			PREDATOR_DETECTION_RADIUS,
+			predatorDetectionRadius,
 			warnSink,
 		) ?? []) {
 			const predator = predators[predatorIndex];
@@ -618,7 +675,7 @@ export function stepBoids(
 			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
 			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
-			if (dist <= PREDATOR_DETECTION_RADIUS && dist < nearestPredatorDist) {
+			if (dist <= predatorDetectionRadius && dist < nearestPredatorDist) {
 				nearestPredatorDist = dist;
 				nearestPredatorDx = dx;
 				nearestPredatorDy = dy;
@@ -626,7 +683,7 @@ export function stepBoids(
 			}
 		}
 		if (
-			nearestPredatorDist <= PREDATOR_DETECTION_RADIUS &&
+			nearestPredatorDist <= predatorDetectionRadius &&
 			nearestPredatorDist > 0
 		) {
 			fleeX = nearestPredatorDx / nearestPredatorDist;
@@ -1072,6 +1129,15 @@ export function runTick(
 		populationCap: number;
 		foodStockInitial: number;
 		worldSize: WorldSize;
+		// per-tribe-behavior-weights Phase 3: one TribeConfig per flock, index
+		// = flockId — threaded into stepBoids below so each boid's
+		// separation/alignment/cohesion/predator-detection perception radius
+		// comes from its own tribe, not the shared global constants. No
+		// default (same "a caller that forgets to thread the run's real
+		// value must fail loudly" rule WorldSize's own comment documents
+		// above) — every real caller (single-run-lifecycle.ts) already has
+		// this array in scope from the same place it gets worldSize.
+		tribeConfigs: TribeConfig[];
 	},
 ): {
 	boids: BoidState[];
@@ -1099,6 +1165,7 @@ export function runTick(
 		params.worldSize,
 		state.predators,
 		warnSink,
+		params.tribeConfigs,
 	);
 	const steeredPredators = stepPredators(
 		state.predators,

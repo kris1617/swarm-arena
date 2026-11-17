@@ -162,6 +162,11 @@ function createTickState(
 		...TICK_PARAMS_BASE,
 		rng: createRng(99 + seedOffset),
 		worldSize,
+		// per-tribe-behavior-weights Phase 3 (ADAPT): computeSingleRunTick/
+		// runTick now require tribeConfigs (no default) — same single
+		// TRIBE_CONFIG this benchmark already seeds the population from, so
+		// the measured per-tick cost shape is unaffected.
+		tribeConfigs: [TRIBE_CONFIG],
 	};
 
 	return { state, params };

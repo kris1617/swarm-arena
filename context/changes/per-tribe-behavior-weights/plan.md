@@ -535,14 +535,14 @@ neighbor search complexity.
 
 ### Phase 2: Engine — weights and speed bounds per tribe
 #### Automated
-- [x] 2.1 npm run typecheck passes
-- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 2.1 npm run typecheck passes — 4a7ad2c
+- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts passes — 4a7ad2c
 
 ### Phase 3: Engine — per-tribe perception radii
 #### Automated
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
-- [ ] 3.3 npm run perf:baseline compared against perf-baseline.json shows no regression
+- [x] 3.1 npm run typecheck passes
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 3.3 npm run perf:baseline compared against perf-baseline.json shows no regression
 
 ### Phase 4: Engine — burst mechanic
 #### Automated
