@@ -1,7 +1,7 @@
 ---
 change_id: fix-default-start-failure
 title: Fix default-parameter simulation start
-status: implementing
+status: implemented
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null

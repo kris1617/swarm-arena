@@ -491,11 +491,11 @@ backfills automatically with no data migration needed, same as
 
 #### Automated
 
-- [x] 3.1 `npm run typecheck` passes
-- [x] 3.2 `npm run check` passes
-- [x] 3.3 `npm test` passes
+- [x] 3.1 `npm run typecheck` passes — c12b162
+- [x] 3.2 `npm run check` passes — c12b162
+- [x] 3.3 `npm test` passes — c12b162
 
 #### Manual
 
-- [x] 3.4 Marker visible on dashboard, run-detail, and compare for a swept row
-- [x] 3.5 No marker shown for a normal run
+- [x] 3.4 Marker visible on dashboard, run-detail, and compare for a swept row — c12b162
+- [x] 3.5 No marker shown for a normal run — c12b162
