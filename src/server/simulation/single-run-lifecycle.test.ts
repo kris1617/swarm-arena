@@ -163,6 +163,44 @@ describe("computeSingleRunTick", () => {
 		);
 	});
 
+	// unwatched-run-tick-throttling Phase 2: the multiplier scales dtSeconds
+	// (checked below the MAX_DT_SECONDS clamp so the scaling itself, not the
+	// clamp, is what's being asserted) and flips wasThrottledThisTick.
+	it("speedMultiplier: 3 produces a dtSeconds 3x the unscaled value (below the clamp) and wasThrottledThisTick: true", () => {
+		const unscaledState = buildState({ lastTimestamp: 0 });
+		const unscaledResult = computeSingleRunTick(unscaledState, 10, PARAMS);
+		expect(unscaledResult.wasThrottledThisTick).toBe(false);
+
+		const scaledState = buildState({ lastTimestamp: 0 });
+		const scaledResult = computeSingleRunTick(scaledState, 10, {
+			...PARAMS,
+			speedMultiplier: 3,
+		});
+
+		expect(scaledResult.elapsedSeconds).toBeCloseTo(
+			unscaledResult.elapsedSeconds * 3,
+		);
+		expect(scaledResult.wasThrottledThisTick).toBe(true);
+	});
+
+	// unwatched-run-tick-throttling Phase 2 (regression check): omitting
+	// speedMultiplier, or passing 1 explicitly, must behave exactly as
+	// before this phase — same dtSeconds, wasThrottledThisTick: false.
+	it("speedMultiplier omitted (or 1) behaves identically to before this phase", () => {
+		const omittedState = buildState({ lastTimestamp: 0 });
+		const omittedResult = computeSingleRunTick(omittedState, 10, PARAMS);
+
+		const explicitState = buildState({ lastTimestamp: 0 });
+		const explicitResult = computeSingleRunTick(explicitState, 10, {
+			...PARAMS,
+			speedMultiplier: 1,
+		});
+
+		expect(omittedResult.elapsedSeconds).toBe(explicitResult.elapsedSeconds);
+		expect(omittedResult.wasThrottledThisTick).toBe(false);
+		expect(explicitResult.wasThrottledThisTick).toBe(false);
+	});
+
 	it("applies zero dt on the first call (lastTimestamp: null)", () => {
 		const state = buildState({ lastTimestamp: null, elapsedSeconds: 5 });
 

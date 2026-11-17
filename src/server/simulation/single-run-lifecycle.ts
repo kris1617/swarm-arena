@@ -69,6 +69,14 @@ export function computeSingleRunTick(
 		// into runTick/computeCohesion below instead of their old hardcoded
 		// 200-unit assumption.
 		worldSize: WorldSize;
+		// unwatched-run-tick-throttling Phase 2: scales the computed
+		// dtSeconds before the MAX_DT_SECONDS clamp, applied by the caller
+		// (server-run-registry.ts's tick()) when a run has had zero watchers
+		// for the grace period — the real-time TICK_INTERVAL_MS scheduler
+		// cadence is untouched, only the simulated-time delta changes.
+		// Defaults to 1 (no scaling) so every existing caller/test is
+		// unaffected.
+		speedMultiplier?: number;
 	},
 ): {
 	boids: BoidState[];
@@ -91,6 +99,12 @@ export function computeSingleRunTick(
 	// spatial-grid-dense-clustering-fallback Phase 3: persisted sticky flag —
 	// once true for a run, stays true for every later tick of that run.
 	hasWarnedDenseClustering: boolean;
+	// unwatched-run-tick-throttling Phase 2: true iff this tick actually
+	// applied a >1 speedMultiplier — distinct from the caller's grace-period
+	// decision, since the caller needs to know the multiplier was genuinely
+	// applied (not merely that the grace period elapsed) before persisting
+	// the sticky wasEverThrottled marker.
+	wasThrottledThisTick: boolean;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -98,10 +112,12 @@ export function computeSingleRunTick(
 	// `if (lastTimestampRef.current === null) lastTimestampRef.current = timestamp;`.
 	const previousTimestamp =
 		state.lastTimestamp === null ? timestamp : state.lastTimestamp;
+	const speedMultiplier = params.speedMultiplier ?? 1;
 	const dtSeconds = Math.min(
-		(timestamp - previousTimestamp) / 1000,
+		((timestamp - previousTimestamp) / 1000) * speedMultiplier,
 		MAX_DT_SECONDS,
 	);
+	const wasThrottledThisTick = speedMultiplier > 1;
 
 	const {
 		boids: nextBoids,
@@ -218,5 +234,6 @@ export function computeSingleRunTick(
 		shouldStop,
 		populationCapped,
 		hasWarnedDenseClustering: nextHasWarnedDenseClustering,
+		wasThrottledThisTick,
 	};
 }

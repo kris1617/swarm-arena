@@ -31,6 +31,17 @@ const TICK_INTERVAL_MS = 16;
 // work per viewer (F-04).
 const WATCH_INTERVAL_MS = 150;
 
+// unwatched-run-tick-throttling Phase 2: how long a run must have zero
+// active watchers before it starts ticking at the accelerated rate — a
+// brief watched->unwatched->watched flip (e.g. navigating between pages)
+// should not trigger throttling.
+const GRACE_PERIOD_MS = 5_000;
+
+// unwatched-run-tick-throttling Phase 2: the fixed simulated-time multiplier
+// applied to a genuinely-unwatched run's dtSeconds — only scales the
+// simulated delta, never the real-time TICK_INTERVAL_MS scheduler cadence.
+const THROTTLE_SPEED_MULTIPLIER = 3;
+
 export type ServerRunParams = {
 	runId: number;
 	seed: number;
@@ -114,6 +125,19 @@ type LiveRun = {
 	// computeSingleRunTick's result every tick, read back in on resume.
 	hasWarnedDenseClustering: boolean;
 	intervalId: ReturnType<typeof setInterval>;
+	// unwatched-run-tick-throttling Phase 2: the set of currently-subscribed
+	// `watchServerRun` callers, keyed by a per-subscription id generated in
+	// that generator — not a count, so two overlapping subscriptions from the
+	// same user (e.g. two open tabs) are tracked independently.
+	watcherIds: Set<string>;
+	// unwatched-run-tick-throttling Phase 2: the timestamp `watcherIds` last
+	// became empty, or `null` while it's non-empty. `tick()` throttles once
+	// `Date.now() - unwatchedSinceMs >= GRACE_PERIOD_MS`.
+	unwatchedSinceMs: number | null;
+	// unwatched-run-tick-throttling Phase 2: set once `tick()` has written
+	// `wasEverThrottled = true` for this run, so later throttled ticks in the
+	// same run's life don't re-issue the DB write.
+	wasEverThrottledWritten: boolean;
 };
 
 // Cached on globalThis so the registry survives dev HMR, same pattern as
@@ -449,6 +473,13 @@ function tick(runId: number): void {
 	}
 
 	try {
+		// unwatched-run-tick-throttling Phase 2: the grace period must have
+		// fully elapsed with zero watchers — a run with at least one current
+		// watcher has `unwatchedSinceMs === null` and never throttles.
+		const isThrottled =
+			run.unwatchedSinceMs !== null &&
+			Date.now() - run.unwatchedSinceMs >= GRACE_PERIOD_MS;
+
 		const result = computeSingleRunTick(
 			{
 				boids: run.boids,
@@ -480,8 +511,30 @@ function tick(runId: number): void {
 					y: run.params.xyArea,
 					z: run.params.zDepth,
 				},
+				speedMultiplier: isThrottled ? THROTTLE_SPEED_MULTIPLIER : 1,
 			},
 		);
+
+		if (result.wasThrottledThisTick && !run.wasEverThrottledWritten) {
+			run.wasEverThrottledWritten = true;
+			void db
+				.update(simulationRuns)
+				.set({ wasEverThrottled: true })
+				.where(eq(simulationRuns.id, runId))
+				.catch((error: unknown) => {
+					// Mirrors finishRun's fire-and-forget posture: this write
+					// happens from inside a synchronous interval callback, so an
+					// uncaught rejection here would be an unhandled promise
+					// rejection. A failed write here leaves the row's
+					// wasEverThrottled flag stuck at false even though the run
+					// was in fact throttled — a known, logged gap, not silently
+					// swallowed.
+					console.error(
+						`server run ${runId}: failed to write wasEverThrottled=true:`,
+						error,
+					);
+				});
+		}
 
 		run.boids = result.boids;
 		run.predators = result.predators;
@@ -590,6 +643,16 @@ export function startServerRun(params: ServerRunParams): void {
 		populationCapped: false,
 		hasWarnedDenseClustering: false,
 		intervalId: setInterval(() => tick(params.runId), TICK_INTERVAL_MS),
+		// unwatched-run-tick-throttling Phase 2: `unwatchedSinceMs` only ever
+		// becomes non-null via `watchServerRun`'s own watcherIds-transitions-
+		// to-empty rule — a run that has never been watched at all has no
+		// such transition to record, so it starts (and stays) `null`/
+		// unthrottled until the first watch/unwatch cycle. In practice every
+		// server-owned run is watched immediately by the client that starts
+		// it, so this only matters for a run nobody has ever opened.
+		watcherIds: new Set(),
+		unwatchedSinceMs: null,
+		wasEverThrottledWritten: false,
 	};
 	registry.set(params.runId, run);
 }
@@ -758,6 +821,19 @@ export function resumeServerRun(
 		// parameterChanges) use for the identical reason.
 		hasWarnedDenseClustering: snapshot.hasWarnedDenseClustering ?? false,
 		intervalId: setInterval(() => tick(runId), TICK_INTERVAL_MS),
+		// unwatched-run-tick-throttling Phase 2: neither `watcherIds` nor
+		// `unwatchedSinceMs` is part of `ServerRunSnapshot` — same
+		// deliberately-not-carried-through-the-pause posture as
+		// `lastParamUpdateAt` just above (a resumed run's unwatched clock,
+		// if any, does not resume counting from before the pause; it starts
+		// fresh at `null`/unthrottled until the next watch/unwatch cycle,
+		// which matters only for a run nobody re-watches after resuming).
+		// `wasEverThrottled` (the DB column) likewise has no prior-pause
+		// value to carry through here — the in-memory write-guard always
+		// starts fresh at `false`.
+		watcherIds: new Set(),
+		unwatchedSinceMs: null,
+		wasEverThrottledWritten: false,
 	};
 	registry.set(runId, run);
 }
@@ -791,12 +867,35 @@ export async function* watchServerRun(opts: {
 		});
 	}
 
-	while (!opts.signal?.aborted) {
-		const snapshot = getLiveRunState(opts.runId);
-		if (!snapshot) {
-			return;
+	// unwatched-run-tick-throttling Phase 2: a unique id per subscription
+	// (not per user/run) — two overlapping watchers of the same run (e.g.
+	// two open tabs) must each hold their own entry in watcherIds, so the
+	// set only empties once every subscription has ended.
+	const watcherId = crypto.randomUUID();
+	const run = registry.get(opts.runId);
+	try {
+		if (run) {
+			run.watcherIds.add(watcherId);
+			run.unwatchedSinceMs = null;
 		}
-		yield snapshot;
-		await new Promise((resolve) => setTimeout(resolve, WATCH_INTERVAL_MS));
+		while (!opts.signal?.aborted) {
+			const snapshot = getLiveRunState(opts.runId);
+			if (!snapshot) {
+				return;
+			}
+			yield snapshot;
+			await new Promise((resolve) => setTimeout(resolve, WATCH_INTERVAL_MS));
+		}
+	} finally {
+		// The run may have finished (and been removed from the registry)
+		// while this generator was yielding — re-fetch rather than reuse the
+		// `run` closed over above, which could be stale/removed.
+		const currentRun = registry.get(opts.runId);
+		if (currentRun) {
+			currentRun.watcherIds.delete(watcherId);
+			if (currentRun.watcherIds.size === 0) {
+				currentRun.unwatchedSinceMs = Date.now();
+			}
+		}
 	}
 }

@@ -385,16 +385,16 @@ throttled).
 
 #### Automated
 
-- [ ] 2.1 Unit tests: watcher-set add/remove under concurrent watchServerRun calls and abort
-- [ ] 2.2 Unit tests: computeSingleRunTick multiplier scaling, wasThrottledThisTick flag, and speedMultiplier-omitted regression check
-- [ ] 2.3 Unit tests: grace-period boundary (below vs at/after GRACE_PERIOD_MS)
-- [ ] 2.4 Typecheck passes: `npm run typecheck`
-- [ ] 2.5 Lint passes: `npm run check`
-- [ ] 2.6 Full suite passes: `npm test`
+- [x] 2.1 Unit tests: watcher-set add/remove under concurrent watchServerRun calls and abort
+- [x] 2.2 Unit tests: computeSingleRunTick multiplier scaling, wasThrottledThisTick flag, and speedMultiplier-omitted regression check
+- [x] 2.3 Unit tests: grace-period boundary (below vs at/after GRACE_PERIOD_MS)
+- [x] 2.4 Typecheck passes: `npm run typecheck`
+- [x] 2.5 Lint passes: `npm run check`
+- [x] 2.6 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 2.7 Watch a run, navigate away, confirm wasEverThrottled flips to true after ~5s and re-watching still works
+- [x] 2.7 Watch a run, navigate away, confirm wasEverThrottled flips to true after ~5s and re-watching still works
 
 ### Phase 3: Cross-run surfaces
 

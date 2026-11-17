@@ -1511,3 +1511,192 @@ describe("watchServerRun", () => {
 		activeRunIds.length = 0;
 	});
 });
+
+// unwatched-run-tick-throttling Phase 2: `watcherIds`/`unwatchedSinceMs` are
+// internal to `LiveRun` (not exported), so these tests observe their effect
+// on `tick()`'s decision instead of reading the Set directly — spying on
+// the shared tick core (same posture as the existing "a tick that throws"
+// and "persists geneticDiversitySamples..." tests above) to inspect the
+// `speedMultiplier` actually passed in on each tick.
+describe("unwatched-run tick throttling", () => {
+	it("two concurrent watchers keep a run unthrottled past the grace period; once both end and the grace period elapses, throttling engages and the sticky marker is written", async () => {
+		vi.useFakeTimers();
+		const { ownerId, runId } = await insertOwnedRunningRun(60);
+		activeRunIds.push(runId);
+		const tickSpy = vi.spyOn(singleRunLifecycle, "computeSingleRunTick");
+
+		startServerRun({
+			runId,
+			seed: 60,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+
+		const controllerA = new AbortController();
+		const controllerB = new AbortController();
+		const iterA = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: controllerA.signal,
+		});
+		const iterB = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: controllerB.signal,
+		});
+
+		// Both generators run past their initial DB-read await and attach
+		// themselves to the run's watcherIds (watcherIds.size === 2) before
+		// any time advances.
+		await iterA.next();
+		await iterB.next();
+
+		tickSpy.mockClear();
+		// Advance well past the 5s grace period while both watchers remain
+		// attached — the run must never throttle.
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(tickSpy.mock.calls.length).toBeGreaterThan(0);
+		for (const call of tickSpy.mock.calls) {
+			expect(call[2]?.speedMultiplier).toBe(1);
+		}
+
+		// End both watchers: abort, then drive each generator through its
+		// pending WATCH_INTERVAL_MS wait so the while loop's abort check and
+		// the generator's `finally` block (watcherIds.delete) actually run,
+		// leaving watcherIds.size === 0.
+		controllerA.abort();
+		controllerB.abort();
+		const doneA = iterA.next();
+		const doneB = iterB.next();
+		await vi.advanceTimersByTimeAsync(150);
+		expect((await doneA).done).toBe(true);
+		expect((await doneB).done).toBe(true);
+
+		tickSpy.mockClear();
+		// Now genuinely unwatched — advance past the grace period again; a
+		// later tick must apply the 3x throttle multiplier.
+		await vi.advanceTimersByTimeAsync(6000);
+		const throttledCalls = tickSpy.mock.calls.filter(
+			(call) => call[2]?.speedMultiplier === 3,
+		);
+		expect(throttledCalls.length).toBeGreaterThan(0);
+
+		// The sticky marker is written to the DB row the first time
+		// throttling actually engages.
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+		});
+		expect(row?.wasEverThrottled).toBe(true);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	}, 15_000);
+
+	it("a run that goes from watched to unwatched does not throttle before the grace period elapses, but does at/after it", async () => {
+		vi.useFakeTimers();
+		const { ownerId, runId } = await insertOwnedRunningRun(61);
+		activeRunIds.push(runId);
+		const tickSpy = vi.spyOn(singleRunLifecycle, "computeSingleRunTick");
+
+		startServerRun({
+			runId,
+			seed: 61,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+
+		// Watch, then unwatch — `unwatchedSinceMs` only ever becomes
+		// non-null via this transition (a run that was never watched at all
+		// has no "transition to empty" to record).
+		const controller = new AbortController();
+		const iterator = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: controller.signal,
+		});
+		await iterator.next();
+		controller.abort();
+		const done = iterator.next();
+		await vi.advanceTimersByTimeAsync(150);
+		expect((await done).done).toBe(true);
+
+		tickSpy.mockClear();
+		// Just under the 5s grace period since unwatching — still within
+		// grace; every tick so far must be unthrottled.
+		await vi.advanceTimersByTimeAsync(4800);
+		expect(tickSpy.mock.calls.length).toBeGreaterThan(0);
+		for (const call of tickSpy.mock.calls) {
+			expect(call[2]?.speedMultiplier).toBe(1);
+		}
+
+		tickSpy.mockClear();
+		// Cross the grace period.
+		await vi.advanceTimersByTimeAsync(400);
+		const throttledCalls = tickSpy.mock.calls.filter(
+			(call) => call[2]?.speedMultiplier === 3,
+		);
+		expect(throttledCalls.length).toBeGreaterThan(0);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("re-watching a previously-throttled run resets unwatchedSinceMs so it keeps ticking unthrottled", async () => {
+		vi.useFakeTimers();
+		const { ownerId, runId } = await insertOwnedRunningRun(62);
+		activeRunIds.push(runId);
+		const tickSpy = vi.spyOn(singleRunLifecycle, "computeSingleRunTick");
+
+		startServerRun({
+			runId,
+			seed: 62,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+
+		// Watch, then unwatch, then cross the grace period — confirm
+		// throttling engaged first, so re-watching below is a genuine reset,
+		// not a no-op.
+		const setupController = new AbortController();
+		const setupIterator = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: setupController.signal,
+		});
+		await setupIterator.next();
+		setupController.abort();
+		const setupDone = setupIterator.next();
+		await vi.advanceTimersByTimeAsync(150);
+		expect((await setupDone).done).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(5200);
+		expect(
+			tickSpy.mock.calls.some((call) => call[2]?.speedMultiplier === 3),
+		).toBe(true);
+
+		const controller = new AbortController();
+		const iterator = watchServerRun({
+			runId,
+			userId: ownerId,
+			signal: controller.signal,
+		});
+		await iterator.next();
+
+		tickSpy.mockClear();
+		// Re-watched: even well past the grace window, the run must not
+		// throttle again while a watcher is attached.
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(tickSpy.mock.calls.length).toBeGreaterThan(0);
+		for (const call of tickSpy.mock.calls) {
+			expect(call[2]?.speedMultiplier).toBe(1);
+		}
+
+		controller.abort();
+		const done = iterator.next();
+		await vi.advanceTimersByTimeAsync(150);
+		expect((await done).done).toBe(true);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+});
