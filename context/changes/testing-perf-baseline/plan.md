@@ -318,15 +318,15 @@ row's Status cell.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — bc6ac79
+- [x] 1.2 Lint passes: `npm run check` — bc6ac79
 
 ### Phase 2: Results tracking + npm script
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
 
 ### Phase 3: First real baseline run + cookbook update
 
