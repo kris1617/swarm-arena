@@ -267,9 +267,9 @@ not a value.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 Full suite passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 1737fdc
+- [x] 1.2 Lint passes: `npm run check` — 1737fdc
+- [x] 1.3 Full suite passes: `npm test` — 1737fdc
 
 ### Phase 2: Relocate seed-color constants (Candidate A)
 
