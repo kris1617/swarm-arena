@@ -215,6 +215,9 @@ export default function SimulationPage() {
 			// the list's next 2s poll to pick it up.
 			setViewingRunId(data.runId);
 		},
+		onError: (error) => {
+			console.error(`simulation.startServer failed: ${error.message}`, error);
+		},
 	});
 
 	const startRun = api.simulation.start.useMutation({
@@ -244,6 +247,9 @@ export default function SimulationPage() {
 				xyArea: variables.xyArea,
 				zDepth: variables.zDepth,
 			});
+		},
+		onError: (error) => {
+			console.error(`simulation.start failed: ${error.message}`, error);
 		},
 	});
 
