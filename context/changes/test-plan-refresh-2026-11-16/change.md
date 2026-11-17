@@ -1,9 +1,9 @@
 ---
 change_id: test-plan-refresh-2026-11-16
 title: Rollout Phase 7 — functional regression audit on newest shipped slices
-status: implemented
+status: impl_reviewed
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-17
 archived_at: null
 ---
 
