@@ -87,7 +87,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-33 | parameter-sweep-corpus-generation | Maintainer generates and persists a ~20-run structured-parameter-sweep corpus (up to 4 runs ticking in parallel, each capped at 60 simulated minutes) to a reusable fixture file | F-08           | MS-01, MS-02, MS-03, MS-06                             | done |
 | S-34 | suggestion-quality-corpus-test | Maintainer has an automated test asserting the parameter-suggestion heuristic produces a sensible, correlated suggestion against the persisted corpus | S-33           | MS-04                                                  | done |
 | S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | done |
-| S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | blocked |
+| S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | ready |
 | S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | done |
 | S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | done |
 
@@ -690,10 +690,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** — (server-owned execution, F-03/F-04, already done)
 - **Parallel with:** S-37, S-38
 - **Blockers:** —
-- **Unknowns:**
-  - Exactly how should unwatched runs be accelerated — a fixed speed multiplier, event-driven catch-up ticks, or something else — and does inflating `dtSeconds` for unwatched runs change score comparability against runs recorded before this feature existed (`computeSingleRunTick`'s `dtSeconds` is derived from real wall-clock gaps today, and every existing scored/analyzed/compared run depends on that model)? — Owner: user. Block: yes.
-- **Risk:** This changes the core tick-timing/determinism model every existing scored/analyzed/compared run depends on — must either preserve backward comparability or explicitly version the change (the same pattern S-25 used for its area-aware 5th score factor's formula-version marker).
-- **Status:** blocked
+- **Unknowns:** — (resolved 2026-11-17: a fixed speed multiplier accelerates `dtSeconds` for runs with zero active viewers; any run that ticked unwatched under the multiplier gets a formula/model-version marker, same pattern as S-25's area-aware 5th score factor, so comparability against pre-change runs is explicit rather than silently broken — `/10x-plan` resolves the exact multiplier value and marker schema).
+- **Risk:** This changes the core tick-timing/determinism model every existing scored/analyzed/compared run depends on — mitigated by the version-marker decision above; `/10x-plan` must still verify the marker is checked everywhere runs are compared (analysis view, leaderboard, run-comparison), not just written at score time.
+- **Status:** ready
 
 ### S-37: Confirm per-run history scope is forward-only
 
@@ -766,7 +765,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-33       | parameter-sweep-corpus-generation    | Generate and persist a ~20-run structured-parameter-sweep corpus to a reusable fixture file | no                     | Waiting on F-08 |
 | S-34       | suggestion-quality-corpus-test       | Automated test: parameter-suggestion heuristic produces a sensible, correlated suggestion against the corpus | no                     | Waiting on S-33 |
 | S-35       | analytics-correctness-corpus-tests   | Automated tests: every per-run analytics function handles the corpus's full range of parameter combinations | no                     | Waiting on S-33; can run parallel with S-34 |
-| S-36       | unwatched-run-tick-throttling        | Decide and implement CPU-fair tick throttling for unwatched server-owned runs | no                      | Blocked — resolve the `dtSeconds`/determinism Unknown first |
+| S-36       | unwatched-run-tick-throttling        | Decide and implement CPU-fair tick throttling for unwatched server-owned runs | yes                     | Run `/10x-plan unwatched-run-tick-throttling` |
 | S-37       | confirm-run-history-retroactive-scope | Confirm and close: per-run history is forward-only, not retroactive | yes                     | Run `/10x-plan confirm-run-history-retroactive-scope` |
 | S-38       | confirm-admin-elevation-mechanism-resolved | Confirm and close: admin-elevation mechanism already resolved (time-boxed, self-service) | yes                     | Run `/10x-plan confirm-admin-elevation-mechanism-resolved` |
 
