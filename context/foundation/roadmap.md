@@ -93,11 +93,12 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | done |
 | S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | done |
 | S-39 | fix-default-start-failure | User starts a simulation using the form's own default values, with no error and no unexplained failure | —              | MS-01                                                  | done |
-| F-09 | per-tribe-behavior-weights | (foundation) A boid's separation/alignment/cohesion weights can be set per flock/tribe at run-start, not one shared value for every tribe | —              | MS-02                                                  | proposed |
-| S-40 | per-tribe-boid-behavior-config | User configures separation/alignment/cohesion weight per boid tribe before starting a run, and sees tribes behave visibly differently | S-39, F-09     | MS-02                                                  | blocked |
-| S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | blocked |
-| S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning independently, the way boid tribes already can | S-39           | MS-04                                                  | blocked |
-| S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators | S-42           | MS-05                                                  | blocked |
+| F-09 | per-tribe-behavior-weights | (foundation) Full per-tribe boid behavior data (weights, perception radii, multipliers) — Lua-reference parity | —              | MS-02                                                  | ready |
+| F-10 | predator-tribe-concept | (foundation) Predators can belong to a tribe with independently-evolving genetics, reusing boids' existing reproduction machinery | —              | MS-04, MS-05                                           | ready |
+| S-40 | per-tribe-boid-behavior-config | User configures full per-tribe boid behavior (weights, perception, multipliers) before starting a run, and sees tribes behave visibly differently | S-39, F-09     | MS-02                                                  | proposed |
+| S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | ready |
+| S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning, with independently-evolving genetics, the way boid tribes already can | S-39, F-10     | MS-04                                                  | proposed |
+| S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | proposed |
 
 ## Streams
 
@@ -120,7 +121,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | O      | Diversity trend (M-7)             | `S-32`                                   | Standalone — no foundation prerequisite; mirrors the already-shipped per-tick sample-array pattern (`populationCountSamples` et al.) exactly, so no new Foundation is needed. |
 | P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
 | Q      | Roadmap-question resolution (M-9) | `S-36`, `S-37`, `S-38`           | All three are independent, no foundation prerequisite — each closes a different open roadmap question. `S-36` carries M-9's north star despite being `blocked` pending its own Unknown; `S-37`/`S-38` are quick, unblocked confirmations. |
-| R      | Per-tribe config & predator expansion (M-10) | `S-39` → `F-09` → `S-40`, `S-39` → `S-41`, `S-39` → `S-42` → `S-43` | Carries M-10's north star (`S-39`), the only unblocked item. `S-40`/`S-41`/`S-42` can run in parallel once `S-39` lands (each needs its own design decision resolved first); `S-43` is the sole item gated behind another slice (`S-42`), since a second predator tribe needs per-tribe predator config to exist first. |
+| R      | Per-tribe config & predator expansion (M-10) | `S-39` (done) → `F-09` → `S-40`; `S-39` → `S-41`; `F-10` → `S-42` → `S-43` | `S-39` shipped (north star done). All 4 design Unknowns resolved 2026-11-17 (full Lua parity for S-40, shared-pool for S-41, genetics-evolving for S-42, scored for S-43). `F-09`/`F-10`/`S-41` are all `ready` now and can run in parallel — `F-10` was discovered during sequencing: predators share boids' genetics machinery already but have no tribe/flock concept at all, so S-42/S-43 need it built first. `S-40` waits on `F-09`; `S-42` waits on `F-10`; `S-43` waits on both `S-42` and `F-10`. |
 
 ## Baseline
 
@@ -250,16 +251,29 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### F-09: Per-tribe boid behavior data model
 
-- **Outcome:** (foundation) A boid's separation/alignment/cohesion weights can be configured per flock/tribe at run-start time, instead of one shared value applied to every flock in the run.
+- **Outcome:** (foundation) A boid tribe's separation/alignment/cohesion weights, per-behavior perception radii, and behavior multipliers (predator-avoidance, food-seeking, burst) can all be configured per flock/tribe at run-start time, instead of one shared value set applied to every flock in the run — full Lua-reference (`config.lua`) parity, per Open Roadmap Question #9's resolution (2026-11-17).
 - **Change ID:** per-tribe-behavior-weights
 - **PRD refs:** MS-02
 - **Unlocks:** S-40
 - **Prerequisites:** —
 - **Parallel with:** S-39
 - **Blockers:** —
-- **Unknowns:** — (how far per-tribe scope should extend beyond these 3 weights — e.g. matching the Lua reference's per-tribe perception radii and multipliers — is S-40's own Unknown, not this foundation's; this foundation covers only the minimal schema/plumbing S-40 needs to proceed)
-- **Risk:** Low-medium — touches the run-start input schema and the per-tick force calculation every boid already goes through every frame; must not regress already-started runs that still use a single shared weight set.
-- **Status:** proposed
+- **Unknowns:** — (resolved 2026-11-17: full parity, not just the 3 weights — see Open Roadmap Question #9)
+- **Risk:** Medium — broader than originally scoped (full per-behavior data, not just 3 weights); touches the run-start input schema and every per-tick force calculation every boid already goes through every frame; must not regress already-started runs that still use a single shared weight set.
+- **Status:** ready
+
+### F-10: Predator tribe concept
+
+- **Outcome:** (foundation) Predators can belong to a tribe (mirroring boids' existing `flockId`), with each predator tribe carrying its own independently-evolving genetics (reusing the already-existing `reproducePopulation`/`PredatorGenes` machinery, which today treats all predators as one undifferentiated population) and its own behavior tuning.
+- **Change ID:** predator-tribe-concept
+- **PRD refs:** MS-04, MS-05
+- **Unlocks:** S-42, S-43
+- **Prerequisites:** —
+- **Parallel with:** S-39, F-09
+- **Blockers:** —
+- **Unknowns:** — (discovered 2026-11-17 during roadmap sequencing: predators already share boids' genetics/reproduction system verbatim — `PredatorGenes = BoidGenes`, same `reproducePopulation` call, confirmed in `boids.ts` — but have no `flockId`-equivalent grouping at all; this foundation is "add the grouping," not "build genetics from scratch")
+- **Risk:** Medium — the reproduction machinery to reuse already exists and is proven (boids use it today); the net-new work is purely the tribe-assignment/isolation layer on the predator side.
+- **Status:** ready
 
 ## Slices
 
@@ -755,57 +769,52 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ### S-40: Per-tribe boid behavior config
 
-- **Outcome:** User configures separation/alignment/cohesion weight (and any other per-behavior knobs decided in scope) independently for each boid tribe before starting a run, and sees tribes behave visibly differently from each other.
+- **Outcome:** User configures separation/alignment/cohesion weight, per-behavior perception radii, and behavior multipliers (predator-avoidance, food-seeking, burst) independently for each boid tribe before starting a run — full Lua-reference (`config.lua`) parity — and sees tribes behave visibly differently from each other.
 - **Change ID:** per-tribe-boid-behavior-config
 - **PRD refs:** MS-02
-- **Prerequisites:** S-39 (a working start flow to verify against), F-09
+- **Prerequisites:** S-39 (done — a working start flow to verify against), F-09
 - **Parallel with:** S-41, S-42
 - **Blockers:** —
-- **Unknowns:**
-  - Which specific per-tribe knobs are in scope — just the 3 existing global weights (separation/alignment/cohesion) per tribe, or fuller Lua-reference parity (also per-behavior perception radii, burst/food/predator-avoidance multipliers, `matePreference`)? Owner: user. Block: yes.
-  - Does per-tribe differentiation extend to genetics — independently-evolving mutation rates per tribe — or stay a static run-start configuration only? Owner: user. Block: yes (also Open Roadmap Question #9).
-- **Risk:** Medium — the per-tick flocking-force calculation (`boids.ts`) currently reads one shared weight set for every boid; this is a real physics-engine change, not just a new form field.
-- **Status:** blocked
+- **Unknowns:** — (resolved 2026-11-17: full Lua-reference parity in scope; genetics-per-tribe is NOT in this slice's scope — mutation/inheritance stays global/cross-tribe as it already is for boids, per Open Roadmap Question #9's resolution)
+- **Risk:** Medium-high — the per-tick flocking-force calculation (`boids.ts`) currently reads one shared weight set for every boid; this is a real physics-engine change touching every per-behavior force calculation, not just a new form field. Larger than the original 3-weight scope.
+- **Status:** proposed (Unknowns resolved; waiting on F-09, not yet built)
 
 ### S-41: Per-tribe food config
 
 - **Outcome:** User configures food stock and regeneration rate independently per boid tribe, instead of one shared food pool/rate for the whole run.
 - **Change ID:** per-tribe-food-config
 - **PRD refs:** MS-03
-- **Prerequisites:** S-39
+- **Prerequisites:** S-39 (done)
 - **Parallel with:** S-40, S-42
 - **Blockers:** —
-- **Unknowns:**
-  - Does per-tribe food mean genuinely separate food pools (each tribe only eats food spawned/tracked for it), or just per-tribe stock/regen *settings* feeding one pool any tribe can eat from? These have very different implementation shapes. Owner: user. Block: yes.
-- **Risk:** Medium — depends heavily on the Unknown above; a separate-pools design touches the food-spawn/consumption loop, a shared-pool-with-per-tribe-rates design is closer to a config-only change.
-- **Status:** blocked
+- **Unknowns:** — (resolved 2026-11-17: shared pool, per-tribe stock/regen settings — not physically separate pools; matches the Lua reference, where food is also global)
+- **Risk:** Low-medium — config-only change against the existing shared food pool, no new spawn/consumption-loop logic.
+- **Status:** ready
 
 ### S-42: Per-tribe predator config
 
-- **Outcome:** User configures a predator tribe's own behavior tuning (e.g. speed, perception, hunt aggressiveness) independently, the way boid tribes already can — laying the groundwork for a second, distinct predator tribe.
+- **Outcome:** User configures each predator tribe's own behavior tuning (speed, perception, hunt aggressiveness) independently, and predator tribes reproduce with independently-evolving genetics — mirroring boid flocks' existing crossbreeding system, scoped per tribe.
 - **Change ID:** per-tribe-predator-config
 - **PRD refs:** MS-04
-- **Prerequisites:** S-39
+- **Prerequisites:** S-39 (done), F-10
 - **Parallel with:** S-40, S-41
 - **Blockers:** —
-- **Unknowns:**
-  - Do predator tribes reproduce with independently-evolving genetics (mirroring boid flocks' crossbreeding system), or is per-tribe tuning static, set once at run-start with no divergence over time? Owner: user. Block: yes.
-- **Risk:** Medium — same category of change as S-40 but on the predator side of the engine; also the direct prerequisite for S-43's second predator tribe.
-- **Status:** blocked
+- **Unknowns:** — (resolved 2026-11-17: genetics-evolving, not static — also Open Roadmap Question #9's resolution)
+- **Risk:** Medium-high — same category of change as S-40 but on the predator side; genetics-evolving tribes depend on F-10 (predators currently have no tribe/flock concept at all, unlike boids) landing first. Also the direct prerequisite for S-43's second predator tribe.
+- **Status:** proposed (Unknown resolved; waiting on F-10, not yet built)
 
 ### S-43: Second predator tribe with configurable prey target
 
 - **Outcome:** User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and sees that tribe hunt accordingly.
 - **Change ID:** second-predator-tribe-prey-target
 - **PRD refs:** MS-05
-- **Prerequisites:** S-42
+- **Prerequisites:** S-42, F-10
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
-  - What happens when a predator preys on another predator — does the eaten predator simply die (the same terminal state as a preyed-on boid), and how does that register in the existing per-run score/analysis metrics (today scoped entirely to boid survival/resources/genetics)? Owner: user. Block: yes.
-  - Should the existing 5-factor score formula account for inter-predator predation at all in v1, or stay unaffected (a purely simulation/visual mechanic for now)? Owner: user. Block: yes (also Open Roadmap Question #10).
-- **Risk:** High — the most novel piece in this milestone, with no precedent in the Lua reference or anywhere in the current codebase; the scoring/analysis interaction is the real unknown, not the hunting AI itself.
-- **Status:** blocked
+  - Exact scoring-rule shape for inter-predator predation — a new 6th score factor, or folded into an existing one (e.g. survival)? Owner: user, but scoped to `/10x-plan` as an implementation-design decision now that the direction (factor it in, resolved via Open Roadmap Question #10) is settled. Block: no — `/10x-plan` can propose a concrete design for user approval; doesn't block roadmap sequencing.
+- **Risk:** High — the most novel piece in this milestone, with no precedent in the Lua reference or anywhere in the current codebase; now also depends on F-10 (predator tribe concept) existing.
+- **Status:** proposed (Unknowns resolved at the roadmap level; waiting on S-42 and F-10, neither built yet)
 
 ## Backlog Handoff
 
@@ -857,12 +866,13 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-36       | unwatched-run-tick-throttling        | Decide and implement CPU-fair tick throttling for unwatched server-owned runs | yes                     | Run `/10x-plan unwatched-run-tick-throttling` |
 | S-37       | confirm-run-history-retroactive-scope | Confirm and close: per-run history is forward-only, not retroactive | yes                     | Run `/10x-plan confirm-run-history-retroactive-scope` |
 | S-38       | confirm-admin-elevation-mechanism-resolved | Confirm and close: admin-elevation mechanism already resolved (time-boxed, self-service) | yes                     | Run `/10x-plan confirm-admin-elevation-mechanism-resolved` |
-| S-39       | fix-default-start-failure         | Fix: starting a simulation with default parameter values doesn't work | yes                     | Run `/10x-plan fix-default-start-failure` — this milestone's recommended next move |
-| F-09       | per-tribe-behavior-weights        | Add per-tribe (per-flock) separation/alignment/cohesion weight storage | no                      | Waiting on S-39 (sequencing only, no hard dependency) |
-| S-40       | per-tribe-boid-behavior-config    | User configures separation/alignment/cohesion weight per boid tribe | no                      | Blocked on 2 Unknowns — see slice |
-| S-41       | per-tribe-food-config             | User configures food stock/regen rate per boid tribe | no                      | Blocked on 1 Unknown — see slice |
-| S-42       | per-tribe-predator-config         | User configures a predator tribe's own behavior tuning | no                      | Blocked on 1 Unknown — see slice |
-| S-43       | second-predator-tribe-prey-target | User adds a second predator tribe with a boids-only or boids-and-predators prey target | no                      | Waiting on S-42; blocked on 2 Unknowns — see slice |
+| S-39       | fix-default-start-failure         | Fix: starting a simulation with default parameter values doesn't work | yes (done)              | Archived — `context/archive/2026-11-17-fix-default-start-failure/` |
+| F-09       | per-tribe-behavior-weights        | Add full per-tribe boid behavior data model (weights, perception, multipliers) | yes                     | Run `/10x-plan per-tribe-behavior-weights` |
+| F-10       | predator-tribe-concept            | Add predator tribe grouping with independently-evolving genetics | yes                     | Run `/10x-plan predator-tribe-concept` |
+| S-40       | per-tribe-boid-behavior-config    | User configures full per-tribe boid behavior (weights, perception, multipliers) | no                      | Waiting on F-09 |
+| S-41       | per-tribe-food-config             | User configures food stock/regen rate per boid tribe | yes                     | Run `/10x-plan per-tribe-food-config` |
+| S-42       | per-tribe-predator-config         | User configures a predator tribe's own behavior tuning, with genetics | no                      | Waiting on F-10 |
+| S-43       | second-predator-tribe-prey-target | User adds a second predator tribe with a boids-only or boids-and-predators prey target, scored | no                      | Waiting on S-42, F-10 |
 
 ## Open Roadmap Questions
 
@@ -874,8 +884,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 6. ~~What exact mechanism should temporary admin elevation (FR-030/S-22) use — a self-service toggle, a time-boxed grant, or something else?~~ — **Resolved 2026-11-17 via `confirm-admin-elevation-mechanism-resolved` (M-9's S-38).** Confirmed the time-boxed, self-service mechanism shipped during S-22's own planning (`context/archive/2026-11-14-temporary-admin-elevation/plan.md`) is still fully live and unmodified — re-verified every component (the `elevatedUntil` column, `isEffectivelyAdmin` helper, both authorization sites, all 5 tRPC procedures, the `ALLOW_SELF_ELEVATION` safety flag, the `/admin/elevation` UI, and full test coverage) against current code. No gap found; no code change needed.
 7. **Beyond the `next-shadcn-admin-dashboard` structural reference, which specific pages get restyled first, and in what order?** — Owner: roadmap (this decomposition). Resolved for sequencing purposes: `S-15` (login) first as the north star, then `S-16`–`S-20` in any order/parallel — see Streams row G. Per PRD Open Question #7.
 8. **Should unwatched server-owned runs be allowed to tick faster than real time (not throttled to the live-view's 16ms cadence), so background runs don't compete for CPU against the one the user is actively watching?** — Owner: user. Block: yes — **now tracked as M-9's S-36** (`unwatched-run-tick-throttling`, 2026-11-17), blocked on deciding the exact throttling mechanism and its effect on score comparability against pre-existing runs.
-9. **How far should per-tribe differentiation go — just behavior weights (separation/alignment/cohesion), or also independently-evolving genetics/mutation rates per tribe, extending the existing crossbreeding system?** — Owner: user. Block: S-40, S-42.
-10. **Should inter-predator predation (S-43) affect the existing 5-factor score formula, or remain a purely simulation/visual mechanic with no scoring impact for v1?** — Owner: user. Block: S-43.
+9. ~~How far should per-tribe differentiation go — just behavior weights (separation/alignment/cohesion), or also independently-evolving genetics/mutation rates per tribe, extending the existing crossbreeding system?~~ — **Resolved 2026-11-17.** Full Lua-reference parity for boid tribes (S-40: per-tribe perception radii and behavior multipliers, not just the 3 weights) AND independently-evolving genetics per tribe for predators (S-42). No longer blocks S-40; S-42 now depends on F-10 (new — predators have no tribe concept at all today) instead of being blocked on this question.
+10. ~~Should inter-predator predation (S-43) affect the existing 5-factor score formula, or remain a purely simulation/visual mechanic with no scoring impact for v1?~~ — **Resolved 2026-11-17.** Yes, factor it into scoring. The exact scoring-rule shape (new factor vs. folded into an existing one) is a `/10x-plan`-level design decision, not a roadmap-level one — tracked as S-43's own Unknown below, no longer blocking at the roadmap level.
 
 ## Parked
 
