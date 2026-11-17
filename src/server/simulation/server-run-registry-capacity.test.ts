@@ -126,7 +126,7 @@ describe("server-run-registry concurrent load capacity", () => {
 		// 80/20 convention) — 4 runs x 35 = 140, just under the 150 default
 		// population ceiling, so this stays a baseline concurrency proof, not
 		// a cap-trimming scenario.
-		const seeds = [50, 51, 52, 53];
+		const seeds = [150, 151, 152, 153];
 		const runIds: number[] = [];
 		for (const seed of seeds) {
 			const { runId } = await insertOwnedRunningRun(seed, 28, 7);
@@ -173,7 +173,7 @@ describe("server-run-registry concurrent load capacity", () => {
 			throw new Error("expected at least one elapsedSeconds sample");
 		}
 		for (const elapsed of rest) {
-			expect(Math.abs(elapsed - first)).toBeLessThanOrEqual(0.05);
+			expect(Math.abs(elapsed - first)).toBeLessThanOrEqual(0.02);
 		}
 
 		// No-leak/no-drop assertion: stopping all 4 removes both the registry
@@ -186,7 +186,7 @@ describe("server-run-registry concurrent load capacity", () => {
 			expect(getLiveRunState(runId)).toBeUndefined();
 		}
 		activeRunIds.length = 0; // already stopped; nothing left for afterEach
-	});
+	}, 30_000);
 
 	// Risk #9 / research.md §2: proves the confirmed admission-time ceiling
 	// gap as an actual test artifact, not prose — `maxConcurrentObjectCount`
@@ -214,7 +214,7 @@ describe("server-run-registry concurrent load capacity", () => {
 			foodStockInitial: 200,
 		};
 
-		const seeds = [60, 61, 62, 63];
+		const seeds = [160, 161, 162, 163];
 		const runIds: number[] = [];
 		let resolvedParams:
 			| Omit<ServerRunParams, "runId" | "seed" | "boidCount" | "predatorCount">
@@ -301,7 +301,7 @@ describe("server-run-registry concurrent load capacity", () => {
 			throw new Error("expected at least one elapsedSeconds sample");
 		}
 		for (const elapsed of rest) {
-			expect(Math.abs(elapsed - first)).toBeLessThanOrEqual(0.05);
+			expect(Math.abs(elapsed - first)).toBeLessThanOrEqual(0.02);
 		}
 
 		// Same no-leak/no-drop assertion as the sibling test: stopping all 4
@@ -319,5 +319,5 @@ describe("server-run-registry concurrent load capacity", () => {
 			expect(getLiveRunState(runId)).toBeUndefined();
 		}
 		activeRunIds.length = 0; // already stopped; nothing left for afterEach
-	}, 60_000);
+	}, 45_000);
 });
