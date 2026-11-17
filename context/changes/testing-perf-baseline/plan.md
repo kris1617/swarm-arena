@@ -318,8 +318,8 @@ row's Status cell.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
+- [x] 1.1 Typecheck passes: `npm run typecheck`
+- [x] 1.2 Lint passes: `npm run check`
 
 ### Phase 2: Results tracking + npm script
 
