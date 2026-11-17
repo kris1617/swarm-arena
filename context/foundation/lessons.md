@@ -2,6 +2,13 @@
 
 > Append-only register of recurring rules and patterns. Re-read at start by /10x-frame, /10x-research, /10x-plan, /10x-plan-review, /10x-implement, /10x-impl-review.
 
+## A standalone `setInterval`-driven background job must wrap its own work in try/catch, every time — this has now recurred twice
+
+**Context**: `src/server/feedback/retry-worker.ts` (an earlier change, cited in its own code comment as impl-review finding F2) and `src/server/simulation/orphan-sweep.ts` (`fix-default-start-failure` Phase 2, caught again by impl-review F1, 2026-11-17).
+**Problem**: Both times, a new standalone periodic job was built around a bare `setInterval(() => void someAsyncWork(), INTERVAL_MS)` with no try/catch around the async work. Any transient failure inside it (a DB hiccup, a flaky external call) becomes an unhandled promise rejection inside the interval callback — Node's default policy turns that into a full process crash, taking down the entire app on a single transient fault, not just the one feature. `orphan-sweep.ts` even stated in its own header comment that it was "mirroring retry-worker.ts's own standalone module," yet still omitted the one piece of defensive handling that module's own precedent depends on — proving a stated intent to copy a pattern doesn't guarantee the complete pattern was actually copied.
+**Rule**: Any new standalone `setInterval`-driven background job in this project must wrap its async work in try/catch (`console.error` and continue, matching `retry-worker.ts`'s per-row discipline), with no exception. When a plan or an implementer cites an existing module as "the precedent to follow" for this shape, treat that as a trigger to explicitly verify the error-handling of the cited precedent was actually copied — not just its interval/dedup-guard structure — before calling the new module done.
+**Applies to**: `/10x-plan` designing any new periodic background job; `/10x-implement` building one from a plan; `/10x-impl-review` reviewing one — check for try/catch around the interval callback's work as a non-negotiable item, not a nice-to-have, every time this shape appears again.
+
 ## Side-fixes found mid-implementation ride along in the current commit
 
 **Context**: .gitignore:39 (found during ui-simulation-tokens Phase 1)
