@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: roadmap-question-resolution
 milestone_seq: 9
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-9: Resolve remaining roadmap questions** — Status: open
+**M-9: Resolve remaining roadmap questions** — Status: done
 
 - **Intent:** Close out the three items still listed under `## Open Roadmap Questions` — two of which the project already resolved in practice but never formally closed out (per-run history's retroactive scope; the admin-elevation mechanism), and one genuinely unresolved technical decision (whether unwatched server-owned runs should tick faster than real time so they don't compete for CPU against the one the user is actively watching) — so the roadmap accurately reflects the project's real state before further milestone work begins.
 - **Source materials:** user description (2026-11-17), anchors below
@@ -799,6 +799,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-2: Insight and comparison** (`insight-and-comparison`) — closed 2026-11-14. Delivered the three remaining nice-to-have FRs M-1 deferred: side-by-side run comparison, a score-correlated parameter-change suggestion, and JSON/CSV run export; all 3 slices done. Every FR in the PRD (v4) is now implemented.
 - **M-3: Modernization and polish** (`modernization-and-polish`) — closed 2026-11-15. Delivered a shared app shell/design-token foundation and five pages built or restyled on it (branded login, dashboard, staging/live view, analysis/comparison, a new leaderboard, and four new reference/documentation pages), a run-specific post-run optimization suggestion, temporary admin elevation, and a spatial-hash neighbor-search optimization for the flocking engine; F-06 and all 9 slices (S-15–S-23) done. Every FR in the PRD (v5) is now implemented.
 - **M-4: Area, camera, and ops limits** (`area-camera-and-ops-limits`) — closed 2026-11-15. Delivered VPS-measured capacity ceilings for area/object-count/concurrency (F-07), a configurable simulation area with a camera-limited render view (S-24), a new area-aware 5th score factor with backward-compatible run comparison and a formula-version marker (S-25), and an in-app GitHub-Issues-backed feedback module with a DB-backed retry queue (S-26); F-07 and all 3 slices (S-24–S-26) done.
+- **M-9: Resolve remaining roadmap questions** (`roadmap-question-resolution`) — closed 2026-11-17. Formally closed Open Roadmap Questions #4, #6, and #8: confirmed per-run history is forward-only (S-37, found and fixed a real "0.000" display bug for history-less runs), confirmed temporary admin elevation already uses the resolved time-boxed mechanism with no gap (S-38), and designed/implemented CPU-fair tick throttling for unwatched server-owned runs — a 3x dt multiplier after a 5s grace period, with a sticky wasEverThrottled comparability marker flagged across leaderboard, run comparison, parameter suggestion, and run export (S-36); all 3 slices done.
 - **M-5: Live in-run parameter adjustment** (`live-in-run-parameter-adjustment`) — closed 2026-11-15. Delivered live mid-run tuning of a server-owned simulation's flocking weights, food regen rate, and protection threshold (soft-validated against admin ranges, server-side throttled), with a persisted change-log overlaid on the completed run's population chart; S-27 (the milestone's sole slice) done. Scoped to the server-owned execution path only — client-staged parity and population-shape parameter adjustment stay parked for a future milestone.
 - **M-6: Extended live tuning** (`extended-live-tuning`) — closed 2026-11-15. Delivered client-staged live-parameter parity (S-28), a live crossbreeding toggle on both execution paths (S-29, scope expanded from server-owned-only during planning), live boid-AND-predator count adjustment on the server-owned path (S-30, scope expanded from boid-only), and a correction to S-27's own live-adjustable field set (S-31); all 4 slices done. `flockCount` live-adjustment stays parked — investigated and found structurally invasive (every boid's `flockId`/color is set once at birth, never re-derived per tick).
 - **M-7: Genetic-diversity trend** (`genetic-diversity-trend`) — closed 2026-11-15. Delivered a per-tick genetic-diversity sample series across both execution paths and a new trend chart in the analysis view (S-32, the milestone's sole slice), reversing the PRD's own "No diversity-index trend over time" Non-Goal per its own revisit clause. Plan-review caught 2 critical gaps before implementation — the server-owned pause/resume snapshot path (the exact S-25 lesson bug class) and the client-staged execution path, both missing from the initial draft despite the Overview claiming both paths.
