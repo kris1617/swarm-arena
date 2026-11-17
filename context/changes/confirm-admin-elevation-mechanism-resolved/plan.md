@@ -127,9 +127,9 @@ to `done`.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 704e7eb
+- [x] 1.2 Lint passes: `npm run check` — 704e7eb
 
 #### Manual
 
-- [x] 1.3 Updated Question #6 entry and S-38's block accurately cite research.md's findings
+- [x] 1.3 Updated Question #6 entry and S-38's block accurately cite research.md's findings — 704e7eb
