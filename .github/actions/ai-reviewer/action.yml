@@ -55,7 +55,7 @@ runs:
         cd "$GITHUB_WORKSPACE/tools/ai-reviewer"
         npm ci
         review_file="$RUNNER_TEMP/ai-review.json"
-        npm run review > "$review_file"
+        npx tsx src/review.ts > "$review_file"
         verdict=$(node -e 'const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); if (!["pass", "fail"].includes(r.verdict)) process.exit(1); console.log(r.verdict)' "$review_file")
         echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
         echo "review-file=$review_file" >> "$GITHUB_OUTPUT"
