@@ -3,13 +3,13 @@ project: swarm-arena
 version: 1
 status: draft
 created: 2026-11-09
-updated: 2026-11-16
+updated: 2026-11-17
 prd_version: 5
 main_goal: quality
-top_blocker: none
-milestone_id: parameter-suggestion-analytics-corpus
-milestone_seq: 8
-milestone_status: done
+top_blocker: decisions
+milestone_id: roadmap-question-resolution
+milestone_seq: 9
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,18 +20,15 @@ milestone_status: done
 
 ## Milestone
 
-**M-8: Parameter-suggestion & analytics validation corpus** — Status: done
+**M-9: Resolve remaining roadmap questions** — Status: open
 
-- **Intent:** Build a reusable, varied-parameter corpus of simulation runs — generated once, exported to a fixture file, never needing regeneration — that lets the maintainer (and, going forward, the test suite) check whether the existing parameter-suggestion heuristic (FR-015) actually surfaces sensible correlated suggestions, and whether every per-run analytics function handles the full range of parameter combinations without error. This is test/validation infrastructure, not a new user-facing capability — the "user" for every item below is the project's own maintainer/test suite.
-- **Source materials:** user description (2026-11-15, immediately after M-7's close), clarified through a 4-question interview (custom-MVP-shape exception — this doesn't fit a familiar CRUD/SaaS pattern): corpus stored as an exported JSON/CSV fixture file (not live DB rows) so it survives a DB reset and needs no live app dependency to reuse; parameter variation is a structured sweep across known-impactful parameters (flocking weights, food regen rate, crossbreeding) deliberately targeting healthy-growth/crash/overshoot-recovery phases, not random sampling; ~20 total runs with up to 4 ticking in parallel, each capped at 60 minutes of simulated duration; the milestone produces both new automated tests (suggestion-quality + analytics-correctness regression checks) and a dataset the maintainer can explore manually.
-- **Done when:** F-08, S-33, S-34, and S-35 are all `done`.
+- **Intent:** Close out the three items still listed under `## Open Roadmap Questions` — two of which the project already resolved in practice but never formally closed out (per-run history's retroactive scope; the admin-elevation mechanism), and one genuinely unresolved technical decision (whether unwatched server-owned runs should tick faster than real time so they don't compete for CPU against the one the user is actively watching) — so the roadmap accurately reflects the project's real state before further milestone work begins.
+- **Source materials:** user description (2026-11-17), anchors below
+- **Done when:** S-36, S-37, and S-38 are all `done`.
 - **Scope anchors:**
-  - MS-01: A reusable, persisted corpus of varied-parameter simulation runs exists, exported to a fixture file so it never needs regenerating.
-  - MS-02: The corpus is generated from multiple simulations, some ticking in parallel.
-  - MS-03: Each generated simulation is capped at 60 minutes of simulated duration.
-  - MS-04: An automated test checks whether the parameter-suggestion heuristic produces a sensible, correlated suggestion against the corpus.
-  - MS-05: Automated tests check whether every per-run analytics function handles the corpus's full range of parameter combinations without error.
-  - MS-06: Corpus generation starts from a clean application state and cleans up its own generation-time side effects afterward, leaving only the exported fixture behind.
+  - MS-01: Confirm and formally close Open Roadmap Question #4 — per-run history (F-05) applies forward-only, not retroactively, to already-archived runs.
+  - MS-02: Confirm and formally close Open Roadmap Question #6 — temporary admin elevation (FR-030/S-22) already uses a time-boxed, self-service mechanism.
+  - MS-03: Decide and implement whether unwatched server-owned simulation runs should tick faster than real time so they don't compete for CPU against the actively-watched run (Open Roadmap Question #8) — a change to the core tick-timing/determinism model every existing scored/analyzed/compared run depends on.
 
 ## Vision recap
 
@@ -39,7 +36,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 
 ## North star
 
-**S-33: Generate and persist the full structured-parameter-sweep corpus** — the smallest end-to-end flow that proves this milestone's core idea: that a varied, parallel-generated, duration-capped corpus can actually be produced and exported for reuse. S-34/S-35 (the suggestion-quality and analytics-correctness tests) are both downstream consumers of this slice's output and prove nothing on their own without it.
+**S-36: Unwatched-run tick throttling** — this milestone doesn't have a single product hypothesis to validate like prior ones; it's a mix of formally closing two already-resolved questions (S-37, S-38) and one genuinely open technical decision. S-36 carries the "north star" label here because it's the one item with real design risk — a change to the core tick-timing/determinism model every existing scored/analyzed/compared run depends on — sequenced first (by the quality main-goal bias) so the milestone's hard part isn't deferred behind the two quick confirmations.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -90,6 +87,9 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-33 | parameter-sweep-corpus-generation | Maintainer generates and persists a ~20-run structured-parameter-sweep corpus (up to 4 runs ticking in parallel, each capped at 60 simulated minutes) to a reusable fixture file | F-08           | MS-01, MS-02, MS-03, MS-06                             | done |
 | S-34 | suggestion-quality-corpus-test | Maintainer has an automated test asserting the parameter-suggestion heuristic produces a sensible, correlated suggestion against the persisted corpus | S-33           | MS-04                                                  | done |
 | S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | done |
+| S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | blocked |
+| S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | ready |
+| S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | ready |
 
 ## Streams
 
@@ -111,10 +111,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | N      | Extended live tuning (M-6)        | `S-31` → `S-28`, `S-29`, `S-30`          | `S-31` (fix S-27's field set) is a hard prerequisite only for `S-28` (sequencing — plan client-staged parity against the corrected set); `S-29`/`S-30` are independent of `S-31` and of each other, and `S-28` carries M-6's north star once unblocked. |
 | O      | Diversity trend (M-7)             | `S-32`                                   | Standalone — no foundation prerequisite; mirrors the already-shipped per-tick sample-array pattern (`populationCountSamples` et al.) exactly, so no new Foundation is needed. |
 | P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
+| Q      | Roadmap-question resolution (M-9) | `S-36`, `S-37`, `S-38`           | All three are independent, no foundation prerequisite — each closes a different open roadmap question. `S-36` carries M-9's north star despite being `blocked` pending its own Unknown; `S-37`/`S-38` are quick, unblocked confirmations. |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer); no baseline change for M-9 either (S-36 is a pure engine-level change to the already-existing server-owned tick scheduler; S-37/S-38 are documentation/verification-only against already-shipped code, no new layer touched).
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -681,6 +682,43 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low — purely additive test coverage against already-shipped, already-tested endpoints; the main value is catching an edge case (e.g. a crashed-to-zero-population run) that the corpus's deliberately varied scenarios might surface but today's narrower test fixtures don't.
 - **Status:** done
 
+### S-36: Unwatched-run tick throttling
+
+- **Outcome:** User runs multiple server-owned simulations simultaneously and the one they're actively watching stays responsive, because unwatched runs no longer tick at an equal, real-time-matched cadence and compete for the same single CPU core.
+- **Change ID:** unwatched-run-tick-throttling
+- **PRD refs:** MS-03
+- **Prerequisites:** — (server-owned execution, F-03/F-04, already done)
+- **Parallel with:** S-37, S-38
+- **Blockers:** —
+- **Unknowns:**
+  - Exactly how should unwatched runs be accelerated — a fixed speed multiplier, event-driven catch-up ticks, or something else — and does inflating `dtSeconds` for unwatched runs change score comparability against runs recorded before this feature existed (`computeSingleRunTick`'s `dtSeconds` is derived from real wall-clock gaps today, and every existing scored/analyzed/compared run depends on that model)? — Owner: user. Block: yes.
+- **Risk:** This changes the core tick-timing/determinism model every existing scored/analyzed/compared run depends on — must either preserve backward comparability or explicitly version the change (the same pattern S-25 used for its area-aware 5th score factor's formula-version marker).
+- **Status:** blocked
+
+### S-37: Confirm per-run history scope is forward-only
+
+- **Outcome:** User (and the team) has a documented confirmation that per-run history (F-05) applies only to runs completed after it shipped, with older runs' dashboard/analysis views showing an accurate "no history data" state rather than an error or a misleading empty chart.
+- **Change ID:** confirm-run-history-retroactive-scope
+- **PRD refs:** MS-01
+- **Prerequisites:** — (F-05, S-10, S-11 already done)
+- **Parallel with:** S-36, S-38
+- **Blockers:** —
+- **Unknowns:** — (the forward-only resolution is already the shipped default per F-05/S-11; this slice verifies the actual UI/empty-state matches that intent and formally closes Open Roadmap Question #4)
+- **Risk:** Low — verification-only; worst case finds a misleading empty-state message that needs a copy fix, not a new feature.
+- **Status:** ready
+
+### S-38: Confirm admin-elevation mechanism is resolved
+
+- **Outcome:** User (and the team) has a documented confirmation that temporary admin elevation (FR-030) already uses the time-boxed, self-service mechanism decided during S-22's own planning, with no outstanding design decision left open.
+- **Change ID:** confirm-admin-elevation-mechanism-resolved
+- **PRD refs:** MS-02
+- **Prerequisites:** — (S-22 already done, archived)
+- **Parallel with:** S-36, S-37
+- **Blockers:** —
+- **Unknowns:** — (mechanism already implemented and documented in the archived S-22 plan; this slice verifies current behavior still matches and formally closes Open Roadmap Question #6)
+- **Risk:** Low — verification-only.
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -728,17 +766,20 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-33       | parameter-sweep-corpus-generation    | Generate and persist a ~20-run structured-parameter-sweep corpus to a reusable fixture file | no                     | Waiting on F-08 |
 | S-34       | suggestion-quality-corpus-test       | Automated test: parameter-suggestion heuristic produces a sensible, correlated suggestion against the corpus | no                     | Waiting on S-33 |
 | S-35       | analytics-correctness-corpus-tests   | Automated tests: every per-run analytics function handles the corpus's full range of parameter combinations | no                     | Waiting on S-33; can run parallel with S-34 |
+| S-36       | unwatched-run-tick-throttling        | Decide and implement CPU-fair tick throttling for unwatched server-owned runs | no                      | Blocked — resolve the `dtSeconds`/determinism Unknown first |
+| S-37       | confirm-run-history-retroactive-scope | Confirm and close: per-run history is forward-only, not retroactive | yes                     | Run `/10x-plan confirm-run-history-retroactive-scope` |
+| S-38       | confirm-admin-elevation-mechanism-resolved | Confirm and close: admin-elevation mechanism already resolved (time-boxed, self-service) | yes                     | Run `/10x-plan confirm-admin-elevation-mechanism-resolved` |
 
 ## Open Roadmap Questions
 
 1. ~~What are the relative weights/formula for the score (cycle length × resource management × genetic diversity)?~~ — **Resolved 2026-11-14.** Equal product of four factors, now including population-lifecycle-phase quality (FR-019). See PRD Open Questions #1 and Business Logic. No longer blocks S-04.
 2. ~~What export format(s) should the export feature (FR-017) support (CSV / JSON / image / other)?~~ — **Resolved 2026-11-14.** Both JSON (full-fidelity) and CSV (parameters + score, no nested history). See PRD Open Questions #2. No longer blocks S-14.
 3. ~~Beyond defining parameter ranges and the object-count cap, does `admin` have any other capability — e.g. managing other users' simulations — or is the role split purely about parameter governance?~~ — **Resolved 2026-11-14** (see PRD Open Questions #3) — every FR added since stays within per-user data isolation; not blocking.
-4. **Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?** — Owner: user. Block: — (affects S-11's "no data yet" empty state for old runs, not blocking; resolved by default: forward-only, with old runs showing only their final score in the dashboard).
+4. ~~Should F-05's per-run history persistence apply retroactively to already-archived runs, or only to runs that complete after it ships?~~ — **Tracked for formal closure via M-9's S-37** (`confirm-run-history-retroactive-scope`, 2026-11-17). Already resolved by default in the shipped behavior (forward-only, old runs show only their final score); S-37 verifies the UI matches and closes this question formally.
 5. ~~What should the parameter-suggestion heuristic (FR-015) actually optimize toward, and what shape should its suggestion take?~~ — **Resolved 2026-11-14.** Optimizes toward the final combined score, correlating each of the 13 admin-ranged parameters against the user's own past-run scores; suggests the single most-correlated one with a rationale and a confidence qualifier (minimum 3 varied runs). See PRD Open Questions #5. No longer blocks S-13.
-6. **What exact mechanism should temporary admin elevation (FR-030/S-22) use — a self-service toggle, a time-boxed grant, or something else?** — Owner: user. Block: — (not blocking; deferred to `/10x-plan` per PRD Open Question #6, product-level requirement already fixed).
+6. ~~What exact mechanism should temporary admin elevation (FR-030/S-22) use — a self-service toggle, a time-boxed grant, or something else?~~ — **Tracked for formal closure via M-9's S-38** (`confirm-admin-elevation-mechanism-resolved`, 2026-11-17). Already resolved and shipped during S-22's own planning (time-boxed, self-service grant — see `context/archive/2026-11-14-temporary-admin-elevation/plan.md`); S-38 verifies current behavior still matches and closes this question formally.
 7. **Beyond the `next-shadcn-admin-dashboard` structural reference, which specific pages get restyled first, and in what order?** — Owner: roadmap (this decomposition). Resolved for sequencing purposes: `S-15` (login) first as the north star, then `S-16`–`S-20` in any order/parallel — see Streams row G. Per PRD Open Question #7.
-8. **Should unwatched server-owned runs be allowed to tick faster than real time (not throttled to the live-view's 16ms cadence), so background runs don't compete for CPU against the one the user is actively watching?** — Owner: user. Block: no (not blocking any current slice). Raised during F-07's planning (2026-11-15) and explicitly deferred out of that change: `computeSingleRunTick`'s `dtSeconds` is derived from real wall-clock gaps today, not a fixed value, so this isn't a scheduling-priority tweak — it would mean deliberately inflating `dt` beyond real elapsed time for unwatched runs, a change to the core tick-timing/determinism model every existing scored/analyzed/compared run depends on. Worth its own roadmap item once someone wants to examine that model's implications directly, not folded into a capacity-measurement foundation.
+8. **Should unwatched server-owned runs be allowed to tick faster than real time (not throttled to the live-view's 16ms cadence), so background runs don't compete for CPU against the one the user is actively watching?** — Owner: user. Block: yes — **now tracked as M-9's S-36** (`unwatched-run-tick-throttling`, 2026-11-17), blocked on deciding the exact throttling mechanism and its effect on score comparability against pre-existing runs.
 
 ## Parked
 
