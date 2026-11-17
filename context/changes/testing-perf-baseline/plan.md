@@ -325,19 +325,19 @@ row's Status cell.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 8d1c3de
+- [x] 2.2 Lint passes: `npm run check` — 8d1c3de
 
 ### Phase 3: First real baseline run + cookbook update
 
 #### Automated
 
-- [ ] 3.1 Full suite still passes: `npm test`
-- [ ] 3.2 Typecheck passes: `npm run typecheck`
-- [ ] 3.3 Lint passes: `npm run check`
+- [x] 3.1 Full suite still passes: `npm test`
+- [x] 3.2 Typecheck passes: `npm run typecheck`
+- [x] 3.3 Lint passes: `npm run check`
 
 #### Manual
 
-- [ ] 3.4 Confirm single-process, run `npm run perf:baseline` once for real
-- [ ] 3.5 `perf-baseline.json` gained one entry (54 rows); `capacity-limits.md` gained a matching summary
-- [ ] 3.6 Results sanity-check against known directional facts (cost ↑ with object count; cost ↓ at larger area for fixed count)
+- [x] 3.4 Confirm single-process, run `npm run perf:baseline` once for real
+- [x] 3.5 `perf-baseline.json` gained one entry (54 rows); `capacity-limits.md` gained a matching summary
+- [x] 3.6 Results sanity-check against known directional facts (cost ↑ with object count; cost ↓ at larger area for fixed count)

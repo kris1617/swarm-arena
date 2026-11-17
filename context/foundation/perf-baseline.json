@@ -1,0 +1,441 @@
+[
+	{
+		"date": "2026-11-17T06:13:19.516Z",
+		"gitCommit": "8d1c3de939e30df9b9f64c067fb4fcee46cba9ed",
+		"nodeVersion": "v22.22.1",
+		"results": [
+			{
+				"objectCount": 100,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 169.052124125,
+				"stdDevMs": 25.908795358902708,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 155.30456562500007,
+				"stdDevMs": 6.931082487319119,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 185.45316237500012,
+				"stdDevMs": 3.8987003130196918,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 62.75780787500014,
+				"stdDevMs": 0.7589138152956094,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 63.60938237499988,
+				"stdDevMs": 1.326196754934444,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 72.96748649999984,
+				"stdDevMs": 17.131410885416276,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 90.0628519999998,
+				"stdDevMs": 3.0694490979564466,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 86.83744200000001,
+				"stdDevMs": 2.2897421911362597,
+				"samples": 8
+			},
+			{
+				"objectCount": 100,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 85.60118137500012,
+				"stdDevMs": 2.267588688404751,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 543.1486247499995,
+				"stdDevMs": 11.191828858625923,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 484.7399033750007,
+				"stdDevMs": 15.916904381722718,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 499.0104686249997,
+				"stdDevMs": 8.60003350848761,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 182.46063812500006,
+				"stdDevMs": 15.5141418546955,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 198.0242448750014,
+				"stdDevMs": 7.133463907026913,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 173.22108975000037,
+				"stdDevMs": 11.011281789649262,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 149.41481475000043,
+				"stdDevMs": 3.605017163474223,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 144.46128675,
+				"stdDevMs": 2.637700940981317,
+				"samples": 8
+			},
+			{
+				"objectCount": 200,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 146.36732512499975,
+				"stdDevMs": 3.123923225806268,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 988.2396303750011,
+				"stdDevMs": 20.61690501289141,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 1010.6992258750015,
+				"stdDevMs": 16.747659335991866,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 1022.3463776249991,
+				"stdDevMs": 24.308188678046125,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 330.5231160000003,
+				"stdDevMs": 2.2735769553807312,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 337.4376480000001,
+				"stdDevMs": 3.949030389755598,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 350.32867325000007,
+				"stdDevMs": 17.573039837671317,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 264.93013612499993,
+				"stdDevMs": 2.6665862751204625,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 269.8487087500016,
+				"stdDevMs": 6.286764305644455,
+				"samples": 8
+			},
+			{
+				"objectCount": 300,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 282.5128894999998,
+				"stdDevMs": 14.341583197729989,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 1711.283867,
+				"stdDevMs": 25.126597269328464,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 1747.3307703749997,
+				"stdDevMs": 36.08953100917443,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 1753.516997374998,
+				"stdDevMs": 49.732565324228936,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 559.5564376250021,
+				"stdDevMs": 4.9700249932363,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 578.1027216250004,
+				"stdDevMs": 35.075187235523714,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 593.5487853750055,
+				"stdDevMs": 50.66169948822193,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 421.440441499999,
+				"stdDevMs": 1.258751156670471,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 444.2329008750057,
+				"stdDevMs": 28.65193701392462,
+				"samples": 8
+			},
+			{
+				"objectCount": 400,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 475.8465587500068,
+				"stdDevMs": 58.031206700611726,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 2806.0256608750024,
+				"stdDevMs": 114.77505907495251,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 2779.2538549999954,
+				"stdDevMs": 59.312481158324374,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 2683.070636749999,
+				"stdDevMs": 79.02060736758199,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 879.0116656250029,
+				"stdDevMs": 11.811645363191175,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 886.4831468750016,
+				"stdDevMs": 25.90947367503842,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 927.1544163749968,
+				"stdDevMs": 51.897609670258795,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 624.6330463749982,
+				"stdDevMs": 10.17330716047587,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 650.5653597500059,
+				"stdDevMs": 53.04650973989758,
+				"samples": 8
+			},
+			{
+				"objectCount": 500,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 691.3964262500048,
+				"stdDevMs": 58.325841637985135,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 200,
+				"concurrentRuns": 1,
+				"meanMs": 9989.98460312499,
+				"stdDevMs": 74.62292735932327,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 200,
+				"concurrentRuns": 2,
+				"meanMs": 10200.839006375005,
+				"stdDevMs": 71.26396310650934,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 200,
+				"concurrentRuns": 4,
+				"meanMs": 10799.259087375009,
+				"stdDevMs": 403.92570000140006,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 400,
+				"concurrentRuns": 1,
+				"meanMs": 3419.609019749987,
+				"stdDevMs": 25.11510117732298,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 400,
+				"concurrentRuns": 2,
+				"meanMs": 3484.565499874967,
+				"stdDevMs": 31.03064207872521,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 400,
+				"concurrentRuns": 4,
+				"meanMs": 3535.755948749997,
+				"stdDevMs": 126.59621282804943,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 1000,
+				"concurrentRuns": 1,
+				"meanMs": 2437.4897740000015,
+				"stdDevMs": 52.32771127046512,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 1000,
+				"concurrentRuns": 2,
+				"meanMs": 2487.175736875041,
+				"stdDevMs": 71.10805627170544,
+				"samples": 8
+			},
+			{
+				"objectCount": 1000,
+				"area": 1000,
+				"concurrentRuns": 4,
+				"meanMs": 2578.355314500004,
+				"stdDevMs": 6.677591859854143,
+				"samples": 8
+			}
+		]
+	}
+]

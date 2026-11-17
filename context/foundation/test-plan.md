@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-16 (Phases 7–10 added via --refresh — functional audit on newest slices, performance baseline, concurrent-load capacity, wall-clock-aware optimization guardrail)
+> Last updated: 2026-11-17 (Phase 8 shipped — reproducible performance baseline; §6.8 cookbook entry added)
 
 ## 1. Strategy
 
@@ -78,7 +78,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | complete | `context/changes/ci-quality-gates/` |
 | 6 | Depth-rendering formula coverage | Prove the depth-scale/draw-order contract holds under future edits, not just at ship time | #6 | unit | complete | `context/changes/test-plan-refresh-2026-11-12/` |
 | 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | complete | `context/changes/test-plan-refresh-2026-11-16/` |
-| 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | planned | `context/changes/testing-perf-baseline/` |
+| 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | complete | `context/changes/testing-perf-baseline/` |
 | 9 | Concurrent-load capacity test | Extend Phase 8's harness to N simultaneous server-owned runs; prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling | #9 | integration | not started | — |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | not started | — |
 
@@ -361,6 +361,49 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
   calls, no fake timers).
 - Run commands: `npx vitest run src/server/api/routers/simulation.test.ts`,
   `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`.
+
+### 6.8 Adding/running a wall-clock performance benchmark
+
+- Location: `scripts/perf-baseline.ts` (measurement only — grid
+  construction + tick-driving, no file I/O, exports `runBenchmarkGrid`) and
+  `scripts/perf-baseline-report.ts` (the output-writing entry point — runs
+  the real grid, appends to `context/foundation/perf-baseline.json`,
+  replaces the latest-run summary in `context/foundation/capacity-limits.md`).
+  Deliberately two files: measurement and output-writing stay separable, so
+  a future script (e.g. a plotting tool, or a CI-adjacent comparison check)
+  can import `runBenchmarkGrid` directly without pulling in file I/O.
+- Pattern: drive `computeSingleRunTick` directly in a loop — never through
+  the router/DB/registry machinery (`scripts/corpus/harness.ts` is the
+  wrong tool for this; it's built for DB-persisted correctness fixtures,
+  not wall-clock measurement, and never drives ticks itself). Population
+  construction reuses `pipeline-perf.test.ts`'s exact pattern
+  (`createInitialPopulation`/`createInitialPredators` from `boids.ts`, same
+  80/20 boid:predator ratio) — this benchmark and that structural guard are
+  deliberately separate artifacts; never modify `pipeline-perf.test.ts`
+  itself, which stays CI-safe and explicitly non-wall-clock by design. Use
+  `tinybench`'s `{ iterations: N, time: 0 }` for an exact, deterministic
+  sample count — `time: Number.POSITIVE_INFINITY` looks intuitive but never
+  satisfies tinybench's own "budget that must also be reached" semantics
+  and hangs forever; `time: 0` is the library's documented mechanism for
+  "iteration count is the only limit" (verified against the installed
+  package, 2026-11-17). A **concurrent-run** grid dimension means
+  single-process, round-robin-interleaved independent tick states sharing
+  one process — never the real `setInterval`/registry scheduler; driving
+  genuine concurrent server-owned simulations is rollout Phase 9's job
+  (proving no backlog/leak under real concurrent load), not this
+  benchmark's. **Always confirm single-process** before trusting a result
+  (`pgrep -af "vitest|npm test"` returns nothing) — per the cross-process-
+  contamination lessons, and never treat a single run as the baseline (this
+  benchmark already samples N=8 per configuration internally, but don't
+  compare two *separate* `npm run perf:baseline` invocations without the
+  same single-process discipline on both).
+- Reference: `scripts/perf-baseline.ts`'s `runBenchmarkGrid` (the grid/
+  measurement logic), `scripts/perf-baseline-report.ts`'s
+  `runAndRecordBenchmark` (the output-writing wiring).
+- Run command: `npm run perf:baseline` (runs the full default 54-config
+  grid for real — several minutes; confirm single-process first). Pass a
+  narrower `BenchmarkGridOptions` directly to `runBenchmarkGrid` for a
+  smaller ad hoc trial grid during development.
 
 ## 7. What We Deliberately Don't Test
 
