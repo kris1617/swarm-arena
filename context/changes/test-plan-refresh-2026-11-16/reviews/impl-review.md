@@ -29,7 +29,7 @@
 - **Location**: `src/server/simulation/single-run-lifecycle.test.ts:613-661`
 - **Detail**: The positive-variance oracle test varies `maxSpeed`, `minSpeed`, `maxLifespan`, and all 3 color channels (4 of the 7 scalar fields `computeGeneticDiversity` averages over), leaving `separationWeight`/`alignmentWeight`/`cohesionWeight`/`matePreference` identical across the 3 boids. Confirmed not fragile — varying 4+3 fields is more than enough to guarantee a measurably positive average — but a tighter proof would vary all 7.
 - **Fix**: Optionally vary the remaining 3 weight fields too, for a maximally-robust oracle. Not required; current construction is correct and non-fragile.
-- **Decision**: PENDING
+- **Decision**: FIXED — all 7 scalar fields (plus color) now vary across the 3 fixture boids; verified 20/20 tests still pass.
 
 ## Notes
 

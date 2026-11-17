@@ -611,10 +611,12 @@ describe("computeSingleRunTick genetic-diversity series oracle", () => {
 	});
 
 	it("keeps every sample measurably above 0 across several ticks for a population with deliberately distinct genes", () => {
-		// Three boids whose genes differ across multiple numeric fields and
-		// color — a population with known positive variance, so the true
-		// diversity is mathematically > 0 regardless of the function under
-		// test.
+		// Three boids whose genes differ across every scalar field
+		// computeGeneticDiversity averages over (maxSpeed, minSpeed,
+		// maxLifespan, separation/alignment/cohesionWeight, matePreference)
+		// plus all 3 color channels — a population with known positive
+		// variance on every dimension, so the true diversity is
+		// mathematically > 0 regardless of the function under test.
 		let state = buildState({
 			boids: [
 				buildBoid({
@@ -624,6 +626,10 @@ describe("computeSingleRunTick genetic-diversity series oracle", () => {
 						minSpeed: 5,
 						maxLifespan: 50,
 						color: { r: 255, g: 0, b: 0 },
+						separationWeight: 0.2,
+						alignmentWeight: 0.2,
+						cohesionWeight: 0.2,
+						matePreference: 0.2,
 					},
 				}),
 				buildBoid({
@@ -633,6 +639,10 @@ describe("computeSingleRunTick genetic-diversity series oracle", () => {
 						minSpeed: 25,
 						maxLifespan: 150,
 						color: { r: 0, g: 255, b: 0 },
+						separationWeight: 0.5,
+						alignmentWeight: 0.5,
+						cohesionWeight: 0.5,
+						matePreference: 0.5,
 					},
 				}),
 				buildBoid({
@@ -642,6 +652,10 @@ describe("computeSingleRunTick genetic-diversity series oracle", () => {
 						minSpeed: 45,
 						maxLifespan: 250,
 						color: { r: 0, g: 0, b: 255 },
+						separationWeight: 0.8,
+						alignmentWeight: 0.8,
+						cohesionWeight: 0.8,
+						matePreference: 0.8,
 					},
 				}),
 			],
