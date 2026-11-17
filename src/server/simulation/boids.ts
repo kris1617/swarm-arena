@@ -1,3 +1,4 @@
+import { Color } from "~/server/simulation/color";
 import {
 	BOID_SEED_COLOR,
 	PREDATOR_SEED_COLOR,
@@ -197,51 +198,22 @@ function wrappedMidpoint(a: number, b: number, range: number): number {
 // BOID_SEED_COLOR/PREDATOR_SEED_COLOR (src/server/simulation/seed-colors.ts)
 // are plain hex strings for canvas's ctx.fillStyle, while BoidGenes.color
 // stays in [0,1] like the rest of this module's normalized math, so flock 0
-// can seed from them exactly.
+// can seed from them exactly. Delegates to Color (src/server/simulation/
+// color.ts), the sole owner of the hex-parsing math.
 function hexToUnitColor(hex: string): { r: number; g: number; b: number } {
-	const value = hex.replace("#", "");
-	return {
-		r: Number.parseInt(value.slice(0, 2), 16) / 255,
-		g: Number.parseInt(value.slice(2, 4), 16) / 255,
-		b: Number.parseInt(value.slice(4, 6), 16) / 255,
-	};
+	return Color.fromHex(hex).toJSON();
 }
 
 // Standard HSL->RGB conversion, output in [0,1] to match hexToUnitColor.
 // Used to spread flocks 1..N-1 evenly around the color wheel so N flocks
-// stay visually distinguishable regardless of flockCount.
+// stay visually distinguishable regardless of flockCount. Delegates to
+// Color, the sole owner of the HSL->RGB math.
 function hslToUnitColor(
 	hueDegrees: number,
 	saturation: number,
 	lightness: number,
 ): { r: number; g: number; b: number } {
-	const h = ((hueDegrees % 360) + 360) % 360;
-	const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
-	const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-	const m = lightness - c / 2;
-	let r = 0;
-	let g = 0;
-	let b = 0;
-	if (h < 60) {
-		r = c;
-		g = x;
-	} else if (h < 120) {
-		r = x;
-		g = c;
-	} else if (h < 180) {
-		g = c;
-		b = x;
-	} else if (h < 240) {
-		g = x;
-		b = c;
-	} else if (h < 300) {
-		r = x;
-		b = c;
-	} else {
-		r = c;
-		b = x;
-	}
-	return { r: r + m, g: g + m, b: b + m };
+	return Color.fromHsl(hueDegrees, saturation, lightness).toJSON();
 }
 
 // Saturation/lightness held fixed across flocks 1..N-1 — hue is the only

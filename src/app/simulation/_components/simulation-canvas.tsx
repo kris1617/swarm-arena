@@ -25,6 +25,7 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 } from "~/server/simulation/boids";
+import { Color } from "~/server/simulation/color";
 import {
 	checkLiveParamRangesSoft,
 	DEFAULT_PARAMETER_RANGES,
@@ -187,19 +188,8 @@ export function compareByDepth(a: { z: number }, b: { z: number }): number {
 // clamps color channels to [0,1] at birth. Pure and DOM-free so it's directly
 // unit-testable without a canvas context, same as computeDepthScale/
 // compareByDepth above.
-export function colorToCss({
-	r,
-	g,
-	b,
-}: {
-	r: number;
-	g: number;
-	b: number;
-}): string {
-	function toChannel(value: number): number {
-		return Math.round(Math.min(1, Math.max(0, value)) * 255);
-	}
-	return `rgb(${toChannel(r)}, ${toChannel(g)}, ${toChannel(b)})`;
+export function colorToCss(color: { r: number; g: number; b: number }): string {
+	return Color.fromJSON(color).toCss();
 }
 
 // Exported for ServerRunViewer (S-07) to reuse unchanged — already pure
