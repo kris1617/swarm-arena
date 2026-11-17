@@ -1364,6 +1364,177 @@ describe("predator-prey dynamics", () => {
 	});
 });
 
+// per-tribe-behavior-weights Phase 4: the speed-burst mechanic, ported from
+// the Lua reference's Boid:update (burstMult on velocity, burstCostMult on
+// the new energy drain) — see boids.ts's BOID_ENERGY_BASE_COST/
+// BOID_ENERGY_MOVE_COST_COEFFICIENT comment for the calibration reasoning.
+// TRIBE_CONFIG's own burstMult/burstCostMult are both 1 (no-op), so every
+// test above this block that reuses it is unaffected by this mechanic —
+// these tests use a dedicated tribe config with real (>1) burst values,
+// matching the Lua reference's own tribe ranges (burstMult 1.5-1.6,
+// burstCostMult 3.0-3.5).
+describe("speed burst and energy drain (per-tribe-behavior-weights Phase 4)", () => {
+	const BURST_TRIBE_CONFIG: TribeConfig = {
+		...TRIBE_CONFIG,
+		burstMult: 1.5,
+		burstCostMult: 3,
+	};
+
+	it("stepBoids multiplies a bursting boid's clamped velocity by its tribe's burstMult, exceeding its own maxSpeed ceiling", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		// A huge initial vx (aligned with the flee direction, away from the
+		// predator below) guarantees the pre-burst clamp saturates at exactly
+		// genes.maxSpeed, so the post-burst result is predictable:
+		// genes.maxSpeed * burstMult, not some smaller unsaturated value.
+		const boid = makeBoid(
+			{ x: 100, y: 100, z: 100, vx: 1000, vy: 0, vz: 0, lifespan: 100 },
+			weights,
+		);
+		const predator = makePredator({
+			x: 95,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+
+		const [burstStepped] = stepBoids(
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[predator],
+			undefined,
+			[BURST_TRIBE_CONFIG],
+		);
+		const [noBurstStepped] = stepBoids(
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[predator],
+			undefined,
+			[TRIBE_CONFIG],
+		);
+
+		const burstSpeed = Math.hypot(
+			(burstStepped as BoidState).vx,
+			(burstStepped as BoidState).vy,
+			(burstStepped as BoidState).vz,
+		);
+		const noBurstSpeed = Math.hypot(
+			(noBurstStepped as BoidState).vx,
+			(noBurstStepped as BoidState).vy,
+			(noBurstStepped as BoidState).vz,
+		);
+
+		expect(noBurstSpeed).toBeCloseTo(boid.genes.maxSpeed, 5);
+		expect(burstSpeed).toBeGreaterThan(boid.genes.maxSpeed);
+		expect(burstSpeed).toBeCloseTo(boid.genes.maxSpeed * 1.5, 5);
+	});
+
+	it("runTick success criterion: a boid with a predator inside predatorDetectionRadius moves faster and loses more net energy this tick than an otherwise-identical boid with no nearby predator", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		const startingEnergy = 50;
+
+		function buildFreshBoid(): BoidState {
+			return {
+				...makeBoid(
+					{ x: 100, y: 100, z: 100, vx: 1000, vy: 0, vz: 0, lifespan: 100 },
+					weights,
+				),
+				energy: startingEnergy,
+			};
+		}
+		const predator = makePredator({
+			x: 95,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+
+		const sharedParams = {
+			dtSeconds: 0.1,
+			foodRegenRate: 0,
+			// Above the single-boid population so applyPredation is a no-op —
+			// this test is about the burst/energy mechanic, not capture.
+			protectionThreshold: 10,
+			rng: createRng(1),
+			crossbreedingEnabled: true,
+			energyThreshold: 99999,
+			mutationChance: 0,
+			mutationMagnitude: 0,
+			populationCap: 1000,
+			foodStockInitial: 1000,
+			worldSize: WORLD_SIZE,
+			tribeConfigs: [BURST_TRIBE_CONFIG],
+		};
+
+		const fleeingResult = runTick(
+			{ boids: [buildFreshBoid()], predators: [predator], foodStock: 1000 },
+			sharedParams,
+		);
+		const calmResult = runTick(
+			{ boids: [buildFreshBoid()], predators: [], foodStock: 1000 },
+			sharedParams,
+		);
+
+		const fleeingBoid = fleeingResult.boids[0];
+		const calmBoid = calmResult.boids[0];
+		if (!fleeingBoid || !calmBoid) {
+			throw new Error("expected both boids to survive this tick");
+		}
+
+		const fleeingSpeed = Math.hypot(
+			fleeingBoid.vx,
+			fleeingBoid.vy,
+			fleeingBoid.vz,
+		);
+		const calmSpeed = Math.hypot(calmBoid.vx, calmBoid.vy, calmBoid.vz);
+		expect(fleeingSpeed).toBeGreaterThan(calmSpeed);
+
+		const fleeingEnergyDelta = fleeingBoid.energy - startingEnergy;
+		const calmEnergyDelta = calmBoid.energy - startingEnergy;
+		expect(fleeingEnergyDelta).toBeLessThan(calmEnergyDelta);
+	});
+
+	it("a tribe with burstMult/burstCostMult at 1 (no-op, e.g. TRIBE_CONFIG) behaves exactly as a non-bursting tribe even while fleeing", () => {
+		const weights = { separation: 0, alignment: 0, cohesion: 0 };
+		const boid = makeBoid(
+			{ x: 100, y: 100, z: 100, vx: 1000, vy: 0, vz: 0, lifespan: 100 },
+			weights,
+		);
+		const predator = makePredator({
+			x: 95,
+			y: 100,
+			z: 100,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+
+		const [stepped] = stepBoids(
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[predator],
+			undefined,
+			[TRIBE_CONFIG],
+		);
+		const speed = Math.hypot(
+			(stepped as BoidState).vx,
+			(stepped as BoidState).vy,
+			(stepped as BoidState).vz,
+		);
+
+		expect(speed).toBeCloseTo(boid.genes.maxSpeed, 5);
+	});
+});
+
 describe("computeGeneticDiversity (S-04 FR-010 full — correctness fix)", () => {
 	it("returns 0 for an empty population", () => {
 		expect(computeGeneticDiversity([])).toBe(0);

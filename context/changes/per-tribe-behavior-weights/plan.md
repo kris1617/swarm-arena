@@ -540,14 +540,14 @@ neighbor search complexity.
 
 ### Phase 3: Engine — per-tribe perception radii
 #### Automated
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
-- [x] 3.3 npm run perf:baseline compared against perf-baseline.json shows no regression
+- [x] 3.1 npm run typecheck passes — 162798d
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes — 162798d
+- [x] 3.3 npm run perf:baseline compared against perf-baseline.json shows no regression — 162798d
 
 ### Phase 4: Engine — burst mechanic
 #### Automated
-- [ ] 4.1 npm run typecheck passes
-- [ ] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 4.1 npm run typecheck passes
+- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 5: Engine — mate-preference selector
 #### Automated

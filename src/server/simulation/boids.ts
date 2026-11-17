@@ -174,6 +174,34 @@ export const ENERGY_MAX = 100;
 // not yet wired) is reachable within a run without reproduction being either
 // instant or practically unreachable.
 export const ENERGY_GAIN_RATE = 10;
+// per-tribe-behavior-weights Phase 4: a NEW per-tick energy drain, additive
+// to the gain above (net = clamp(0, ENERGY_MAX, energy + gain - drain)) —
+// ported from the Lua reference's Boid:update, which drains
+// `(boidEnergyBaseCost + moveCost) * dt` every tick with no passive gain at
+// all. This engine already has a passive gain (ENERGY_GAIN_RATE=10/s above),
+// so Lua's raw constants (0.2 base / 0.1 move, chosen against Lua's own
+// zero-gain, 100-energy scale) would be invisible here — scaled instead to
+// be MEANINGFUL against this engine's ENERGY_GAIN_RATE=10 and ENERGY_MAX=100:
+//   - BOID_ENERGY_BASE_COST = 1 (10% of the max gain rate): a boid cruising
+//     at full food availability (foodAvailabilityRatio=1, gain=10/s) still
+//     nets positive energy (+~7..9/s depending on move cost below), so a
+//     well-fed population doesn't starve outright — this drain makes the
+//     existing (until now always-trivially-satisfied) energyThreshold
+//     starvation concept actually bite when food gets scarce
+//     (foodAvailabilityRatio -> 0, gain -> 0, only drain remains).
+//   - BOID_ENERGY_MOVE_COST_COEFFICIENT = 2: scaled by (speed / currentMaxSpeed)
+//     in [0,1] like Lua's own moveCost, and by burstCostMult (~3-3.5 per
+//     Lua's tribes) while fleeing — a non-bursting boid at full speed pays
+//     moveCost=2 (drain=3/s before food); a bursting boid at the same speed
+//     ratio pays moveCost=6 (drain=7/s before food, via TribeConfig.
+//     burstCostMult), i.e. measurably MORE net energy loss than an
+//     otherwise-identical non-bursting boid, this phase's literal success
+//     criterion — see `runTick`'s energy-gain site below for the actual
+//     moveCost/isBursting derivation.
+//   These exact magnitudes are a product-balance judgment call, not a
+//   derived constant — flagged for review in this phase's report.
+export const BOID_ENERGY_BASE_COST = 1;
+export const BOID_ENERGY_MOVE_COST_COEFFICIENT = 2;
 // Tick-based maturity delay before an individual becomes reproduction-
 // eligible (Phase 2 reads this). Small relative to typical maxDurationSeconds
 // (tens of seconds or more) so reproduction is actually reachable within a
@@ -682,10 +710,14 @@ export function stepBoids(
 				nearestPredatorDz = dz;
 			}
 		}
-		if (
-			nearestPredatorDist <= predatorDetectionRadius &&
-			nearestPredatorDist > 0
-		) {
+		// per-tribe-behavior-weights Phase 4: this same "predator inside
+		// detection radius" condition IS the Lua reference's `isFleeing` —
+		// reused directly as this tick's burst flag (applied to velocity just
+		// below the speed clamp) rather than a second, separately-computed
+		// condition.
+		const isBursting =
+			nearestPredatorDist <= predatorDetectionRadius && nearestPredatorDist > 0;
+		if (isBursting) {
 			fleeX = nearestPredatorDx / nearestPredatorDist;
 			fleeY = nearestPredatorDy / nearestPredatorDist;
 			fleeZ = nearestPredatorDz / nearestPredatorDist;
@@ -728,9 +760,31 @@ export function stepBoids(
 			Math.max(speed, boid.genes.minSpeed),
 			boid.genes.maxSpeed,
 		);
-		const vx = speed > 0 ? (steeredVx / speed) * clampedSpeed : clampedSpeed;
-		const vy = speed > 0 ? (steeredVy / speed) * clampedSpeed : 0;
-		const vz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
+		const clampedVx =
+			speed > 0 ? (steeredVx / speed) * clampedSpeed : clampedSpeed;
+		const clampedVy = speed > 0 ? (steeredVy / speed) * clampedSpeed : 0;
+		const clampedVz = speed > 0 ? (steeredVz / speed) * clampedSpeed : 0;
+
+		// per-tribe-behavior-weights Phase 4: burst applies AFTER the full
+		// min/max speed clamp above (rather than inflating the clamp ceiling
+		// before clamping) — this file's clamp already resolves to a single
+		// clampedSpeed scalar that's simplest to scale directly afterward, and
+		// it gives `runTick`'s energy-drain site (below, via a separate map
+		// over `stepBoids`' output) a reliable way to DERIVE isBursting from
+		// the returned state alone (speed > genes.maxSpeed can only happen via
+		// this multiplication, never via the clamp itself), instead of
+		// threading a new isBursting field through BoidState. Trade-off vs.
+		// Lua's own ceiling-before-clamp order: here, a bursting boid's speed
+		// is clampedSpeed * burstMult exactly, so the min-speed floor is
+		// always evaluated against the UN-inflated maxSpeed range — Lua's
+		// order lets a burst's inflated ceiling also affect the min-speed
+		// floor branch's magnitude via currentMaxSpeed, a difference that only
+		// matters when a boid's steering force is small enough to hit the
+		// min-speed floor while also fleeing, a narrow edge case.
+		const burstMult = tribeConfig?.burstMult ?? 1;
+		const vx = isBursting ? clampedVx * burstMult : clampedVx;
+		const vy = isBursting ? clampedVy * burstMult : clampedVy;
+		const vz = isBursting ? clampedVz * burstMult : clampedVz;
 
 		return {
 			...boid,
@@ -1195,14 +1249,46 @@ export function runTick(
 		1,
 		Math.max(0, nextFoodStock / params.foodStockInitial),
 	);
-	const agedBoids = predatedBoids.map((boid) => ({
-		...boid,
-		energy: Math.min(
-			ENERGY_MAX,
-			boid.energy + ENERGY_GAIN_RATE * params.dtSeconds * foodAvailabilityRatio,
-		),
-		age: boid.age + params.dtSeconds,
-	}));
+	const agedBoids = predatedBoids.map((boid) => {
+		// per-tribe-behavior-weights Phase 4: the new burst-cost energy drain,
+		// additive to the existing gain above — see BOID_ENERGY_BASE_COST's
+		// comment for the calibration reasoning. `isBursting` is DERIVED from
+		// this tick's already-stepped velocity rather than threaded as a new
+		// field: stepBoids (above) only ever pushes a boid's speed past its
+		// own genes.maxSpeed via the post-clamp burstMult multiplication, so
+		// speed > maxSpeed (with a small epsilon for clamp/normalize float
+		// noise) is an exact, side-effect-free signal that this boid was
+		// fleeing a predator this tick. `burstMult <= 1` (the no-tribeConfig
+		// fallback) makes that signal impossible to trip, which is correct:
+		// no burst effect configured means no detectable burst.
+		const tribeConfig = params.tribeConfigs[boid.genes.flockId];
+		const burstMult = tribeConfig?.burstMult ?? 1;
+		const burstCostMult = tribeConfig?.burstCostMult ?? 1;
+		const speedMagnitude = Math.hypot(boid.vx, boid.vy, boid.vz);
+		const isBursting =
+			burstMult > 1 && speedMagnitude > boid.genes.maxSpeed * 1.0001;
+		const currentMaxSpeed = isBursting
+			? boid.genes.maxSpeed * burstMult
+			: boid.genes.maxSpeed;
+		const moveCost =
+			BOID_ENERGY_MOVE_COST_COEFFICIENT *
+			(currentMaxSpeed > 0 ? speedMagnitude / currentMaxSpeed : 0) *
+			(isBursting ? burstCostMult : 1);
+		const drain = (BOID_ENERGY_BASE_COST + moveCost) * params.dtSeconds;
+		return {
+			...boid,
+			energy: Math.min(
+				ENERGY_MAX,
+				Math.max(
+					0,
+					boid.energy +
+						ENERGY_GAIN_RATE * params.dtSeconds * foodAvailabilityRatio -
+						drain,
+				),
+			),
+			age: boid.age + params.dtSeconds,
+		};
+	});
 	const agedPredators = steeredPredators.map((predator) => ({
 		...predator,
 		energy: Math.min(
