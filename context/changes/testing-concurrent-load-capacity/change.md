@@ -1,7 +1,7 @@
 ---
 change_id: testing-concurrent-load-capacity
 title: Concurrent-load capacity test
-status: preparing
+status: planned
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null
