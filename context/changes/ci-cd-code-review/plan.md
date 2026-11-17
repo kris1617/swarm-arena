@@ -256,11 +256,11 @@ no data the workflow owns).
 
 #### Automated
 
-- [x] 1.1 `npx biome check tools/ai-reviewer .github/actions/ai-reviewer` passes
-- [x] 1.2 `cd tools/ai-reviewer && npx tsc --noEmit` passes
-- [x] 1.3 SQL-injection fixture returns `"verdict": "fail"`
-- [x] 1.4 Clean fixture returns a valid `verdict` field
-- [x] 1.5 `node_modules` stays untracked (`git status --porcelain` empty)
+- [x] 1.1 `npx biome check tools/ai-reviewer .github/actions/ai-reviewer` passes — 9715af3
+- [x] 1.2 `cd tools/ai-reviewer && npx tsc --noEmit` passes — 9715af3
+- [x] 1.3 SQL-injection fixture returns `"verdict": "fail"` — 9715af3
+- [x] 1.4 Clean fixture returns a valid `verdict` field — 9715af3
+- [x] 1.5 `node_modules` stays untracked (`git status --porcelain` empty) — 9715af3
 
 #### Manual
 
@@ -270,8 +270,8 @@ no data the workflow owns).
 
 #### Automated
 
-- [ ] 2.1 `npx biome check .github/workflows/review.yml` passes
-- [ ] 2.2 Workflow YAML parses cleanly
+- [x] 2.1 `npx biome check .github/workflows/review.yml` passes
+- [x] 2.2 Workflow YAML parses cleanly
 - [ ] 2.3 `ai-cr:passed`/`ai-cr:failed` labels exist after first real run
 
 #### Manual
