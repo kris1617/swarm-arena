@@ -83,6 +83,11 @@ throttled.
 - Not touching the single-run analysis page (`src/app/runs/[runId]/page.tsx`)
   — it is not a cross-run comparison surface (confirmed in research.md) and
   S-25 itself never extended its marker there either.
+- Not touching the parameter-sweep test corpus fixtures
+  (`corpus-db-fixture.ts`/`corpus-fixture.ts`) — these are synthetic rows
+  that predate this feature and were never live-ticked, so `wasEverThrottled`
+  correctly defaults to `false`/absent for all of them; no code change
+  needed (plan-review F1 follow-up note).
 - Not changing `WATCH_INTERVAL_MS` (the watch-snapshot poll cadence) or
   `TICK_INTERVAL_MS` (the tick scheduler cadence) — only the simulated
   `dtSeconds` value changes for a throttled run.
@@ -154,7 +159,7 @@ throttling actually engages.
 have right now" and "how long has it had zero", so `tick()` can decide
 whether to throttle.
 
-**Contract**: Add `watcherIds: Set<string>` and `unwatchedSinceMs: number | null` to `LiveRun`. `watchServerRun` generates a unique subscriber id per call, adds it to `watcherIds` on loop start, and removes it in a `try`/`finally` wrapping the polling loop (covering both the normal `AbortSignal` exit and any thrown error) so a watcher is removed exactly once regardless of how its generator exits. When `watcherIds` transitions to empty, set `unwatchedSinceMs = Date.now()`; when a new watcher attaches, reset `unwatchedSinceMs = null`.
+**Contract**: Add `watcherIds: Set<string>` and `unwatchedSinceMs: number | null` to `LiveRun`. `watchServerRun` generates a unique subscriber id, then (after the three existing early-throw guard clauses — row-not-found, forbidden, not-active) wraps the entire `while` statement in exactly one `try { watcherIds.add(id); while (...) {...} } finally { watcherIds.delete(id); ... }` for the generator's whole lifetime — added once before the loop starts, removed once when the generator exits for any reason (normal `AbortSignal` exit, the loop's own early `return`, or a thrown error), never re-added/removed per poll iteration (plan-review F2). When `watcherIds` transitions to empty, set `unwatchedSinceMs = Date.now()`; when a new watcher attaches, reset `unwatchedSinceMs = null`.
 
 #### 2. Multiplier application in the tick core
 
@@ -239,7 +244,15 @@ existing legacy-row disclosure pattern each surface already has.
 
 **Contract**: `suggestParameterChange`'s signature gains an optional `throttledCount?: number` parameter; when `> 0`, append the disclosure clause to the `"ok"`-status result's `rationale` field.
 
-#### 3. Run comparison
+#### 3. Run export
+
+**File**: `src/server/simulation/run-export.ts`
+
+**Intent**: Carry the marker through to the single-run JSON/CSV export feature, which is a close cousin of run-comparison's disclosure need (plan-review F1).
+
+**Contract**: Add `wasEverThrottled: boolean` to `RunExportRow` and a corresponding entry in `CSV_COLUMNS`, sourced directly from `run.wasEverThrottled`.
+
+#### 4. Run comparison
 
 **File**: `src/server/api/routers/simulation.ts` (`getRunsComparison`, `:877-958`+)
 
@@ -257,7 +270,7 @@ existing legacy-row disclosure pattern each surface already has.
 
 #### Automated Verification:
 
-- Unit/integration tests: `listLeaderboard` row includes `wasEverThrottled` matching the DB value; `getParameterSuggestion`'s rationale contains the disclosure clause when at least one selected row has `wasEverThrottled = true`, and omits it when none do; `getRunsComparison` row includes `wasEverThrottled` matching the DB value.
+- Unit/integration tests: `listLeaderboard` row includes `wasEverThrottled` matching the DB value; `getParameterSuggestion`'s rationale contains the disclosure clause when at least one selected row has `wasEverThrottled = true`, and omits it when none do; `getRunsComparison` row includes `wasEverThrottled` matching the DB value; the run-export JSON/CSV output includes `wasEverThrottled`.
 - Typecheck passes: `npm run typecheck`
 - Lint passes: `npm run check`
 - Full suite passes: `npm test`
@@ -267,6 +280,7 @@ existing legacy-row disclosure pattern each surface already has.
 - Leaderboard shows the new badge on a throttled run's row.
 - Run comparison shows the new disclaimer paragraph when one of the 2-4 compared runs is throttled.
 - Parameter suggestion's displayed rationale text visibly mentions the throttled-run count when applicable.
+- Exported JSON/CSV for a throttled run includes `wasEverThrottled: true`.
 
 ---
 
@@ -384,14 +398,14 @@ throttled).
 
 #### Automated
 
-- [ ] 3.1 Integration tests: listLeaderboard, getParameterSuggestion, getRunsComparison each surface wasEverThrottled correctly
+- [ ] 3.1 Integration tests: listLeaderboard, getParameterSuggestion, getRunsComparison, and run-export each surface wasEverThrottled correctly
 - [ ] 3.2 Typecheck passes: `npm run typecheck`
 - [ ] 3.3 Lint passes: `npm run check`
 - [ ] 3.4 Full suite passes: `npm test`
 
 #### Manual
 
-- [ ] 3.5 Leaderboard badge, run-comparison disclaimer, and parameter-suggestion rationale all visibly disclose a throttled run
+- [ ] 3.5 Leaderboard badge, run-comparison disclaimer, parameter-suggestion rationale, and exported JSON/CSV all visibly disclose a throttled run
 
 ### Phase 4: Validation
 
