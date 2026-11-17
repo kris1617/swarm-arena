@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
+import {
+	DEFAULT_PARAMETER_RANGES,
+	TOP_LEVEL_RANGED_PARAMETER_NAMES,
+	type TopLevelRangedParameterName,
+} from "~/server/simulation/parameter-ranges";
 
-const PARAMETER_DESCRIPTIONS: Record<
-	keyof typeof DEFAULT_PARAMETER_RANGES,
-	string
-> = {
+// per-tribe-behavior-weights Phase 1: this page documents the top-level
+// `startInputSchema` scalar fields only. The six new per-tribe fields
+// (`TRIBE_RANGED_FIELD_NAMES`) live inside each `tribeConfigs[]` entry, not
+// as a single run-level scalar — documenting them belongs with Phase 8's
+// tabbed per-tribe UI, not this generic reference page.
+const PARAMETER_DESCRIPTIONS: Record<TopLevelRangedParameterName, string> = {
 	boidCount: "How many boids start the simulation.",
 	separationWeight:
 		"How strongly boids steer away from nearby flockmates to avoid crowding.",
@@ -34,25 +40,24 @@ const PARAMETER_DESCRIPTIONS: Record<
 	crossbreedingEnabled: "",
 };
 
-const PARAMETER_LABELS: Record<keyof typeof DEFAULT_PARAMETER_RANGES, string> =
-	{
-		boidCount: "Boid count",
-		separationWeight: "Separation weight",
-		alignmentWeight: "Alignment weight",
-		cohesionWeight: "Cohesion weight",
-		maxDurationSeconds: "Max duration (seconds)",
-		predatorCount: "Predator count",
-		protectionThreshold: "Protection threshold",
-		foodStockInitial: "Initial food stock",
-		foodRegenRate: "Food regen rate",
-		flockCount: "Flock count",
-		energyThreshold: "Energy threshold",
-		mutationChance: "Mutation chance",
-		mutationMagnitude: "Mutation magnitude",
-		xyArea: "Area size",
-		zDepth: "Depth size",
-		crossbreedingEnabled: "",
-	};
+const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
+	boidCount: "Boid count",
+	separationWeight: "Separation weight",
+	alignmentWeight: "Alignment weight",
+	cohesionWeight: "Cohesion weight",
+	maxDurationSeconds: "Max duration (seconds)",
+	predatorCount: "Predator count",
+	protectionThreshold: "Protection threshold",
+	foodStockInitial: "Initial food stock",
+	foodRegenRate: "Food regen rate",
+	flockCount: "Flock count",
+	energyThreshold: "Energy threshold",
+	mutationChance: "Mutation chance",
+	mutationMagnitude: "Mutation magnitude",
+	xyArea: "Area size",
+	zDepth: "Depth size",
+	crossbreedingEnabled: "",
+};
 
 export default function ParametersPage() {
 	return (
@@ -68,27 +73,28 @@ export default function ParametersPage() {
 				</p>
 
 				<div className="flex flex-col gap-3">
-					{Object.entries(DEFAULT_PARAMETER_RANGES)
-						.filter(([name]) => name !== "crossbreedingEnabled")
-						.map(([name, range]) => {
-							const key = name as keyof typeof DEFAULT_PARAMETER_RANGES;
-							return (
-								<div
-									className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
-									key={name}
-								>
-									<span className="text-foreground font-semibold">
-										{PARAMETER_LABELS[key]}
-									</span>
-									<span className="text-foreground text-sm">
-										{PARAMETER_DESCRIPTIONS[key]}
-									</span>
-									<span className="text-muted-foreground text-xs">
-										Range: {range.min}–{range.max} · Default: {range.default}
-									</span>
-								</div>
-							);
-						})}
+					{TOP_LEVEL_RANGED_PARAMETER_NAMES.filter(
+						(name) => name !== "crossbreedingEnabled",
+					).map((name) => {
+						const key = name;
+						const range = DEFAULT_PARAMETER_RANGES[key];
+						return (
+							<div
+								className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
+								key={name}
+							>
+								<span className="text-foreground font-semibold">
+									{PARAMETER_LABELS[key]}
+								</span>
+								<span className="text-foreground text-sm">
+									{PARAMETER_DESCRIPTIONS[key]}
+								</span>
+								<span className="text-muted-foreground text-xs">
+									Range: {range.min}–{range.max} · Default: {range.default}
+								</span>
+							</div>
+						);
+					})}
 
 					<div className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4">
 						<span className="text-foreground font-semibold">

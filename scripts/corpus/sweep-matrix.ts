@@ -65,6 +65,26 @@ export function buildSweepMatrix(): SweepRunParams[] {
 				}
 
 				sweepIndex += 1;
+				const flockCount = DEFAULT_PARAMETER_RANGES.flockCount.default;
+				// per-tribe-behavior-weights Phase 1: type-only field this phase —
+				// not yet read by any engine code. Uniform across tribes, mirroring
+				// this row's own swept/pinned weights, so a tribeConfigs-aware
+				// future reader sees the same values this sweep has always pinned
+				// at the top level.
+				const tribeConfig = {
+					separation: separationWeight,
+					alignment: DEFAULT_PARAMETER_RANGES.alignmentWeight.default,
+					cohesion: DEFAULT_PARAMETER_RANGES.cohesionWeight.default,
+					maxSpeed: 40,
+					minSpeed: 15,
+					matePreference: DEFAULT_PARAMETER_RANGES.matePreference.default,
+					neighborRadius: DEFAULT_PARAMETER_RANGES.neighborRadius.default,
+					separationRadius: DEFAULT_PARAMETER_RANGES.separationRadius.default,
+					predatorDetectionRadius:
+						DEFAULT_PARAMETER_RANGES.predatorDetectionRadius.default,
+					burstMult: DEFAULT_PARAMETER_RANGES.burstMult.default,
+					burstCostMult: DEFAULT_PARAMETER_RANGES.burstCostMult.default,
+				};
 				rows.push({
 					sweepIndex,
 					boidCount: DEFAULT_PARAMETER_RANGES.boidCount.default,
@@ -77,13 +97,14 @@ export function buildSweepMatrix(): SweepRunParams[] {
 						DEFAULT_PARAMETER_RANGES.protectionThreshold.default,
 					foodStockInitial: DEFAULT_PARAMETER_RANGES.foodStockInitial.default,
 					foodRegenRate,
-					flockCount: DEFAULT_PARAMETER_RANGES.flockCount.default,
+					flockCount,
 					crossbreedingEnabled,
 					energyThreshold: DEFAULT_PARAMETER_RANGES.energyThreshold.default,
 					mutationChance: DEFAULT_PARAMETER_RANGES.mutationChance.default,
 					mutationMagnitude: DEFAULT_PARAMETER_RANGES.mutationMagnitude.default,
 					xyArea: DEFAULT_PARAMETER_RANGES.xyArea.default,
 					zDepth: DEFAULT_PARAMETER_RANGES.zDepth.default,
+					tribeConfigs: Array.from({ length: flockCount }, () => tribeConfig),
 				});
 			}
 		}

@@ -26,6 +26,8 @@ import {
 	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
+	TOP_LEVEL_RANGED_PARAMETER_NAMES,
+	TRIBE_RANGED_FIELD_NAMES,
 } from "~/server/simulation/parameter-ranges";
 import {
 	type ParameterSuggestion,
@@ -93,6 +95,26 @@ const startInputSchema = z.object({
 	// generic checkAgainstAdminRanges loop as every other ranged parameter.
 	xyArea: z.number().int().positive(),
 	zDepth: z.number().int().positive(),
+	// per-tribe-behavior-weights Phase 1: one TribeConfig (boids.ts) per
+	// flock, index = flockId (decided). zod can't cross-reference the
+	// sibling `flockCount` field inside this z.object, so the
+	// length-matches-flockCount check lives in `checkAgainstAdminRanges`
+	// below instead, alongside the per-tribe range checks.
+	tribeConfigs: z.array(
+		z.object({
+			separation: z.number().finite(),
+			alignment: z.number().finite(),
+			cohesion: z.number().finite(),
+			maxSpeed: z.number().finite(),
+			minSpeed: z.number().finite(),
+			matePreference: z.number().finite(),
+			neighborRadius: z.number().finite(),
+			separationRadius: z.number().finite(),
+			predatorDetectionRadius: z.number().finite(),
+			burstMult: z.number().finite(),
+			burstCostMult: z.number().finite(),
+		}),
+	),
 });
 
 // Singleton row id for `adminSettings` — see schema.ts's comment on the
@@ -243,7 +265,7 @@ function checkAgainstAdminRanges(
 	ranges: ParameterRanges,
 	maxObjectCount: number,
 ): void {
-	for (const name of RANGED_PARAMETER_NAMES) {
+	for (const name of TOP_LEVEL_RANGED_PARAMETER_NAMES) {
 		const value = input[name];
 		if (typeof value === "boolean") {
 			continue;
@@ -261,6 +283,28 @@ function checkAgainstAdminRanges(
 			code: "BAD_REQUEST",
 			message: `boidCount + predatorCount must not exceed ${maxObjectCount}`,
 		});
+	}
+
+	// per-tribe-behavior-weights Phase 1: one TribeConfig per flock, index =
+	// flockId — a length mismatch means the client sent a config that
+	// doesn't cover every tribe (or covers too many).
+	if (input.tribeConfigs.length !== input.flockCount) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `tribeConfigs must have exactly ${input.flockCount} entries (one per flock), got ${input.tribeConfigs.length}`,
+		});
+	}
+	for (const tribeConfig of input.tribeConfigs) {
+		for (const name of TRIBE_RANGED_FIELD_NAMES) {
+			const value = tribeConfig[name];
+			const range = ranges[name];
+			if (value < range.min || value > range.max) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `${name} must be between ${range.min} and ${range.max}`,
+				});
+			}
+		}
 	}
 }
 
@@ -322,6 +366,7 @@ async function insertRunningSimulation(
 			mutationMagnitude: input.mutationMagnitude,
 			xyArea: input.xyArea,
 			zDepth: input.zDepth,
+			tribeConfigs: input.tribeConfigs,
 			status: "running",
 		})
 		.returning({ id: simulationRuns.id });

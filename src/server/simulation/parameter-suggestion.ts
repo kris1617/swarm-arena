@@ -7,19 +7,26 @@
 // the thin tRPC query that fetches rows and delegates here.
 
 import {
-	RANGED_PARAMETER_NAMES,
-	type RangedParameterName,
+	TOP_LEVEL_RANGED_PARAMETER_NAMES,
+	type TopLevelRangedParameterName,
 } from "~/server/simulation/parameter-ranges";
 
+// per-tribe-behavior-weights Phase 1: narrowed from the full
+// `RangedParameterName` to `TopLevelRangedParameterName` — this heuristic
+// correlates a completed run's SCORE against its own top-level scalar
+// fields; the six new per-tribe fields (`parameter-ranges.ts`'s
+// `TRIBE_RANGED_FIELD_NAMES`) live inside `tribeConfigs[]`, not as a single
+// scalar per run, so they're out of scope for this suggestion heuristic as
+// it exists today (no change requested to extend it here).
 export type SuggestionInputRow = {
 	score: number;
-} & Record<RangedParameterName, number | boolean>;
+} & Record<TopLevelRangedParameterName, number | boolean>;
 
 export type ParameterSuggestion =
 	| { status: "insufficient-data" }
 	| {
 			status: "ok";
-			parameter: RangedParameterName;
+			parameter: TopLevelRangedParameterName;
 			direction: "increase" | "decrease";
 			correlation: number; // -1..1
 			sampleSize: number;
@@ -30,7 +37,7 @@ export type ParameterSuggestion =
 // Exact field labels from `src/app/simulation/page.tsx`'s staging form —
 // verified against that file during plan-review so the same parameter is
 // named identically in the form and in this rationale.
-const PARAMETER_LABELS: Record<RangedParameterName, string> = {
+const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
 	boidCount: "Boid count",
 	separationWeight: "Separation weight",
 	alignmentWeight: "Alignment weight",
@@ -94,7 +101,7 @@ function confidenceFor(
 }
 
 function buildRationale(
-	parameter: RangedParameterName,
+	parameter: TopLevelRangedParameterName,
 	direction: "increase" | "decrease",
 	correlation: number,
 	sampleSize: number,
@@ -122,10 +129,12 @@ export function suggestParameterChange(
 
 	const scores = rows.map((row) => row.score);
 
-	let best: { parameter: RangedParameterName; correlation: number } | null =
-		null;
+	let best: {
+		parameter: TopLevelRangedParameterName;
+		correlation: number;
+	} | null = null;
 
-	for (const name of RANGED_PARAMETER_NAMES) {
+	for (const name of TOP_LEVEL_RANGED_PARAMETER_NAMES) {
 		const values = rows.map((row) => Number(row[name]));
 		const firstValue = values[0];
 		const hasVariance = values.some((value) => value !== firstValue);

@@ -14,6 +14,23 @@ import {
 	withAdminRangesLock,
 } from "./harness";
 
+// per-tribe-behavior-weights Phase 1: type-only field this phase — not yet
+// read by any engine code, so a single shared default matching today's
+// pre-change global constants/weights is sufficient for every fixture here.
+const DEFAULT_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
+
 const VALID_START_INPUT: StartCorpusRunParams = {
 	boidCount: 10,
 	separationWeight: 1,
@@ -31,6 +48,7 @@ const VALID_START_INPUT: StartCorpusRunParams = {
 	mutationMagnitude: 0.2,
 	xyArea: 200,
 	zDepth: 200,
+	tribeConfigs: [DEFAULT_TRIBE_CONFIG, DEFAULT_TRIBE_CONFIG],
 };
 
 async function readAdminRanges(): Promise<typeof DEFAULT_PARAMETER_RANGES> {

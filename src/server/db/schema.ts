@@ -163,6 +163,12 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// not a core simulation parameter. Defaults false; existing rows
 	// backfill to false automatically, same pattern as `wasEverThrottled`.
 	wasAutoStopped: d.integer({ mode: "boolean" }).notNull().default(false),
+	// per-tribe-behavior-weights Phase 1: this run's per-tribe config (one
+	// entry per flock, index = flockId — see `TribeConfig` in
+	// ~/server/simulation/boids.ts), following the same JSON-column pattern
+	// as `savedState`/`history` above. Nullable — legacy rows predate this
+	// column and have none.
+	tribeConfigs: d.text({ mode: "json" }),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config

@@ -21,9 +21,47 @@ export const RANGED_PARAMETER_NAMES = [
 	// zDepth covers z. Admin-ranged like every other parameter here.
 	"xyArea",
 	"zDepth",
+	// per-tribe-behavior-weights Phase 1: one shared range for all tribes
+	// (decided) bounding each new `TribeConfig` field — see
+	// `checkAgainstAdminRanges`'s nested per-tribe loop in simulation.ts.
+	"neighborRadius",
+	"separationRadius",
+	"predatorDetectionRadius",
+	"burstMult",
+	"burstCostMult",
+	"matePreference",
 ] as const;
 
 export type RangedParameterName = (typeof RANGED_PARAMETER_NAMES)[number];
+
+// per-tribe-behavior-weights Phase 1: the six RANGED_PARAMETER_NAMES that
+// exist only inside each `TribeConfig` entry (`simulation.ts`'s
+// `startInputSchema.tribeConfigs`), never as a top-level `startInputSchema`
+// field — gate-fix after Phase 1's own typecheck sweep found every other
+// consumer of `RangedParameterName` (parameter-suggestion.ts's
+// `SuggestionInputRow`, the reference/parameters page) assumed the type was
+// exactly the set of top-level fields, which stopped being true the moment
+// these six were added to `RANGED_PARAMETER_NAMES` above.
+export const TRIBE_RANGED_FIELD_NAMES = [
+	"neighborRadius",
+	"separationRadius",
+	"predatorDetectionRadius",
+	"burstMult",
+	"burstCostMult",
+	"matePreference",
+] as const satisfies readonly RangedParameterName[];
+
+export type TribeRangedFieldName = (typeof TRIBE_RANGED_FIELD_NAMES)[number];
+
+// Every RANGED_PARAMETER_NAMES entry EXCEPT the six above — i.e. the names
+// that genuinely are top-level `startInputSchema` fields, the set every
+// pre-existing consumer of `RangedParameterName` actually assumed.
+export const TOP_LEVEL_RANGED_PARAMETER_NAMES = RANGED_PARAMETER_NAMES.filter(
+	(name) => !TRIBE_RANGED_FIELD_NAMES.includes(name as TribeRangedFieldName),
+) as Exclude<RangedParameterName, TribeRangedFieldName>[];
+
+export type TopLevelRangedParameterName =
+	(typeof TOP_LEVEL_RANGED_PARAMETER_NAMES)[number];
 
 export type ParameterRange = { min: number; max: number; default: number };
 
@@ -66,6 +104,27 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	// 1000) — see context/foundation/capacity-limits.md.
 	xyArea: { min: 200, max: 1000, default: 200 },
 	zDepth: { min: 200, max: 1000, default: 200 },
+	// per-tribe-behavior-weights Phase 1: defaults match today's fixed engine
+	// constants in boids.ts (NEIGHBOR_RADIUS/SEPARATION_RADIUS/
+	// PREDATOR_DETECTION_RADIUS) so a tribe left at default behaves
+	// identically to pre-change behavior. Max bounded by half the largest
+	// configurable world dimension (xyArea/zDepth's own max of 1000),
+	// generous ceiling like every other previously-unranged field above.
+	neighborRadius: { min: 1, max: 500, default: 70 },
+	separationRadius: { min: 1, max: 500, default: 25 },
+	predatorDetectionRadius: { min: 1, max: 500, default: 50 },
+	// No prior fixed-constant precedent for burstMult/burstCostMult (burst
+	// itself arrives in a later phase) — 1 means "no burst effect"/"no extra
+	// cost" so a tribe left at default is unaffected, same generous 0-10
+	// ceiling as the weight fields above.
+	burstMult: { min: 0, max: 10, default: 1 },
+	burstCostMult: { min: 0, max: 10, default: 1 },
+	// matePreference's existing per-boid gene (BoidGenes.matePreference,
+	// boids.ts) is seeded uniformly in [0,1) at spawn and blended
+	// (unclamped) at reproduction — 0.5 (the seed range's midpoint) is the
+	// default consistent with that scale; [0,1] bounds the per-tribe
+	// starting value to the same range new boids are seeded within.
+	matePreference: { min: 0, max: 1, default: 0.5 },
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;

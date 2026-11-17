@@ -14,6 +14,34 @@ export type FlockWeights = {
 	cohesion: number;
 };
 
+// per-tribe-behavior-weights Phase 1: the per-tribe config shape that seeds a
+// tribe's boids' genes at spawn and reproduction — extends FlockWeights with
+// the dimensions research identified as missing. Indexed by flockId (one
+// entry per tribe), same convention `FlockWeights[]`/`flockWeights[flockId]`
+// already use in createInitialPopulation/createInitialPredators below.
+// `matePreference` here is the *starting* value new boids in that tribe
+// spawn with — matePreference itself stays a per-boid heritable gene
+// (BoidGenes.matePreference), exactly like separationWeight/alignmentWeight/
+// cohesionWeight already work.
+//
+// Data-model only this phase — NOT YET wired into createInitialPopulation/
+// createInitialPredators, stepBoids' force calculation, burst, mate
+// preference, or live-adjustment (Phases 2-6). FlockWeights itself is
+// untouched; this type lives alongside it.
+export type TribeConfig = {
+	separation: number;
+	alignment: number;
+	cohesion: number;
+	maxSpeed: number;
+	minSpeed: number;
+	matePreference: number;
+	neighborRadius: number;
+	separationRadius: number;
+	predatorDetectionRadius: number;
+	burstMult: number;
+	burstCostMult: number;
+};
+
 // Per-individual heritable traits an individual is born with and may pass to
 // offspring (reproduction arrives in Phase 2 via `inheritGenes` below) — not
 // the transient per-tick state (position/velocity/lifespan) BoidState/

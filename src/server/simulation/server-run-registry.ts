@@ -16,6 +16,7 @@ import {
 	type FlockWeights,
 	type PopulationPhase,
 	type PredatorState,
+	type TribeConfig,
 	type WorldSize,
 } from "~/server/simulation/boids";
 import { createRng, type Rng } from "~/server/simulation/rng";
@@ -63,6 +64,13 @@ export type ServerRunParams = {
 	// zDepth covers z.
 	xyArea: number;
 	zDepth: number;
+	// per-tribe-behavior-weights Phase 1: type-only addition — not yet read
+	// by `createInitialPopulation`/`createInitialPredators` or threaded
+	// through `startServerRun`/`adjustLivePopulation`; that wiring is
+	// Phase 2's job. Declared here now only so `startInputSchema`'s now-
+	// required `tribeConfigs` field type-checks against every caller that
+	// builds a `ServerRunParams`-shaped object for `startServer`.
+	tribeConfigs: TribeConfig[];
 };
 
 // live-parameter-adjustment (S-27): the subset of ServerRunParams a running

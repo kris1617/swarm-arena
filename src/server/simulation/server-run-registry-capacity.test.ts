@@ -20,6 +20,23 @@ import {
 // own aggregate population independently of the main file's hardcoded
 // 10/2 — this phase's 28/7 split matches the project's existing 80/20
 // boid/predator convention (perf-baseline.ts, pipeline-perf.test.ts).
+// per-tribe-behavior-weights Phase 1: type-only field this phase — not yet
+// read by any engine code, so a single shared default matching today's
+// pre-change global constants/weights is sufficient for every fixture here.
+const DEFAULT_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
+
 const BASE_PARAMS: Omit<
 	ServerRunParams,
 	"runId" | "seed" | "boidCount" | "predatorCount"
@@ -38,6 +55,7 @@ const BASE_PARAMS: Omit<
 	mutationMagnitude: 0.2,
 	xyArea: 200,
 	zDepth: 200,
+	tribeConfigs: [DEFAULT_TRIBE_CONFIG, DEFAULT_TRIBE_CONFIG],
 };
 
 const trackedOwnerIds: string[] = [];

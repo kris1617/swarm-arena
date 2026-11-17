@@ -22,6 +22,27 @@ import {
 	stopServerRun,
 } from "~/server/simulation/server-run-registry";
 
+// per-tribe-behavior-weights Phase 1: one TribeConfig (boids.ts) per flock —
+// values mirror this file's own pre-existing top-level defaults
+// (separationWeight/alignmentWeight/cohesionWeight: 1) and boids.ts's fixed
+// engine constants (MAX_SPEED: 40, MIN_SPEED: 15, NEIGHBOR_RADIUS: 70,
+// SEPARATION_RADIUS: 25, PREDATOR_DETECTION_RADIUS: 50), plus
+// parameter-ranges.ts's new defaults for the fields with no prior constant
+// (matePreference: 0.5, burstMult/burstCostMult: 1).
+const VALID_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+};
+
 const VALID_START_INPUT = {
 	boidCount: 10,
 	separationWeight: 1,
@@ -39,6 +60,9 @@ const VALID_START_INPUT = {
 	mutationMagnitude: 0.2,
 	xyArea: 200,
 	zDepth: 200,
+	// Length matches `flockCount` above (2) — see checkAgainstAdminRanges's
+	// per-tribe length check in simulation.ts.
+	tribeConfigs: [VALID_TRIBE_CONFIG, VALID_TRIBE_CONFIG],
 };
 
 // S-04 (FR-010 full, FR-019): the stop input's new required fields —
@@ -321,6 +345,52 @@ describe("simulationRouter.start", () => {
 		} satisfies Partial<TRPCError>);
 	});
 
+	// per-tribe-behavior-weights Phase 1: a per-tribe field outside the
+	// shared admin range rejects, same posture as the top-level ranged
+	// fields above.
+	it("rejects a tribeConfigs entry with a field outside the shared admin range", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				tribeConfigs: [
+					VALID_TRIBE_CONFIG,
+					{ ...VALID_TRIBE_CONFIG, matePreference: 1.5 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	// per-tribe-behavior-weights Phase 1: tribeConfigs must have exactly
+	// one entry per flock — zod can't cross-reference the sibling
+	// flockCount field, so this is enforced in checkAgainstAdminRanges.
+	it("rejects a tribeConfigs array whose length doesn't match flockCount", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				flockCount: 2,
+				tribeConfigs: [VALID_TRIBE_CONFIG],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
 	it("persists the five new genetics fields and round-trips them on read", async () => {
 		const [owner] = await db
 			.insert(users)
@@ -346,6 +416,12 @@ describe("simulationRouter.start", () => {
 			energyThreshold: 75,
 			mutationChance: 0.25,
 			mutationMagnitude: 0.4,
+			// per-tribe-behavior-weights Phase 1: length must match flockCount.
+			tribeConfigs: [
+				VALID_TRIBE_CONFIG,
+				VALID_TRIBE_CONFIG,
+				VALID_TRIBE_CONFIG,
+			],
 		};
 
 		const { runId } = await caller.simulation.start(submitted);

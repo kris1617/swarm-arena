@@ -138,7 +138,43 @@ export default function SimulationPage() {
 	// admin-configured ranges (S-04/FR-002 full) instead of hardcoded
 	// bounds.
 	function buildStartInput() {
+		const clampedFlockCount = Math.min(
+			Math.max(ranges.flockCount.min, Math.round(flockCount)),
+			ranges.flockCount.max,
+		);
+		// per-tribe-behavior-weights Phase 1: bridge value — uniform across
+		// every tribe, matching this form's own current scalar weights plus
+		// each new field's admin-range default, so starting a run behaves
+		// identically to pre-change behavior until Phase 8 replaces this with
+		// the real per-tribe tabbed UI.
+		const tribeConfig = {
+			separation: Math.min(
+				Math.max(ranges.separationWeight.min, separationWeight),
+				ranges.separationWeight.max,
+			),
+			alignment: Math.min(
+				Math.max(ranges.alignmentWeight.min, alignmentWeight),
+				ranges.alignmentWeight.max,
+			),
+			cohesion: Math.min(
+				Math.max(ranges.cohesionWeight.min, cohesionWeight),
+				ranges.cohesionWeight.max,
+			),
+			maxSpeed: 40,
+			minSpeed: 15,
+			matePreference: ranges.matePreference.default,
+			neighborRadius: ranges.neighborRadius.default,
+			separationRadius: ranges.separationRadius.default,
+			predatorDetectionRadius: ranges.predatorDetectionRadius.default,
+			burstMult: ranges.burstMult.default,
+			burstCostMult: ranges.burstCostMult.default,
+		};
+		const tribeConfigs = Array.from(
+			{ length: clampedFlockCount },
+			() => tribeConfig,
+		);
 		return {
+			tribeConfigs,
 			boidCount: Math.min(
 				Math.max(ranges.boidCount.min, Math.round(boidCount)),
 				ranges.boidCount.max,
@@ -181,10 +217,7 @@ export default function SimulationPage() {
 				Math.max(ranges.foodRegenRate.min, foodRegenRate),
 				ranges.foodRegenRate.max,
 			),
-			flockCount: Math.min(
-				Math.max(ranges.flockCount.min, Math.round(flockCount)),
-				ranges.flockCount.max,
-			),
+			flockCount: clampedFlockCount,
 			crossbreedingEnabled,
 			energyThreshold: Math.min(
 				Math.max(ranges.energyThreshold.min, energyThreshold),
