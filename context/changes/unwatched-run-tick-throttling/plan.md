@@ -127,17 +127,19 @@ Current State Analysis).
 
 **Contract**: `wasEverThrottled: d.integer({ mode: "boolean" }).notNull().default(false)` on `simulationRuns`, following this schema's existing boolean-column convention (match whatever mode other boolean columns on this table already use, e.g. `crossbreedingEnabled`). Generate the migration with `npm run db:generate`; SQLite applies the `default(false)` to all existing rows automatically — no separate backfill `UPDATE`.
 
+**Implementation note (adaptation)**: neither `npm run db:push` (interactive TTY prompt, can't run non-interactively here) nor `npm run db:migrate` (fails silently — this local `db.sqlite`'s `__drizzle_migrations` tracking table is empty despite 9 prior migrations already reflected in its schema, a pre-existing state issue) nor `db:push --force` (drizzle-kit's internal ALTER-statement builder mis-quotes this project's leading-dot table names, `SqliteError: near ".": syntax error`) actually applies cleanly against this local DB. The already-generated migration file's own SQL is correctly quoted; it was applied directly via a plain `@libsql/client` `execute()` call reading `drizzle/0009_many_zemo.sql` verbatim, bypassing drizzle-kit's push/migrate tooling entirely. Automated Verification below reflects this.
+
 ### Success Criteria:
 
 #### Automated Verification:
 
-- Migration generates and applies cleanly: `npm run db:generate && npm run db:push`
+- Migration generates cleanly: `npm run db:generate` (applied to local `db.sqlite` via a direct SQL execute of the generated file — see Implementation Note above, since this repo's `db:push`/`db:migrate` don't apply cleanly against this local DB's current state)
 - Typecheck passes: `npm run typecheck`
 - Lint passes: `npm run check`
 
 #### Manual Verification:
 
-- `db:studio` shows the new column on existing rows as `false`.
+- Query confirms the new column exists on existing rows as `false`/`0`.
 
 ---
 
@@ -371,13 +373,13 @@ throttled).
 
 #### Automated
 
-- [ ] 1.1 Migration generates and applies cleanly: `npm run db:generate && npm run db:push`
-- [ ] 1.2 Typecheck passes: `npm run typecheck`
-- [ ] 1.3 Lint passes: `npm run check`
+- [x] 1.1 Migration generates and applies cleanly (via direct SQL execute, see Implementation Note)
+- [x] 1.2 Typecheck passes: `npm run typecheck`
+- [x] 1.3 Lint passes: `npm run check`
 
 #### Manual
 
-- [ ] 1.4 `db:studio` shows the new column on existing rows as `false`
+- [x] 1.4 Query confirms the new column exists on existing rows as `false`/`0`
 
 ### Phase 2: Throttling mechanism
 

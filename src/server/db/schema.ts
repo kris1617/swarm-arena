@@ -148,6 +148,14 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// backfilled for rows that stopped before this column existed).
 	// Shape: `{ phaseHistory, foodRatioSamples, survivorGenes }`.
 	history: d.text({ mode: "json" }),
+	// unwatched-run-tick-throttling: sticky comparability marker — set true
+	// the first time this run is ever ticked at the throttled speed
+	// multiplier while it had zero active watchers. Never cleared once set,
+	// so downstream queries (leaderboard, run-comparison, parameter
+	// suggestion) can flag/disclose a run whose score history isn't directly
+	// comparable to a never-throttled run. Defaults false; existing rows
+	// backfill to false automatically (they predate this feature).
+	wasEverThrottled: d.integer({ mode: "boolean" }).notNull().default(false),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config

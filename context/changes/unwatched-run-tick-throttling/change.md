@@ -1,7 +1,7 @@
 ---
 change_id: unwatched-run-tick-throttling
 title: Unwatched-run tick throttling
-status: plan_reviewed
+status: implementing
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null
