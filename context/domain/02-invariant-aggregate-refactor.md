@@ -40,7 +40,15 @@ of the throttling-comparability code:
    but each already has a single, consistent guard function
    (`checkAgainstAdminRanges`, `checkPerRunObjectCapSoft`) — not spread
    across independent call sites the way comparability is.
-4. Per-user data isolation (R-05) — enforced consistently via one pattern
+4. **Cross-ceiling consistency (R-09)**: no guard anywhere enforces
+   `maxConcurrentObjectCount <= maxObjectCount` (or the reverse) — an admin
+   can set these two caps into a logically-backwards relative order with no
+   warning. Ranked **#2** in `domain-distillation.md`'s own ranking (status
+   **ignored**, the only other non-"enforced" invariant besides
+   comparability's "contradicted"). A real, sharper, more obviously-visible
+   bug than comparability's convention-gap — explicitly weighed against it
+   below.
+5. Per-user data isolation (R-05) — enforced consistently via one pattern
    (`eq(simulationRuns.userId, userId)`) repeated at every query — spread,
    but *consistently* spread (same guard shape everywhere), not
    independently re-implemented per site the way comparability is.
@@ -51,18 +59,39 @@ of the throttling-comparability code:
 |---|---|---|---|
 | Score comparability disclosure (candidate 2) | **Core** — Scoring & Evaluation is the product's named wedge (roadmap.md:35); a silently-miscompared score defeats the entire point of the product | **Very spread** — 4 independent call sites each read `wasEverThrottled` and build their own disclosure (badge text, rationale clause, disclaimer paragraph, CSV column), with no shared accessor | **Declared, not enforced** — nothing stops a 5th call site (or a future refactor of an existing one) from reading `score`/`history` without checking `wasEverThrottled` at all; the write-side guard (`wasEverThrottledWritten`, one-way latch) is solid, but the *read*-side disclosure obligation is pure convention, repeated by hand 4 times |
 | Object-count ceilings (candidate 3) | Core-adjacent (Supporting: Parameter Governance) | Spread across 2 layers (start-time hard, live-edit soft) but each layer has exactly one guard function | Enforced (start) / declared (live-edit) — inconsistent strictness, but not silently bypassable per-site |
-| Data isolation (candidate 4) | Supporting | Spread across every query, but uniformly (same `eq(userId)` shape every time) | Enforced — no per-site drift found |
+| **Cross-ceiling consistency (candidate 4, R-09)** | Supporting (Parameter Governance) — gates how many objects can ever run, but not itself the scoring/simulation wedge | **Narrow** — lives in exactly one place (`updateParameterRanges`), there is simply no check there at all; not spread across call sites the way comparability is | **Ignored** — the worst enforcement status on its own axis, with zero code anywhere, not even a convention |
+| Data isolation (candidate 5) | Supporting | Spread across every query, but uniformly (same `eq(userId)` shape every time) | Enforced — no per-site drift found |
 
-**Selected: Score comparability disclosure.** It is simultaneously the most
-core (this is literally what "deterministic, repeatable score" in the
-product's own stated wedge depends on being trustworthy) and the most
-weakly enforced of the four — not because any individual site is wrong
-today (all 4 current sites do check `wasEverThrottled` correctly), but
-because the obligation to check it is enforced by nothing: a future
-developer (or agent) adding a 5th score-surfacing endpoint has no structural
-reminder that they must repeat this check, and nothing would fail loudly if
-they forgot. This is exactly the "weakly enforced because it's convention,
-not a guardian" shape the lesson is looking for.
+**Selected: Score comparability disclosure — over the cross-ceiling gap,
+explicitly.** The two are a genuine, close call and deserve to be weighed
+against each other rather than waved past:
+
+- **Cross-ceiling consistency (R-09)** is arguably the *sharper* bug: it is
+  flatly unguarded (zero code, not even convention), the misconfiguration
+  is trivially reachable by any admin through the existing settings form,
+  and its failure mode (an admin sets `maxConcurrentObjectCount` above
+  `maxObjectCount`, silently making the cross-run cap meaningless) is
+  concrete and easy to demonstrate. If the goal were "find the single
+  easiest-to-exploit unguarded gap," this wins.
+- **Score comparability** is chosen instead because the DDD exercise asks
+  for the invariant that is simultaneously **most core** and **most weakly
+  enforced** — not simply the most exploitable. Cross-ceiling consistency
+  sits in the Supporting subdomain (Parameter Governance); comparability
+  sits in Core (Scoring & Evaluation is this product's named wedge,
+  roadmap.md:35). Comparability's enforcement gap is also the structurally
+  more interesting one for an *aggregate* exercise specifically: the bug
+  isn't "nobody wrote a check" (R-09's shape, which a single `if` statement
+  fixes), it's "four independent places each wrote their *own* copy of the
+  same check," which is exactly the shape a guardian aggregate is designed
+  to collapse. R-09's fix is a one-line validator, not an aggregate — it
+  would make a thin, unsatisfying DDD exercise even though it is a real and
+  worth-fixing bug on its own merits (tracked as the domain-distillation
+  report's #2 ranked item, independent of this document).
+
+Both are real; this document deliberately picks the one that best
+exercises the lesson's aggregate pattern, not the one with the highest
+raw severity. R-09 remains open, unaddressed by this plan, and should not
+be mistaken for resolved just because a different invariant was chosen here.
 
 ## Step 3: Diagnose today's shape
 

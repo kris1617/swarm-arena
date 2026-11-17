@@ -27,6 +27,26 @@ clean codebase for 3rd-party-SDK leaks (confirmed by grep: `$inferSelect`/
 `InferSelectModel` never appear anywhere, and no client file imports
 `@trpc/server`, `drizzle-orm`, or `next-auth` directly).
 
+**Second pass, checking every other entry in `package.json`'s dependency
+list specifically for a leak** (prompted by a request to confirm no
+stronger candidate was missed before finalizing this choice): the seeded
+PRNG (`src/server/simulation/rng.ts`) is a hand-rolled mulberry32
+implementation with an explicit comment stating *why* — "implemented
+in-house rather than via a library dependency so the output sequence for
+a given seed can never change out from under us via an upstream version
+bump" — the opposite of a leak, a deliberate avoidance of one. `recharts`
+is imported in exactly 2 files (`runs/[runId]/page.tsx`,
+`runs/compare/page.tsx`), each with its own trivial one-line `.map()` data
+transform (not duplicated business logic, and not spread beyond the 2
+chart-rendering components that are recharts' only 2 possible consumers).
+`@libsql/client` is imported in exactly one production file
+(`src/server/db/index.ts`) — the only other match found by grep was a
+code *comment* in a test file referencing the package by name, not an
+import. `superjson` is imported on both the tRPC server config and the
+client's query-client setup — this is tRPC's own documented contract (the
+transformer must be configured identically on both sides), not a leak.
+None of these beats the color-representation finding below.
+
 Because no severe 3rd-party-SDK leak exists, Step 1 widens the search
 (per the lesson's own signal list, which includes "duplicated
 reconstruction of objects/types in multiple places" as a standalone
