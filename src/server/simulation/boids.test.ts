@@ -1621,6 +1621,50 @@ describe("computeGeneticDiversity (S-04 FR-010 full — correctness fix)", () =>
 		const genes = makeGenes();
 		expect(computeGeneticDiversity([genes, genes, genes])).toBe(0);
 	});
+
+	// per-tribe-behavior-weights Phase 7: neighborRadius/separationRadius/
+	// predatorDetectionRadius/burstMult/burstCostMult are TRIBE-level config
+	// (tribeConfigs[flockId]), not per-boid BoidGenes fields (Phase 3/4/6's
+	// confirmed design) — so this dimension is only visible when
+	// tribeConfigs is passed as the second argument, and only varies when
+	// boids actually belong to different tribes with different configs.
+	it("reads tribe-level fields (e.g. neighborRadius) only via a passed tribeConfigs — a population split across tribes with identical weights but different neighborRadius scores higher than an otherwise-identical single-tribe population", () => {
+		const singleTribeConfigs: TribeConfig[] = [TRIBE_CONFIG];
+		const multiTribeConfigs: TribeConfig[] = [
+			TRIBE_CONFIG,
+			{ ...TRIBE_CONFIG, neighborRadius: 140 },
+		];
+
+		const singleTribeGenes = [
+			makeGenes(WEIGHTS, { flockId: 0 }),
+			makeGenes(WEIGHTS, { flockId: 0 }),
+			makeGenes(WEIGHTS, { flockId: 0 }),
+		];
+		const multiTribeGenes = [
+			makeGenes(WEIGHTS, { flockId: 0 }),
+			makeGenes(WEIGHTS, { flockId: 1 }),
+			makeGenes(WEIGHTS, { flockId: 1 }),
+		];
+
+		expect(
+			computeGeneticDiversity(multiTribeGenes, multiTribeConfigs),
+		).toBeGreaterThan(
+			computeGeneticDiversity(singleTribeGenes, singleTribeConfigs),
+		);
+	});
+
+	it("contributes 0 for the tribe-level dimension when tribeConfigs is omitted — legacy call sites without tribe config data never throw", () => {
+		const genes = [
+			makeGenes(WEIGHTS, { flockId: 0, maxSpeed: 10 }),
+			makeGenes(WEIGHTS, { flockId: 1, maxSpeed: 90 }),
+		];
+		// Should not throw, and should equal the score computed with an
+		// explicit empty tribeConfigs array (both treat tribe-level
+		// diversity as 0).
+		expect(computeGeneticDiversity(genes)).toBe(
+			computeGeneticDiversity(genes, []),
+		);
+	});
 });
 
 describe("classifyPopulationPhase", () => {

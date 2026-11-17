@@ -558,7 +558,10 @@ function buildFinishPayload(run: LiveRun): {
 	const score = computeScore(
 		run.elapsedSeconds,
 		computeResourceManagement(run.foodRatioSamples),
-		computeGeneticDiversity(run.boids.map((b) => b.genes)),
+		computeGeneticDiversity(
+			run.boids.map((b) => b.genes),
+			run.params.tribeConfigs,
+		),
 		computePhaseQuality(run.phaseHistory),
 		computeAreaPopulationDensity(run.populationDensitySamples),
 	);

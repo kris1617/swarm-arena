@@ -556,13 +556,13 @@ neighbor search complexity.
 
 ### Phase 6: Live adjustment
 #### Automated
-- [x] 6.1 npm run typecheck passes
-- [x] 6.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
+- [x] 6.1 npm run typecheck passes — b5623fc
+- [x] 6.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes — b5623fc
 
 ### Phase 7: Diversity metric expansion
 #### Automated
-- [ ] 7.1 npm run typecheck passes
-- [ ] 7.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 7.1 npm run typecheck passes
+- [x] 7.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 8: UI
 #### Automated

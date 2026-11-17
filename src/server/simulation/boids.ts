@@ -1445,6 +1445,24 @@ const GENETIC_DIVERSITY_FIELDS = [
 	"matePreference",
 ] as const satisfies readonly (keyof BoidGenes)[];
 
+// per-tribe-behavior-weights Phase 7: `neighborRadius`/`separationRadius`/
+// `predatorDetectionRadius`/`burstMult`/`burstCostMult` are TRIBE-level
+// config (`tribeConfigs[boid.genes.flockId]`, per Phase 3/4/6's confirmed
+// design), never per-boid heritable `BoidGenes` fields — so they cannot
+// join GENETIC_DIVERSITY_FIELDS above (restricted to `keyof BoidGenes`).
+// This is the sibling list for that separate dimension, read via each
+// boid's `flockId` against a passed-in `TribeConfig[]` rather than
+// straight off the gene object. Kept as plain numeric TribeConfig fields
+// only (no `matePreference`/weights/speed-bounds here — those already
+// have their true per-boid heritable counterpart above).
+const TRIBE_LEVEL_DIVERSITY_FIELDS = [
+	"neighborRadius",
+	"separationRadius",
+	"predatorDetectionRadius",
+	"burstMult",
+	"burstCostMult",
+] as const satisfies readonly (keyof TribeConfig)[];
+
 function coefficientOfVariation(values: number[]): number {
 	if (values.length === 0) {
 		return 0;
@@ -1464,7 +1482,21 @@ function coefficientOfVariation(values: number[]): number {
 // client-staged path can send over `stop`'s mutation input without
 // shipping full per-boid position/velocity/age/energy state it doesn't
 // need for this calculation.
-export function computeGeneticDiversity(genes: BoidGenes[]): number {
+//
+// per-tribe-behavior-weights Phase 7: `tribeConfigs` is a second, optional
+// parameter (default `[]`) rather than a required one, because not every
+// call site has it — the client-staged `stop` mutation's input schema and
+// the legacy `history` JSON blobs read by getRunAnalysis/getRunsComparison
+// (simulation.ts) predate tribe-level config entirely and carry only
+// `BoidGenes[]`. When `tribeConfigs` is empty, this function contributes 0
+// for the tribe-level dimension below rather than throwing — a legacy run
+// genuinely has no per-tribe variation data to report, same as a
+// single-individual population already reports 0 diversity rather than
+// erroring.
+export function computeGeneticDiversity(
+	genes: BoidGenes[],
+	tribeConfigs: TribeConfig[] = [],
+): number {
 	if (genes.length === 0) {
 		return 0;
 	}
@@ -1476,7 +1508,25 @@ export function computeGeneticDiversity(genes: BoidGenes[]): number {
 	const colorDiversities = (["r", "g", "b"] as const).map((channel) =>
 		coefficientOfVariation(genes.map((g) => g.color[channel])),
 	);
-	const all = [...fieldDiversities, ...colorDiversities];
+	// Tribe-level fields: each boid maps through its own `flockId` to that
+	// tribe's config value — `tribeConfigs[g.flockId]` can be missing (an
+	// out-of-range flockId, or `tribeConfigs` passed shorter than the
+	// population's real flock count) despite the array being non-empty;
+	// `?? 0` keeps that boid from being dropped out of the coefficient's
+	// mean/stddev rather than throwing.
+	const tribeLevelDiversities =
+		tribeConfigs.length === 0
+			? TRIBE_LEVEL_DIVERSITY_FIELDS.map(() => 0)
+			: TRIBE_LEVEL_DIVERSITY_FIELDS.map((field) =>
+					coefficientOfVariation(
+						genes.map((g) => tribeConfigs[g.flockId]?.[field] ?? 0),
+					),
+				);
+	const all = [
+		...fieldDiversities,
+		...colorDiversities,
+		...tribeLevelDiversities,
+	];
 	return all.reduce((sum, v) => sum + v, 0) / all.length;
 }
 

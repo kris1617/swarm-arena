@@ -186,7 +186,10 @@ export function computeSingleRunTick(
 	// other per-tick computations above already read.
 	const nextGeneticDiversitySamples = state.geneticDiversitySamples;
 	nextGeneticDiversitySamples.push(
-		computeGeneticDiversity(nextBoids.map((b) => b.genes)),
+		computeGeneticDiversity(
+			nextBoids.map((b) => b.genes),
+			params.tribeConfigs,
+		),
 	);
 	// classifyPopulationPhase only ever reads its last PHASE_WINDOW_SIZE
 	// entries internally (boids.ts's own `history.slice(-PHASE_WINDOW_SIZE)`),
