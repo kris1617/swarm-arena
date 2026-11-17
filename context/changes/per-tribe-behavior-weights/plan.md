@@ -561,16 +561,16 @@ neighbor search complexity.
 
 ### Phase 7: Diversity metric expansion
 #### Automated
-- [x] 7.1 npm run typecheck passes
-- [x] 7.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 7.1 npm run typecheck passes — 9b020e2
+- [x] 7.2 npx vitest run src/server/simulation/boids.test.ts passes — 9b020e2
 
 ### Phase 8: UI
 #### Automated
-- [ ] 8.1 npm run typecheck passes
-- [ ] 8.2 npm run check passes
+- [x] 8.1 npm run typecheck passes
+- [x] 8.2 npm run check passes
 #### Manual
-- [ ] 8.3 flockCount tab show/hide preserves values
-- [ ] 8.4 Each tribe tab independently holds and submits distinct values
+- [x] 8.3 flockCount tab show/hide preserves values
+- [x] 8.4 Each tribe tab independently holds and submits distinct values
 
 ### Phase 9: Backward compatibility & verification
 #### Automated
