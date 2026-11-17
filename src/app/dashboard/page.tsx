@@ -184,6 +184,14 @@ export default function DashboardPage() {
 												? "—"
 												: `Score: ${run.score.toFixed(2)}`}
 										</span>
+										{/* fix-default-start-failure Phase 3: distinguishes a
+										null-score row the reconciliation sweep stopped from
+										an unexplained one. */}
+										{run.wasAutoStopped ? (
+											<span className="text-foreground/70 text-sm">
+												Stopped automatically — server restarted
+											</span>
+										) : null}
 										{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
 										<Button
 											asChild

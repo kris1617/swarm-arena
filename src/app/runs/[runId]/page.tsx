@@ -81,6 +81,7 @@ export default function RunAnalysisPage() {
 		finalGeneticDiversity,
 		score,
 		runOptimizationSuggestion,
+		wasAutoStopped,
 	} = analysisQuery.data;
 
 	const populationSamples = history?.populationCountSamples;
@@ -133,6 +134,15 @@ export default function RunAnalysisPage() {
 					<Link href={`/api/runs/${runId}/export?format=csv`}>Export CSV</Link>
 				</Button>
 			</div>
+
+			{wasAutoStopped ? (
+				<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
+					<p>
+						This run was stopped automatically — server restarted before it
+						finished on its own.
+					</p>
+				</section>
+			) : null}
 
 			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
 				<h2 className="font-semibold">Run suggestion</h2>

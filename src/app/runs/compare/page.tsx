@@ -64,6 +64,7 @@ type OkRow = {
 	} | null;
 	comparable: boolean;
 	disclaimer: string | null;
+	wasAutoStopped: boolean;
 };
 
 type ComparisonRow = ErroredRow | OkRow;
@@ -157,6 +158,18 @@ export default function RunsComparePage() {
 						key={`throttled-${row.runId}`}
 					>
 						{row.disclaimer}
+					</p>
+				))}
+
+			{okRows
+				.filter((row) => row.wasAutoStopped)
+				.map((row) => (
+					<p
+						className="text-foreground/70 text-sm"
+						key={`auto-stopped-${row.runId}`}
+					>
+						Run #{row.runId} was stopped automatically — server restarted before
+						it finished on its own.
 					</p>
 				))}
 

@@ -473,29 +473,29 @@ backfills automatically with no data migration needed, same as
 
 #### Automated
 
-- [x] 2.1 `npm run db:generate` applied cleanly; `npm run db:migrate` failed silently on this dev DB (discovered: `__drizzle_migrations` is empty — this DB's prior 10 migrations were applied via `db:push`, not `db:migrate`, so `migrate` tried to replay all of history from scratch and collided with already-existing columns). Applied the exact generated SQL (`ALTER TABLE ... ADD wasAutoStopped integer DEFAULT false NOT NULL`) directly instead; verified column exists with the correct type/default/notnull. Production's own deploy script uses `drizzle-kit migrate` against a fresh VPS DB with a populated tracking table, so this local-only discrepancy does not affect the real deploy path.
-- [x] 2.2 `npm run typecheck` passes
-- [x] 2.3 `npm run check` passes
-- [x] 2.4 New sweep unit test (stale row swept, fresh row untouched) passes
-- [x] 2.5 New sweep unit test (registry-active stale row NOT swept) passes
-- [x] 2.6 New dedup unit test (`startOrphanSweep()` called twice registers one interval) passes
-- [x] 2.7 Updated `instrumentation.test.ts` (`register()` calls `startOrphanSweep` once) passes
-- [x] 2.8 `npm test` passes in full
+- [x] 2.1 `npm run db:generate` applied cleanly; `npm run db:migrate` failed silently on this dev DB (discovered: `__drizzle_migrations` is empty — this DB's prior 10 migrations were applied via `db:push`, not `db:migrate`, so `migrate` tried to replay all of history from scratch and collided with already-existing columns). Applied the exact generated SQL (`ALTER TABLE ... ADD wasAutoStopped integer DEFAULT false NOT NULL`) directly instead; verified column exists with the correct type/default/notnull. Production's own deploy script uses `drizzle-kit migrate` against a fresh VPS DB with a populated tracking table, so this local-only discrepancy does not affect the real deploy path. — 71cd6b8
+- [x] 2.2 `npm run typecheck` passes — 71cd6b8
+- [x] 2.3 `npm run check` passes — 71cd6b8
+- [x] 2.4 New sweep unit test (stale row swept, fresh row untouched) passes — 71cd6b8
+- [x] 2.5 New sweep unit test (registry-active stale row NOT swept) passes — 71cd6b8
+- [x] 2.6 New dedup unit test (`startOrphanSweep()` called twice registers one interval) passes — 71cd6b8
+- [x] 2.7 Updated `instrumentation.test.ts` (`register()` calls `startOrphanSweep` once) passes — 71cd6b8
+- [x] 2.8 `npm test` passes in full — 71cd6b8
 
 #### Manual
 
-- [x] 2.9 Manually-aged stale row is swept after dev-server restart
-- [x] 2.10 A currently-active run is not touched by the sweep
+- [x] 2.9 Manually-aged stale row is swept after dev-server restart — 8118835
+- [x] 2.10 A currently-active run is not touched by the sweep — 8118835
 
 ### Phase 3: Surface the auto-stopped marker across the UI
 
 #### Automated
 
-- [ ] 3.1 `npm run typecheck` passes
-- [ ] 3.2 `npm run check` passes
-- [ ] 3.3 `npm test` passes
+- [x] 3.1 `npm run typecheck` passes
+- [x] 3.2 `npm run check` passes
+- [x] 3.3 `npm test` passes
 
 #### Manual
 
-- [ ] 3.4 Marker visible on dashboard, run-detail, and compare for a swept row
-- [ ] 3.5 No marker shown for a normal run
+- [x] 3.4 Marker visible on dashboard, run-detail, and compare for a swept row
+- [x] 3.5 No marker shown for a normal run

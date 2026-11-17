@@ -698,6 +698,10 @@ export const simulationRouter = createTRPCRouter({
 				predatorCount: simulationRuns.predatorCount,
 				score: simulationRuns.score,
 				stoppedAt: simulationRuns.stoppedAt,
+				// fix-default-start-failure Phase 3: surfaced so the dashboard can
+				// badge a row the reconciliation sweep stopped, rather than it
+				// blending in as an unexplained null-score stop.
+				wasAutoStopped: simulationRuns.wasAutoStopped,
 			})
 			.from(simulationRuns)
 			.where(
@@ -898,6 +902,11 @@ export const simulationRouter = createTRPCRouter({
 				foodStockInitial: run.foodStockInitial,
 				foodRegenRate: run.foodRegenRate,
 				protectionThreshold: run.protectionThreshold,
+				// fix-default-start-failure Phase 3: already present on the whole
+				// row this `findFirst` fetched — surfaced here so the run-detail
+				// page can render a notice when the reconciliation sweep (not
+				// normal completion) is why this run stopped.
+				wasAutoStopped: run.wasAutoStopped,
 				history,
 				completedCycles: history
 					? segmentCompletedCycles(history.phaseHistory)
@@ -954,6 +963,11 @@ export const simulationRouter = createTRPCRouter({
 						// (nothing to disclaim) or was never throttled.
 						comparable: boolean;
 						disclaimer: string | null;
+						// fix-default-start-failure Phase 3: a real column, sibling to
+						// wasEverThrottled above — surfaced so the compare page can
+						// render its own distinct disclaimer ("stopped automatically"
+						// is a different fact than "may not be directly comparable").
+						wasAutoStopped: boolean;
 				  }
 			> = [];
 
@@ -1032,6 +1046,7 @@ export const simulationRouter = createTRPCRouter({
 							wasEverThrottled: run.wasEverThrottled,
 						}),
 					),
+					wasAutoStopped: run.wasAutoStopped,
 				});
 			}
 
