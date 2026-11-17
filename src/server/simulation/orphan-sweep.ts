@@ -10,7 +10,7 @@
 // in-memory Map but leaves the DB row behind as a permanent orphan with
 // nothing else tracking it.
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { simulationRuns } from "~/server/db/schema";
@@ -22,14 +22,29 @@ const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes, per the "Sweep" decision
 
 async function sweepOrphanedRuns(): Promise<void> {
 	const now = Date.now();
-	const staleRows = await db
-		.select({
-			id: simulationRuns.id,
-			startedAt: simulationRuns.startedAt,
-			maxDurationSeconds: simulationRuns.maxDurationSeconds,
-		})
-		.from(simulationRuns)
-		.where(eq(simulationRuns.status, "running"));
+	let staleRows: {
+		id: number;
+		startedAt: Date;
+		maxDurationSeconds: number;
+	}[];
+	// impl-review F1: without this try/catch, a transient DB error here (or
+	// in any row's update below) becomes an unhandled promise rejection
+	// inside this bare `setInterval` callback — Node's default policy turns
+	// that into a full process crash, same failure mode `retry-worker.ts`
+	// documents fixing for the identical shape (its own impl-review F2).
+	try {
+		staleRows = await db
+			.select({
+				id: simulationRuns.id,
+				startedAt: simulationRuns.startedAt,
+				maxDurationSeconds: simulationRuns.maxDurationSeconds,
+			})
+			.from(simulationRuns)
+			.where(eq(simulationRuns.status, "running"));
+	} catch (error) {
+		console.error("orphan sweep: failed to select running rows:", error);
+		return;
+	}
 	const toStop = staleRows.filter(
 		(row) =>
 			row.startedAt.getTime() + row.maxDurationSeconds * 1000 + GRACE_MS <
@@ -43,10 +58,28 @@ async function sweepOrphanedRuns(): Promise<void> {
 			!isServerRunActive(row.id),
 	);
 	for (const row of toStop) {
-		await db
-			.update(simulationRuns)
-			.set({ status: "stopped", stoppedAt: new Date(), wasAutoStopped: true })
-			.where(eq(simulationRuns.id, row.id));
+		try {
+			// impl-review F2: re-check status in the WHERE so a concurrent
+			// stop/savePause between this select and this update loses the
+			// race safely (0 rows affected) instead of being silently
+			// clobbered — matches `stop`'s own race-safety net in
+			// simulation.ts.
+			await db
+				.update(simulationRuns)
+				.set({
+					status: "stopped",
+					stoppedAt: new Date(),
+					wasAutoStopped: true,
+				})
+				.where(
+					and(
+						eq(simulationRuns.id, row.id),
+						eq(simulationRuns.status, "running"),
+					),
+				);
+		} catch (error) {
+			console.error(`orphan sweep: failed to stop run ${row.id}:`, error);
+		}
 	}
 }
 
