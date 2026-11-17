@@ -93,7 +93,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | done |
 | S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | done |
 | S-39 | fix-default-start-failure | User starts a simulation using the form's own default values, with no error and no unexplained failure | —              | MS-01                                                  | done |
-| F-09 | per-tribe-behavior-weights | (foundation) Full per-tribe boid behavior data (weights, perception radii, multipliers) — Lua-reference parity | —              | MS-02                                                  | ready |
+| F-09 | per-tribe-behavior-weights | (foundation) Full per-tribe boid behavior data (weights, perception radii, multipliers) — Lua-reference parity | —              | MS-02                                                  | in-progress |
 | F-10 | predator-tribe-concept | (foundation) Predators can belong to a tribe with independently-evolving genetics, reusing boids' existing reproduction machinery | —              | MS-04, MS-05                                           | ready |
 | S-40 | per-tribe-boid-behavior-config | User configures full per-tribe boid behavior (weights, perception, multipliers) before starting a run, and sees tribes behave visibly differently | S-39, F-09     | MS-02                                                  | proposed |
 | S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | ready |
@@ -259,8 +259,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-39
 - **Blockers:** —
 - **Unknowns:** — (resolved 2026-11-17: full parity, not just the 3 weights — see Open Roadmap Question #9)
-- **Risk:** Medium — broader than originally scoped (full per-behavior data, not just 3 weights); touches the run-start input schema and every per-tick force calculation every boid already goes through every frame; must not regress already-started runs that still use a single shared weight set.
-- **Status:** ready
+- **Risk:** High — plan.md's research confirmed weights/speed bounds are low-risk plumbing, but perception radii, burst, and mate-preference selection are genuinely new engine capability (new spatial-grid strategy, two from-scratch mechanics) with no existing scaffolding; touches the run-start input schema, live-adjustment, the diversity metric, and every per-tick force calculation every boid already goes through every frame; must not regress already-started runs that still use a single shared weight set.
+- **Status:** in-progress
 
 ### F-10: Predator tribe concept
 
