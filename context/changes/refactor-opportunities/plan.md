@@ -275,6 +275,6 @@ not a value.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 Full suite passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 0b41e6d
+- [x] 2.2 Lint passes: `npm run check` — 0b41e6d
+- [x] 2.3 Full suite passes: `npm test` — 0b41e6d
