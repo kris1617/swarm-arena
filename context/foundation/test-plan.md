@@ -77,7 +77,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 4 | Perf-budget guard for render usability | Give the "stays usable" guardrail an automated structural floor instead of eyeballing | #3 | unit (perf-budget) | complete | `context/changes/testing-render-perf-budget/` |
 | 5 | Quality-gates wiring | Add required lint + typecheck + test as a CI step before the existing auto-deploy-on-merge, which currently has none | cross-cutting | gates | complete | `context/changes/ci-quality-gates/` |
 | 6 | Depth-rendering formula coverage | Prove the depth-scale/draw-order contract holds under future edits, not just at ship time | #6 | unit | complete | `context/changes/test-plan-refresh-2026-11-12/` |
-| 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | change opened | `context/changes/test-plan-refresh-2026-11-16/` |
+| 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | complete | `context/changes/test-plan-refresh-2026-11-16/` |
 | 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | not started | — |
 | 9 | Concurrent-load capacity test | Extend Phase 8's harness to N simultaneous server-owned runs; prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling | #9 | integration | not started | — |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | not started | — |
@@ -312,6 +312,55 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
   `z = 100_000`) chosen specifically to exceed the documented bounds absent
   the clamp, not arbitrary values.
 - Run command: `npx vitest run src/app/simulation/_components/depth-render.test.ts`.
+
+### 6.7 Adding a behavioral-effect test for a live-adjust/toggle feature
+
+- Location: co-located with the surface that owns the mutation/call, not a
+  new shared file — a server-owned path gets its behavioral-effects
+  `describe` block in the existing router test (e.g.
+  `simulationRouter.updateRunParams behavioral effects` in
+  `src/server/api/routers/simulation.test.ts`); a client-staged path gets its
+  block beside the pure tick function it drives (e.g.
+  `computeSingleRunTick client-staged live-param/crossbreeding behavioral
+  effects` in `src/server/simulation/single-run-lifecycle.test.ts`).
+- Pattern: a live-adjust or toggle mutation (a slider patch, a boolean flag,
+  a population delta) is not covered by asserting the new value was stored,
+  echoed back, or round-tripped — that only proves the write path, which is
+  exactly the gap this plan closes (per `lessons.md`'s "UI accepts input is
+  not feature verified": a feature is verified only when a test observes the
+  downstream behavior the input is supposed to change, not that the input
+  was accepted). Instead: (1) patch the parameter or construct the toggled
+  state, (2) drive at least one subsequent tick through the real decision
+  pipeline — never a mock of it, (3) assert the *downstream decision output*
+  changed in the direction the parameter implies (more/less food, predation
+  occurs/is prevented, reproduction occurs/is prevented, inter-flock pairing
+  occurs/doesn't), almost always against a contrast control run with the
+  parameter left at its default so the test can't pass vacuously if the
+  patch were silently ignored. Call the real entry point for the path under
+  test, not a shortcut: the server-owned path calls `startServerRun`/
+  `applyLiveParams` directly (going through the tRPC router's `createCaller`
+  while `vi.useFakeTimers()` is active hangs in this environment — confirmed
+  via isolated diagnostics — so drive the server functions directly and
+  advance time with `vi.advanceTimersByTimeAsync()`); the client-staged path
+  calls `computeSingleRunTick` synchronously in a loop with no fake timers
+  and no router involved at all. When a parameter's edge value is a known,
+  separately-tracked engine bug (not a gap in this pattern), mark that one
+  case `it.skip` with a comment pointing at the tracked bug rather than
+  weakening the assertion or deleting the case.
+- Reference tests: `simulationRouter.updateRunParams behavioral effects >
+  toggling crossbreedingEnabled via the router actually changes whether
+  inter-flock reproduction occurs on a subsequent tick` (see
+  `simulation.test.ts`; sibling tests in the same `describe` cover
+  `foodRegenRate`, `protectionThreshold`, and `energyThreshold`, with
+  `mutationMagnitude` left `it.skip`'d — pointing at a tracked, separate
+  non-terminating engine bug at `mutationMagnitude: 0.9`, not a gap in this
+  pattern); `computeSingleRunTick client-staged live-param/crossbreeding
+  behavioral effects > toggling crossbreedingEnabled changes whether
+  inter-flock reproduction occurs on a subsequent tick` (see
+  `single-run-lifecycle.test.ts`, same five behaviors, pure synchronous
+  calls, no fake timers).
+- Run commands: `npx vitest run src/server/api/routers/simulation.test.ts`,
+  `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`.
 
 ## 7. What We Deliberately Don't Test
 

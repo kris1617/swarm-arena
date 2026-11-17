@@ -449,18 +449,18 @@ to manually verify.
 
 #### Automated
 
-- [x] 4.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [x] 4.2 Full suite still passes: `npm test`
-- [x] 4.3 Typecheck passes: `npm run typecheck`
-- [x] 4.4 Lint passes: `npm run check`
+- [x] 4.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts` — fa4258e
+- [x] 4.2 Full suite still passes: `npm test` — fa4258e
+- [x] 4.3 Typecheck passes: `npm run typecheck` — fa4258e
+- [x] 4.4 Lint passes: `npm run check` — fa4258e
 
 ### Phase 5: Cookbook update + mark rollout Phase 7 complete
 
 #### Automated
 
-- [ ] 5.1 Full suite passes: `npm test`
-- [ ] 5.2 Typecheck passes: `npm run typecheck`
-- [ ] 5.3 Lint passes: `npm run check`
+- [x] 5.1 Full suite passes: `npm test`
+- [x] 5.2 Typecheck passes: `npm run typecheck`
+- [x] 5.3 Lint passes: `npm run check`
 
 #### Manual
 
