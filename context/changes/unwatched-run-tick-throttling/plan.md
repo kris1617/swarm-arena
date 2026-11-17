@@ -373,13 +373,13 @@ throttled).
 
 #### Automated
 
-- [x] 1.1 Migration generates and applies cleanly (via direct SQL execute, see Implementation Note)
-- [x] 1.2 Typecheck passes: `npm run typecheck`
-- [x] 1.3 Lint passes: `npm run check`
+- [x] 1.1 Migration generates and applies cleanly (via direct SQL execute, see Implementation Note) — 1a980d1
+- [x] 1.2 Typecheck passes: `npm run typecheck` — 1a980d1
+- [x] 1.3 Lint passes: `npm run check` — 1a980d1
 
 #### Manual
 
-- [x] 1.4 Query confirms the new column exists on existing rows as `false`/`0`
+- [x] 1.4 Query confirms the new column exists on existing rows as `false`/`0` — 1a980d1
 
 ### Phase 2: Throttling mechanism
 
