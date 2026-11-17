@@ -82,8 +82,13 @@ export default defineConfig({
 					// parallelism, producing spurious testTimeout/hookTimeout failures on
 					// slow-but-correct tests. Confirmed-supported in the installed Vitest
 					// 5.1.0 — do NOT use `poolOptions`, which was removed in Vitest 4 and
-					// silently no-ops.
-					maxWorkers: 8,
+					// silently no-ops. 8 fits this project's own dev machine; GitHub's
+					// hosted ubuntu-latest runners have far fewer vCPUs (confirmed by a
+					// CI-only spurious testTimeout on server-run-registry.test.ts's
+					// fake-timer-heavy "unwatched-run tick throttling" test, which never
+					// reproduces locally) — CI gets a lower cap to match its real core
+					// count instead of oversubscribing it.
+					maxWorkers: process.env.CI ? 4 : 8,
 				},
 			},
 		],
