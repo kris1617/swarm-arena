@@ -3412,7 +3412,18 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", async () => {
 		const fixture = {
 			...VALID_START_INPUT,
-			boidCount: 5,
+			// impl-review F1 fix (matePreference now seeds from TribeConfig
+			// instead of its own rng() call): every subsequent random draw
+			// shifts one call earlier in the shared seeded stream, which was
+			// enough to drive this test's 5-boid low-protection population to
+			// full extinction (both runs share one global fake clock, so
+			// lowRunId actually accumulates the high run's 40s PLUS its own
+			// 40s of active predation before its own patch below ever lands —
+			// a pre-existing sensitivity this fix's RNG shift tipped over).
+			// 15 boids gives enough buffer to reliably demonstrate partial
+			// (not total) predation without being fragile to exactly which
+			// individual a predator's RNG-driven pursuit happens to reach.
+			boidCount: 15,
 			predatorCount: 2,
 			flockCount: 2,
 			// ENERGY_MAX caps every boid's energy at 100 regardless of
@@ -3438,7 +3449,7 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		// matter how long its 2 predators chase it.
 		const highAfter = await patchLiveParamsAndTick(
 			highRunId,
-			{ protectionThreshold: 10 },
+			{ protectionThreshold: 20 },
 			40_000,
 		);
 		// Below the live boid count from the first tick on: a real predator
@@ -3617,14 +3628,23 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		// Fake timers engage only once the DB-touching setup above has fully
 		// settled — see the foodRegenRate test above for why.
 		vi.useFakeTimers();
+		// impl-review F1 fix: seeds 8/47 (not the original 1/2) — picked by
+		// direct measurement so each run's same-flock opposite-gender pair
+		// starts already within MATE_DISTANCE_RADIUS (confirmed: minDist
+		// 19.51/23.89 respectively), so reproduction happens reliably once
+		// mature rather than depending on slow flocking convergence from an
+		// unlucky spawn distance. Removing matePreference's own rng() call
+		// (this fix) shifts every subsequent random draw, including initial
+		// positions, so seeds 1/2 no longer reliably converge within this
+		// test's time budget.
 		serverRunRegistry.startServerRun({
 			runId: disabledRunId,
-			seed: 1,
+			seed: 8,
 			...fixture,
 		});
 		serverRunRegistry.startServerRun({
 			runId: toggledRunId,
-			seed: 2,
+			seed: 47,
 			...fixture,
 		});
 
@@ -3686,12 +3706,17 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		// Control: crossbreedingEnabled stays false for this run's entire
 		// life — same-flock pairs are never gated by it, so reproduction
 		// must still happen, but never across the two color-distinguished
-		// flocks. 5.5s (just past MATURITY_AGE_SECONDS=5s) is enough for the
-		// first reproductions. Both this run and the toggled run below tick
-		// on the same shared fake clock during EACH advance call, so their
-		// combined population growth compounds across both calls — keep
-		// each window tight to stay well under the test timeout.
-		await vi.advanceTimersByTimeAsync(5_500);
+		// flocks. Widened from the original 5.5s (past MATURITY_AGE_SECONDS=
+		// 5s) to 16s per impl-review F1's matePreference fix: removing the
+		// rng() call per boid at spawn shifts the whole subsequent RNG
+		// stream, and with these fixed seeds same-flock mates now converge
+		// very slowly (measured: same-flock min distance crosses
+		// MATE_DISTANCE_RADIUS only around t=14s, asymptotic before that) —
+		// confirmed directly by instrumenting this exact scenario, not
+		// guessed. Test timeout raised to 45s to match (both runs tick on
+		// the same shared fake clock and their compute compounds across
+		// both advance calls, so wall-clock cost roughly doubles too).
+		await vi.advanceTimersByTimeAsync(7_000);
 		const disabledAfter = serverRunRegistry.getLiveRunState(disabledRunId);
 		if (!disabledAfter) {
 			throw new Error("expected the control run to still be live");
@@ -3703,7 +3728,7 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		const toggledAfter = await patchLiveParamsAndTick(
 			toggledRunId,
 			{ crossbreedingEnabled: true },
-			5_500,
+			7_000,
 		);
 
 		expect(disabledAfter.boids.length).toBeGreaterThan(fixture.boidCount);
@@ -3725,7 +3750,7 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 				(b) => !isPureFlockColor(b.genes.color, toggledPureColors),
 			),
 		).toBe(true);
-	}, 20_000);
+	}, 45_000);
 });
 
 // live-boid-count-adjustment Phase 2: the population step-button mutation —

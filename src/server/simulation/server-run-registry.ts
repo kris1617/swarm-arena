@@ -294,6 +294,13 @@ export function applyLiveParams(
 // already established. A *new* individual seeded via `adjustLivePopulation`
 // after this patch (createInitialPopulation/createInitialPredators, which
 // read `run.params.tribeConfigs` directly) does pick up the new config.
+// impl-review F3: this function trusts `patch`'s length wholesale — the
+// router's `updateTribeConfigs` mutation (simulation.ts) is what actually
+// enforces `patch.length === flockCount` before calling here. A caller that
+// skipped that check couldn't crash anything downstream regardless (every
+// `tribeConfigs[boid.genes.flockId]` read elsewhere already falls back to a
+// global constant via `?? `/optional chaining on a missing index), but the
+// invariant itself lives at the router, not here.
 export function applyLiveTribeConfigs(
 	runId: number,
 	patch: TribeConfig[],
