@@ -264,7 +264,7 @@ no data the workflow owns).
 
 #### Manual
 
-- [ ] 1.6 Composite action's `cd` target resolves correctly relative to `$GITHUB_ACTION_PATH` (provisional until Phase 2's end-to-end run)
+- [x] 1.6 Composite action's `cd` target resolves correctly relative to `$GITHUB_ACTION_PATH` — confirmed by PR #10's successful `npm ci`/`tsx` steps in run 44136245781
 
 ### Phase 2: Consumer workflow — triggers, diff, comment, label, gate
 
@@ -272,10 +272,10 @@ no data the workflow owns).
 
 - [x] 2.1 `npx biome check .github/workflows/review.yml` passes — edb0faa
 - [x] 2.2 Workflow YAML parses cleanly — edb0faa
-- [ ] 2.3 `ai-cr:passed`/`ai-cr:failed` labels exist after first real run
+- [x] 2.3 `ai-cr:passed`/`ai-cr:failed` labels exist after first real run — `ai-cr:failed` applied to PR #10
 
 #### Manual
 
-- [ ] 2.4 Real test PR shows the `review` job, its logs, a PR comment, and the correct label/gate result
-- [ ] 2.5 Re-run on push or `ai-cr:review` label confirmed
-- [ ] 2.6 `ANTHROPIC_API_KEY` repository secret added
+- [x] 2.4 Real test PR shows the `review` job, its logs, a PR comment, and the correct label/gate result — PR #10 (closed, demo-only), run https://github.com/kris1617/swarm-arena/actions/runs/44136245781: job green, PR commented with a correct SQL-injection "fail" verdict, `ai-cr:failed` label applied, "Gate on verdict" step failed as designed
+- [x] 2.5 Re-run on push or `ai-cr:review` label confirmed — `synchronize` re-run confirmed (commit 6fec942 pushed to PR #10's branch re-triggered the workflow, run 44131608845); label-triggered re-run not separately exercised
+- [x] 2.6 `ANTHROPIC_API_KEY` repository secret added — added by the user 2026-11-17

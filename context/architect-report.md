@@ -31,7 +31,7 @@ mapped two real implementation directories (`src/server/auth/*`,
 `src/server/feedback/*`), so auth-signin's and feedback-module's true
 blast radius is reported as unknown, not confirmed-low.
 
-## 3. Feature analysis (L3) — `context/changes/.../sim-engine-feature-analysis/research.md` (archived)
+## 3. Feature analysis (L3) — `context/changes/sim-engine-feature-analysis/research.md`
 
 Analyzed the **server-owned simulation run lifecycle** (start → tick loop →
 finish → watch → analysis) — the map's #1 risk zone, chosen specifically
@@ -102,10 +102,16 @@ but the *real* invariant the shipped code is actually trying to protect —
 it's surfaced, and that disclosure can never be un-set." Today this is
 enforced by 4 independent call sites each hand-checking `wasEverThrottled`
 (leaderboard, parameter-suggestion, run-comparison, export), with nothing
-stopping a 5th future surface from forgetting the check. Designed a
-`ScoredRun` aggregate whose single `disclose()` method is the only public
-way to read a displayable score — making the omission a type error instead
-of a silent convention, in a 4-phase, test-first, cheapest-first migration.
+stopping a 5th future surface from forgetting the check. A sharper,
+flatly-unguarded alternative (R-09, cross-ceiling consistency between the
+two object-count caps) was weighed against this pick and explicitly kept
+open rather than silently dropped — my call, made via direct question,
+was to keep both findings on record rather than switch or bury the
+runner-up. **Implemented**: a `ScoredRun` aggregate
+(`src/server/simulation/scored-run.ts`, commit `baf3747`) whose single
+`disclose()` method is the only public way to read a displayable score,
+migrated into all 4 call sites plus their 2 client consumers, full test
+suite green. R-09 remains open and unaddressed, as the design always said.
 
 **Anti-Corruption Layer**: checked every real 3rd-party dependency first
 (Drizzle, NextAuth, zod, the GitHub feedback client) — all already
@@ -115,28 +121,39 @@ bare `{r,g,b}` color representation, independently reconstructed across
 **2 layers / 3 call sites** (hex-parsing and per-channel blending in
 `boids.ts`, CSS-string construction in `simulation-canvas.tsx`), plus
 re-declared 3 more times across the tRPC wire contract, with no Value
-Object ever owning the conversions. Designed a `Color` class
-(`fromHex`/`fromHsl`/`blend`/`toCss`/`toJSON`/`fromJSON`) as the sole
-owner, in 4 relocation-only phases.
+Object ever owning the conversions. When asked whether this candidate was
+genuinely the strongest available or just the first one found, my call
+was to dig deeper before accepting it — a second pass checked `rng.ts`,
+recharts, `@libsql/client`, and superjson and confirmed none beat it.
+**Implemented, narrower than designed**: a `Color` class
+(`src/server/simulation/color.ts`, commit `67df16c`) owning
+`fromHex`/`fromHsl`/`toCss`/`toJSON`/`fromJSON`. The design's `blend()`
+method was dropped on discovering, during implementation, that
+`boids.ts`'s per-channel blend reuses the genetics system's shared
+mutation-aware `blendNumber` (rng + mutationChance + mutationMagnitude) —
+genetics logic applied to color channels, not a pure color operation this
+value object should own.
 
 ## 6. Decisions that are mine
 
-Read plainly, almost every structural choice in this module — which risk
-zone to analyze (sim-engine), which refactor candidates to rank first,
-which invariant to select for the aggregate exercise, which dependency to
-pick for the ACL exercise — was the agent's own judgment, defended by the
-artifacts' own evidence but never individually brought to me as a decision
-before being acted on. The one choice I was actually asked to make and did
-make was to implement **both** top-ranked refactor candidates in one plan
-rather than just the highest-ranked one ("go for debts plan"), after the
-agent presented the ranking. I also gave the initial go-ahead to run this
-as a tracked, committed workflow rather than a one-off checklist. Beyond
-those two points, I have *read* the outputs before accepting them —
-the plan-review and impl-review verdicts, the deliberate-break-check
-evidence, the ranking rationale in the domain report — but reading and
-deciding are not the same thing, and I have not yet independently
-contested or re-derived any of the agent's zone/candidate/invariant/
-dependency selections. If this report needs to show my own engineering
-judgment rather than the agent's, the two DDD exercises' selections (the
-comparability invariant, the color-representation leak) are the places
-to actually weigh in before submission — I have not done so yet.
+Read plainly, most of the initial structural choices in this module —
+which risk zone to analyze (sim-engine), which refactor candidates to rank
+first — were the agent's own judgment, defended by the artifacts' own
+evidence but not individually brought to me as a decision before being
+acted on. I did make several real calls on top of that groundwork,
+though: implementing **both** top-ranked refactor candidates in one plan
+rather than just the highest-ranked one ("go for debts plan"); the initial
+go-ahead to run this as a tracked, committed workflow; and, on review of
+the two DDD exercises, two decisions the agent explicitly surfaced as
+open rather than silently resolved itself — for the invariant exercise, to
+**keep both** the comparability finding and the sharper R-09 cross-ceiling
+gap on record rather than switch picks or let the runner-up disappear; and
+for the ACL exercise, to **dig deeper** before accepting the first
+candidate found, which sent the agent back through the rest of the
+dependency list and confirmed nothing stronger existed. Both chosen
+designs were then actually implemented and verified end-to-end (tests,
+typecheck, and a live browser check of the leaderboard/compare pages),
+not left as paper plans. What I have *not* done is independently
+re-derive the zone/candidate selections from scratch myself — I decided
+at the fork points the agent surfaced, rather than generating my own
+independent candidate list first.
