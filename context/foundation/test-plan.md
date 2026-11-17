@@ -79,7 +79,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 6 | Depth-rendering formula coverage | Prove the depth-scale/draw-order contract holds under future edits, not just at ship time | #6 | unit | complete | `context/changes/test-plan-refresh-2026-11-12/` |
 | 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | complete | `context/changes/test-plan-refresh-2026-11-16/` |
 | 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | complete | `context/changes/testing-perf-baseline/` |
-| 9 | Concurrent-load capacity test | Extend Phase 8's harness to N simultaneous server-owned runs; prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling | #9 | integration | not started | — |
+| 9 | Concurrent-load capacity test | Extend Phase 8's harness to N simultaneous server-owned runs; prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling | #9 | integration | change opened | `context/changes/testing-concurrent-load-capacity/` |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | not started | — |
 
 **Status vocabulary** (fixed — parser literals):
