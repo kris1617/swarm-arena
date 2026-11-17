@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-17 (Phase 8 shipped — reproducible performance baseline; §6.8 cookbook entry added)
+> Last updated: 2026-11-17 (Phase 9 shipped — concurrent-load capacity test; §6.9 cookbook entry added)
 
 ## 1. Strategy
 
@@ -79,7 +79,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 6 | Depth-rendering formula coverage | Prove the depth-scale/draw-order contract holds under future edits, not just at ship time | #6 | unit | complete | `context/changes/test-plan-refresh-2026-11-12/` |
 | 7 | Functional regression audit on newest shipped slices | Close functional coverage gaps on the live-parameter-adjustment family (S-27–S-31) and corpus/analytics work (S-32–S-35) — the newest, least battle-tested surfaces | cross-cutting (functional) | unit + integration, audit-driven | complete | `context/changes/test-plan-refresh-2026-11-16/` |
 | 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | complete | `context/changes/testing-perf-baseline/` |
-| 9 | Concurrent-load capacity test | Extend `server-run-registry.test.ts`'s existing fake-timer-driven concurrent-tick pattern to 4 simultaneous server-owned runs (matching `MAX_PARALLEL_RUNS`); prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling — Phase 8's single-process-interleaved harness structurally cannot observe this risk (research.md, 2026-11-17) | #9 | integration | planned | `context/changes/testing-concurrent-load-capacity/` |
+| 9 | Concurrent-load capacity test | Extend `server-run-registry.test.ts`'s existing fake-timer-driven concurrent-tick pattern to 4 simultaneous server-owned runs (matching `MAX_PARALLEL_RUNS`); prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling — Phase 8's single-process-interleaved harness structurally cannot observe this risk (research.md, 2026-11-17) | #9 | integration | complete | `context/changes/testing-concurrent-load-capacity/` |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | not started | — |
 
 **Status vocabulary** (fixed — parser literals):
@@ -404,6 +404,47 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
   grid for real — several minutes; confirm single-process first). Pass a
   narrower `BenchmarkGridOptions` directly to `runBenchmarkGrid` for a
   smaller ad hoc trial grid during development.
+
+### 6.9 Adding a concurrent-load / scheduler-correctness test
+
+- Location: `src/server/simulation/server-run-registry-capacity.test.ts`
+  — a **sibling** file to `server-run-registry.test.ts`, not an extension
+  of it. No cross-test-file import precedent exists anywhere in this
+  repo, so the sibling file duplicates a minimal, parameterized fixture
+  helper (`insertOwnedRunningRun(seed, boidCount, predatorCount)`) rather
+  than importing the main file's private one — own module-level
+  `trackedOwnerIds`/`activeRunIds` arrays, own `afterEach` cleanup, same
+  lifecycle shape as the main file.
+- Pattern: drive `server-run-registry.ts`'s own exported functions
+  (`startServerRun`, `stopServerRun`, `getLiveRunState`) directly — never
+  `createCaller`/the tRPC router. The router-level fake-timer hang §6.7
+  documents is specific to that layer; calling the registry's own
+  functions directly under `vi.useFakeTimers()` does not reproduce it —
+  proven repeatedly in the main test file and confirmed again here.
+  Extend the main file's existing 2-run concurrent-tick precedent
+  (`server-run-registry.test.ts:317-363`) to N runs: register all N via
+  `startServerRun` in a loop, then advance all of them together with one
+  shared `await vi.advanceTimersByTimeAsync(...)` call, followed by the
+  existing double-flush idiom (`advanceTimersByTimeAsync(0)`) to let any
+  fire-and-forget DB write settle. Assert no-backlog by comparing
+  `getLiveRunState(runId).elapsedSeconds` across sibling runs (should
+  match after an identical fake-time advance); assert no-leak/no-drop by
+  confirming `getLiveRunState(runId)` is `undefined` for every run after
+  `stopServerRun`.
+- **Known, accepted gap** (not a bug to fix here): `maxConcurrentObjectCount`
+  (the aggregate boid+predator ceiling across a user's running
+  simulations) and `MAX_PARALLEL_RUNS` are both enforced **only at
+  admission** (`startServer`/`resume`) and never re-checked against
+  already-running simulations' natural population growth. A concurrent-
+  load test that runs long enough for reproduction to grow a run's
+  population will observe the aggregate ceiling being exceeded
+  post-admission — this is expected and documents the gap, not a failure
+  to chase down. Closing it (e.g. periodic aggregate re-validation in the
+  tick loop) is a product decision, not a QA-rollout task; Phase 10
+  (wall-clock-aware optimization guardrail) or a future change may
+  revisit it.
+- Reference: `src/server/simulation/server-run-registry-capacity.test.ts`.
+- Run command: `npx vitest run src/server/simulation/server-run-registry-capacity.test.ts`.
 
 ## 7. What We Deliberately Don't Test
 
