@@ -24,7 +24,7 @@
 // `gitCommit` uses the full SHA (`git rev-parse HEAD`), not the short form,
 // for unambiguous cross-referencing against `git show <sha>` later.
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type GridResult, runBenchmarkGrid } from "./perf-baseline";
@@ -76,7 +76,14 @@ async function readExistingEntries(
 }
 
 // Appends one new entry — never overwrites or mutates prior entries — per
-// this phase's "append-only, structured record" contract.
+// this phase's "append-only, structured record" contract. Writes to a
+// temp file and renames into place (atomic on the same filesystem on
+// POSIX) rather than writing jsonPath directly, so a process killed
+// mid-write can never leave perf-baseline.json truncated/corrupt. This
+// narrows, but does not eliminate, the read-then-write window between two
+// concurrent `npm run perf:baseline` invocations — this remains a manual,
+// non-CI-gating dev tool per the plan's single-process-precondition
+// discipline (see test-plan.md §6.8), not a tool that needs full locking.
 export async function appendJsonResults(
 	entry: BenchmarkRunEntry,
 	jsonPath: string = JSON_RESULTS_PATH,
@@ -84,7 +91,9 @@ export async function appendJsonResults(
 	const existing = await readExistingEntries(jsonPath);
 	existing.push(entry);
 	await mkdir(dirname(jsonPath), { recursive: true });
-	await writeFile(jsonPath, `${JSON.stringify(existing, null, "\t")}\n`);
+	const tmpPath = `${jsonPath}.tmp-${process.pid}`;
+	await writeFile(tmpPath, `${JSON.stringify(existing, null, "\t")}\n`);
+	await rename(tmpPath, jsonPath);
 }
 
 const SECTION_HEADING = "## Reproducible Benchmark Results";
@@ -137,9 +146,12 @@ export async function updateMarkdownSummary(
 
 	let next: string;
 	if (headingIndex === -1) {
-		const separator =
-			existing.length > 0 && !existing.endsWith("\n\n") ? "\n\n" : "";
-		next = `${existing}${separator}${sectionContent}`;
+		// Trim all trailing newlines before re-adding exactly one blank line,
+		// so this always produces a single blank line regardless of how many
+		// trailing newlines `existing` already has.
+		const trimmed = existing.replace(/\n+$/, "");
+		const separator = trimmed.length > 0 ? "\n\n" : "";
+		next = `${trimmed}${separator}${sectionContent}`;
 	} else {
 		// Replace from this heading up to (but not including) the next `## `
 		// heading, or end of file if this is the last section.

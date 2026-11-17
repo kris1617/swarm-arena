@@ -19,11 +19,11 @@
 // `{ iterations: N, time: 0 }` is what gives exactly N deterministic
 // samples, not `time: Infinity`.
 //
-// Imports use relative paths rather than the `~/*` tsconfig alias: this
-// script lives outside `src/` and is intended to run directly via a bare
-// Node/tsx invocation (Phase 2 picks the exact runner), neither of which is
-// guaranteed to apply this project's path-alias resolution the way
-// Vitest's config does for `scripts/corpus/*.ts`.
+// Imports use the project's `~/*` tsconfig alias — confirmed (impl-review
+// F3, 2026-11-17) that `tsx` (Phase 2's chosen runner) resolves it
+// correctly both from this directory and from an arbitrary cwd, matching
+// the rest of the codebase's import convention rather than deviating from
+// it.
 import { Bench } from "tinybench";
 import {
 	type BoidState,
@@ -32,9 +32,9 @@ import {
 	type PopulationPhase,
 	type PredatorState,
 	type WorldSize,
-} from "../src/server/simulation/boids";
-import { createRng } from "../src/server/simulation/rng";
-import { computeSingleRunTick } from "../src/server/simulation/single-run-lifecycle";
+} from "~/server/simulation/boids";
+import { createRng } from "~/server/simulation/rng";
+import { computeSingleRunTick } from "~/server/simulation/single-run-lifecycle";
 
 // --- Grid definition -------------------------------------------------------
 
