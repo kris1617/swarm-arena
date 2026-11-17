@@ -431,19 +431,19 @@ to manually verify.
 
 #### Automated
 
-- [x] 2.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts`
-- [x] 2.2 Full suite still passes: `npm test`
-- [x] 2.3 Typecheck passes: `npm run typecheck`
-- [x] 2.4 Lint passes: `npm run check`
+- [x] 2.1 New/changed tests pass: `npx vitest run src/server/simulation/single-run-lifecycle.test.ts` — a2e45a8
+- [x] 2.2 Full suite still passes: `npm test` — a2e45a8
+- [x] 2.3 Typecheck passes: `npm run typecheck` — a2e45a8
+- [x] 2.4 Lint passes: `npm run check` — a2e45a8
 
 ### Phase 3: Boid-count-growth initialization test (S-30)
 
 #### Automated
 
-- [ ] 3.1 New/changed tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts`
-- [ ] 3.2 Full suite still passes: `npm test`
-- [ ] 3.3 Typecheck passes: `npm run typecheck`
-- [ ] 3.4 Lint passes: `npm run check`
+- [x] 3.1 New/changed tests pass: `npx vitest run src/server/simulation/server-run-registry.test.ts`
+- [x] 3.2 Full suite still passes: `npm test`
+- [x] 3.3 Typecheck passes: `npm run typecheck`
+- [x] 3.4 Lint passes: `npm run check`
 
 ### Phase 4: Genetic-diversity-trend series oracle test (S-32)
 

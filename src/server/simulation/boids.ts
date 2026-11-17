@@ -129,7 +129,7 @@ const HUNGER_EXTRA_DECAY_RATE = 1;
 // from Phase 2 on, a newborn) — well under ENERGY_MAX so reproduction
 // eligibility (a future run-level energyThreshold param) isn't trivially
 // satisfied at spawn.
-const INITIAL_ENERGY = 20;
+export const INITIAL_ENERGY = 20;
 // Ceiling on accumulated energy — see ENERGY_GAIN_RATE's comment for how this
 // and INITIAL_ENERGY bound the time needed to reach a mid-range
 // energyThreshold.

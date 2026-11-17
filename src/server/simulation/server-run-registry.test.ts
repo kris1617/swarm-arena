@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "~/server/db";
 import { simulationRuns, users } from "~/server/db/schema";
-import type { BoidGenes, BoidState } from "~/server/simulation/boids";
+import {
+	type BoidGenes,
+	type BoidState,
+	INITIAL_ENERGY,
+} from "~/server/simulation/boids";
 import {
 	adjustLivePopulation,
 	applyLiveParams,
@@ -578,6 +582,35 @@ describe("adjustLivePopulation", () => {
 				BASE_PARAMS.zDepth,
 			);
 			expect(distanceToCentroid).toBeLessThan(worldDiagonal / 2);
+			// UI-accepts-input-is-not-feature-verified (lessons.md): a
+			// malformed-placeholder newborn (wrong energy/age/genes) would
+			// pass the length/position checks above undetected -- assert the
+			// actual initialization values a freshly-grown boid must carry,
+			// exactly matching createInitialPopulation's own seeding (same
+			// posture as INITIAL_ENERGY's export rationale in boids.ts).
+			expect(boid.energy).toBe(INITIAL_ENERGY);
+			expect(boid.age).toBe(0);
+			expect(boid.genes.flockId).toBeGreaterThanOrEqual(0);
+			expect(boid.genes.flockId).toBeLessThan(BASE_PARAMS.flockCount);
+			// BASE_PARAMS seeds every flock with the same separation/
+			// alignment/cohesion weight (adjustLivePopulation's flockWeights
+			// derivation, server-run-registry.ts ~line 305), so every added
+			// boid's genes must carry those exact run-level weights.
+			expect(boid.genes.separationWeight).toBe(BASE_PARAMS.separationWeight);
+			expect(boid.genes.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
+			expect(boid.genes.cohesionWeight).toBe(BASE_PARAMS.cohesionWeight);
+			// MAX_SPEED/MIN_SPEED (boids.ts) -- boid-specific cruise-speed
+			// bounds createInitialPopulation seeds every new boid's genes
+			// with; not exported, so pinned here as the module's own
+			// documented constants.
+			expect(boid.genes.maxSpeed).toBe(40);
+			expect(boid.genes.minSpeed).toBe(15);
+			// maxLifespan here is adjustLivePopulation's own
+			// `Math.max(60, run.params.maxDurationSeconds)` derivation, not
+			// a run-param passthrough -- this run's maxDurationSeconds (600)
+			// already exceeds the 60 floor.
+			expect(boid.genes.maxLifespan).toBe(600);
+			expect(Number.isFinite(boid.genes.matePreference)).toBe(true);
 		}
 
 		await stopServerRun(runId);
@@ -606,7 +639,38 @@ describe("adjustLivePopulation", () => {
 		expect(result).toEqual({ status: "applied" });
 
 		const after = getLiveRunState(runId);
-		expect(after?.predators).toHaveLength(beforeCount + 2);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		expect(after.predators).toHaveLength(beforeCount + 2);
+		const added = after.predators.slice(beforeCount);
+		expect(added).toHaveLength(2);
+		for (const predator of added) {
+			// UI-accepts-input-is-not-feature-verified (lessons.md): same
+			// posture as the boid-growth test above -- a malformed-placeholder
+			// newborn predator would pass the length-only check undetected.
+			// createInitialPredators (boids.ts) is symmetric with
+			// createInitialPopulation per its own "no simpler predator path"
+			// comment, so predator genes carry the identical BoidGenes shape --
+			// the only per-species difference is maxSpeed/minSpeed using
+			// PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED instead of boids' own
+			// MAX_SPEED/MIN_SPEED.
+			expect(predator.energy).toBe(INITIAL_ENERGY);
+			expect(predator.age).toBe(0);
+			expect(predator.genes.flockId).toBeGreaterThanOrEqual(0);
+			expect(predator.genes.flockId).toBeLessThan(BASE_PARAMS.flockCount);
+			expect(predator.genes.separationWeight).toBe(
+				BASE_PARAMS.separationWeight,
+			);
+			expect(predator.genes.alignmentWeight).toBe(BASE_PARAMS.alignmentWeight);
+			expect(predator.genes.cohesionWeight).toBe(BASE_PARAMS.cohesionWeight);
+			// PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED (boids.ts) -- not exported,
+			// pinned here as the module's own documented constants.
+			expect(predator.genes.maxSpeed).toBe(55);
+			expect(predator.genes.minSpeed).toBe(20);
+			expect(predator.genes.maxLifespan).toBe(600);
+			expect(Number.isFinite(predator.genes.matePreference)).toBe(true);
+		}
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
