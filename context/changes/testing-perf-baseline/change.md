@@ -1,7 +1,7 @@
 ---
 change_id: testing-perf-baseline
 title: Reproducible performance baseline
-status: preparing
+status: planned
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null
