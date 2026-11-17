@@ -89,7 +89,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | done |
 | S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | blocked |
 | S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | done |
-| S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | ready |
+| S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | planning |
 
 ## Streams
 
@@ -717,7 +717,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (mechanism already implemented and documented in the archived S-22 plan; this slice verifies current behavior still matches and formally closes Open Roadmap Question #6)
 - **Risk:** Low — verification-only.
-- **Status:** ready
+- **Status:** planning
 
 ## Backlog Handoff
 
