@@ -66,6 +66,15 @@ assumed to be.
   external behavior.
 - Not touching `theme-colors.ts`'s other constants (`CANVAS_BACKGROUND`,
   the border color) — only `BOID_FILL_COLOR`/`PREDATOR_FILL_COLOR` move.
+- Not touching the third, structurally identical `history`/`computeScore`
+  duplication at `src/server/api/routers/simulation.ts:539-577` (the
+  `stop` tRPC mutation — plan-review F1). It builds the same 8-field
+  shape from raw tRPC input rather than a `LiveRun` object and writes via
+  `ctx.db.update(...)` directly, not through `finishRun` — different
+  enough input shape that reusing Phase 1's `buildFinishPayload(run:
+  LiveRun)` there isn't a trivial swap, the same reasoning that excludes
+  Candidate B. This duplication remains open after this plan; a future
+  change can close it once a shared input shape is worth introducing.
 
 ## Implementation Approach
 
