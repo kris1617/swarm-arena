@@ -70,10 +70,10 @@ export default function LeaderboardPage() {
 											4-factor score
 										</span>
 									)}
-									{run.wasEverThrottled && (
+									{!run.comparable && (
 										<span
 											className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
-											title="Ticked at an accelerated rate while unwatched"
+											title={run.disclaimer ?? undefined}
 										>
 											Accelerated run
 										</span>

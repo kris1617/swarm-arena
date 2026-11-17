@@ -62,7 +62,8 @@ type OkRow = {
 		phaseQuality: number;
 		areaPopulationDensity: number | null;
 	} | null;
-	wasEverThrottled: boolean;
+	comparable: boolean;
+	disclaimer: string | null;
 };
 
 type ComparisonRow = ErroredRow | OkRow;
@@ -149,14 +150,13 @@ export default function RunsComparePage() {
 				))}
 
 			{okRows
-				.filter((row) => row.wasEverThrottled)
+				.filter((row) => !row.comparable)
 				.map((row) => (
 					<p
 						className="text-foreground/70 text-sm"
 						key={`throttled-${row.runId}`}
 					>
-						Run #{row.runId} ticked at an accelerated rate while unwatched — its
-						score may not be directly comparable.
+						{row.disclaimer}
 					</p>
 				))}
 

@@ -37,6 +37,10 @@ import { suggestRunOptimization } from "~/server/simulation/run-optimization-sug
 // have running at once, across every start path.
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import {
+	ScoredRun,
+	type ScoredRunDisclosure,
+} from "~/server/simulation/scored-run";
+import {
 	// live-boid-count-adjustment Phase 2: aliased to avoid colliding with
 	// this file's own new `adjustLivePopulation` router procedure key — see
 	// that procedure's body for the alias in use.
@@ -50,6 +54,19 @@ import {
 	startServerRun,
 	watchServerRun,
 } from "~/server/simulation/server-run-registry";
+
+// ScoredRun.disclose() forces a runId; a null ScoredRun (unscored row) has
+// nothing to disclose, so this fallback is the one place that decides what
+// "no score yet" means for every comparability-bearing API surface.
+function pickComparability(
+	scoredRun: ScoredRun | null,
+): Pick<ScoredRunDisclosure, "comparable" | "disclaimer"> {
+	if (!scoredRun) {
+		return { comparable: true, disclaimer: null };
+	}
+	const { comparable, disclaimer } = scoredRun.disclose();
+	return { comparable, disclaimer };
+}
 
 // S-04 (FR-002 full): only basic type/sign sanity stays static here — the
 // actual numeric ceilings are now admin-configurable (see
@@ -730,13 +747,20 @@ export const simulationRouter = createTRPCRouter({
 			.orderBy(desc(simulationRuns.score), desc(simulationRuns.startedAt))
 			.limit(50);
 
-		return rows.map(({ history, ...row }) => ({
-			...row,
-			scoredWithAreaFactor: Array.isArray(
-				(history as { populationDensitySamples?: unknown } | null)
-					?.populationDensitySamples,
-			),
-		}));
+		return rows.map(({ history, wasEverThrottled, ...row }) => {
+			const disclosure = pickComparability(
+				ScoredRun.from({ id: row.id, score: row.score, wasEverThrottled }),
+			);
+			return {
+				...row,
+				scoredWithAreaFactor: Array.isArray(
+					(history as { populationDensitySamples?: unknown } | null)
+						?.populationDensitySamples,
+				),
+				comparable: disclosure.comparable,
+				disclaimer: disclosure.disclaimer,
+			};
+		});
 	}),
 
 	// parameter-suggestion-heuristic Phase 1: heuristic "try changing this
@@ -791,8 +815,18 @@ export const simulationRouter = createTRPCRouter({
 			const scoredRows = rows.filter(
 				(row): row is typeof row & { score: number } => row.score !== null,
 			);
-			const throttledCount = scoredRows.filter(
-				(row) => row.wasEverThrottled,
+			// `id: 0` is a placeholder — this query never selects a run id, and
+			// only `comparable` is read below; `disclose()`'s per-run disclaimer
+			// text is never surfaced at this call site.
+			const disclosures = scoredRows.map((row) =>
+				ScoredRun.from({
+					id: 0,
+					score: row.score,
+					wasEverThrottled: row.wasEverThrottled,
+				})?.disclose(),
+			);
+			const throttledCount = disclosures.filter(
+				(d) => d && !d.comparable,
 			).length;
 			const inputRows: SuggestionInputRow[] = scoredRows.map(
 				({ wasEverThrottled, ...row }) => ({ ...row, score: row.score }),
@@ -915,11 +949,11 @@ export const simulationRouter = createTRPCRouter({
 							phaseQuality: number;
 							areaPopulationDensity: number | null;
 						} | null;
-						// unwatched-run-tick-throttling Phase 3: sticky comparability
-						// marker, sourced directly from the DB column, so the
-						// comparison page can disclaim this row the same way it
-						// already disclaims a legacy (pre-area-factor) row.
-						wasEverThrottled: boolean;
+						// ScoredRun.disclose()'s shape — see scored-run.ts. comparable
+						// is true / disclaimer is null when the run has no score yet
+						// (nothing to disclaim) or was never throttled.
+						comparable: boolean;
+						disclaimer: string | null;
 				  }
 			> = [];
 
@@ -991,7 +1025,13 @@ export const simulationRouter = createTRPCRouter({
 						protectionThreshold: run.protectionThreshold,
 					},
 					breakdown,
-					wasEverThrottled: run.wasEverThrottled,
+					...pickComparability(
+						ScoredRun.from({
+							id: run.id,
+							score: run.score,
+							wasEverThrottled: run.wasEverThrottled,
+						}),
+					),
 				});
 			}
 

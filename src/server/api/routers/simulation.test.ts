@@ -1599,7 +1599,7 @@ describe("simulationRouter.listLeaderboard", () => {
 	// unwatched-run-tick-throttling Phase 3: wasEverThrottled is a real
 	// column (unlike the derived scoredWithAreaFactor above) — this just
 	// proves it passes straight through on the returned row.
-	it("surfaces wasEverThrottled matching the DB value", async () => {
+	it("discloses comparability matching the DB's wasEverThrottled value", async () => {
 		const [owner] = await db
 			.insert(users)
 			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
@@ -1643,10 +1643,12 @@ describe("simulationRouter.listLeaderboard", () => {
 
 		const result = await caller.simulation.listLeaderboard();
 		expect(result.find((r) => r.id === throttledRun?.id)).toMatchObject({
-			wasEverThrottled: true,
+			comparable: false,
+			disclaimer: expect.stringContaining(`Run #${throttledRun?.id}`),
 		});
 		expect(result.find((r) => r.id === normalRun?.id)).toMatchObject({
-			wasEverThrottled: false,
+			comparable: true,
+			disclaimer: null,
 		});
 	});
 });
@@ -2697,7 +2699,7 @@ describe("simulationRouter.getRunsComparison", () => {
 
 	// unwatched-run-tick-throttling Phase 3: wasEverThrottled is a real
 	// column, sourced directly from the DB row, sibling to `breakdown`.
-	it("surfaces wasEverThrottled matching the DB value for each row", async () => {
+	it("discloses comparability matching the DB's wasEverThrottled value for each row", async () => {
 		const { ownerId, caller } = await insertOwnerAndCaller();
 
 		const throttledRunId = await insertStoppedRun(ownerId, {
@@ -2714,10 +2716,12 @@ describe("simulationRouter.getRunsComparison", () => {
 		});
 
 		expect(result.find((r) => r.runId === throttledRunId)).toMatchObject({
-			wasEverThrottled: true,
+			comparable: false,
+			disclaimer: expect.stringContaining(`Run #${throttledRunId}`),
 		});
 		expect(result.find((r) => r.runId === normalRunId)).toMatchObject({
-			wasEverThrottled: false,
+			comparable: true,
+			disclaimer: null,
 		});
 	});
 });
