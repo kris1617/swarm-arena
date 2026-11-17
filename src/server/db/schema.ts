@@ -156,6 +156,13 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// comparable to a never-throttled run. Defaults false; existing rows
 	// backfill to false automatically (they predate this feature).
 	wasEverThrottled: d.integer({ mode: "boolean" }).notNull().default(false),
+	// fix-default-start-failure Phase 2: sticky marker recording that a
+	// `running` row was stopped by the orphan-reconciliation sweep
+	// (`~/server/simulation/orphan-sweep.ts`) rather than by its own normal
+	// completion path — a derived, UI-relevant fact about how a run ended,
+	// not a core simulation parameter. Defaults false; existing rows
+	// backfill to false automatically, same pattern as `wasEverThrottled`.
+	wasAutoStopped: d.integer({ mode: "boolean" }).notNull().default(false),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config

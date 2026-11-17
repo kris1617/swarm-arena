@@ -7,20 +7,35 @@ vi.mock("~/server/feedback/retry-worker", () => ({
 	startFeedbackRetryWorker: vi.fn(),
 }));
 
+// Mocked for the same reason as above — only that `register()` dynamically
+// imports and calls `startOrphanSweep` is under test here.
+vi.mock("~/server/simulation/orphan-sweep", () => ({
+	startOrphanSweep: vi.fn(),
+}));
+
 import { startFeedbackRetryWorker } from "~/server/feedback/retry-worker";
+import { startOrphanSweep } from "~/server/simulation/orphan-sweep";
 import { onRequestError, register } from "./instrumentation";
 
 const mockedStartFeedbackRetryWorker = vi.mocked(startFeedbackRetryWorker);
+const mockedStartOrphanSweep = vi.mocked(startOrphanSweep);
 
 describe("register", () => {
 	afterEach(() => {
 		mockedStartFeedbackRetryWorker.mockReset();
+		mockedStartOrphanSweep.mockReset();
 	});
 
 	it("starts the feedback retry worker", async () => {
 		await register();
 
 		expect(mockedStartFeedbackRetryWorker).toHaveBeenCalledTimes(1);
+	});
+
+	it("starts the orphan reconciliation sweep", async () => {
+		await register();
+
+		expect(mockedStartOrphanSweep).toHaveBeenCalledTimes(1);
 	});
 });
 

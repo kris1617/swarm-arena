@@ -460,27 +460,27 @@ backfills automatically with no data migration needed, same as
 
 #### Automated
 
-- [x] 1.1 `npm run typecheck` passes
-- [x] 1.2 `npm run check` passes
-- [x] 1.3 `npm test` passes
+- [x] 1.1 `npm run typecheck` passes — fc858ec
+- [x] 1.2 `npm run check` passes — fc858ec
+- [x] 1.3 `npm test` passes — fc858ec
 
 #### Manual
 
-- [x] 1.4 Forced rejection shows the server's message next to Start
-- [x] 1.5 Normal start shows no error UI
+- [x] 1.4 Forced rejection shows the server's message next to Start — fc858ec
+- [x] 1.5 Normal start shows no error UI — fc858ec
 
 ### Phase 2: Add orphan reconciliation
 
 #### Automated
 
-- [ ] 2.1 `npm run db:generate` / `npm run db:migrate` apply cleanly
-- [ ] 2.2 `npm run typecheck` passes
-- [ ] 2.3 `npm run check` passes
-- [ ] 2.4 New sweep unit test (stale row swept, fresh row untouched) passes
-- [ ] 2.5 New sweep unit test (registry-active stale row NOT swept) passes
-- [ ] 2.6 New dedup unit test (`startOrphanSweep()` called twice registers one interval) passes
-- [ ] 2.7 Updated `instrumentation.test.ts` (`register()` calls `startOrphanSweep` once) passes
-- [ ] 2.8 `npm test` passes in full
+- [x] 2.1 `npm run db:generate` applied cleanly; `npm run db:migrate` failed silently on this dev DB (discovered: `__drizzle_migrations` is empty — this DB's prior 10 migrations were applied via `db:push`, not `db:migrate`, so `migrate` tried to replay all of history from scratch and collided with already-existing columns). Applied the exact generated SQL (`ALTER TABLE ... ADD wasAutoStopped integer DEFAULT false NOT NULL`) directly instead; verified column exists with the correct type/default/notnull. Production's own deploy script uses `drizzle-kit migrate` against a fresh VPS DB with a populated tracking table, so this local-only discrepancy does not affect the real deploy path.
+- [x] 2.2 `npm run typecheck` passes
+- [x] 2.3 `npm run check` passes
+- [x] 2.4 New sweep unit test (stale row swept, fresh row untouched) passes
+- [x] 2.5 New sweep unit test (registry-active stale row NOT swept) passes
+- [x] 2.6 New dedup unit test (`startOrphanSweep()` called twice registers one interval) passes
+- [x] 2.7 Updated `instrumentation.test.ts` (`register()` calls `startOrphanSweep` once) passes
+- [x] 2.8 `npm test` passes in full
 
 #### Manual
 

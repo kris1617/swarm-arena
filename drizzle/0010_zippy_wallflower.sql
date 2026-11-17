@@ -1,0 +1,1 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `wasAutoStopped` integer DEFAULT false NOT NULL;

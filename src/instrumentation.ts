@@ -1,7 +1,8 @@
 import type { Instrumentation } from "next";
 
 /**
- * Starts the in-app-feedback-module's background retry worker once when the
+ * Starts the in-app-feedback-module's background retry worker, and
+ * fix-default-start-failure's orphan-reconciliation sweep, once when the
  * server process starts (Next 16's stable "run once at boot" hook — no
  * feature flag needed). The dynamic import is deliberate: Next calls
  * `register()` once per runtime it starts, including edge, where
@@ -14,6 +15,8 @@ export async function register() {
 		"~/server/feedback/retry-worker"
 	);
 	startFeedbackRetryWorker();
+	const { startOrphanSweep } = await import("~/server/simulation/orphan-sweep");
+	startOrphanSweep();
 }
 
 /**
