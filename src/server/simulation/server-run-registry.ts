@@ -466,6 +466,39 @@ async function finishRun(
 	}
 }
 
+// refactor-opportunities Phase 1 (Candidate C): the single place that
+// computes `score` and builds the 8-field `history` object from a live
+// run's current state — `tick()`'s `shouldStop` branch and `stopServerRun()`
+// both call this instead of hand-duplicating the `computeScore(...)` call
+// and the object literal, so the two call sites can't drift out of sync
+// with each other (or with `finishRun`'s own `history` type) again. Local
+// to this file, same convention as `LiveRun`/`ServerRunSnapshot` above.
+function buildFinishPayload(run: LiveRun): {
+	score: number;
+	history: NonNullable<Parameters<typeof finishRun>[1]["history"]>;
+} {
+	const score = computeScore(
+		run.elapsedSeconds,
+		computeResourceManagement(run.foodRatioSamples),
+		computeGeneticDiversity(run.boids.map((b) => b.genes)),
+		computePhaseQuality(run.phaseHistory),
+		computeAreaPopulationDensity(run.populationDensitySamples),
+	);
+	return {
+		score,
+		history: {
+			phaseHistory: run.phaseHistory,
+			foodRatioSamples: run.foodRatioSamples,
+			survivorGenes: run.boids.map((b) => b.genes),
+			populationCountSamples: run.populationCountSamples,
+			populationDensitySamples: run.populationDensitySamples,
+			geneticDiversitySamples: run.geneticDiversitySamples,
+			parameterChanges: run.parameterChanges,
+			elapsedSeconds: run.elapsedSeconds,
+		},
+	};
+}
+
 function tick(runId: number): void {
 	const run = registry.get(runId);
 	if (!run) {
@@ -555,26 +588,7 @@ function tick(runId: number): void {
 		run.hasWarnedDenseClustering = result.hasWarnedDenseClustering;
 
 		if (result.shouldStop) {
-			const score = computeScore(
-				run.elapsedSeconds,
-				computeResourceManagement(run.foodRatioSamples),
-				computeGeneticDiversity(run.boids.map((b) => b.genes)),
-				computePhaseQuality(run.phaseHistory),
-				computeAreaPopulationDensity(run.populationDensitySamples),
-			);
-			void finishRun(runId, {
-				score,
-				history: {
-					phaseHistory: run.phaseHistory,
-					foodRatioSamples: run.foodRatioSamples,
-					survivorGenes: run.boids.map((b) => b.genes),
-					populationCountSamples: run.populationCountSamples,
-					populationDensitySamples: run.populationDensitySamples,
-					geneticDiversitySamples: run.geneticDiversitySamples,
-					parameterChanges: run.parameterChanges,
-					elapsedSeconds: run.elapsedSeconds,
-				},
-			});
+			void finishRun(runId, buildFinishPayload(run));
 		}
 	} catch (error) {
 		// Mirrors simulation-canvas.tsx's tick-error rule: the tick's own state
@@ -674,26 +688,7 @@ export async function stopServerRun(runId: number): Promise<void> {
 		// stop should not throw.
 		return;
 	}
-	const score = computeScore(
-		run.elapsedSeconds,
-		computeResourceManagement(run.foodRatioSamples),
-		computeGeneticDiversity(run.boids.map((b) => b.genes)),
-		computePhaseQuality(run.phaseHistory),
-		computeAreaPopulationDensity(run.populationDensitySamples),
-	);
-	await finishRun(runId, {
-		score,
-		history: {
-			phaseHistory: run.phaseHistory,
-			foodRatioSamples: run.foodRatioSamples,
-			survivorGenes: run.boids.map((b) => b.genes),
-			populationCountSamples: run.populationCountSamples,
-			populationDensitySamples: run.populationDensitySamples,
-			geneticDiversitySamples: run.geneticDiversitySamples,
-			parameterChanges: run.parameterChanges,
-			elapsedSeconds: run.elapsedSeconds,
-		},
-	});
+	await finishRun(runId, buildFinishPayload(run));
 }
 
 // S-04 Phase 4 (FR-012): everything needed to reconstruct an identical
