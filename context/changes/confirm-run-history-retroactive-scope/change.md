@@ -1,7 +1,7 @@
 ---
 change_id: confirm-run-history-retroactive-scope
 title: Confirm per-run history scope is forward-only
-status: preparing
+status: planned
 created: 2026-11-17
 updated: 2026-11-17
 archived_at: null

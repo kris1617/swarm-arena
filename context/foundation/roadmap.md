@@ -88,7 +88,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-34 | suggestion-quality-corpus-test | Maintainer has an automated test asserting the parameter-suggestion heuristic produces a sensible, correlated suggestion against the persisted corpus | S-33           | MS-04                                                  | done |
 | S-35 | analytics-correctness-corpus-tests | Maintainer has automated tests confirming every per-run analytics function handles the corpus's full range of parameter combinations without error | S-33           | MS-05                                                  | done |
 | S-36 | unwatched-run-tick-throttling | User runs multiple server-owned simulations and the one they're actively watching stays responsive, because unwatched runs no longer compete equally for CPU | —              | MS-03                                                  | blocked |
-| S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | ready |
+| S-37 | confirm-run-history-retroactive-scope | User (and the team) has a documented confirmation that per-run history applies only to runs completed after it shipped, with older runs showing an accurate "no history" state | —              | MS-01                                                  | planning |
 | S-38 | confirm-admin-elevation-mechanism-resolved | User (and the team) has a documented confirmation that temporary admin elevation already uses the time-boxed, self-service mechanism decided during S-22's planning | —              | MS-02                                                  | ready |
 
 ## Streams
@@ -705,7 +705,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (the forward-only resolution is already the shipped default per F-05/S-11; research confirmed one real empty-state bug — see Risk — and this slice fixes it, then formally closes Open Roadmap Question #4)
 - **Risk:** Low — research found the run-analysis page's "Final genetic diversity" scalar has no null-history guard and silently shows `0.000` for an old run (`src/app/runs/[runId]/page.tsx`); a small, low-risk copy/guard fix matching the page's own existing pattern for every other section.
-- **Status:** ready
+- **Status:** planning
 
 ### S-38: Confirm admin-elevation mechanism is resolved
 
