@@ -2,11 +2,20 @@
 title: Invariant → guardian aggregate refactor — score comparability
 created: 2026-11-17
 type: refactor-plan
+implemented: 2026-11-17 (baf3747)
 ---
 
 # Invariant → guardian aggregate: score comparability
 
 **Scope**: planning only — no production code is modified by this document.
+
+**Status: implemented** in commit `baf3747` — `ScoredRun` at
+`src/server/simulation/scored-run.ts`, migrated into `listLeaderboard`,
+`getParameterSuggestion`, and `getRunsComparison` plus their two client
+consumers. `run-export.ts` was deliberately left untouched (see the commit
+message): it only passes `wasEverThrottled` through for export with no
+disclosure logic duplicated at that site. R-09 (cross-ceiling consistency)
+remains open and unaddressed, as this document always said.
 
 ## Step 0: Context
 

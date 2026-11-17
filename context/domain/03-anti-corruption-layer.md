@@ -2,11 +2,23 @@
 title: Anti-Corruption Layer — the unwrapped {r,g,b} color representation
 created: 2026-11-17
 type: refactor-plan
+implemented: 2026-11-17 (67df16c)
 ---
 
 # Anti-Corruption Layer: color representation
 
 **Scope**: planning only — no production code is modified by this document.
+
+**Status: implemented, narrower than designed** in commit `67df16c` —
+`Color` at `src/server/simulation/color.ts`, owning `fromHex`/`fromHsl`/
+`toCss`/`toJSON`/`fromJSON`. The design's `blend()` method was dropped on
+discovering, while implementing, that `boids.ts`'s `blendChannel` reuses
+the genetics system's shared mutation-aware `blendNumber` (rng +
+mutationChance + mutationMagnitude) — genetics logic applied to color
+channels, not a pure color operation this value object should own. See the
+commit message for the full reasoning. `BoidGenes.color` also deliberately
+keeps its bare `{r,g,b}` wire/persisted type rather than becoming `Color`
+in-memory, for the deserialization-safety reason the commit documents.
 
 ## Step 0: Context
 
