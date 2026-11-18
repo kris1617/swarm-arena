@@ -1753,6 +1753,451 @@ describe("predator-prey dynamics", () => {
 	});
 });
 
+// second-predator-tribe-prey-target Phase 5: dedicated behavioral tests for
+// the Phase 1 engine mechanic — (a) same-tribe predators are always safe
+// regardless of preyTarget, (b) a cross-tribe predator is hunted only when
+// the hunting tribe's own preyTarget includes "boids-and-predators", (c) a
+// predator tribe at or below protectionThreshold is immune to capture.
+describe("cross-tribe predator targeting (stepPredators, second-predator-tribe-prey-target Phase 1)", () => {
+	function buildPredatorTribeConfig(
+		overrides: Partial<PredatorTribeConfig> = {},
+	): PredatorTribeConfig {
+		return { ...PREDATOR_TRIBE_CONFIG, ...overrides };
+	}
+
+	it('a tribe whose own preyTarget is "boids" never targets another predator, even when one sits well within detectionRadius — its stepped output is identical whether or not other tribes\' predators are nearby', () => {
+		const subject = makePredator({
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		// Oracle: stepPredators only runs the predator-vs-predator scan when
+		// the SUBJECT's own tribe's preyTarget is "boids-and-predators" (plan
+		// Phase 1, "Changes Required" #1). Tribe 0 here is "boids", so the
+		// scan body never executes regardless of what else is nearby — the
+		// subject's result must be byte-identical with or without company.
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids", detectionRadius: 1000 }),
+			buildPredatorTribeConfig({ preyTarget: "boids-and-predators" }),
+		];
+
+		const [alone] = stepPredators(
+			[subject],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(3),
+		);
+
+		const nearbyOtherTribePredator = makePredator({
+			x: 5,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		const [withCompany] = stepPredators(
+			[
+				subject,
+				{
+					...nearbyOtherTribePredator,
+					genes: { ...nearbyOtherTribePredator.genes, flockId: 1 },
+				},
+			],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(3),
+		);
+
+		expect(withCompany).toEqual(alone);
+	});
+
+	it("same-tribe predators are always excluded from the cross-tribe scan, regardless of preyTarget — a subject's output is identical whether or not a same-tribe sibling is nearby", () => {
+		const subject = makePredator({
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({
+				preyTarget: "boids-and-predators",
+				detectionRadius: 1000,
+			}),
+		];
+
+		const [alone] = stepPredators(
+			[subject],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(5),
+		);
+
+		// Same-tribe sibling placed deliberately close (distance 1) — if the
+		// implementation ever failed to exclude same-flockId candidates, this
+		// sibling would dominate the nearest-candidate search and change the
+		// subject's steering versus the "alone" run above.
+		const sibling = makePredator({
+			x: 1,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		const [withSibling] = stepPredators(
+			[subject, sibling],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(5),
+		);
+
+		expect(withSibling).toEqual(alone);
+	});
+
+	it("a cross-tribe predator in range is pursued even when a closer same-tribe sibling exists — same-tribe is never a candidate at all", () => {
+		// Subject is tribe 1 ("boids-and-predators"). A same-tribe sibling
+		// sits at distance 1 on the +y axis; a cross-tribe predator (tribe 2)
+		// sits at distance 10 on the +x axis. If same-tribe were wrongly
+		// considered, the nearer sibling (dy=1) would win and steering would
+		// have a nonzero y component; the oracle (same-tribe never a
+		// candidate) requires the subject to steer purely toward +x instead.
+		const subject: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 1 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const sibling: PredatorState = {
+			x: 0,
+			y: 1,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 1 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const crossTribeTarget: PredatorState = {
+			x: 10,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 2 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids" }),
+			buildPredatorTribeConfig({
+				preyTarget: "boids-and-predators",
+				detectionRadius: 50,
+			}),
+			buildPredatorTribeConfig({
+				preyTarget: "boids-and-predators",
+				detectionRadius: 50,
+			}),
+		];
+
+		const [stepped] = stepPredators(
+			[subject, sibling, crossTribeTarget],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(1),
+		);
+
+		const result = stepped as PredatorState;
+		expect(result.vx).toBeGreaterThan(0);
+		expect(result.vy).toBeCloseTo(0, 9);
+		expect(result.vz).toBeCloseTo(0, 9);
+	});
+
+	it("symmetric cross-tribe targeting: two mutually-hunting tribes each pursue the other's nearest in-range predator", () => {
+		// Tribe 0 ("boids") sits far away (out of detectionRadius) so it can
+		// never be a factor; tribe 1 and tribe 2 (both
+		// "boids-and-predators") are close enough to target each other.
+		const tribe0: PredatorState = {
+			x: -100,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const tribe1: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 1 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const tribe2: PredatorState = {
+			x: 10,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 2 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids", detectionRadius: 50 }),
+			buildPredatorTribeConfig({
+				preyTarget: "boids-and-predators",
+				detectionRadius: 50,
+			}),
+			buildPredatorTribeConfig({
+				preyTarget: "boids-and-predators",
+				detectionRadius: 50,
+			}),
+		];
+
+		const [steppedTribe0, steppedTribe1, steppedTribe2] = stepPredators(
+			[tribe0, tribe1, tribe2],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(2),
+		);
+
+		// Tribe 1 pursues tribe 2 (its only in-range candidate): +x.
+		const result1 = steppedTribe1 as PredatorState;
+		expect(result1.vx).toBeGreaterThan(0);
+		expect(result1.vy).toBeCloseTo(0, 9);
+		expect(result1.vz).toBeCloseTo(0, 9);
+
+		// Tribe 2 pursues tribe 1 (its only in-range candidate): -x.
+		const result2 = steppedTribe2 as PredatorState;
+		expect(result2.vx).toBeLessThan(0);
+		expect(result2.vy).toBeCloseTo(0, 9);
+		expect(result2.vz).toBeCloseTo(0, 9);
+
+		// Tribe 0's own preyTarget is "boids" — its result must be
+		// unaffected by either nearby predator, confirmed by comparing
+		// against a run where it steps completely alone.
+		const [steppedAlone] = stepPredators(
+			[tribe0],
+			[],
+			0.1,
+			WORLD_SIZE,
+			configs,
+			createRng(2),
+		);
+		expect(steppedTribe0).toEqual(steppedAlone);
+	});
+});
+
+// second-predator-tribe-prey-target Phase 5: dedicated behavioral tests for
+// applyPredation's Phase 1 parallel predator-capture path — same-tribe
+// safety, the cross-tribe preyTarget gate, and the per-tribe protection
+// floor.
+describe("cross-tribe predator capture (applyPredation, second-predator-tribe-prey-target Phase 1)", () => {
+	function buildPredatorTribeConfig(
+		overrides: Partial<PredatorTribeConfig> = {},
+	): PredatorTribeConfig {
+		return { ...PREDATOR_TRIBE_CONFIG, ...overrides };
+	}
+
+	it("a hunting tribe (preyTarget: boids-and-predators) captures a cross-tribe predator within capture radius; the hunted tribe (preyTarget: boids) never captures back", () => {
+		const prey: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const hunter: PredatorState = {
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 1 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids" }),
+			buildPredatorTribeConfig({ preyTarget: "boids-and-predators" }),
+		];
+
+		const result = applyPredation(
+			[],
+			[prey, hunter],
+			/* protectionThreshold */ 0,
+			WORLD_SIZE,
+			configs,
+		);
+
+		expect(result.predators).toHaveLength(1);
+		expect(result.predators[0]?.genes.flockId).toBe(1);
+	});
+
+	it("same-tribe predators within capture radius never capture each other, even when preyTarget is boids-and-predators", () => {
+		const a: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const b: PredatorState = {
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids-and-predators" }),
+		];
+
+		const result = applyPredation(
+			[],
+			[a, b],
+			/* protectionThreshold */ 0,
+			WORLD_SIZE,
+			configs,
+		);
+
+		expect(result.predators).toHaveLength(2);
+	});
+
+	it("protection floor: a hunted tribe at or below protectionThreshold is immune to inter-predator capture; the same tribe above the threshold is captured normally", () => {
+		const protectionThreshold = 1;
+		const configs: PredatorTribeConfig[] = [
+			buildPredatorTribeConfig({ preyTarget: "boids" }),
+			buildPredatorTribeConfig({ preyTarget: "boids-and-predators" }),
+		];
+		function buildPrey(flockId: number, x: number, y: number): PredatorState {
+			return {
+				x,
+				y,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 100,
+				genes: makeGenes(WEIGHTS, { flockId }),
+				energy: 0,
+				age: 0,
+				gender: "a",
+			};
+		}
+		const hunter: PredatorState = {
+			x: 3,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 1 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+
+		// Tribe 0's population is exactly 1, at the floor — immune.
+		const singlePreyResult = applyPredation(
+			[],
+			[buildPrey(0, 0, 0), hunter],
+			protectionThreshold,
+			WORLD_SIZE,
+			configs,
+		);
+		expect(singlePreyResult.predators).toHaveLength(2);
+		expect(
+			singlePreyResult.predators.filter((p) => p.genes.flockId === 0),
+		).toHaveLength(1);
+
+		// Tribe 0's population is 2, above the floor — the nearer of the two
+		// is captured normally, proving the floor isn't just coincidentally
+		// never triggering.
+		const twoPreyResult = applyPredation(
+			[],
+			[buildPrey(0, 0, 0), buildPrey(0, 0, 1), hunter],
+			protectionThreshold,
+			WORLD_SIZE,
+			configs,
+		);
+		expect(twoPreyResult.predators).toHaveLength(2);
+		expect(
+			twoPreyResult.predators.filter((p) => p.genes.flockId === 0),
+		).toHaveLength(1);
+	});
+});
+
 // predator-tribe-concept Phase 4: closes the "inherited but never read"
 // genetics gap — stepPredators' speed clamp now reads each predator's own
 // genes.minSpeed/genes.maxSpeed (seeded at spawn from its own tribe's

@@ -505,25 +505,25 @@ the new factor as absent for those rows.
 
 #### Automated
 
-- [x] 4.1 Typecheck passes (fully clean, repo-wide)
-- [x] 4.2 Component tests pass (39/39)
-- [x] 4.3 Full test suite passes (503/504, 1 pre-existing skip)
-- [x] 4.4 Lint passes
+- [x] 4.1 Typecheck passes (fully clean, repo-wide) — 95f5fe2
+- [x] 4.2 Component tests pass (39/39) — 95f5fe2
+- [x] 4.3 Full test suite passes (503/504, 1 pre-existing skip) — 95f5fe2
+- [x] 4.4 Lint passes — 95f5fe2
 
 #### Manual
 
-- [x] 4.5 Start-form-configured prey target round-trips correctly
-- [x] 4.6 Live-edit prey-target change persists through the next subscription push
+- [x] 4.5 Start-form-configured prey target round-trips correctly — 95f5fe2
+- [x] 4.6 Live-edit prey-target change persists through the next subscription push — 95f5fe2
 
 ### Phase 5: Verification
 
 #### Automated
 
-- [ ] 5.1 Full test suite passes
-- [ ] 5.2 Typecheck passes
-- [ ] 5.3 Lint passes
-- [ ] 5.4 Full build succeeds
+- [x] 5.1 Full test suite passes (510/511, 1 pre-existing skip)
+- [x] 5.2 Typecheck passes
+- [x] 5.3 Lint passes
+- [x] 5.4 Full build succeeds
 
 #### Manual
 
-- [ ] 5.5 Verification script's assertions all pass
+- [x] 5.5 Verification script's assertions all pass
