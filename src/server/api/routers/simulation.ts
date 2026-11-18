@@ -181,53 +181,70 @@ export async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
 	maxObjectCount: number;
 	maxConcurrentObjectCount: number;
 }> {
-	const existing = await db.query.adminSettings.findFirst({
-		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
-	});
-	if (existing) {
-		const existingRanges = existing.parameterRanges as ParameterRanges;
-		// admin-settings-range-backfill: a row created before a later
-		// milestone added new RANGED_PARAMETER_NAMES entries is missing those
-		// keys — backfill from DEFAULT_PARAMETER_RANGES (existing values win
-		// per-key) and persist the merged result so the row becomes complete
-		// going forward, instead of returning the stale, incomplete object.
-		const merged: ParameterRanges = {
-			...DEFAULT_PARAMETER_RANGES,
-			...existingRanges,
-		};
-		if (JSON.stringify(merged) !== JSON.stringify(existingRanges)) {
-			await db
-				.insert(adminSettings)
-				.values({
-					id: ADMIN_SETTINGS_ID,
-					parameterRanges: merged,
-					maxObjectCount: existing.maxObjectCount,
-					maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
-				})
-				.onConflictDoUpdate({
-					target: adminSettings.id,
-					set: { parameterRanges: merged },
-				});
+	// impl-review F2: the read (findFirst) and the conditional write
+	// (backfill upsert / first-run seed) are wrapped in one transaction —
+	// without it, a concurrent updateParameterRanges call landing between
+	// this function's read and write could have its fresh edit silently
+	// overwritten by a backfill write computed from the now-stale snapshot
+	// this function read. No other transaction use exists yet in this
+	// codebase; this is the first.
+	return db.transaction(async (tx) => {
+		const existing = await tx.query.adminSettings.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
+		});
+		if (existing) {
+			const existingRanges = existing.parameterRanges as ParameterRanges;
+			// admin-settings-range-backfill: a row created before a later
+			// milestone added new RANGED_PARAMETER_NAMES entries is missing those
+			// keys — backfill from DEFAULT_PARAMETER_RANGES (existing values win
+			// per-key) and persist the merged result so the row becomes complete
+			// going forward, instead of returning the stale, incomplete object.
+			const merged: ParameterRanges = {
+				...DEFAULT_PARAMETER_RANGES,
+				...existingRanges,
+			};
+			// impl-review F1: compare by missing keys, not JSON.stringify —
+			// a stringify compare is key-order-sensitive, not
+			// value-sensitive, so two semantically-identical objects
+			// serialized in a different key order would falsely look
+			// "different" and trigger a needless write.
+			const isMissingKeys = RANGED_PARAMETER_NAMES.some(
+				(name) => !(name in existingRanges),
+			);
+			if (isMissingKeys) {
+				await tx
+					.insert(adminSettings)
+					.values({
+						id: ADMIN_SETTINGS_ID,
+						parameterRanges: merged,
+						maxObjectCount: existing.maxObjectCount,
+						maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
+					})
+					.onConflictDoUpdate({
+						target: adminSettings.id,
+						set: { parameterRanges: merged },
+					});
+			}
+			return {
+				parameterRanges: merged,
+				maxObjectCount: existing.maxObjectCount,
+				maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
+			};
 		}
+		// First-run seed: insert the default row matching the pre-S-04 hardcoded
+		// bounds exactly, so nothing changes in practice until an admin edits it.
+		await tx.insert(adminSettings).values({
+			id: ADMIN_SETTINGS_ID,
+			parameterRanges: DEFAULT_PARAMETER_RANGES,
+			maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+			maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
+		});
 		return {
-			parameterRanges: merged,
-			maxObjectCount: existing.maxObjectCount,
-			maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
+			parameterRanges: DEFAULT_PARAMETER_RANGES,
+			maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
+			maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 		};
-	}
-	// First-run seed: insert the default row matching the pre-S-04 hardcoded
-	// bounds exactly, so nothing changes in practice until an admin edits it.
-	await db.insert(adminSettings).values({
-		id: ADMIN_SETTINGS_ID,
-		parameterRanges: DEFAULT_PARAMETER_RANGES,
-		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
-		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	});
-	return {
-		parameterRanges: DEFAULT_PARAMETER_RANGES,
-		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
-		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
-	};
 }
 
 // F-07: the sum of boidCount+predatorCount across every one of `userId`'s
