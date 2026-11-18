@@ -13,7 +13,6 @@ type LiveParams = {
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
-	crossbreedingEnabled: boolean;
 };
 
 // per-tribe-behavior-weights Phase 6 (plan F4): a minimal stand-in for
@@ -161,7 +160,6 @@ const LIVE_PARAMS_FIXTURE: LiveParams = {
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
-	crossbreedingEnabled: true,
 };
 
 describe("ServerRunViewer", () => {
@@ -340,64 +338,17 @@ describe("ServerRunViewer", () => {
 			renderViewer();
 			pushLiveParams(LIVE_PARAMS_FIXTURE);
 
-			// crossbreedingEnabled renders as a Switch, not a NumberField's
-			// <input> — asserted separately below.
-			for (const field of Object.keys(LIVE_PARAMS_FIXTURE).filter(
-				(field) => field !== "crossbreedingEnabled",
-			) as Array<keyof LiveParams>) {
+			// per-tribe-predator-config Phase 4: crossbreedingEnabled no longer
+			// lives in LIVE_FIELDS/LiveParams at all (moved to the per-tribe
+			// array live-edit path) — every remaining field is a plain
+			// NumberField <input>.
+			for (const field of Object.keys(LIVE_PARAMS_FIXTURE) as Array<
+				keyof LiveParams
+			>) {
 				expect(getFieldInput(field).value).toBe(
 					String(LIVE_PARAMS_FIXTURE[field]),
 				);
 			}
-		});
-
-		it("renders a Switch (not a NumberField) for crossbreedingEnabled, grouped under future-offspring fields", () => {
-			renderViewer();
-			pushLiveParams(LIVE_PARAMS_FIXTURE);
-
-			const switchEl = container.querySelector(
-				"#live-param-crossbreedingEnabled",
-			);
-			expect(switchEl).not.toBeNull();
-			expect(switchEl?.tagName).toBe("BUTTON");
-			expect(switchEl?.getAttribute("role")).toBe("switch");
-			expect(switchEl?.getAttribute("aria-checked")).toBe("true");
-
-			// Grouped under "Affects future offspring only", not "Takes effect
-			// immediately" — same heading the other future-offspring fields use.
-			const futureOffspringHeading = Array.from(
-				container.querySelectorAll("p"),
-			).find((p) => p.textContent === "Affects future offspring only");
-			expect(futureOffspringHeading).not.toBeUndefined();
-			expect(
-				futureOffspringHeading?.nextElementSibling?.contains(switchEl),
-			).toBe(true);
-		});
-
-		it("toggling crossbreedingEnabled and clicking Apply sends a real boolean", () => {
-			renderViewer();
-			pushLiveParams(LIVE_PARAMS_FIXTURE);
-
-			const switchEl = container.querySelector(
-				"#live-param-crossbreedingEnabled",
-			);
-			expect(switchEl).not.toBeNull();
-			act(() => {
-				switchEl?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-			});
-
-			const buttons = Array.from(container.querySelectorAll("button"));
-			const applyButton = buttons.find((b) => b.textContent === "Apply");
-			expect(applyButton).not.toBeUndefined();
-			act(() => {
-				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-			});
-
-			expect(updateRunParamsMutate).toHaveBeenCalledTimes(1);
-			expect(updateRunParamsMutate).toHaveBeenCalledWith({
-				runId: 42,
-				crossbreedingEnabled: false,
-			});
 		});
 
 		it("clicking Apply after changing 2 of 5 fields sends only those 2 fields", () => {

@@ -36,7 +36,6 @@ const LIVE_FIELDS = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
-	"crossbreedingEnabled",
 ] as const satisfies readonly (keyof LiveAdjustableParams)[];
 
 type LiveField = (typeof LIVE_FIELDS)[number];
@@ -49,7 +48,6 @@ const LIVE_FIELD_LABELS: Record<LiveField, string> = {
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
-	crossbreedingEnabled: "Crossbreeding enabled",
 };
 
 // live-parameter-adjustment (S-27) Phase 2: the panel groups the 5 fields by
@@ -64,7 +62,6 @@ const FUTURE_OFFSPRING_FIELDS = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
-	"crossbreedingEnabled",
 ] as const satisfies readonly LiveField[];
 
 // How long the Apply button stays disabled after a successful apply
@@ -173,12 +170,13 @@ export function ServerRunViewer({
 	// typing while the request was in flight).
 	const pendingPatchRef = useRef<Partial<LiveFormValues>>({});
 
-	// `LiveFormValues` stores every field as a number (so the Switch's
-	// `checked` can be derived via `Boolean(...)`), but the subscription's
-	// `liveParams` carries `crossbreedingEnabled` as a genuine boolean —
-	// coerce it to 0/1 at the one point it enters form state.
+	// per-tribe-predator-config Phase 4: every remaining `LiveAdjustableParams`
+	// field is a plain number now that `crossbreedingEnabled` moved to the
+	// per-tribe array live-edit path — this is now a type-narrowing identity,
+	// kept (rather than inlined) so `toLiveFormValues` reads the same either
+	// way.
 	function toFormFieldValue(value: LiveAdjustableParams[LiveField]): number {
-		return typeof value === "boolean" ? Number(value) : value;
+		return value;
 	}
 
 	function toLiveFormValues(data: LiveAdjustableParams): LiveFormValues {
@@ -257,31 +255,16 @@ export function ServerRunViewer({
 		}
 		const applied = appliedValuesRef.current;
 		const patch: Partial<LiveFormValues> = {};
-		// The outgoing mutation payload needs `crossbreedingEnabled` as a real
-		// boolean (the server's zod schema expects `z.boolean()`), while
-		// `LiveFormValues` itself stays all-number so the rest of this
-		// component's diffing/dirty-tracking logic doesn't need a special
-		// case. Widen only the outgoing payload's type for this one key.
-		const outgoingPatch: Partial<
-			Omit<LiveFormValues, "crossbreedingEnabled">
-		> & {
-			crossbreedingEnabled?: boolean;
-		} = {};
 		for (const field of LIVE_FIELDS) {
 			if (liveValues[field] !== applied[field]) {
 				patch[field] = liveValues[field];
-				if (field === "crossbreedingEnabled") {
-					outgoingPatch.crossbreedingEnabled = Boolean(liveValues[field]);
-				} else {
-					outgoingPatch[field] = liveValues[field];
-				}
 			}
 		}
 		if (Object.keys(patch).length === 0) {
 			return;
 		}
 		pendingPatchRef.current = patch;
-		updateRunParamsMutation.mutate({ runId, ...outgoingPatch });
+		updateRunParamsMutation.mutate({ runId, ...patch });
 	}
 
 	function warningsForField(field: LiveField): string[] {
@@ -313,31 +296,15 @@ export function ServerRunViewer({
 				)}
 				key={field}
 			>
-				{field === "crossbreedingEnabled" ? (
-					<label
-						className="flex items-center gap-2 text-sm"
-						htmlFor={`live-param-${field}`}
-					>
-						{LIVE_FIELD_LABELS[field]}
-						<Switch
-							checked={Boolean(values[field])}
-							id={`live-param-${field}`}
-							onCheckedChange={(checked) =>
-								handleLiveFieldChange(field, checked ? 1 : 0)
-							}
-						/>
-					</label>
-				) : (
-					<NumberField
-						id={`live-param-${field}`}
-						label={LIVE_FIELD_LABELS[field]}
-						max={fieldRange.max}
-						min={fieldRange.min}
-						onChange={(value) => handleLiveFieldChange(field, value)}
-						step={step}
-						value={values[field]}
-					/>
-				)}
+				<NumberField
+					id={`live-param-${field}`}
+					label={LIVE_FIELD_LABELS[field]}
+					max={fieldRange.max}
+					min={fieldRange.min}
+					onChange={(value) => handleLiveFieldChange(field, value)}
+					step={step}
+					value={values[field]}
+				/>
 				{fieldWarnings.map((warning) => (
 					<p className="text-destructive text-xs" key={warning}>
 						{warning}

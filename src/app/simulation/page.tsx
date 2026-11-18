@@ -6,6 +6,7 @@ import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas
 import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import type {
 	PredatorTribeConfig,
@@ -147,6 +148,38 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 	},
 ];
 
+// per-tribe-predator-config Phase 4: one shared default-valued
+// PredatorTribeConfig entry, reused across every slot — unlike
+// DEFAULT_TRIBE_CONFIGS (boids' 4 Lua-ported, deliberately distinct
+// defaults), predators have no prior per-tribe design to port: F-10's own
+// bridge used exactly these values (admin-range defaults, or the F-10
+// bridge's hardcoded 55/20 for maxSpeed/minSpeed, now themselves the admin
+// defaults per Phase 3) for its single tribe. Sized to
+// `ranges.predatorFlockCount.max` slots (read from the same
+// DEFAULT_PARAMETER_RANGES fallback buildStartInput/tribeFieldDefs already
+// use) so raising `predatorFlockCount` up to its max never needs to
+// synthesize a new entry — every slot always exists in state, same posture
+// as DEFAULT_TRIBE_CONFIGS's own 4-slot-always-alive convention.
+const DEFAULT_PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
+	separation: DEFAULT_PARAMETER_RANGES.separationWeight.default,
+	alignment: DEFAULT_PARAMETER_RANGES.alignmentWeight.default,
+	cohesion: DEFAULT_PARAMETER_RANGES.cohesionWeight.default,
+	maxSpeed: DEFAULT_PARAMETER_RANGES.maxSpeed.default,
+	minSpeed: DEFAULT_PARAMETER_RANGES.minSpeed.default,
+	matePreference: DEFAULT_PARAMETER_RANGES.matePreference.default,
+	detectionRadius: DEFAULT_PARAMETER_RANGES.detectionRadius.default,
+	captureRadiusMult: DEFAULT_PARAMETER_RANGES.captureRadiusMult.default,
+	// per-tribe-predator-config Phase 2: replaces the old run-level flag —
+	// see PredatorTribeConfig.crossbreedingEnabled in boids.ts.
+	crossbreedingEnabled: true,
+};
+
+const DEFAULT_PREDATOR_TRIBE_CONFIGS: readonly PredatorTribeConfig[] =
+	Array.from(
+		{ length: DEFAULT_PARAMETER_RANGES.predatorFlockCount.max },
+		() => ({ ...DEFAULT_PREDATOR_TRIBE_CONFIG }),
+	);
+
 export default function SimulationPage() {
 	const [boidCount, setBoidCount] = useState(100);
 	const [separationWeight, setSeparationWeight] = useState(1);
@@ -168,12 +201,48 @@ export default function SimulationPage() {
 	);
 	function updateTribeField(
 		index: number,
-		field: keyof TribeConfig,
+		field: Exclude<keyof TribeConfig, "crossbreedingEnabled">,
 		value: number,
 	) {
 		setTribeConfigs((prev) =>
 			prev.map((config, i) =>
 				i === index ? { ...config, [field]: value } : config,
+			),
+		);
+	}
+	// per-tribe-predator-config Phase 4: a sibling setter rather than widening
+	// updateTribeField's value type to `number | boolean` — keeps the numeric
+	// setter's signature clean, per the plan's own suggested alternative.
+	function updateTribeCrossbreeding(index: number, value: boolean) {
+		setTribeConfigs((prev) =>
+			prev.map((config, i) =>
+				i === index ? { ...config, crossbreedingEnabled: value } : config,
+			),
+		);
+	}
+	// per-tribe-predator-config Phase 4: predators' own independent tribe
+	// state — sibling to flockCount/tribeConfigs above, not a reuse of them.
+	// All slots stay alive in state regardless of the current
+	// `predatorFlockCount`, same posture as `tribeConfigs` above.
+	const [predatorFlockCount, setPredatorFlockCount] = useState(1);
+	const [predatorTribeConfigs, setPredatorTribeConfigs] = useState<
+		PredatorTribeConfig[]
+	>(() => DEFAULT_PREDATOR_TRIBE_CONFIGS.map((config) => ({ ...config })));
+	function updatePredatorTribeField(
+		index: number,
+		field: Exclude<keyof PredatorTribeConfig, "crossbreedingEnabled">,
+		value: number,
+	) {
+		setPredatorTribeConfigs((prev) =>
+			prev.map((config, i) =>
+				i === index ? { ...config, [field]: value } : config,
+			),
+		);
+	}
+	function updatePredatorTribeCrossbreeding(index: number, value: boolean) {
+		setPredatorTribeConfigs((prev) =>
+			prev.map((config, i) =>
+				i === index ? { ...config, crossbreedingEnabled: value } : config,
 			),
 		);
 	}
@@ -346,37 +415,57 @@ export default function SimulationPage() {
 				// min/max), carried straight through from this tribe's own state.
 				crossbreedingEnabled: tribeConfig.crossbreedingEnabled,
 			}));
-		// predator-tribe-concept Phase 1: a single uniform bridge value, same
-		// posture as per-tribe-behavior-weights Phase 1's own
-		// pre-per-tab-UI bridge for boids' tribeConfigs — predators get their
-		// own fully independent tribe-count/tribe-config pair, but no
-		// per-tab predator UI exists yet (that's a later phase), so this
-		// pins predatorFlockCount at 1 with one default-valued
-		// PredatorTribeConfig, reproducing today's effective
-		// single-undifferentiated-predator-tribe behavior exactly.
-		const predatorTribeConfigsOutput = [
-			{
-				separation: ranges.separationWeight.default,
-				alignment: ranges.alignmentWeight.default,
-				cohesion: ranges.cohesionWeight.default,
-				// Mirrors boids.ts's own fixed PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED
-				// engine constants (55/20) — there is no admin range for predator
-				// cruise speed yet, and these fields stay behaviorally inert for
-				// predators this phase regardless (see PredatorTribeConfig's own
-				// comment in boids.ts).
-				maxSpeed: 55,
-				minSpeed: 20,
-				matePreference: ranges.matePreference.default,
-				detectionRadius: ranges.detectionRadius.default,
-				captureRadiusMult: ranges.captureRadiusMult.default,
-				// per-tribe-predator-config Phase 2: see tribeConfigsOutput's own
-				// field above for the semantics.
-				crossbreedingEnabled: true,
-			},
-		];
+		// per-tribe-predator-config Phase 4: real predatorFlockCount/
+		// predatorTribeConfigs state (the new predator tab panel below),
+		// replacing the old F-10-era single-hardcoded-tribe bridge — clamped
+		// exactly the same way tribeConfigsOutput above clamps boids'.
+		const clampedPredatorFlockCount = Math.min(
+			Math.max(ranges.predatorFlockCount.min, Math.round(predatorFlockCount)),
+			ranges.predatorFlockCount.max,
+		);
+		const predatorTribeConfigsOutput = predatorTribeConfigs
+			.slice(0, clampedPredatorFlockCount)
+			.map((tribeConfig) => ({
+				separation: Math.min(
+					Math.max(ranges.separationWeight.min, tribeConfig.separation),
+					ranges.separationWeight.max,
+				),
+				alignment: Math.min(
+					Math.max(ranges.alignmentWeight.min, tribeConfig.alignment),
+					ranges.alignmentWeight.max,
+				),
+				cohesion: Math.min(
+					Math.max(ranges.cohesionWeight.min, tribeConfig.cohesion),
+					ranges.cohesionWeight.max,
+				),
+				maxSpeed: Math.min(
+					Math.max(ranges.maxSpeed.min, tribeConfig.maxSpeed),
+					ranges.maxSpeed.max,
+				),
+				minSpeed: Math.min(
+					Math.max(ranges.minSpeed.min, tribeConfig.minSpeed),
+					ranges.minSpeed.max,
+				),
+				matePreference: Math.min(
+					Math.max(ranges.matePreference.min, tribeConfig.matePreference),
+					ranges.matePreference.max,
+				),
+				detectionRadius: Math.min(
+					Math.max(ranges.detectionRadius.min, tribeConfig.detectionRadius),
+					ranges.detectionRadius.max,
+				),
+				captureRadiusMult: Math.min(
+					Math.max(ranges.captureRadiusMult.min, tribeConfig.captureRadiusMult),
+					ranges.captureRadiusMult.max,
+				),
+				// per-tribe-predator-config Phase 2: not admin-ranged (boolean, no
+				// min/max), carried straight through from this tribe's own state —
+				// see tribeConfigsOutput's own field above for the semantics.
+				crossbreedingEnabled: tribeConfig.crossbreedingEnabled,
+			}));
 		return {
 			tribeConfigs: tribeConfigsOutput,
-			predatorFlockCount: 1,
+			predatorFlockCount: clampedPredatorFlockCount,
 			predatorTribeConfigs: predatorTribeConfigsOutput,
 			boidCount: Math.min(
 				Math.max(ranges.boidCount.min, Math.round(boidCount)),
@@ -602,6 +691,66 @@ export default function SimulationPage() {
 			label: "Food consumption rate",
 			min: ranges.foodConsumptionRate.min,
 			max: ranges.foodConsumptionRate.max,
+			step: "0.1",
+		},
+	];
+
+	// per-tribe-predator-config Phase 4: predator-side sibling of
+	// visibleTribeCount — same clamp buildStartInput applies to
+	// predatorFlockCount.
+	const visiblePredatorTribeCount = Math.min(
+		Math.max(ranges.predatorFlockCount.min, Math.round(predatorFlockCount)),
+		ranges.predatorFlockCount.max,
+	);
+	// per-tribe-predator-config Phase 4: predator-side sibling of
+	// tribeFieldDefs — only the 6 non-inert PredatorTribeConfig fields
+	// (separation/alignment/cohesion stay on the type/schema but are not
+	// rendered, per the plan's "What We're NOT Doing"). crossbreedingEnabled
+	// is excluded here too — rendered separately as its own Switch, same as
+	// the boid tab.
+	const predatorTribeFieldDefs: {
+		field: Exclude<
+			keyof PredatorTribeConfig,
+			"crossbreedingEnabled" | "separation" | "alignment" | "cohesion"
+		>;
+		label: string;
+		min: number;
+		max: number;
+		step: string;
+	}[] = [
+		{
+			field: "maxSpeed",
+			label: "Max speed",
+			min: ranges.maxSpeed.min,
+			max: ranges.maxSpeed.max,
+			step: "1",
+		},
+		{
+			field: "minSpeed",
+			label: "Min speed",
+			min: ranges.minSpeed.min,
+			max: ranges.minSpeed.max,
+			step: "1",
+		},
+		{
+			field: "matePreference",
+			label: "Mate preference",
+			min: ranges.matePreference.min,
+			max: ranges.matePreference.max,
+			step: "0.05",
+		},
+		{
+			field: "detectionRadius",
+			label: "Detection radius",
+			min: ranges.detectionRadius.min,
+			max: ranges.detectionRadius.max,
+			step: "1",
+		},
+		{
+			field: "captureRadiusMult",
+			label: "Capture radius multiplier",
+			min: ranges.captureRadiusMult.min,
+			max: ranges.captureRadiusMult.max,
 			step: "0.1",
 		},
 	];
@@ -865,6 +1014,82 @@ export default function SimulationPage() {
 												value={tribeConfig[def.field]}
 											/>
 										))}
+										<label
+											className="flex items-center gap-2 text-sm"
+											htmlFor={`tribe-${i}-crossbreedingEnabled`}
+										>
+											Crossbreeding enabled
+											<Switch
+												checked={tribeConfig.crossbreedingEnabled}
+												id={`tribe-${i}-crossbreedingEnabled`}
+												onCheckedChange={(checked) =>
+													updateTribeCrossbreeding(i, checked)
+												}
+											/>
+										</label>
+									</TabsContent>
+								);
+							})}
+						</Tabs>
+					</div>
+					<NumberField
+						id="predator-flock-count"
+						label={`Predator flock count (${ranges.predatorFlockCount.min}-${ranges.predatorFlockCount.max})`}
+						max={ranges.predatorFlockCount.max}
+						min={ranges.predatorFlockCount.min}
+						onChange={setPredatorFlockCount}
+						value={predatorFlockCount}
+					/>
+					<div className="flex flex-col gap-2">
+						<p className="font-semibold">Per-predator-tribe configuration</p>
+						<Tabs defaultValue="0">
+							<TabsList>
+								{Array.from({ length: visiblePredatorTribeCount }, (_, i) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: predator tribe index IS the stable identity here — predatorTribeConfigs is a fixed-size array (never reordered/filtered), and this index is also the array position read back in predatorTribeConfigs[i] below.
+									<TabsTrigger key={i} value={String(i)}>
+										Predator tribe {i + 1}
+									</TabsTrigger>
+								))}
+							</TabsList>
+							{Array.from({ length: visiblePredatorTribeCount }, (_, i) => {
+								const predatorTribeConfig = predatorTribeConfigs[i];
+								if (!predatorTribeConfig) {
+									return null;
+								}
+								return (
+									<TabsContent
+										className="flex flex-col gap-3"
+										// biome-ignore lint/suspicious/noArrayIndexKey: predator tribe index IS the stable identity here — predatorTribeConfigs is a fixed-size array (never reordered/filtered), and this index is also the array position read via predatorTribeConfigs[i] above.
+										key={i}
+										value={String(i)}
+									>
+										{predatorTribeFieldDefs.map((def) => (
+											<NumberField
+												id={`predator-tribe-${i}-${def.field}`}
+												key={def.field}
+												label={def.label}
+												max={def.max}
+												min={def.min}
+												onChange={(value) =>
+													updatePredatorTribeField(i, def.field, value)
+												}
+												step={def.step}
+												value={predatorTribeConfig[def.field]}
+											/>
+										))}
+										<label
+											className="flex items-center gap-2 text-sm"
+											htmlFor={`predator-tribe-${i}-crossbreedingEnabled`}
+										>
+											Crossbreeding enabled
+											<Switch
+												checked={predatorTribeConfig.crossbreedingEnabled}
+												id={`predator-tribe-${i}-crossbreedingEnabled`}
+												onCheckedChange={(checked) =>
+													updatePredatorTribeCrossbreeding(i, checked)
+												}
+											/>
+										</label>
 									</TabsContent>
 								);
 							})}

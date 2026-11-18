@@ -655,23 +655,23 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 3.1 Typecheck passes
-- [x] 3.2 Range-validation tests pass
-- [x] 3.3 Lint passes
+- [x] 3.1 Typecheck passes — 0af10f1
+- [x] 3.2 Range-validation tests pass — 0af10f1
+- [x] 3.3 Lint passes — 0af10f1
 
 ### Phase 4: Start-form UI — predator tribe tabs + per-tribe crossbreeding Switch
 
 #### Automated
 
-- [ ] 4.1 Typecheck passes
-- [ ] 4.2 Component tests pass
-- [ ] 4.3 Full test suite passes
-- [ ] 4.4 Lint passes
+- [x] 4.1 Typecheck passes
+- [x] 4.2 Component tests pass
+- [x] 4.3 Full test suite passes
+- [x] 4.4 Lint passes
 
 #### Manual
 
-- [ ] 4.5 2 predator tribes with distinct config start successfully and persist correctly
-- [ ] 4.6 Start-form crossbreeding Switch toggle persists to started run's config
+- [x] 4.5 2 predator tribes with distinct config start successfully and persist correctly
+- [x] 4.6 Start-form crossbreeding Switch toggle persists to started run's config
 
 ### Phase 5: Per-tribe live-edit panel
 
