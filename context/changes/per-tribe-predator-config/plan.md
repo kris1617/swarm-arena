@@ -691,11 +691,11 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 6.1 Full test suite passes
-- [x] 6.2 Typecheck passes
-- [x] 6.3 Lint passes
-- [x] 6.4 Full build succeeds
+- [x] 6.1 Full test suite passes — 6ced295
+- [x] 6.2 Typecheck passes — 6ced295
+- [x] 6.3 Lint passes — 6ced295
+- [x] 6.4 Full build succeeds — 6ced295
 
 #### Manual
 
-- [x] 6.5 Verification script's 4 assertions (a)-(d) all pass
+- [x] 6.5 Verification script's 4 assertions (a)-(d) all pass — 6ced295
