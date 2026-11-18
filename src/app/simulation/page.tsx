@@ -530,6 +530,27 @@ export default function SimulationPage() {
 			max: ranges.burstCostMult.max,
 			step: "0.1",
 		},
+		{
+			field: "foodStockShare",
+			label: "Food stock share",
+			min: ranges.foodStockShare.min,
+			max: ranges.foodStockShare.max,
+			step: "1",
+		},
+		{
+			field: "foodRegenShare",
+			label: "Food regen share",
+			min: ranges.foodRegenShare.min,
+			max: ranges.foodRegenShare.max,
+			step: "0.1",
+		},
+		{
+			field: "foodConsumptionRate",
+			label: "Food consumption rate",
+			min: ranges.foodConsumptionRate.min,
+			max: ranges.foodConsumptionRate.max,
+			step: "0.1",
+		},
 	];
 
 	return (

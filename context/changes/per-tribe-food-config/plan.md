@@ -450,15 +450,15 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 5: Scoring
 #### Automated
-- [x] 5.1 npm run typecheck passes
-- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/scored-run.test.ts passes
+- [x] 5.1 npm run typecheck passes — 72cf5f3
+- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/scored-run.test.ts passes — 72cf5f3
 
 ### Phase 6: UI
 #### Automated
-- [ ] 6.1 npm run typecheck passes
-- [ ] 6.2 npm run check passes
+- [x] 6.1 npm run typecheck passes
+- [x] 6.2 npm run check passes
 #### Manual
-- [ ] 6.3 Each tribe's tab shows the 3 new food fields, submits correctly and independently
+- [x] 6.3 Each tribe's tab shows the 3 new food fields, submits correctly and independently
 
 ### Phase 7: Backward compatibility & verification
 #### Automated
