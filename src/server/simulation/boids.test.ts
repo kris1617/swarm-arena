@@ -55,6 +55,10 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	// per-tribe-predator-config Phase 1: new required field on TribeConfig —
+	// true here so every pre-existing fixture using this constant (not
+	// exercising the crossbreeding gate itself) keeps compiling unchanged.
+	crossbreedingEnabled: true,
 };
 
 // predator-tribe-concept Phase 2: createInitialPredators now takes
@@ -72,6 +76,9 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	matePreference: 0.5,
 	detectionRadius: 50,
 	captureRadiusMult: 1,
+	// per-tribe-predator-config Phase 1: new required field on
+	// PredatorTribeConfig — same rationale as TRIBE_CONFIG's above.
+	crossbreedingEnabled: true,
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -1061,7 +1068,13 @@ describe("inheritGenes", () => {
 describe("reproducePopulation", () => {
 	const ELIGIBLE_ENERGY = 50;
 	const BASE_REPRODUCTION_PARAMS = {
-		crossbreedingEnabled: true,
+		// per-tribe-predator-config Phase 1: replaces the old flat
+		// `crossbreedingEnabled: boolean` — a single tribe (flockId 0) with
+		// the flag on, which covers every test below using the default
+		// same-flock fixtures (same-tribe pairs never consult this array
+		// anyway). The guardrail test below overrides this with its own
+		// multi-tribe array.
+		tribeConfigs: [{ crossbreedingEnabled: true }],
 		energyThreshold: ELIGIBLE_ENERGY,
 		mutationChance: 0,
 		mutationMagnitude: 0.2,
@@ -1129,33 +1142,66 @@ describe("reproducePopulation", () => {
 		expect(result.capped).toBe(false);
 	});
 
-	it("crossbreeding guardrail: a cross-flock pair mates only when crossbreedingEnabled is true", () => {
-		const crossFlockPopulation = [
-			makeIndividual({ x: 0, gender: "a", genes: { flockId: 0 } }),
-			makeIndividual({
-				x: MATE_DISTANCE_RADIUS - 1,
-				gender: "b",
-				genes: { flockId: 1 },
-			}),
+	it("crossbreeding guardrail: a cross-tribe pair mates only when BOTH tribes allow it; same-tribe always mates regardless of the flag", () => {
+		// Tribe 0 and 1 allow crossbreeding; tribe 2 and 3 do not.
+		const tribeConfigs = [
+			{ crossbreedingEnabled: true },
+			{ crossbreedingEnabled: true },
+			{ crossbreedingEnabled: false },
+			{ crossbreedingEnabled: false },
 		];
 
-		const withCrossbreedingOff = reproducePopulation(
-			crossFlockPopulation,
-			createRng(1),
-			{ ...BASE_REPRODUCTION_PARAMS, crossbreedingEnabled: false },
-			WORLD_SIZE,
-		);
-		// Never a blended-flock offspring: no offspring at all, since a
-		// cross-flock pair never even mates when the gate is off.
-		expect(withCrossbreedingOff.population).toHaveLength(2);
+		function crossTribePair(flockIdA: number, flockIdB: number) {
+			return [
+				makeIndividual({
+					x: 0,
+					gender: "a",
+					genes: { flockId: flockIdA },
+				}),
+				makeIndividual({
+					x: MATE_DISTANCE_RADIUS - 1,
+					gender: "b",
+					genes: { flockId: flockIdB },
+				}),
+			];
+		}
 
-		const withCrossbreedingOn = reproducePopulation(
-			crossFlockPopulation,
+		// true/true: both parents' tribes allow it — mates.
+		const bothAllow = reproducePopulation(
+			crossTribePair(0, 1),
 			createRng(1),
-			{ ...BASE_REPRODUCTION_PARAMS, crossbreedingEnabled: true },
+			{ ...BASE_REPRODUCTION_PARAMS, tribeConfigs },
 			WORLD_SIZE,
 		);
-		expect(withCrossbreedingOn.population).toHaveLength(3);
+		expect(bothAllow.population).toHaveLength(3);
+
+		// true/false: only one parent's tribe allows it — blocked.
+		const onlyOneAllows = reproducePopulation(
+			crossTribePair(0, 2),
+			createRng(1),
+			{ ...BASE_REPRODUCTION_PARAMS, tribeConfigs },
+			WORLD_SIZE,
+		);
+		expect(onlyOneAllows.population).toHaveLength(2);
+
+		// false/false: neither parent's tribe allows it — blocked.
+		const neitherAllows = reproducePopulation(
+			crossTribePair(2, 3),
+			createRng(1),
+			{ ...BASE_REPRODUCTION_PARAMS, tribeConfigs },
+			WORLD_SIZE,
+		);
+		expect(neitherAllows.population).toHaveLength(2);
+
+		// Same-tribe pair, both in a tribe with the flag OFF — mates anyway,
+		// since same-tribe pairs always bypass the tribe-array lookup.
+		const sameTribeFlagOff = reproducePopulation(
+			crossTribePair(2, 2),
+			createRng(1),
+			{ ...BASE_REPRODUCTION_PARAMS, tribeConfigs },
+			WORLD_SIZE,
+		);
+		expect(sameTribeFlagOff.population).toHaveLength(3);
 	});
 
 	it("never reproduces below the energy threshold, regardless of a nearby eligible mate", () => {
@@ -2520,7 +2566,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			population,
 			createRng(1),
 			{
-				crossbreedingEnabled: true,
+				tribeConfigs: [{ crossbreedingEnabled: true }],
 				energyThreshold: 50,
 				mutationChance: 0,
 				mutationMagnitude: 0.2,
@@ -2546,7 +2592,6 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 				foodRegenRate: 5,
 				protectionThreshold: 0,
 				rng: createRng(1),
-				crossbreedingEnabled: true,
 				energyThreshold: 1000, // unreachable this tick — isolates the signal to stepBoids/applyPredation, not reproduction.
 				mutationChance: 0,
 				mutationMagnitude: 0.2,

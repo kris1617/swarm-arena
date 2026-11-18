@@ -53,6 +53,12 @@ export type TribeConfig = {
 	foodStockShare: number;
 	foodRegenShare: number;
 	foodConsumptionRate: number;
+	// per-tribe-predator-config Phase 1: replaces the old flat
+	// `crossbreedingEnabled: boolean` run param — reproducePopulation's gate
+	// (below) now resolves each parent's own tribe's flag and requires BOTH
+	// to be true for a cross-tribe pair; same-tribe pairs always bypass this
+	// lookup.
+	crossbreedingEnabled: boolean;
 };
 
 // predator-tribe-concept Phase 1: the predator-side sibling of `TribeConfig`
@@ -81,6 +87,10 @@ export type PredatorTribeConfig = {
 	matePreference: number;
 	detectionRadius: number;
 	captureRadiusMult: number;
+	// per-tribe-predator-config Phase 1: predator-side sibling of
+	// `TribeConfig.crossbreedingEnabled` above — same both-tribes-must-allow
+	// gate in reproducePopulation, applied to predators' own tribe array.
+	crossbreedingEnabled: boolean;
 };
 
 // Per-individual heritable traits an individual is born with and may pass to
@@ -1052,7 +1062,12 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 	population: T[],
 	rng: () => number,
 	params: {
-		crossbreedingEnabled: boolean;
+		// per-tribe-predator-config Phase 1: replaces the old flat
+		// `crossbreedingEnabled: boolean` — a minimal structural type so this
+		// one generic function serves both TribeConfig[] (boids) and
+		// PredatorTribeConfig[] (predators), indexed by flockId exactly like
+		// every other tribeConfigs lookup in this file.
+		tribeConfigs: { crossbreedingEnabled: boolean }[];
 		energyThreshold: number;
 		mutationChance: number;
 		mutationMagnitude: number;
@@ -1130,9 +1145,16 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 			if (parentA.gender === parentB.gender) {
 				continue;
 			}
+			// per-tribe-predator-config Phase 1: same-tribe pairs always mate
+			// regardless of either tribe's flag; a cross-tribe pair needs BOTH
+			// parents' own tribe to opt in (missing tribeConfigs entry reads as
+			// `undefined`, which is falsy here — no config means no crossbreeding).
 			if (
-				!params.crossbreedingEnabled &&
-				parentA.genes.flockId !== parentB.genes.flockId
+				parentA.genes.flockId !== parentB.genes.flockId &&
+				!(
+					params.tribeConfigs[parentA.genes.flockId]?.crossbreedingEnabled &&
+					params.tribeConfigs[parentB.genes.flockId]?.crossbreedingEnabled
+				)
 			) {
 				continue;
 			}
@@ -1350,7 +1372,6 @@ export function runTick(
 		foodRegenRate: number;
 		protectionThreshold: number;
 		rng: () => number;
-		crossbreedingEnabled: boolean;
 		energyThreshold: number;
 		mutationChance: number;
 		mutationMagnitude: number;
@@ -1521,7 +1542,7 @@ export function runTick(
 			agedBoids,
 			params.rng,
 			{
-				crossbreedingEnabled: params.crossbreedingEnabled,
+				tribeConfigs: params.tribeConfigs,
 				energyThreshold: params.energyThreshold,
 				mutationChance: params.mutationChance,
 				mutationMagnitude: params.mutationMagnitude,
@@ -1536,7 +1557,7 @@ export function runTick(
 			agedPredators,
 			params.rng,
 			{
-				crossbreedingEnabled: params.crossbreedingEnabled,
+				tribeConfigs: params.predatorTribeConfigs,
 				energyThreshold: params.energyThreshold,
 				mutationChance: params.mutationChance,
 				mutationMagnitude: params.mutationMagnitude,
