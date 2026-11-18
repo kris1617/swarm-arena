@@ -563,9 +563,9 @@ None — no schema or data changes.
 
 #### Automated
 
-- [x] 4.1 New spec passes: `npx playwright test tests/e2e/auth-ux.spec.ts`
-- [x] 4.2 Full E2E suite still passes: `npx playwright test` (7/8 — the 1 failure, `authenticated-simulation-run.spec.ts`, is a pre-existing, unrelated strict-mode locator bug confirmed present on the pre-change baseline commit 6feed91 via a throwaway worktree; out of this change's scope)
+- [x] 4.1 New spec passes: `npx playwright test tests/e2e/auth-ux.spec.ts` — 7380817
+- [x] 4.2 Full E2E suite still passes: `npx playwright test` (7/8 — the 1 failure, `authenticated-simulation-run.spec.ts`, is a pre-existing, unrelated strict-mode locator bug confirmed present on the pre-change baseline commit 6feed91 via a throwaway worktree; out of this change's scope) — 7380817
 
 #### Manual
 
-- [x] 4.3 Spec locators reviewed against this project's E2E anti-pattern checklist
+- [x] 4.3 Spec locators reviewed against this project's E2E anti-pattern checklist — 7380817
