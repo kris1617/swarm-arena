@@ -132,13 +132,13 @@ endpoint, per "What We're NOT Doing."
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
-- [x] 1.4 Migration generated and applies cleanly: `npm run db:migrate`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 762095a
+- [x] 1.2 Lint passes: `npm run check` — 762095a
+- [x] 1.3 Full suite still passes: `npm test` — 762095a
+- [x] 1.4 Migration generated and applies cleanly: `npm run db:migrate` — 762095a
 
 #### Manual
 
-- [ ] 1.5 `/` redirects to `/dashboard` when signed in, against the live deployment
-- [ ] 1.6 `post.create` no longer reachable against the live deployment
-- [ ] 1.7 Production DB no longer has a `post` table
+- [x] 1.5 `/` redirects to `/dashboard` when signed in, against the live deployment — 762095a
+- [x] 1.6 `post.create` no longer reachable against the live deployment — 762095a
+- [x] 1.7 Production DB no longer has a `post` table — 762095a
