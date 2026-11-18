@@ -15,6 +15,10 @@ export class ScoredRun {
 		private readonly runId: number,
 		private readonly score: number,
 		private readonly wasEverThrottled: boolean,
+		// per-tribe-food-config Phase 5: a second, independent reason a run's
+		// score may not be directly comparable — extends the existing
+		// pattern wasEverThrottled established, not a replacement for it.
+		private readonly wasEverFoodImbalanced: boolean,
 	) {}
 
 	// The ONLY constructor. Returns null for an unscored row rather than
@@ -24,22 +28,35 @@ export class ScoredRun {
 		id: number;
 		score: number | null;
 		wasEverThrottled: boolean;
+		wasEverFoodImbalanced: boolean;
 	}): ScoredRun | null {
 		if (row.score === null) {
 			return null;
 		}
-		return new ScoredRun(row.id, row.score, row.wasEverThrottled);
+		return new ScoredRun(
+			row.id,
+			row.score,
+			row.wasEverThrottled,
+			row.wasEverFoodImbalanced,
+		);
 	}
 
 	// The ONLY way to read a displayable score. There is no `.score`
 	// getter that skips the comparability check.
 	disclose(): ScoredRunDisclosure {
+		const throttledReason = this.wasEverThrottled
+			? `Run #${this.runId} ticked at an accelerated rate while unwatched — its score may not be directly comparable.`
+			: null;
+		const imbalancedReason = this.wasEverFoodImbalanced
+			? `Run #${this.runId} showed uneven per-tribe food contribution — its score may not be directly comparable to a single-tribe or evenly-balanced run.`
+			: null;
 		return {
 			score: this.score,
-			comparable: !this.wasEverThrottled,
-			disclaimer: this.wasEverThrottled
-				? `Run #${this.runId} ticked at an accelerated rate while unwatched — its score may not be directly comparable.`
-				: null,
+			comparable: !this.wasEverThrottled && !this.wasEverFoodImbalanced,
+			disclaimer:
+				[throttledReason, imbalancedReason]
+					.filter((reason) => reason !== null)
+					.join(" ") || null,
 		};
 	}
 }

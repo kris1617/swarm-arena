@@ -102,6 +102,10 @@ function buildState(
 		// empty defaults are fine for every pre-existing test here, none of
 		// which assert on resource-management/phase-classifier state.
 		foodRatioSamples: [],
+		// per-tribe-food-config Phase 5: threaded alongside foodRatioSamples —
+		// empty default is fine for every pre-existing test here, none of
+		// which assert on per-tribe-imbalance state.
+		tribeFoodImbalanceSamples: [],
 		populationCountSamples: [],
 		// S-25 (FR-035): threaded alongside populationCountSamples — empty
 		// default is fine for every pre-existing test here, none of which

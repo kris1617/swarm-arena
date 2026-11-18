@@ -1,0 +1,1 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `wasEverFoodImbalanced` integer DEFAULT false NOT NULL;

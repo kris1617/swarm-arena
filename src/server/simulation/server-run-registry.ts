@@ -113,6 +113,9 @@ type LiveRun = {
 	foodStock: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
+	// per-tribe-food-config Phase 5: one per-tick imbalance sample, threaded
+	// through the same shared tick core as `foodRatioSamples` above.
+	tribeFoodImbalanceSamples: number[];
 	populationCountSamples: number[];
 	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
 	// 5th scoring factor.
@@ -153,6 +156,10 @@ type LiveRun = {
 	// `wasEverThrottled = true` for this run, so later throttled ticks in the
 	// same run's life don't re-issue the DB write.
 	wasEverThrottledWritten: boolean;
+	// per-tribe-food-config Phase 5: same write-once guard shape as
+	// `wasEverThrottledWritten` above, for the `wasEverFoodImbalanced`
+	// sticky marker.
+	wasEverFoodImbalancedWritten: boolean;
 };
 
 // Cached on globalThis so the registry survives dev HMR, same pattern as
@@ -517,6 +524,10 @@ async function finishRun(
 		history?: {
 			phaseHistory: PopulationPhase[];
 			foodRatioSamples: number[];
+			// per-tribe-food-config Phase 5: persisted alongside
+			// foodRatioSamples so a finished run's `computeResourceManagement`
+			// recomputation (getRunsComparison) can reproduce its own score.
+			tribeFoodImbalanceSamples: number[];
 			survivorGenes: BoidGenes[];
 			// S-11 (MS-08): the run-analysis-view's population-over-time chart
 			// needs this time series — added alongside the other three.
@@ -584,7 +595,10 @@ function buildFinishPayload(run: LiveRun): {
 } {
 	const score = computeScore(
 		run.elapsedSeconds,
-		computeResourceManagement(run.foodRatioSamples),
+		computeResourceManagement(
+			run.foodRatioSamples,
+			run.tribeFoodImbalanceSamples,
+		),
 		computeGeneticDiversity(
 			run.boids.map((b) => b.genes),
 			run.params.tribeConfigs,
@@ -597,6 +611,7 @@ function buildFinishPayload(run: LiveRun): {
 		history: {
 			phaseHistory: run.phaseHistory,
 			foodRatioSamples: run.foodRatioSamples,
+			tribeFoodImbalanceSamples: run.tribeFoodImbalanceSamples,
 			survivorGenes: run.boids.map((b) => b.genes),
 			populationCountSamples: run.populationCountSamples,
 			populationDensitySamples: run.populationDensitySamples,
@@ -628,6 +643,7 @@ function tick(runId: number): void {
 				foodStock: run.foodStock,
 				cohesionSamples: run.cohesionSamples,
 				foodRatioSamples: run.foodRatioSamples,
+				tribeFoodImbalanceSamples: run.tribeFoodImbalanceSamples,
 				populationCountSamples: run.populationCountSamples,
 				populationDensitySamples: run.populationDensitySamples,
 				geneticDiversitySamples: run.geneticDiversitySamples,
@@ -682,11 +698,40 @@ function tick(runId: number): void {
 				});
 		}
 
+		// per-tribe-food-config Phase 5: same write-once DB-write shape as
+		// `wasEverThrottled` just above — set true the first tick a real
+		// imbalance sample is actually measured, never cleared once set.
+		if (result.wasImbalancedThisTick && !run.wasEverFoodImbalancedWritten) {
+			void db
+				.update(simulationRuns)
+				.set({ wasEverFoodImbalanced: true })
+				.where(eq(simulationRuns.id, runId))
+				.then(() => {
+					// Only latch the write-once guard on success — same reasoning
+					// as `wasEverThrottledWritten` above: if the update fails,
+					// leave it false so the next imbalanced tick retries, rather
+					// than letting a failed write get stuck as false forever.
+					run.wasEverFoodImbalancedWritten = true;
+				})
+				.catch((error: unknown) => {
+					// Mirrors finishRun's fire-and-forget posture: this write
+					// happens from inside a synchronous interval callback, so an
+					// uncaught rejection here would be an unhandled promise
+					// rejection. A failed write is retried on the next imbalanced
+					// tick (the guard above stays false), not silently swallowed.
+					console.error(
+						`server run ${runId}: failed to write wasEverFoodImbalanced=true:`,
+						error,
+					);
+				});
+		}
+
 		run.boids = result.boids;
 		run.predators = result.predators;
 		run.foodStock = result.foodStock;
 		run.cohesionSamples = result.cohesionSamples;
 		run.foodRatioSamples = result.foodRatioSamples;
+		run.tribeFoodImbalanceSamples = result.tribeFoodImbalanceSamples;
 		run.populationCountSamples = result.populationCountSamples;
 		run.populationDensitySamples = result.populationDensitySamples;
 		run.geneticDiversitySamples = result.geneticDiversitySamples;
@@ -769,6 +814,7 @@ export function startServerRun(params: ServerRunParams): void {
 		foodStock: foodStockSeed,
 		cohesionSamples: [],
 		foodRatioSamples: [],
+		tribeFoodImbalanceSamples: [],
 		populationCountSamples: [],
 		populationDensitySamples: [],
 		geneticDiversitySamples: [],
@@ -790,6 +836,7 @@ export function startServerRun(params: ServerRunParams): void {
 		watcherIds: new Set(),
 		unwatchedSinceMs: null,
 		wasEverThrottledWritten: false,
+		wasEverFoodImbalancedWritten: false,
 	};
 	registry.set(params.runId, run);
 }
@@ -820,6 +867,10 @@ export type ServerRunSnapshot = {
 	foodStock: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
+	// per-tribe-food-config Phase 5: same pause/resume treatment as
+	// foodRatioSamples — see resumeServerRun's `?? []` fallback below for a
+	// `savedState` row written before this field existed.
+	tribeFoodImbalanceSamples: number[];
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
 	geneticDiversitySamples: number[];
@@ -855,6 +906,7 @@ export function snapshotServerRun(
 		foodStock: run.foodStock,
 		cohesionSamples: run.cohesionSamples,
 		foodRatioSamples: run.foodRatioSamples,
+		tribeFoodImbalanceSamples: run.tribeFoodImbalanceSamples,
 		populationCountSamples: run.populationCountSamples,
 		populationDensitySamples: run.populationDensitySamples,
 		geneticDiversitySamples: run.geneticDiversitySamples,
@@ -896,6 +948,11 @@ export function resumeServerRun(
 		foodStock: snapshot.foodStock,
 		cohesionSamples: snapshot.cohesionSamples,
 		foodRatioSamples: snapshot.foodRatioSamples,
+		// per-tribe-food-config Phase 5: same `?? []` fallback as the other
+		// post-hoc-added sample arrays below — a `savedState` row written
+		// before this field existed has no `tribeFoodImbalanceSamples` key
+		// despite `ServerRunSnapshot`'s type claiming otherwise.
+		tribeFoodImbalanceSamples: snapshot.tribeFoodImbalanceSamples ?? [],
 		populationCountSamples: snapshot.populationCountSamples,
 		// impl-review (area-aware-population-insight, F1): a `savedState` row
 		// written by `savePause` before this field existed has no
@@ -952,6 +1009,7 @@ export function resumeServerRun(
 		watcherIds: new Set(),
 		unwatchedSinceMs: null,
 		wasEverThrottledWritten: false,
+		wasEverFoodImbalancedWritten: false,
 	};
 	registry.set(runId, run);
 }

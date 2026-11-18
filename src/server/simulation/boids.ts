@@ -1258,6 +1258,9 @@ export function runTick(
 	// signal rather than four separate ones the caller would have to OR
 	// together itself.
 	hasWarnedDenseClustering: boolean;
+	// per-tribe-food-config Phase 5: this tick's imbalance sample — see
+	// `computeTribeFoodImbalanceSample`'s own comment for the formula.
+	tribeFoodImbalanceSample: number;
 } {
 	const warnSink: DenseClusterWarnSink = { triggered: false };
 
@@ -1285,6 +1288,14 @@ export function runTick(
 	const totalFoodRegenRate = params.tribeConfigs.reduce(
 		(sum, t) => sum + t.foodRegenShare,
 		0,
+	);
+	// per-tribe-food-config Phase 5: computed against the same `steeredBoids`
+	// population applyHunger's own totalConsumption (below) uses, so this
+	// tick's imbalance sample reflects the exact headcounts this tick's
+	// consumption was actually drawn from.
+	const tribeFoodImbalanceSample = computeTribeFoodImbalanceSample(
+		params.tribeConfigs,
+		steeredBoids,
 	);
 	const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
 		steeredBoids,
@@ -1405,6 +1416,7 @@ export function runTick(
 		populationCapped: boidsCapped || predatorsCapped,
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: warnSink.triggered,
+		tribeFoodImbalanceSample,
 	};
 }
 
@@ -1703,14 +1715,101 @@ export function computePhaseQuality(phaseHistory: PopulationPhase[]): number {
 	return Math.max(0, Math.min(1, average * bonusMultiplier));
 }
 
-export function computeResourceManagement(foodRatioSamples: number[]): number {
+// per-tribe-food-config Phase 5: `tribeFoodImbalanceSamples` is a second,
+// optional parameter (default `[]`, same convention as
+// computeGeneticDiversity's `tribeConfigs` param) so every existing
+// caller/test that only ever knew about `foodRatioSamples` keeps compiling
+// and returning today's exact value. New formula: the flat average
+// (`baseRatio`, this function's pre-existing behavior) scaled down by how
+// imbalanced per-tribe food contribution was on average
+// (`averageImbalance`, clamped to [0, 1]) — `baseRatio * (1 -
+// averageImbalance)`. An empty or all-zero imbalance array reduces this to
+// exactly `baseRatio * 1`, i.e. the original formula unchanged — the
+// backward-compatibility guarantee this phase must preserve.
+export function computeResourceManagement(
+	foodRatioSamples: number[],
+	tribeFoodImbalanceSamples: number[] = [],
+): number {
 	if (foodRatioSamples.length === 0) {
 		return 0;
 	}
-	return (
+	const baseRatio =
 		foodRatioSamples.reduce((sum, sample) => sum + sample, 0) /
-		foodRatioSamples.length
+		foodRatioSamples.length;
+
+	if (tribeFoodImbalanceSamples.length === 0) {
+		return baseRatio;
+	}
+	const averageImbalance = Math.max(
+		0,
+		Math.min(
+			1,
+			tribeFoodImbalanceSamples.reduce((sum, sample) => sum + sample, 0) /
+				tribeFoodImbalanceSamples.length,
+		),
 	);
+	return baseRatio * (1 - averageImbalance);
+}
+
+// per-tribe-food-config Phase 5: one per-tick imbalance sample — whether
+// each tribe's net food contribution rate (`foodRegenShare -
+// foodConsumptionRate * headcount`) matches what its CURRENT population
+// share would imply, not whether it has "stock remaining" (meaningless in
+// a shared-pool model). `fairNet_i` is the net rate tribe `i` would have if
+// every tribe's net rate tracked population share exactly
+// (`totalNet * (headcount_i / totalHeadcount)`); the sample is the mean
+// absolute deviation from that fair split, normalized by this tick's total
+// consumption so the sample stays comparable across different population
+// sizes (an unscaled absolute deviation would read "more imbalanced" on a
+// large population purely from larger raw numbers). Exported so
+// `single-run-lifecycle.ts`'s accumulation and this file's own tests can
+// both call it directly; `runTick` below is the real per-tick call site.
+// per-tribe-food-config Phase 5: the threshold a single tick's imbalance
+// sample must exceed before a run's `wasEverFoodImbalanced` sticky marker
+// latches — guards against flagging a run for float noise around the
+// "perfectly proportional" 0 case rather than a genuine imbalance.
+export const FOOD_IMBALANCE_EPSILON = 1e-6;
+
+export function computeTribeFoodImbalanceSample(
+	tribeConfigs: TribeConfig[],
+	boids: BoidState[],
+): number {
+	if (tribeConfigs.length === 0) {
+		return 0;
+	}
+	const headcounts = tribeConfigs.map(
+		(_, flockId) =>
+			boids.filter((boid) => boid.genes.flockId === flockId).length,
+	);
+	const totalHeadcount = headcounts.reduce((sum, count) => sum + count, 0);
+	if (totalHeadcount === 0) {
+		return 0;
+	}
+	const nets = tribeConfigs.map(
+		(config, i) =>
+			config.foodRegenShare - config.foodConsumptionRate * (headcounts[i] ?? 0),
+	);
+	const totalConsumption = tribeConfigs.reduce(
+		(sum, config, i) => sum + config.foodConsumptionRate * (headcounts[i] ?? 0),
+		0,
+	);
+	// A single tribe, or every tribe at zero population, has nothing to be
+	// imbalanced relative to — and dividing by a zero totalConsumption would
+	// produce NaN/Infinity rather than the "no signal yet" 0 this tick should
+	// report.
+	if (totalConsumption === 0) {
+		return 0;
+	}
+	const totalNet = nets.reduce((sum, net) => sum + net, 0);
+	const deviations = nets.map((net, i) => {
+		const headcount = headcounts[i] ?? 0;
+		const fairNet = totalNet * (headcount / totalHeadcount);
+		return Math.abs(net - fairNet);
+	});
+	const meanDeviation =
+		deviations.reduce((sum, deviation) => sum + deviation, 0) /
+		deviations.length;
+	return meanDeviation / totalConsumption;
 }
 
 // S-25 (FR-010 full, FR-035): the 5th scoring factor — a time-averaged ratio

@@ -12,6 +12,7 @@ import {
 	computePhaseQuality,
 	computeResourceManagement,
 	computeScore,
+	computeTribeFoodImbalanceSample,
 	createInitialPopulation,
 	createInitialPredators,
 	type FlockWeights,
@@ -88,6 +89,26 @@ function makeBoid(
 		age: 0,
 		gender: "a",
 	};
+}
+
+// per-tribe-food-config Phase 5: a minimal boid group for a given flockId —
+// computeTribeFoodImbalanceSample only reads `genes.flockId`, so these don't
+// need real positions/velocities, unlike makeBoid's steering-oriented
+// fixtures above.
+function makeTribeBoids(flockId: number, count: number): BoidState[] {
+	return Array.from({ length: count }, () => ({
+		x: 0,
+		y: 0,
+		z: 0,
+		vx: 0,
+		vy: 0,
+		vz: 0,
+		lifespan: 1000,
+		genes: makeGenes(WEIGHTS, { flockId }),
+		energy: 0,
+		age: 0,
+		gender: "a" as const,
+	}));
 }
 
 function makePredator(
@@ -1808,6 +1829,80 @@ describe("computeResourceManagement", () => {
 
 	it("averages the food-availability-ratio samples", () => {
 		expect(computeResourceManagement([0, 1])).toBe(0.5);
+	});
+
+	// per-tribe-food-config Phase 5 (plan's Success Criteria): the
+	// backward-compatibility guarantee this phase must preserve — every
+	// pre-existing caller that never passes the new second parameter (or
+	// passes an empty/all-zero one) gets today's exact flat-average value.
+	it("is byte-identical with and without tribeFoodImbalanceSamples for a single-tribe run", () => {
+		const foodRatioSamples = [0.2, 0.6, 1, 0.4];
+		expect(computeResourceManagement(foodRatioSamples)).toBe(
+			computeResourceManagement(foodRatioSamples, []),
+		);
+		expect(computeResourceManagement(foodRatioSamples, [0, 0, 0, 0])).toBe(
+			computeResourceManagement(foodRatioSamples),
+		);
+	});
+
+	it("scales baseRatio down by the clamped average imbalance", () => {
+		// averageImbalance = 0.5 -> baseRatio * (1 - 0.5)
+		expect(computeResourceManagement([1, 1], [0.25, 0.75])).toBeCloseTo(0.5);
+	});
+
+	it("clamps an out-of-range average imbalance into [0, 1] rather than scoring negative or inflated", () => {
+		expect(computeResourceManagement([1], [5])).toBe(0);
+		expect(computeResourceManagement([1], [-5])).toBe(1);
+	});
+});
+
+describe("computeTribeFoodImbalanceSample", () => {
+	it("returns 0 when there are no tribes", () => {
+		expect(computeTribeFoodImbalanceSample([], [])).toBe(0);
+	});
+
+	it("returns 0 for a single-tribe run regardless of its net rate", () => {
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodRegenShare: 3, foodConsumptionRate: 0.7 },
+		];
+		expect(
+			computeTribeFoodImbalanceSample(tribeConfigs, makeTribeBoids(0, 12)),
+		).toBe(0);
+	});
+
+	it("returns 0 when every tribe's net rate is already proportional to its headcount", () => {
+		// headcount0=10, headcount1=20; foodConsumptionRate=1 for both;
+		// foodRegenShare chosen so net_i = 0.5 * headcount_i for both tribes
+		// (net0 = 15-10=5 = 0.5*10, net1 = 30-20=10 = 0.5*20) — a genuinely
+		// non-zero net rate that still tracks population share exactly.
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodRegenShare: 15, foodConsumptionRate: 1 },
+			{ ...TRIBE_CONFIG, foodRegenShare: 30, foodConsumptionRate: 1 },
+		];
+		const boids = [...makeTribeBoids(0, 10), ...makeTribeBoids(1, 20)];
+		expect(computeTribeFoodImbalanceSample(tribeConfigs, boids)).toBe(0);
+	});
+
+	it("returns a positive sample when per-tribe net rates are skewed relative to population share", () => {
+		// Same headcounts (10 and 20) as the proportional case above, but the
+		// SMALLER tribe now holds the larger regen share — net0 = 30-10=20,
+		// net1 = 15-20=-5 — nowhere near proportional to headcount.
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodRegenShare: 30, foodConsumptionRate: 1 },
+			{ ...TRIBE_CONFIG, foodRegenShare: 15, foodConsumptionRate: 1 },
+		];
+		const boids = [...makeTribeBoids(0, 10), ...makeTribeBoids(1, 20)];
+		expect(
+			computeTribeFoodImbalanceSample(tribeConfigs, boids),
+		).toBeGreaterThan(0);
+	});
+
+	it("returns 0 when total consumption is 0 (no boids of any configured tribe)", () => {
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodRegenShare: 5, foodConsumptionRate: 1 },
+			{ ...TRIBE_CONFIG, foodRegenShare: 1, foodConsumptionRate: 1 },
+		];
+		expect(computeTribeFoodImbalanceSample(tribeConfigs, [])).toBe(0);
 	});
 });
 

@@ -163,6 +163,15 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// not a core simulation parameter. Defaults false; existing rows
 	// backfill to false automatically, same pattern as `wasEverThrottled`.
 	wasAutoStopped: d.integer({ mode: "boolean" }).notNull().default(false),
+	// per-tribe-food-config Phase 5: sticky comparability marker, same shape
+	// as `wasEverThrottled` — set true the first tick a real per-tribe food
+	// imbalance is measured, never cleared once set. Defaults false;
+	// existing rows backfill to false automatically (they predate this
+	// feature).
+	wasEverFoodImbalanced: d
+		.integer({ mode: "boolean" })
+		.notNull()
+		.default(false),
 	// per-tribe-behavior-weights Phase 1: this run's per-tribe config (one
 	// entry per flock, index = flockId — see `TribeConfig` in
 	// ~/server/simulation/boids.ts), following the same JSON-column pattern

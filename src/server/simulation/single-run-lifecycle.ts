@@ -3,6 +3,7 @@ import {
 	classifyPopulationPhase,
 	computeCohesion,
 	computeGeneticDiversity,
+	FOOD_IMBALANCE_EPSILON,
 	PHASE_WINDOW_SIZE,
 	type PopulationPhase,
 	type PredatorState,
@@ -32,6 +33,11 @@ export function computeSingleRunTick(
 		// shared function) get resource-management/phase-classifier
 		// tracking automatically, with no duplicated logic.
 		foodRatioSamples: number[];
+		// per-tribe-food-config Phase 5: one per-tick imbalance sample,
+		// threaded through the same shared tick core as the other sample
+		// arrays so both execution paths collect it identically — same
+		// convention as `foodRatioSamples` just above.
+		tribeFoodImbalanceSamples: number[];
 		populationCountSamples: number[];
 		// S-25 (FR-010 full, FR-035): raw per-tick density samples (combined
 		// boid+predator population ÷ full 3D volume) — threaded through the
@@ -93,6 +99,7 @@ export function computeSingleRunTick(
 	foodStock: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
+	tribeFoodImbalanceSamples: number[];
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
 	geneticDiversitySamples: number[];
@@ -114,6 +121,12 @@ export function computeSingleRunTick(
 	// applied (not merely that the grace period elapsed) before persisting
 	// the sticky wasEverThrottled marker.
 	wasThrottledThisTick: boolean;
+	// per-tribe-food-config Phase 5: true iff this tick's own imbalance
+	// sample exceeded FOOD_IMBALANCE_EPSILON — the caller latches its sticky
+	// `wasEverFoodImbalanced` marker on this, same "derived per-tick signal,
+	// not merely that the array grew" posture `wasThrottledThisTick` already
+	// established just above.
+	wasImbalancedThisTick: boolean;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -135,6 +148,7 @@ export function computeSingleRunTick(
 		populationCapped,
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: tickHasWarnedDenseClustering,
+		tribeFoodImbalanceSample,
 	} = runTick(
 		{
 			boids: state.boids,
@@ -170,6 +184,10 @@ export function computeSingleRunTick(
 	nextCohesionSamples.push(computeCohesion(nextBoids, params.worldSize));
 	const nextFoodRatioSamples = state.foodRatioSamples;
 	nextFoodRatioSamples.push(foodAvailabilityRatio);
+	const nextTribeFoodImbalanceSamples = state.tribeFoodImbalanceSamples;
+	nextTribeFoodImbalanceSamples.push(tribeFoodImbalanceSample);
+	const wasImbalancedThisTick =
+		tribeFoodImbalanceSample > FOOD_IMBALANCE_EPSILON;
 	const nextPopulationCountSamples = state.populationCountSamples;
 	nextPopulationCountSamples.push(nextBoids.length);
 	// S-25 (FR-010 full, FR-035): one raw density sample per tick — combined
@@ -238,6 +256,7 @@ export function computeSingleRunTick(
 		foodStock: nextFoodStock,
 		cohesionSamples: nextCohesionSamples,
 		foodRatioSamples: nextFoodRatioSamples,
+		tribeFoodImbalanceSamples: nextTribeFoodImbalanceSamples,
 		populationCountSamples: nextPopulationCountSamples,
 		populationDensitySamples: nextPopulationDensitySamples,
 		geneticDiversitySamples: nextGeneticDiversitySamples,
@@ -248,5 +267,6 @@ export function computeSingleRunTick(
 		populationCapped,
 		hasWarnedDenseClustering: nextHasWarnedDenseClustering,
 		wasThrottledThisTick,
+		wasImbalancedThisTick,
 	};
 }

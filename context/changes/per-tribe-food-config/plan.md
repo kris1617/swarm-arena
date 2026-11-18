@@ -445,13 +445,13 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 4: Live adjustment
 #### Automated
-- [x] 4.1 npm run typecheck passes
-- [x] 4.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
+- [x] 4.1 npm run typecheck passes — 3557244
+- [x] 4.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes — 3557244
 
 ### Phase 5: Scoring
 #### Automated
-- [ ] 5.1 npm run typecheck passes
-- [ ] 5.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/scored-run.test.ts passes
+- [x] 5.1 npm run typecheck passes
+- [x] 5.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/scored-run.test.ts passes
 
 ### Phase 6: UI
 #### Automated

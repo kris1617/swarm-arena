@@ -152,6 +152,7 @@ function createTickState(
 		foodStock: TICK_PARAMS_BASE.foodStockInitial,
 		cohesionSamples: [],
 		foodRatioSamples: [],
+		tribeFoodImbalanceSamples: [],
 		populationCountSamples: [],
 		populationDensitySamples: [],
 		geneticDiversitySamples: [],

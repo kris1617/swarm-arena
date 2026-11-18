@@ -372,6 +372,12 @@ export function SimulationCanvas({
 	// S-04 (FR-010 full, FR-019): threaded through the same shared tick core
 	// server-run-registry.ts uses — see single-run-lifecycle.ts.
 	const foodRatioSamplesRef = useRef<number[]>([]);
+	// per-tribe-food-config Phase 5: threaded through the same shared tick
+	// core as foodRatioSamples above — kept purely so computeSingleRunTick's
+	// now-required field is satisfied; not sent by buildStopInput below
+	// (the `stop` mutation's input schema and server-side scoring for the
+	// client-staged path are out of this phase's scope).
+	const tribeFoodImbalanceSamplesRef = useRef<number[]>([]);
 	const populationCountSamplesRef = useRef<number[]>([]);
 	// S-25 (FR-010 full, FR-035): raw per-tick density samples feeding the
 	// 5th scoring factor — threaded through the same shared tick core as
@@ -805,6 +811,7 @@ export function SimulationCanvas({
 						foodStock: foodStockRef.current,
 						cohesionSamples: cohesionSamplesRef.current,
 						foodRatioSamples: foodRatioSamplesRef.current,
+						tribeFoodImbalanceSamples: tribeFoodImbalanceSamplesRef.current,
 						populationCountSamples: populationCountSamplesRef.current,
 						populationDensitySamples: populationDensitySamplesRef.current,
 						geneticDiversitySamples: geneticDiversitySamplesRef.current,
@@ -834,6 +841,7 @@ export function SimulationCanvas({
 				foodStockRef.current = result.foodStock;
 				cohesionSamplesRef.current = result.cohesionSamples;
 				foodRatioSamplesRef.current = result.foodRatioSamples;
+				tribeFoodImbalanceSamplesRef.current = result.tribeFoodImbalanceSamples;
 				populationCountSamplesRef.current = result.populationCountSamples;
 				populationDensitySamplesRef.current = result.populationDensitySamples;
 				geneticDiversitySamplesRef.current = result.geneticDiversitySamples;

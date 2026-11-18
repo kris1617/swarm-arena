@@ -804,6 +804,10 @@ export const simulationRouter = createTRPCRouter({
 				// every other selected field here, unlike the derived
 				// scoredWithAreaFactor below.
 				wasEverThrottled: simulationRuns.wasEverThrottled,
+				// per-tribe-food-config Phase 5: sibling to wasEverThrottled —
+				// same real-column treatment, needed so ScoredRun.from below can
+				// report the second, independent comparability reason.
+				wasEverFoodImbalanced: simulationRuns.wasEverFoodImbalanced,
 			})
 			.from(simulationRuns)
 			.where(
@@ -816,20 +820,27 @@ export const simulationRouter = createTRPCRouter({
 			.orderBy(desc(simulationRuns.score), desc(simulationRuns.startedAt))
 			.limit(50);
 
-		return rows.map(({ history, wasEverThrottled, ...row }) => {
-			const disclosure = pickComparability(
-				ScoredRun.from({ id: row.id, score: row.score, wasEverThrottled }),
-			);
-			return {
-				...row,
-				scoredWithAreaFactor: Array.isArray(
-					(history as { populationDensitySamples?: unknown } | null)
-						?.populationDensitySamples,
-				),
-				comparable: disclosure.comparable,
-				disclaimer: disclosure.disclaimer,
-			};
-		});
+		return rows.map(
+			({ history, wasEverThrottled, wasEverFoodImbalanced, ...row }) => {
+				const disclosure = pickComparability(
+					ScoredRun.from({
+						id: row.id,
+						score: row.score,
+						wasEverThrottled,
+						wasEverFoodImbalanced,
+					}),
+				);
+				return {
+					...row,
+					scoredWithAreaFactor: Array.isArray(
+						(history as { populationDensitySamples?: unknown } | null)
+							?.populationDensitySamples,
+					),
+					comparable: disclosure.comparable,
+					disclaimer: disclosure.disclaimer,
+				};
+			},
+		);
 	}),
 
 	// parameter-suggestion-heuristic Phase 1: heuristic "try changing this
@@ -867,6 +878,10 @@ export const simulationRouter = createTRPCRouter({
 					// rows can be counted (flag-and-include, not excluded from
 					// the correlation input) and disclosed in the rationale.
 					wasEverThrottled: simulationRuns.wasEverThrottled,
+					// per-tribe-food-config Phase 5: sibling to wasEverThrottled —
+					// same real-column treatment, needed so ScoredRun.from below
+					// can report the second, independent comparability reason.
+					wasEverFoodImbalanced: simulationRuns.wasEverFoodImbalanced,
 				})
 				.from(simulationRuns)
 				.where(
@@ -892,13 +907,17 @@ export const simulationRouter = createTRPCRouter({
 					id: 0,
 					score: row.score,
 					wasEverThrottled: row.wasEverThrottled,
+					wasEverFoodImbalanced: row.wasEverFoodImbalanced,
 				})?.disclose(),
 			);
 			const throttledCount = disclosures.filter(
 				(d) => d && !d.comparable,
 			).length;
 			const inputRows: SuggestionInputRow[] = scoredRows.map(
-				({ wasEverThrottled, ...row }) => ({ ...row, score: row.score }),
+				({ wasEverThrottled, wasEverFoodImbalanced, ...row }) => ({
+					...row,
+					score: row.score,
+				}),
 			);
 
 			return suggestParameterChange(inputRows, throttledCount);
@@ -1062,6 +1081,11 @@ export const simulationRouter = createTRPCRouter({
 				const rawHistory = run.history as {
 					phaseHistory: PopulationPhase[];
 					foodRatioSamples: number[];
+					// per-tribe-food-config Phase 5: optional, like
+					// populationDensitySamples below — a row written before this
+					// phase has no such key despite finishRun now always writing
+					// one for every run stopped after this change.
+					tribeFoodImbalanceSamples?: number[];
 					survivorGenes: BoidGenes[];
 					elapsedSeconds?: number;
 					populationDensitySamples?: number[];
@@ -1076,6 +1100,9 @@ export const simulationRouter = createTRPCRouter({
 								survival: rawHistory.elapsedSeconds,
 								resourceManagement: computeResourceManagement(
 									rawHistory.foodRatioSamples,
+									Array.isArray(rawHistory.tribeFoodImbalanceSamples)
+										? rawHistory.tribeFoodImbalanceSamples
+										: [],
 								),
 								geneticDiversity: computeGeneticDiversity(
 									rawHistory.survivorGenes,
@@ -1109,6 +1136,7 @@ export const simulationRouter = createTRPCRouter({
 							id: run.id,
 							score: run.score,
 							wasEverThrottled: run.wasEverThrottled,
+							wasEverFoodImbalanced: run.wasEverFoodImbalanced,
 						}),
 					),
 					wasAutoStopped: run.wasAutoStopped,
