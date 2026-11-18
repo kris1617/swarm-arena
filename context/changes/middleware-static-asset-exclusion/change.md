@@ -1,7 +1,7 @@
 ---
 change_id: middleware-static-asset-exclusion
 title: Middleware's matcher excludes favicon.ico by name but not static files generally
-status: implementing
+status: implemented
 created: 2026-11-18
 updated: 2026-11-18
 archived_at: null

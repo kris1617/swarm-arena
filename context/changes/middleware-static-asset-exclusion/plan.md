@@ -136,12 +136,12 @@ None.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 New test passes: `npx vitest run src/middleware.test.ts`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — b01cdc9
+- [x] 1.2 Lint passes: `npm run check` — b01cdc9
+- [x] 1.3 New test passes: `npx vitest run src/middleware.test.ts` — b01cdc9
+- [x] 1.4 Full suite still passes: `npm test` — b01cdc9
 
 #### Manual
 
-- [ ] 1.5 Verification file returns 200 with literal content, not a redirect
-- [ ] 1.6 Protected route still redirects to `/login` when signed out
+- [x] 1.5 Verification file returns 200 with literal content, not a redirect — b01cdc9
+- [x] 1.6 Protected route still redirects to `/login` when signed out — b01cdc9
