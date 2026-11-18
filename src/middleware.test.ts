@@ -9,6 +9,10 @@ import { config } from "~/middleware";
 // from it, so this test fails if someone edits the matcher's alternatives
 // without updating the extraction logic along with it.
 function extractExcludedAlternation(matcherSource: string): string {
+	// impl-review F2: `[^)]*` stops at the first `)`, so this assumes the
+	// lookahead's alternation never contains its own parenthesized group —
+	// true today, but would silently extract a truncated string if a
+	// future alternative added one (e.g. `(?:foo|bar)`).
 	const match = /\(\?!([^)]*)\)/.exec(matcherSource);
 	if (!match?.[1]) {
 		throw new Error(

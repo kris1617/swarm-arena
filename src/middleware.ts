@@ -10,6 +10,13 @@ export const runtime = "nodejs";
 
 export const config = {
 	matcher: [
+		// impl-review F1: `.*\..*` matches a dot anywhere in the path, not
+		// just a file extension — this also exempts every tRPC HTTP call
+		// (always dotted, e.g. /api/trpc/post.hello) from this middleware
+		// gate. Safe: tRPC's own `protectedProcedure` enforces auth
+		// independently (src/server/api/trpc.ts), so this just means that
+		// traffic gets tRPC's own JSON 401 instead of an HTML redirect to
+		// /login — not an auth bypass.
 		"/((?!login|api/auth|api/test-auth|_next/static|_next/image|.*\\..*).*)",
 	],
 };
