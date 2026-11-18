@@ -1,10 +1,10 @@
 ---
 change_id: root-page-scaffold-redirect
 title: Root route / still renders the unmodified T3 starter scaffold in production
-status: impl_reviewed
+status: archived
 created: 2026-11-18
 updated: 2026-11-18
-archived_at: null
+archived_at: 2026-11-18T19:55:06Z
 ---
 
 ## Notes
