@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: per-tribe-config-and-predator-expansion
 milestone_seq: 10
-milestone_status: open
+milestone_status: closed
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-10: Per-tribe configuration and predator expansion** — Status: open
+**M-10: Per-tribe configuration and predator expansion** — Status: closed
 
 - **Intent:** Fix the reported default-parameter start failure, then extend the simulation's configuration model from "one shared setting per run" to "settings that vary per tribe" — for boid behavior, food, and predators — following the per-tribe pattern already proven in the user's own prior LÖVE2D/Lua boids implementation (`/mnt/Kids/boids_final/game/src/config.lua`), and finally add a second, distinct predator tribe with a configurable prey target (boids only, or boids and predators) — a predation relationship that does not exist in the Lua reference or anywhere in the current codebase.
 - **Source materials:** user description (2026-11-17) + reference implementation at `/mnt/Kids/boids_final/game/src/config.lua` and `Predator.lua`, anchors below
@@ -910,6 +910,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-6: Extended live tuning** (`extended-live-tuning`) — closed 2026-11-15. Delivered client-staged live-parameter parity (S-28), a live crossbreeding toggle on both execution paths (S-29, scope expanded from server-owned-only during planning), live boid-AND-predator count adjustment on the server-owned path (S-30, scope expanded from boid-only), and a correction to S-27's own live-adjustable field set (S-31); all 4 slices done. `flockCount` live-adjustment stays parked — investigated and found structurally invasive (every boid's `flockId`/color is set once at birth, never re-derived per tick).
 - **M-7: Genetic-diversity trend** (`genetic-diversity-trend`) — closed 2026-11-15. Delivered a per-tick genetic-diversity sample series across both execution paths and a new trend chart in the analysis view (S-32, the milestone's sole slice), reversing the PRD's own "No diversity-index trend over time" Non-Goal per its own revisit clause. Plan-review caught 2 critical gaps before implementation — the server-owned pause/resume snapshot path (the exact S-25 lesson bug class) and the client-staged execution path, both missing from the initial draft despite the Overview claiming both paths.
 - **M-8: Parameter-suggestion & analytics validation corpus** (`parameter-suggestion-analytics-corpus`) — closed 2026-11-16. Delivered a reusable, persisted structured-parameter-sweep corpus (F-08, S-33) and two regression suites against it: parameter-suggestion-heuristic quality (S-34) and per-run analytics correctness across the corpus's full parameter range (S-35). Every scope anchor (MS-01–MS-06) satisfied.
+- **M-10: Per-tribe configuration and predator expansion** (`per-tribe-config-and-predator-expansion`) — closed 2026-11-18. Fixed the reported default-start failure (S-39), then extended per-tribe configuration to boid behavior (F-09, S-40), food (S-41), and predators (S-42), and finally added a second predator tribe with a configurable prey target — boids only, or boids and predators, scored via a new 6th factor (F-10, S-43) — a predation relationship new relative to both the Lua reference and the prior codebase. All 5 scope anchors (MS-01–MS-05) satisfied; F-09/F-10 and all 5 slices (S-39–S-43) done.
 
 ## Done
 
