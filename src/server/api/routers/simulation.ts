@@ -176,7 +176,7 @@ const startInputSchema = z.object({
 // constraint.
 const ADMIN_SETTINGS_ID = 1;
 
-async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
+export async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
 	parameterRanges: ParameterRanges;
 	maxObjectCount: number;
 	maxConcurrentObjectCount: number;
@@ -185,8 +185,32 @@ async function getOrSeedAdminSettings(db: typeof dbSingleton): Promise<{
 		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
 	});
 	if (existing) {
+		const existingRanges = existing.parameterRanges as ParameterRanges;
+		// admin-settings-range-backfill: a row created before a later
+		// milestone added new RANGED_PARAMETER_NAMES entries is missing those
+		// keys — backfill from DEFAULT_PARAMETER_RANGES (existing values win
+		// per-key) and persist the merged result so the row becomes complete
+		// going forward, instead of returning the stale, incomplete object.
+		const merged: ParameterRanges = {
+			...DEFAULT_PARAMETER_RANGES,
+			...existingRanges,
+		};
+		if (JSON.stringify(merged) !== JSON.stringify(existingRanges)) {
+			await db
+				.insert(adminSettings)
+				.values({
+					id: ADMIN_SETTINGS_ID,
+					parameterRanges: merged,
+					maxObjectCount: existing.maxObjectCount,
+					maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
+				})
+				.onConflictDoUpdate({
+					target: adminSettings.id,
+					set: { parameterRanges: merged },
+				});
+		}
 		return {
-			parameterRanges: existing.parameterRanges as ParameterRanges,
+			parameterRanges: merged,
 			maxObjectCount: existing.maxObjectCount,
 			maxConcurrentObjectCount: existing.maxConcurrentObjectCount,
 		};

@@ -7,13 +7,11 @@ import { eq } from "drizzle-orm";
 import { vi } from "vitest";
 
 import { createCaller } from "~/server/api/root";
+import { getOrSeedAdminSettings } from "~/server/api/routers/simulation";
 import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, users } from "~/server/db/schema";
 import type { PredatorTribeConfig } from "~/server/simulation/boids";
 import {
-	DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
-	DEFAULT_MAX_OBJECT_COUNT,
-	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
 	type RangedParameterName,
@@ -69,27 +67,6 @@ export type CorpusRunRecord = {
 	runOptimizationSuggestion: unknown;
 };
 
-// Deliberately duplicating `getOrSeedAdminSettings`'s seed-if-absent shape
-// (`src/server/api/routers/simulation.ts`) — that function is a private,
-// non-exported module-local helper this module cannot import. A known,
-// acknowledged duplication: a future change to the real seeding logic needs
-// updating in both places.
-async function getOrSeedAdminSettingsRanges(db: DB): Promise<ParameterRanges> {
-	const existing = await db.query.adminSettings.findFirst({
-		where: (t, { eq: eqFn }) => eqFn(t.id, ADMIN_SETTINGS_ID),
-	});
-	if (existing) {
-		return existing.parameterRanges as ParameterRanges;
-	}
-	await db.insert(adminSettings).values({
-		id: ADMIN_SETTINGS_ID,
-		parameterRanges: DEFAULT_PARAMETER_RANGES,
-		maxObjectCount: DEFAULT_MAX_OBJECT_COUNT,
-		maxConcurrentObjectCount: DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
-	});
-	return DEFAULT_PARAMETER_RANGES;
-}
-
 // Widens the admin-configured range for every ranged field present in
 // `params` just enough to admit the value the caller wants to start a run
 // with, writes the widened ranges back, and returns the pre-widen snapshot
@@ -101,7 +78,7 @@ export async function ensureAdminRangesAdmit(
 	db: DB,
 	params: Partial<Record<RangedParameterName, number | boolean>>,
 ): Promise<ParameterRanges> {
-	const original = await getOrSeedAdminSettingsRanges(db);
+	const { parameterRanges: original } = await getOrSeedAdminSettings(db);
 	const widened: ParameterRanges = { ...original };
 
 	for (const name of RANGED_PARAMETER_NAMES) {
@@ -142,7 +119,7 @@ export async function ensureAdminRangesAdmitForBatch(
 	db: DB,
 	paramsList: Array<Partial<Record<RangedParameterName, number | boolean>>>,
 ): Promise<ParameterRanges> {
-	const original = await getOrSeedAdminSettingsRanges(db);
+	const { parameterRanges: original } = await getOrSeedAdminSettings(db);
 	const widened: ParameterRanges = { ...original };
 
 	for (const params of paramsList) {

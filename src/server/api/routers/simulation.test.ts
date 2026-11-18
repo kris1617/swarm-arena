@@ -11,10 +11,15 @@ import {
 } from "vitest";
 
 import { createCaller } from "~/server/api/root";
+import { getOrSeedAdminSettings } from "~/server/api/routers/simulation";
 import { db } from "~/server/db";
 import { resetAdminSettingsToDefaults } from "~/server/db/admin-settings-test-reset";
-import { simulationRuns, users } from "~/server/db/schema";
-import type { RangedParameterName } from "~/server/simulation/parameter-ranges";
+import { adminSettings, simulationRuns, users } from "~/server/db/schema";
+import {
+	DEFAULT_PARAMETER_RANGES,
+	RANGED_PARAMETER_NAMES,
+	type RangedParameterName,
+} from "~/server/simulation/parameter-ranges";
 import { MAX_PARALLEL_RUNS } from "~/server/simulation/run-slots";
 import * as serverRunRegistry from "~/server/simulation/server-run-registry";
 import {
@@ -3099,6 +3104,110 @@ describe("simulationRouter.getParameterRanges / updateParameterRanges", () => {
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		} satisfies Partial<TRPCError>);
+	});
+});
+
+describe("getOrSeedAdminSettings — backfill missing range keys", () => {
+	// admin-settings-range-backfill: the exact reproduced production shape —
+	// a stored row with only the original pre-S-04 15 keys, missing every
+	// key later milestones added to RANGED_PARAMETER_NAMES/DEFAULT_PARAMETER_RANGES
+	// since. Values are deliberately distinguishable from
+	// DEFAULT_PARAMETER_RANGES's own so the assertions below can tell
+	// "kept the stored value" apart from "fell back to the default".
+	const ORIGINAL_15_KEYS_RANGES = {
+		boidCount: { min: 1, max: 999, default: 222 },
+		separationWeight: { min: 0, max: 9, default: 2 },
+		alignmentWeight: { min: 0, max: 9, default: 2 },
+		cohesionWeight: { min: 0, max: 9, default: 2 },
+		maxDurationSeconds: { min: 1, max: 9999, default: 333 },
+		predatorCount: { min: 0, max: 99, default: 11 },
+		protectionThreshold: { min: 0, max: 99, default: 11 },
+		foodStockInitial: { min: 0, max: 9999, default: 444 },
+		foodRegenRate: { min: 0, max: 99, default: 11 },
+		flockCount: { min: 1, max: 9, default: 3 },
+		energyThreshold: { min: 0, max: 99, default: 11 },
+		mutationChance: { min: 0, max: 1, default: 0.3 },
+		mutationMagnitude: { min: 0, max: 1, default: 0.3 },
+		xyArea: { min: 1, max: 9999, default: 555 },
+		zDepth: { min: 1, max: 9999, default: 666 },
+	} satisfies Partial<
+		Record<RangedParameterName, { min: number; max: number; default: number }>
+	>;
+
+	it("backfills missing keys from defaults, keeps stored values for present keys, and persists the merge", async () => {
+		await db
+			.insert(adminSettings)
+			.values({
+				id: 1,
+				// Deliberately incomplete — same shape as the confirmed
+				// production row, cast past the full-ParameterRanges type the
+				// column is typed as, matching how a pre-existing row genuinely
+				// predates later migrations.
+				parameterRanges: ORIGINAL_15_KEYS_RANGES,
+				maxObjectCount: 500,
+				maxConcurrentObjectCount: 150,
+			})
+			.onConflictDoUpdate({
+				target: adminSettings.id,
+				set: {
+					parameterRanges: ORIGINAL_15_KEYS_RANGES,
+					maxObjectCount: 500,
+					maxConcurrentObjectCount: 150,
+				},
+			});
+
+		const result = await getOrSeedAdminSettings(db);
+
+		// Every RANGED_PARAMETER_NAMES key is present.
+		for (const name of RANGED_PARAMETER_NAMES) {
+			expect(result.parameterRanges[name]).toBeDefined();
+		}
+
+		// The 15 originally-stored keys keep their stored (non-default) values.
+		for (const key of Object.keys(
+			ORIGINAL_15_KEYS_RANGES,
+		) as (keyof typeof ORIGINAL_15_KEYS_RANGES)[]) {
+			expect(result.parameterRanges[key]).toEqual(ORIGINAL_15_KEYS_RANGES[key]);
+		}
+
+		// Every key NOT in the stored 15 falls back to DEFAULT_PARAMETER_RANGES
+		// exactly.
+		for (const name of RANGED_PARAMETER_NAMES) {
+			if (name in ORIGINAL_15_KEYS_RANGES) {
+				continue;
+			}
+			expect(result.parameterRanges[name]).toEqual(
+				DEFAULT_PARAMETER_RANGES[name],
+			);
+		}
+
+		// The merge was persisted — a direct re-query sees the full, merged
+		// object, not the stale incomplete one.
+		const reQueried = await db.query.adminSettings.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, 1),
+		});
+		expect(reQueried).toBeDefined();
+		if (!reQueried) {
+			throw new Error("re-query of admin_settings row returned nothing");
+		}
+		const reQueriedRanges = reQueried.parameterRanges as Record<
+			string,
+			unknown
+		>;
+		for (const name of RANGED_PARAMETER_NAMES) {
+			expect(reQueriedRanges[name]).toBeDefined();
+		}
+		expect(reQueried.parameterRanges).toEqual(result.parameterRanges);
+	});
+
+	it("round-trips on an already-complete row with no crash and no regression", async () => {
+		await resetAdminSettingsToDefaults(db);
+
+		const first = await getOrSeedAdminSettings(db);
+		const second = await getOrSeedAdminSettings(db);
+
+		expect(second.parameterRanges).toEqual(first.parameterRanges);
+		expect(second.parameterRanges).toEqual(DEFAULT_PARAMETER_RANGES);
 	});
 });
 
