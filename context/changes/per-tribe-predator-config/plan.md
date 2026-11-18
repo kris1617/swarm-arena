@@ -677,25 +677,25 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 5.1 Typecheck passes
-- [x] 5.2 Component tests pass
-- [x] 5.3 Full test suite passes
-- [x] 5.4 Lint passes
+- [x] 5.1 Typecheck passes — 4aca079
+- [x] 5.2 Component tests pass — 4aca079
+- [x] 5.3 Full test suite passes — 4aca079
+- [x] 5.4 Lint passes — 4aca079
 
 #### Manual
 
-- [x] 5.5 Live detectionRadius edit visibly changes predator behavior within a few ticks
-- [x] 5.6 Live crossbreeding-flag-off edit stops new cross-tribe offspring mid-run
+- [x] 5.5 Live detectionRadius edit visibly changes predator behavior within a few ticks — 4aca079
+- [x] 5.6 Live crossbreeding-flag-off edit stops new cross-tribe offspring mid-run — 4aca079
 
 ### Phase 6: Verification + cookbook
 
 #### Automated
 
-- [ ] 6.1 Full test suite passes
-- [ ] 6.2 Typecheck passes
-- [ ] 6.3 Lint passes
-- [ ] 6.4 Full build succeeds
+- [x] 6.1 Full test suite passes
+- [x] 6.2 Typecheck passes
+- [x] 6.3 Lint passes
+- [x] 6.4 Full build succeeds
 
 #### Manual
 
-- [ ] 6.5 Verification script's 4 assertions (a)-(d) all pass
+- [x] 6.5 Verification script's 4 assertions (a)-(d) all pass
