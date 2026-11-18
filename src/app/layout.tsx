@@ -28,7 +28,19 @@ export default async function RootLayout({
 		<html className={`${geist.variable}`} lang="en">
 			<body>
 				<TRPCReactProvider>
-					{session?.user ? <AppShell>{children}</AppShell> : children}
+					{session?.user ? (
+						<AppShell
+							user={{
+								name: session.user.name ?? null,
+								email: session.user.email ?? null,
+								image: session.user.image ?? null,
+							}}
+						>
+							{children}
+						</AppShell>
+					) : (
+						children
+					)}
 				</TRPCReactProvider>
 			</body>
 		</html>

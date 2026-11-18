@@ -531,33 +531,33 @@ None — no schema or data changes.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 Unit tests pass: `npx vitest run src/app/login/safe-redirect.test.ts src/app/login/auth-error-messages.test.ts`
-- [x] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 8f8b238
+- [x] 2.2 Lint passes: `npm run check` — 8f8b238
+- [x] 2.3 Unit tests pass: `npx vitest run src/app/login/safe-redirect.test.ts src/app/login/auth-error-messages.test.ts` — 8f8b238
+- [x] 2.4 Full suite still passes: `npm test` — 8f8b238
 
 #### Manual
 
-- [x] 2.5 `/login` shows the new centered card with the GitHub icon
-- [x] 2.6 Sign-in button shows a disabled/"Redirecting…" pending state
-- [x] 2.7 `/login?error=AccessDenied` shows the mapped message; unknown code shows the generic fallback
-- [x] 2.8 Deep-link sign-in returns to the originally requested URL, not always `/dashboard`
-- [x] 2.9 A malicious `callbackUrl` falls back to `/dashboard`, never redirects externally
+- [x] 2.5 `/login` shows the new centered card with the GitHub icon — 8f8b238
+- [x] 2.6 Sign-in button shows a disabled/"Redirecting…" pending state — 8f8b238
+- [x] 2.7 `/login?error=AccessDenied` shows the mapped message; unknown code shows the generic fallback — 8f8b238
+- [x] 2.8 Deep-link sign-in returns to the originally requested URL, not always `/dashboard` — 8f8b238
+- [x] 2.9 A malicious `callbackUrl` falls back to `/dashboard`, never redirects externally — 8f8b238
 
 ### Phase 3: Post-login identity & sign-out
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Lint passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck`
+- [x] 3.2 Lint passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Sidebar footer shows avatar + name instead of a bare "Sign out" button
-- [ ] 3.5 "Sign out" opens a confirm dialog instead of signing out immediately
-- [ ] 3.6 Cancel keeps the session; confirm shows a pending state then lands on `/login?signedOut=1` with the acknowledgment banner
-- [ ] 3.7 Missing-avatar case falls back to initials, not a broken image
+- [x] 3.4 Sidebar footer shows avatar + name instead of a bare "Sign out" button
+- [x] 3.5 "Sign out" opens a confirm dialog instead of signing out immediately
+- [x] 3.6 Cancel keeps the session; confirm shows a pending state then lands on `/login?signedOut=1` with the acknowledgment banner
+- [x] 3.7 Missing-avatar case falls back to initials, not a broken image
 
 ### Phase 4: E2E coverage
 

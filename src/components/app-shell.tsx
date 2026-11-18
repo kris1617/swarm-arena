@@ -14,7 +14,7 @@ import {
 	SidebarMenuItem,
 	SidebarProvider,
 } from "~/components/ui/sidebar";
-import { signOutAction } from "~/server/auth/actions";
+import { UserMenu } from "~/components/user-menu";
 
 type NavItem = {
 	label: string;
@@ -28,7 +28,13 @@ const NAV_ITEMS: NavItem[] = [
 	{ label: "Reference", href: "/reference" },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+	children,
+	user,
+}: {
+	children: React.ReactNode;
+	user: { name: string | null; email: string | null; image: string | null };
+}) {
 	const pathname = usePathname();
 
 	return (
@@ -50,9 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 				</SidebarContent>
 				<SidebarFooter>
 					<FeedbackSheet />
-					<form action={signOutAction}>
-						<SidebarMenuButton type="submit">Sign out</SidebarMenuButton>
-					</form>
+					<UserMenu user={user} />
 				</SidebarFooter>
 			</Sidebar>
 			<SidebarInset>{children}</SidebarInset>

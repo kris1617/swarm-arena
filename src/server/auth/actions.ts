@@ -7,5 +7,5 @@ import { signOut } from "~/server/auth";
 // file with a top-level "use server" directive, not inline, see
 // node_modules/next/dist/docs/01-app/02-guides/forms.md.
 export async function signOutAction() {
-	await signOut({ redirectTo: "/login" });
+	await signOut({ redirectTo: "/login?signedOut=1" });
 }
