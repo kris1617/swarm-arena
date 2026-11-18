@@ -205,12 +205,12 @@ intervention needed.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 New test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "backfill"`
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 84694a8
+- [x] 1.2 Lint passes: `npm run check` — 84694a8
+- [x] 1.3 New test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "backfill"` — 84694a8
+- [x] 1.4 Full suite still passes: `npm test` — 84694a8
 
 #### Manual
 
-- [ ] 1.5 `/simulation` renders without the "Something went wrong" crash against real production data
-- [ ] 1.6 Admin ranges-editing page loads with every `RANGED_PARAMETER_NAMES` field present
+- [x] 1.5 `/simulation` renders without the "Something went wrong" crash against real production data — 84694a8
+- [x] 1.6 Admin ranges-editing page loads with every `RANGED_PARAMETER_NAMES` field present — 84694a8
