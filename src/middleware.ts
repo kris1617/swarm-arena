@@ -10,6 +10,6 @@ export const runtime = "nodejs";
 
 export const config = {
 	matcher: [
-		"/((?!login|api/auth|api/test-auth|_next/static|_next/image|favicon.ico).*)",
+		"/((?!login|api/auth|api/test-auth|_next/static|_next/image|.*\\..*).*)",
 	],
 };
