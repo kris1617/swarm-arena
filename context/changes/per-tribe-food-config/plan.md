@@ -455,18 +455,18 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 6: UI
 #### Automated
-- [x] 6.1 npm run typecheck passes
-- [x] 6.2 npm run check passes
+- [x] 6.1 npm run typecheck passes — 3b4b4f0
+- [x] 6.2 npm run check passes — 3b4b4f0
 #### Manual
-- [x] 6.3 Each tribe's tab shows the 3 new food fields, submits correctly and independently
+- [x] 6.3 Each tribe's tab shows the 3 new food fields, submits correctly and independently — 3b4b4f0
 
 ### Phase 7: Backward compatibility & verification
 #### Automated
-- [ ] 7.1 npm run typecheck passes
-- [ ] 7.2 npm test passes (full suite)
+- [x] 7.1 npm run typecheck passes
+- [x] 7.2 npm test passes (full suite)
 #### Manual
-- [ ] 7.3 Seeded foodStock equals sum of configured stock shares (direct inspection)
-- [ ] 7.4 Live stock-share delta injects exactly once per actual change
-- [ ] 7.5 Live regen/consumption edits change next-tick trajectory
-- [ ] 7.6 Imbalanced vs balanced scenario scores differ; disclose() reports correctly
-- [ ] 7.7 Legacy run shows no error and comparable: true
+- [x] 7.3 Seeded foodStock equals sum of configured stock shares (direct inspection)
+- [x] 7.4 Live stock-share delta injects exactly once per actual change
+- [x] 7.5 Live regen/consumption edits change next-tick trajectory
+- [x] 7.6 Imbalanced vs balanced scenario scores differ; disclose() reports correctly
+- [x] 7.7 Legacy run shows no error and comparable: true
