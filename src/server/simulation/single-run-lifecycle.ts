@@ -7,6 +7,7 @@ import {
 	PHASE_WINDOW_SIZE,
 	type PopulationPhase,
 	type PredatorState,
+	type PredatorTribeConfig,
 	runTick,
 	type TribeConfig,
 	type WorldSize,
@@ -84,6 +85,15 @@ export function computeSingleRunTick(
 		// `run.tribeConfigs`) already have this value in scope from the same
 		// place they get worldSize.
 		tribeConfigs: TribeConfig[];
+		// predator-tribe-concept Phase 3: one PredatorTribeConfig per
+		// predator flock, index = predatorFlockId — threaded straight into
+		// runTick's own `params.predatorTribeConfigs` (its own comment
+		// explains why it has no default), same convention as tribeConfigs
+		// just above. Both callers (simulation-canvas.tsx's props,
+		// server-run-registry.ts's `run.params.predatorTribeConfigs`)
+		// already have this value in scope from the same place they get
+		// tribeConfigs.
+		predatorTribeConfigs: PredatorTribeConfig[];
 		// unwatched-run-tick-throttling Phase 2: scales the computed
 		// dtSeconds before the MAX_DT_SECONDS clamp, applied by the caller
 		// (server-run-registry.ts's tick()) when a run has had zero watchers
@@ -168,6 +178,7 @@ export function computeSingleRunTick(
 			foodStockInitial: params.foodStockInitial,
 			worldSize: params.worldSize,
 			tribeConfigs: params.tribeConfigs,
+			predatorTribeConfigs: params.predatorTribeConfigs,
 		},
 	);
 

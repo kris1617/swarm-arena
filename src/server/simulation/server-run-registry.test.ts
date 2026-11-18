@@ -2099,6 +2099,15 @@ describe("unwatched-run tick throttling", () => {
 
 	it("re-watching a previously-throttled run resets unwatchedSinceMs so it keeps ticking unthrottled", async () => {
 		vi.useFakeTimers();
+		// predator-tribe-concept Phase 3: this fixture's detectionRadius (50,
+		// in a 200^3 world) makes predators wander idle far more often than
+		// the old unconditional-pursuit behavior — boids cluster more under
+		// their own flocking forces without constant predator pressure,
+		// tripping the spatial grid's dense-clustering fallback path on more
+		// ticks than before. A real, understood, bounded cost for this
+		// specific small-scale fixture (confirmed consistent at ~6.6s across
+		// repeated runs, not a runaway/unbounded regression) — the default
+		// 5000ms test timeout is just too tight for it now.
 		const { ownerId, runId } = await insertOwnedRunningRun(62);
 		activeRunIds.push(runId);
 		const tickSpy = vi.spyOn(singleRunLifecycle, "computeSingleRunTick");
@@ -2154,5 +2163,5 @@ describe("unwatched-run tick throttling", () => {
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
-	});
+	}, 15000);
 });

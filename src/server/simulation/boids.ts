@@ -167,6 +167,12 @@ const MIN_SEPARATION_DISTANCE = 4;
 // so a boid cruising at MIN_SPEED-MAX_SPEED can actually be redirected within
 // a few ticks instead of the steering nudge being negligible next to speed.
 const STEERING_FORCE_SCALE = 120;
+// predator-tribe-concept Phase 3: an out-of-range predator's idle wander
+// force is this fraction of the full pursuit force above — 0.2 mirrors the
+// project's existing mutationMagnitude default (also 0.2), its own
+// established "small jitter" scale reference point, chosen so wandering
+// reads as idle drift rather than erratic darting.
+const WANDER_FORCE_FRACTION = 0.2;
 // Predator cruise-speed bounds — deliberately faster than boids' MIN_SPEED/
 // MAX_SPEED (15-40) so a predator can actually close the gap on a fleeing
 // boid instead of hunting being invisible.
@@ -851,15 +857,29 @@ export function stepBoids(
 // Each predator pursues its nearest living boid in a straight line (no
 // separation/alignment/cohesion among predators — out of scope this slice),
 // cruising within its own (faster) speed bounds and wrapping toroidally.
+//
+// predator-tribe-concept Phase 3: pursuit is now gated by the predator's own
+// tribe's `detectionRadius` — a boid beyond that radius is treated the same
+// as "no boid at all" (the pre-Phase-3 unconditional-scan behavior is
+// preserved exactly when `predatorTribeConfigs[flockId]` has no entry, via
+// the `detectionRadius === undefined` fallback below, so every pre-existing
+// caller that passes `[]` keeps compiling and behaving identically). A
+// predator with no in-range target no longer holds its heading frozen —
+// it applies a small random wander force instead (via `rng`), so an
+// idle/out-of-range predator still looks alive rather than coasting in a
+// straight line forever.
 export function stepPredators(
 	predators: PredatorState[],
 	boids: BoidState[],
 	dtSeconds: number,
 	worldSize: WorldSize,
+	predatorTribeConfigs: PredatorTribeConfig[],
+	rng: () => number,
 ): PredatorState[] {
 	const stepped = predators.map((predator) => {
-		// A predator with no boids left to target holds its current heading
-		// unsteered (steerX/Y/Z stay 0) rather than erroring.
+		// A predator with no in-range boid to target holds steerX/Y/Z at 0
+		// here; the wander branch below (no-target case) overwrites them with
+		// a small random force rather than leaving the predator unsteered.
 		let steerX = 0;
 		let steerY = 0;
 		let steerZ = 0;
@@ -879,10 +899,31 @@ export function stepPredators(
 				nearestDz = dz;
 			}
 		}
-		if (nearestDist > 0 && nearestDist !== Infinity) {
+		const detectionRadius =
+			predatorTribeConfigs[predator.genes.flockId]?.detectionRadius;
+		const inDetectionRange =
+			detectionRadius === undefined || nearestDist <= detectionRadius;
+		if (nearestDist > 0 && nearestDist !== Infinity && inDetectionRange) {
 			steerX = nearestDx / nearestDist;
 			steerY = nearestDy / nearestDist;
 			steerZ = nearestDz / nearestDist;
+		} else {
+			// Idle wander: a random unit direction, scaled down to
+			// WANDER_FORCE_FRACTION of the full pursuit force (same
+			// `STEERING_FORCE_SCALE` multiplication below applies to both
+			// branches) — modest fraction mirrors this project's
+			// mutationMagnitude default (0.2) convention for "small jitter"
+			// scales, picked so wandering reads as idle drift, not erratic
+			// pursuit-speed darting.
+			const wx = rng() * 2 - 1;
+			const wy = rng() * 2 - 1;
+			const wz = rng() * 2 - 1;
+			const wanderLen = Math.hypot(wx, wy, wz);
+			if (wanderLen > 0) {
+				steerX = (wx / wanderLen) * WANDER_FORCE_FRACTION;
+				steerY = (wy / wanderLen) * WANDER_FORCE_FRACTION;
+				steerZ = (wz / wanderLen) * WANDER_FORCE_FRACTION;
+			}
 		}
 
 		const steeredVx = predator.vx + steerX * STEERING_FORCE_SCALE * dtSeconds;
@@ -1274,6 +1315,15 @@ export function runTick(
 		// above) — every real caller (single-run-lifecycle.ts) already has
 		// this array in scope from the same place it gets worldSize.
 		tribeConfigs: TribeConfig[];
+		// predator-tribe-concept Phase 3: one PredatorTribeConfig per predator
+		// flock, index = predatorFlockId — same convention as tribeConfigs
+		// just above, threaded into stepPredators below so each predator's
+		// detection radius comes from its own tribe. No default, same "a
+		// caller that forgets to thread the run's real value must fail
+		// loudly" rule tribeConfigs/worldSize already follow above — every
+		// real caller (single-run-lifecycle.ts) already has this array in
+		// scope from the same place it gets tribeConfigs.
+		predatorTribeConfigs: PredatorTribeConfig[];
 	},
 ): {
 	boids: BoidState[];
@@ -1311,6 +1361,8 @@ export function runTick(
 		steeredBoids,
 		params.dtSeconds,
 		params.worldSize,
+		params.predatorTribeConfigs,
+		params.rng,
 	);
 	// per-tribe-food-config Phase 2: regen is the sum of the CURRENT
 	// per-tribe regen shares, recomputed fresh every tick — not a cached

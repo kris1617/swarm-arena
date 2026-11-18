@@ -1446,8 +1446,22 @@ describe("predator-prey dynamics", () => {
 			lifespan: 100,
 		});
 
-		const [steppedSlow] = stepPredators([slow], [boid], 0.1, WORLD_SIZE);
-		const [steppedFast] = stepPredators([fast], [boid], 0.1, WORLD_SIZE);
+		const [steppedSlow] = stepPredators(
+			[slow],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(1),
+		);
+		const [steppedFast] = stepPredators(
+			[fast],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(1),
+		);
 
 		const slowSpeed = Math.hypot(
 			(steppedSlow as PredatorState).vx,
@@ -1463,6 +1477,103 @@ describe("predator-prey dynamics", () => {
 		expect(slowSpeed).toBeLessThanOrEqual(55 + 1e-9);
 		expect(fastSpeed).toBeGreaterThanOrEqual(20 - 1e-9);
 		expect(fastSpeed).toBeLessThanOrEqual(55 + 1e-9);
+	});
+
+	// predator-tribe-concept Phase 3: the nearest boid sits exactly on the
+	// predator's +x axis (dy/dz are both 0 by construction), so a predator
+	// that actually pursues it ends up with vy/vz exactly 0 too (same
+	// no-steering-off-axis shape the pursuit math above already produces).
+	// A predator that wanders instead draws a random 3D direction via rng,
+	// which (for this seed) lands off that axis — vy and/or vz become
+	// nonzero — so "did this predator wander or pursue" is observable
+	// directly from whether its resulting heading stayed on-axis.
+	it("a predator whose tribe's detectionRadius is smaller than the only boid's distance wanders instead of pursuing", () => {
+		const boid = makeBoid({
+			x: 50,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		const predator: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		// Distance to the boid is 50; this tribe's detectionRadius (10) is
+		// well short of it, so the no-target/wander branch must fire.
+		const predatorTribeConfigs: PredatorTribeConfig[] = [
+			{ ...PREDATOR_TRIBE_CONFIG, detectionRadius: 10 },
+		];
+
+		const [stepped] = stepPredators(
+			[predator],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			predatorTribeConfigs,
+			createRng(7),
+		);
+
+		const wandered = stepped as PredatorState;
+		// Pure pursuit of a boid sitting exactly on +x would leave vy/vz at
+		// exactly 0 — any nonzero y/z component is attributable only to the
+		// random wander force, not to pursuit.
+		expect(Math.hypot(wandered.vy, wandered.vz)).toBeGreaterThan(0);
+	});
+
+	it("a predator whose tribe's detectionRadius comfortably covers the only boid's distance pursues it", () => {
+		const boid = makeBoid({
+			x: 50,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		const predator: PredatorState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 0,
+			age: 0,
+			gender: "a",
+		};
+		// Distance to the boid is 50; this tribe's detectionRadius (1000)
+		// comfortably covers it, so the pursuit branch must fire.
+		const predatorTribeConfigs: PredatorTribeConfig[] = [
+			{ ...PREDATOR_TRIBE_CONFIG, detectionRadius: 1000 },
+		];
+
+		const [stepped] = stepPredators(
+			[predator],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			predatorTribeConfigs,
+			createRng(7),
+		);
+
+		const pursued = stepped as PredatorState;
+		expect(pursued.vx).toBeGreaterThan(0);
+		expect(pursued.vy).toBeCloseTo(0, 9);
+		expect(pursued.vz).toBeCloseTo(0, 9);
 	});
 
 	it("applyHunger applies extra decay only when foodStock goes negative", () => {
@@ -1683,6 +1794,7 @@ describe("speed burst and energy drain (per-tribe-behavior-weights Phase 4)", ()
 			foodStockInitial: 1000,
 			worldSize: WORLD_SIZE,
 			tribeConfigs: [BURST_TRIBE_CONFIG],
+			predatorTribeConfigs: [],
 		};
 
 		const fleeingResult = runTick(
@@ -2249,6 +2361,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 				foodStockInitial: 1000,
 				worldSize: WORLD_SIZE,
 				tribeConfigs: [TRIBE_CONFIG],
+				predatorTribeConfigs: [],
 			},
 		);
 
@@ -2296,6 +2409,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			foodStockInitial: 20,
 			worldSize: WORLD_SIZE,
 			tribeConfigs: [TRIBE_CONFIG],
+			predatorTribeConfigs: [PREDATOR_TRIBE_CONFIG],
 		};
 
 		const a = runTick(
@@ -2336,6 +2450,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			foodStockInitial: 100,
 			worldSize: WORLD_SIZE,
 			tribeConfigs,
+			predatorTribeConfigs: [],
 		};
 
 		const result = runTick(

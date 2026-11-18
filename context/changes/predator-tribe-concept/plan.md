@@ -659,15 +659,15 @@ param.
 
 #### Automated
 
-- [x] 2.1 npm run typecheck passes
-- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes
+- [x] 2.1 npm run typecheck passes — ab26ea9
+- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes — ab26ea9
 
 ### Phase 3: Detection radius & idle wander
 
 #### Automated
 
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts passes
+- [x] 3.1 npm run typecheck passes
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts passes
 
 ### Phase 4: Genes wiring & capture aggressiveness
 

@@ -186,6 +186,11 @@ function createTickState(
 		// TRIBE_CONFIG this benchmark already seeds the population from, so
 		// the measured per-tick cost shape is unaffected.
 		tribeConfigs: [TRIBE_CONFIG],
+		// predator-tribe-concept Phase 3 (ADAPT): computeSingleRunTick/runTick
+		// now require predatorTribeConfigs (no default) — same single
+		// PREDATOR_TRIBE_CONFIG this benchmark already seeds the predator
+		// population from, so the measured per-tick cost shape is unaffected.
+		predatorTribeConfigs: [PREDATOR_TRIBE_CONFIG],
 	};
 
 	return { state, params };

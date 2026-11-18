@@ -64,6 +64,12 @@ const PARAMS = {
 	// fixtures all use TRIBE_CONFIG, matching the old global constants
 	// exactly, so grid sizing/behavior is unchanged.
 	tribeConfigs: [TRIBE_CONFIG],
+	// predator-tribe-concept Phase 3: runTick now requires
+	// predatorTribeConfigs (no default, same convention as tribeConfigs) —
+	// this file's single-flock fixtures all use PREDATOR_TRIBE_CONFIG,
+	// matching this suite's own predator genes exactly, so behavior is
+	// unchanged.
+	predatorTribeConfigs: [PREDATOR_TRIBE_CONFIG],
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -454,6 +460,7 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 				// this test's hand-computed oracle (consumption only, no regen)
 				// still holds.
 				tribeConfigs: [{ ...TRIBE_CONFIG, foodRegenShare: 0 }],
+				predatorTribeConfigs: [PREDATOR_TRIBE_CONFIG],
 			},
 		);
 

@@ -59,6 +59,11 @@ const PARAMS = {
 	// PREDATOR_DETECTION_RADIUS constants keeps every pre-existing test's
 	// behavior unchanged.
 	tribeConfigs: [BASE_TRIBE_CONFIG],
+	// predator-tribe-concept Phase 3: computeSingleRunTick/runTick now
+	// require predatorTribeConfigs (no default, same convention as
+	// tribeConfigs) — this file's fixtures carry no predators, so an empty
+	// array keeps every pre-existing test's behavior unchanged.
+	predatorTribeConfigs: [],
 };
 
 const GENES: BoidGenes = {

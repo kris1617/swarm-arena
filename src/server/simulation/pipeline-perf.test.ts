@@ -64,6 +64,9 @@ const BASE_PARAMS = {
 	// exactly, so grid sizing/behavior (and thus the Math.hypot call-count
 	// scaling-shape this suite measures) is unchanged.
 	tribeConfigs: [TRIBE_CONFIG],
+	// predator-tribe-concept Phase 3: runTick now requires
+	// predatorTribeConfigs (no default, same convention as tribeConfigs).
+	predatorTribeConfigs: [PREDATOR_TRIBE_CONFIG],
 };
 
 function buildState(boidCount: number, predatorCount: number) {
