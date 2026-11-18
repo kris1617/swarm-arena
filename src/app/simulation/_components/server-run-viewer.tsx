@@ -673,6 +673,10 @@ export function ServerRunViewer({
 				<Select
 					id={id}
 					onChange={(e) =>
+						// impl-review F1: this cast is safe only because the two
+						// <option value>s below are kept byte-identical to this
+						// union — if a third option is ever added here, it must
+						// be added to the type too, or this silently lies.
 						handleTribeFieldChange(
 							"predator",
 							index,

@@ -1,7 +1,7 @@
 ---
 change_id: second-predator-tribe-prey-target
 title: Second predator tribe with configurable prey target
-status: implemented
+status: impl_reviewed
 created: 2026-11-18
 updated: 2026-11-18
 archived_at: null

@@ -1773,6 +1773,99 @@ describe("applyLivePredatorTribeConfigs", () => {
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
 	});
+
+	// impl-review F2: the second-predator-tribe-prey-target equivalent of
+	// the detectionRadius test just above — proves a live preyTarget flip
+	// via `applyLivePredatorTribeConfigs` (the exact function the live-edit
+	// panel's Apply button calls) changes whether inter-tribe capture
+	// actually occurs on the next tick, not just that the stored config
+	// round-trips. Two predator tribes, one member each, positioned
+	// CAPTURE_RADIUS (6, boids.ts) apart via snapshot/resume so the next
+	// tick's capture query is deterministic regardless of wall-clock timing.
+	it("a live preyTarget flip to boids-and-predators makes a previously-safe cross-tribe predator get captured on the next tick", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(64);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 64,
+			...BASE_PARAMS,
+			// A single boid, kept far from both predators and never touched by
+			// `placeTwoTribes` below — just here so the run's existing
+			// "stop when boids hit zero" condition (single-run-lifecycle.ts)
+			// never fires and ends the run out from under this test.
+			boidCount: 1,
+			predatorCount: 2,
+			predatorFlockCount: 2,
+			predatorTribeConfigs: [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, preyTarget: "boids" },
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, preyTarget: "boids" },
+			],
+			protectionThreshold: 0,
+			maxDurationSeconds: 600,
+		});
+
+		function placeTwoTribes() {
+			const snapshot = snapshotServerRun(runId);
+			if (!snapshot) {
+				throw new Error("expected a snapshot");
+			}
+			const tribe0 = snapshot.predators.find((p) => p.genes.flockId === 0);
+			const tribe1 = snapshot.predators.find((p) => p.genes.flockId === 1);
+			if (!tribe0 || !tribe1) {
+				throw new Error("expected one predator per tribe");
+			}
+			const index0 = snapshot.predators.indexOf(tribe0);
+			const index1 = snapshot.predators.indexOf(tribe1);
+			snapshot.predators[index0] = {
+				...tribe0,
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+			};
+			snapshot.predators[index1] = {
+				...tribe1,
+				x: 3,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+			};
+			snapshot.lastTimestamp = Date.now() - 10_000;
+			resumeServerRun(runId, snapshot);
+		}
+
+		// Phase 1: both tribes still "boids" — within CAPTURE_RADIUS of each
+		// other, but neither tribe's preyTarget permits inter-predator
+		// capture. Both survive.
+		placeTwoTribes();
+		await vi.advanceTimersByTimeAsync(16);
+		const afterPhase1 = getLiveRunState(runId);
+		expect(afterPhase1?.predators).toHaveLength(2);
+
+		// Phase 2: reset to the same clean positions, then live-edit tribe
+		// 1's preyTarget to "boids-and-predators" via the exact function the
+		// live-edit panel's Apply button calls.
+		placeTwoTribes();
+		expect(
+			applyLivePredatorTribeConfigs(runId, [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, preyTarget: "boids" },
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, preyTarget: "boids-and-predators" },
+			]),
+		).toEqual({ status: "applied" });
+
+		await vi.advanceTimersByTimeAsync(16);
+		const afterPhase2 = getLiveRunState(runId);
+		expect(afterPhase2?.predators).toHaveLength(1);
+		expect(afterPhase2?.predators[0]?.genes.flockId).toBe(1);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
 });
 
 describe("snapshotServerRun / resumeServerRun", () => {
