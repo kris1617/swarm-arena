@@ -77,6 +77,14 @@ export const authConfig: NextAuthConfig = {
 	],
 	pages: {
 		signIn: "/login",
+		// Without this, AccessDenied-kind errors land on next-auth's own
+		// unstyled default error page instead of this app's banner on
+		// /login. Safe here: @auth/core's ErrorPageLoop guard only trips
+		// when the error page itself requires authentication (checked via
+		// whether a Configuration error's callbackUrl already points back
+		// at pages.error) — /login is excluded from middleware's matcher
+		// and never requires a session, so no loop is possible.
+		error: "/login",
 	},
 	events: {
 		// Fires once, when the adapter first persists a new user row —

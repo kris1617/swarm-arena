@@ -519,30 +519,30 @@ None — no schema or data changes.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 New files exist (dropdown-menu, avatar, alert-dialog, github-icon, auth-banner)
+- [x] 1.1 Typecheck passes: `npm run typecheck` — b01bec4
+- [x] 1.2 Lint passes: `npm run check` — b01bec4
+- [x] 1.3 New files exist (dropdown-menu, avatar, alert-dialog, github-icon, auth-banner) — b01bec4
 
 #### Manual
 
-- [ ] 1.4 `npm run dev` boots with no console errors
+- [x] 1.4 `npm run dev` boots with no console errors — b01bec4
 
 ### Phase 2: Redesign `/login`
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Unit tests pass: `npx vitest run src/app/login/safe-redirect.test.ts src/app/login/auth-error-messages.test.ts`
-- [ ] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.3 Unit tests pass: `npx vitest run src/app/login/safe-redirect.test.ts src/app/login/auth-error-messages.test.ts`
+- [x] 2.4 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 2.5 `/login` shows the new centered card with the GitHub icon
-- [ ] 2.6 Sign-in button shows a disabled/"Redirecting…" pending state
-- [ ] 2.7 `/login?error=AccessDenied` shows the mapped message; unknown code shows the generic fallback
-- [ ] 2.8 Deep-link sign-in returns to the originally requested URL, not always `/dashboard`
-- [ ] 2.9 A malicious `callbackUrl` falls back to `/dashboard`, never redirects externally
+- [x] 2.5 `/login` shows the new centered card with the GitHub icon
+- [x] 2.6 Sign-in button shows a disabled/"Redirecting…" pending state
+- [x] 2.7 `/login?error=AccessDenied` shows the mapped message; unknown code shows the generic fallback
+- [x] 2.8 Deep-link sign-in returns to the originally requested URL, not always `/dashboard`
+- [x] 2.9 A malicious `callbackUrl` falls back to `/dashboard`, never redirects externally
 
 ### Phase 3: Post-login identity & sign-out
 
