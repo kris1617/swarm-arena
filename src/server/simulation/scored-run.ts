@@ -19,6 +19,10 @@ export class ScoredRun {
 		// score may not be directly comparable — extends the existing
 		// pattern wasEverThrottled established, not a replacement for it.
 		private readonly wasEverFoodImbalanced: boolean,
+		// second-predator-tribe-prey-target Phase 3: a third, independent
+		// reason — same pattern as wasEverFoodImbalanced above, not a
+		// replacement for either existing reason.
+		private readonly wasEverPredatorTribeImbalanced: boolean,
 	) {}
 
 	// The ONLY constructor. Returns null for an unscored row rather than
@@ -29,6 +33,7 @@ export class ScoredRun {
 		score: number | null;
 		wasEverThrottled: boolean;
 		wasEverFoodImbalanced: boolean;
+		wasEverPredatorTribeImbalanced: boolean;
 	}): ScoredRun | null {
 		if (row.score === null) {
 			return null;
@@ -38,6 +43,7 @@ export class ScoredRun {
 			row.score,
 			row.wasEverThrottled,
 			row.wasEverFoodImbalanced,
+			row.wasEverPredatorTribeImbalanced,
 		);
 	}
 
@@ -50,11 +56,17 @@ export class ScoredRun {
 		const imbalancedReason = this.wasEverFoodImbalanced
 			? `Run #${this.runId} showed uneven per-tribe food contribution — its score may not be directly comparable to a single-tribe or evenly-balanced run.`
 			: null;
+		const predatorTribeImbalancedReason = this.wasEverPredatorTribeImbalanced
+			? `Run #${this.runId} showed an imbalanced predator-tribe population — its score may not be directly comparable to a single-predator-tribe or evenly-balanced run.`
+			: null;
 		return {
 			score: this.score,
-			comparable: !this.wasEverThrottled && !this.wasEverFoodImbalanced,
+			comparable:
+				!this.wasEverThrottled &&
+				!this.wasEverFoodImbalanced &&
+				!this.wasEverPredatorTribeImbalanced,
 			disclaimer:
-				[throttledReason, imbalancedReason]
+				[throttledReason, imbalancedReason, predatorTribeImbalancedReason]
 					.filter((reason) => reason !== null)
 					.join(" ") || null,
 		};

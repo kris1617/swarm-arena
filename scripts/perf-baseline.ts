@@ -179,6 +179,7 @@ function createTickState(
 		populationCountSamples: [],
 		populationDensitySamples: [],
 		geneticDiversitySamples: [],
+		predatorTribeBalanceSamples: [],
 		phaseHistory: [] as PopulationPhase[],
 		elapsedSeconds: 0,
 		lastTimestamp: null,

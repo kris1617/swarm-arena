@@ -12,12 +12,14 @@ import { adminSettings, simulationRuns } from "~/server/db/schema";
 import {
 	type BoidGenes,
 	computeAreaPopulationDensity,
+	computeAreaPredatorTribeBalance,
 	computeGeneticDiversity,
 	computePhaseQuality,
 	computeResourceManagement,
 	computeScore,
 	FOOD_IMBALANCE_EPSILON,
 	type PopulationPhase,
+	PREDATOR_TRIBE_IMBALANCE_THRESHOLD,
 	segmentCompletedCycles,
 } from "~/server/simulation/boids";
 import {
@@ -628,6 +630,22 @@ export const simulationRouter = createTRPCRouter({
 					.min(1)
 					.max(50_000)
 					.optional(),
+				// second-predator-tribe-prey-target Phase 3: the client-staged
+				// path's own per-tick predator-tribe balance sample array,
+				// mirroring the server-owned path's equivalent
+				// (server-run-registry.ts's `tick()`). Optional, same
+				// backward-compat posture as `tribeFoodImbalanceSamples`/
+				// `geneticDiversitySamples` above — a caller/test fixture built
+				// before this field existed still validates. `.min(1)` (not
+				// `.min(0)`) because every real tick pushes one sample
+				// regardless of predator-tribe count (the neutral 1.0 default
+				// for <2 tribes) — a submitted array is never legitimately
+				// empty for a run that ticked at all.
+				predatorTribeBalanceSamples: z
+					.array(z.number().min(0).max(1))
+					.min(1)
+					.max(50_000)
+					.optional(),
 				// client-staged-live-parameter-parity Phase 3: the client-staged
 				// path's own changelog of applied live edits, matching the
 				// server-owned path's `ParameterChangeEntry` shape
@@ -712,6 +730,9 @@ export const simulationRouter = createTRPCRouter({
 				computeGeneticDiversity(input.survivingBoidGenes),
 				computePhaseQuality(input.phaseHistory),
 				computeAreaPopulationDensity(input.populationDensitySamples),
+				computeAreaPredatorTribeBalance(
+					input.predatorTribeBalanceSamples ?? [],
+				),
 			);
 			// per-tribe-food-config impl-review F1: mirrors the server-owned
 			// path's write-once `wasEverFoodImbalanced` marker — this path has
@@ -720,6 +741,13 @@ export const simulationRouter = createTRPCRouter({
 			const wasEverFoodImbalanced =
 				input.tribeFoodImbalanceSamples?.some(
 					(sample) => sample > FOOD_IMBALANCE_EPSILON,
+				) ?? false;
+			// second-predator-tribe-prey-target Phase 3: same derived-once-
+			// in-one-shot pattern as `wasEverFoodImbalanced` just above, for
+			// the predator-tribe-balance comparability marker.
+			const wasEverPredatorTribeImbalanced =
+				input.predatorTribeBalanceSamples?.some(
+					(sample) => sample < PREDATOR_TRIBE_IMBALANCE_THRESHOLD,
 				) ?? false;
 
 			// Race-safety net: a second concurrent `stop` call for the same run
@@ -733,6 +761,7 @@ export const simulationRouter = createTRPCRouter({
 					score,
 					stoppedAt: new Date(),
 					wasEverFoodImbalanced,
+					wasEverPredatorTribeImbalanced,
 					// F-05 (MS-08): persist alongside the score instead of
 					// discarding — matches server-run-registry.ts's finishRun.
 					history: {
@@ -743,6 +772,7 @@ export const simulationRouter = createTRPCRouter({
 						populationCountSamples: input.populationCountSamples,
 						populationDensitySamples: input.populationDensitySamples,
 						geneticDiversitySamples: input.geneticDiversitySamples,
+						predatorTribeBalanceSamples: input.predatorTribeBalanceSamples,
 						// compare-runs-side-by-side Phase 1: the survival
 						// factor, matching server-run-registry.ts's two write
 						// sites — reuses the same value already computed for
@@ -906,6 +936,12 @@ export const simulationRouter = createTRPCRouter({
 				// same real-column treatment, needed so ScoredRun.from below can
 				// report the second, independent comparability reason.
 				wasEverFoodImbalanced: simulationRuns.wasEverFoodImbalanced,
+				// second-predator-tribe-prey-target Phase 3: sibling to
+				// wasEverFoodImbalanced — same real-column treatment, needed so
+				// ScoredRun.from below can report the third, independent
+				// comparability reason.
+				wasEverPredatorTribeImbalanced:
+					simulationRuns.wasEverPredatorTribeImbalanced,
 			})
 			.from(simulationRuns)
 			.where(
@@ -919,13 +955,20 @@ export const simulationRouter = createTRPCRouter({
 			.limit(50);
 
 		return rows.map(
-			({ history, wasEverThrottled, wasEverFoodImbalanced, ...row }) => {
+			({
+				history,
+				wasEverThrottled,
+				wasEverFoodImbalanced,
+				wasEverPredatorTribeImbalanced,
+				...row
+			}) => {
 				const disclosure = pickComparability(
 					ScoredRun.from({
 						id: row.id,
 						score: row.score,
 						wasEverThrottled,
 						wasEverFoodImbalanced,
+						wasEverPredatorTribeImbalanced,
 					}),
 				);
 				return {
@@ -983,6 +1026,12 @@ export const simulationRouter = createTRPCRouter({
 					// same real-column treatment, needed so ScoredRun.from below
 					// can report the second, independent comparability reason.
 					wasEverFoodImbalanced: simulationRuns.wasEverFoodImbalanced,
+					// second-predator-tribe-prey-target Phase 3: sibling to
+					// wasEverFoodImbalanced — same real-column treatment, needed
+					// so ScoredRun.from below can report the third, independent
+					// comparability reason.
+					wasEverPredatorTribeImbalanced:
+						simulationRuns.wasEverPredatorTribeImbalanced,
 				})
 				.from(simulationRuns)
 				.where(
@@ -1009,13 +1058,19 @@ export const simulationRouter = createTRPCRouter({
 					score: row.score,
 					wasEverThrottled: row.wasEverThrottled,
 					wasEverFoodImbalanced: row.wasEverFoodImbalanced,
+					wasEverPredatorTribeImbalanced: row.wasEverPredatorTribeImbalanced,
 				})?.disclose(),
 			);
 			const throttledCount = disclosures.filter(
 				(d) => d && !d.comparable,
 			).length;
 			const inputRows: SuggestionInputRow[] = scoredRows.map(
-				({ wasEverThrottled, wasEverFoodImbalanced, ...row }) => ({
+				({
+					wasEverThrottled,
+					wasEverFoodImbalanced,
+					wasEverPredatorTribeImbalanced,
+					...row
+				}) => ({
 					...row,
 					score: row.score,
 				}),
@@ -1142,6 +1197,11 @@ export const simulationRouter = createTRPCRouter({
 							geneticDiversity: number;
 							phaseQuality: number;
 							areaPopulationDensity: number | null;
+							// second-predator-tribe-prey-target Phase 3: sibling to
+							// areaPopulationDensity above — same optional-with-null
+							// backward-compat posture for a row that predates this
+							// factor.
+							predatorTribeBalance: number | null;
 						} | null;
 						// ScoredRun.disclose()'s shape — see scored-run.ts. comparable
 						// is true / disclaimer is null when the run has no score yet
@@ -1190,6 +1250,10 @@ export const simulationRouter = createTRPCRouter({
 					survivorGenes: BoidGenes[];
 					elapsedSeconds?: number;
 					populationDensitySamples?: number[];
+					// second-predator-tribe-prey-target Phase 3: optional, same
+					// posture as populationDensitySamples above — a row
+					// written before this phase has no such key.
+					predatorTribeBalanceSamples?: number[];
 				} | null;
 
 				const breakdown =
@@ -1216,6 +1280,13 @@ export const simulationRouter = createTRPCRouter({
 											rawHistory.populationDensitySamples,
 										)
 									: null,
+								predatorTribeBalance: Array.isArray(
+									rawHistory.predatorTribeBalanceSamples,
+								)
+									? computeAreaPredatorTribeBalance(
+											rawHistory.predatorTribeBalanceSamples,
+										)
+									: null,
 							}
 						: null;
 
@@ -1238,6 +1309,8 @@ export const simulationRouter = createTRPCRouter({
 							score: run.score,
 							wasEverThrottled: run.wasEverThrottled,
 							wasEverFoodImbalanced: run.wasEverFoodImbalanced,
+							wasEverPredatorTribeImbalanced:
+								run.wasEverPredatorTribeImbalanced,
 						}),
 					),
 					wasAutoStopped: run.wasAutoStopped,

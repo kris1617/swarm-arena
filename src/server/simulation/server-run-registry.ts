@@ -7,6 +7,7 @@ import {
 	type BoidGenes,
 	type BoidState,
 	computeAreaPopulationDensity,
+	computeAreaPredatorTribeBalance,
 	computeGeneticDiversity,
 	computePhaseQuality,
 	computeResourceManagement,
@@ -135,6 +136,10 @@ type LiveRun = {
 	// genetic-diversity-trend Phase 1: one per-tick genetic-diversity sample,
 	// threaded through the same shared tick core as the other sample arrays.
 	geneticDiversitySamples: number[];
+	// second-predator-tribe-prey-target Phase 3: one raw per-tick
+	// predator-tribe balance sample, threaded through the same shared tick
+	// core as the other sample arrays.
+	predatorTribeBalanceSamples: number[];
 	// live-parameter-adjustment (S-27): changelog of live edits applied to
 	// `params` while this run was ticking — not a per-tick sample, only grows
 	// when `applyLiveParams` is called.
@@ -172,6 +177,10 @@ type LiveRun = {
 	// `wasEverThrottledWritten` above, for the `wasEverFoodImbalanced`
 	// sticky marker.
 	wasEverFoodImbalancedWritten: boolean;
+	// second-predator-tribe-prey-target Phase 3: same write-once guard shape
+	// as `wasEverFoodImbalancedWritten` above, for the
+	// `wasEverPredatorTribeImbalanced` sticky marker.
+	wasEverPredatorTribeImbalancedWritten: boolean;
 };
 
 // Cached on globalThis so the registry survives dev HMR, same pattern as
@@ -603,6 +612,10 @@ async function finishRun(
 			// genetic-diversity-trend Phase 1: one per-tick genetic-diversity
 			// sample, persisted alongside its siblings.
 			geneticDiversitySamples: number[];
+			// second-predator-tribe-prey-target Phase 3: one raw per-tick
+			// predator-tribe balance sample, persisted alongside its siblings
+			// so a finished run's score can be recomputed/decomposed.
+			predatorTribeBalanceSamples: number[];
 			// live-parameter-adjustment (S-27): the changelog of live edits
 			// applied while this run was ticking — mirrors the exact threading
 			// pattern populationDensitySamples (S-25) established.
@@ -670,6 +683,7 @@ function buildFinishPayload(run: LiveRun): {
 		),
 		computePhaseQuality(run.phaseHistory),
 		computeAreaPopulationDensity(run.populationDensitySamples),
+		computeAreaPredatorTribeBalance(run.predatorTribeBalanceSamples),
 	);
 	return {
 		score,
@@ -681,6 +695,7 @@ function buildFinishPayload(run: LiveRun): {
 			populationCountSamples: run.populationCountSamples,
 			populationDensitySamples: run.populationDensitySamples,
 			geneticDiversitySamples: run.geneticDiversitySamples,
+			predatorTribeBalanceSamples: run.predatorTribeBalanceSamples,
 			parameterChanges: run.parameterChanges,
 			elapsedSeconds: run.elapsedSeconds,
 		},
@@ -712,6 +727,7 @@ function tick(runId: number): void {
 				populationCountSamples: run.populationCountSamples,
 				populationDensitySamples: run.populationDensitySamples,
 				geneticDiversitySamples: run.geneticDiversitySamples,
+				predatorTribeBalanceSamples: run.predatorTribeBalanceSamples,
 				phaseHistory: run.phaseHistory,
 				elapsedSeconds: run.elapsedSeconds,
 				lastTimestamp: run.lastTimestamp,
@@ -791,6 +807,40 @@ function tick(runId: number): void {
 				});
 		}
 
+		// second-predator-tribe-prey-target Phase 3: same write-once DB-write
+		// shape as `wasEverFoodImbalanced`/`wasEverThrottled` just above — set
+		// true the first tick a real predator-tribe imbalance is actually
+		// measured, never cleared once set.
+		if (
+			result.wasPredatorTribeImbalancedThisTick &&
+			!run.wasEverPredatorTribeImbalancedWritten
+		) {
+			void db
+				.update(simulationRuns)
+				.set({ wasEverPredatorTribeImbalanced: true })
+				.where(eq(simulationRuns.id, runId))
+				.then(() => {
+					// Only latch the write-once guard on success — same reasoning
+					// as `wasEverFoodImbalancedWritten` above: if the update
+					// fails, leave it false so the next imbalanced tick retries,
+					// rather than letting a failed write get stuck as false
+					// forever.
+					run.wasEverPredatorTribeImbalancedWritten = true;
+				})
+				.catch((error: unknown) => {
+					// Mirrors finishRun's fire-and-forget posture: this write
+					// happens from inside a synchronous interval callback, so an
+					// uncaught rejection here would be an unhandled promise
+					// rejection. A failed write is retried on the next
+					// imbalanced tick (the guard above stays false), not
+					// silently swallowed.
+					console.error(
+						`server run ${runId}: failed to write wasEverPredatorTribeImbalanced=true:`,
+						error,
+					);
+				});
+		}
+
 		run.boids = result.boids;
 		run.predators = result.predators;
 		run.foodStock = result.foodStock;
@@ -800,6 +850,7 @@ function tick(runId: number): void {
 		run.populationCountSamples = result.populationCountSamples;
 		run.populationDensitySamples = result.populationDensitySamples;
 		run.geneticDiversitySamples = result.geneticDiversitySamples;
+		run.predatorTribeBalanceSamples = result.predatorTribeBalanceSamples;
 		run.phaseHistory = result.phaseHistory;
 		run.elapsedSeconds = result.elapsedSeconds;
 		run.lastTimestamp = result.lastTimestamp;
@@ -883,6 +934,7 @@ export function startServerRun(params: ServerRunParams): void {
 		populationCountSamples: [],
 		populationDensitySamples: [],
 		geneticDiversitySamples: [],
+		predatorTribeBalanceSamples: [],
 		parameterChanges: [],
 		lastParamUpdateAt: null,
 		phaseHistory: [],
@@ -902,6 +954,7 @@ export function startServerRun(params: ServerRunParams): void {
 		unwatchedSinceMs: null,
 		wasEverThrottledWritten: false,
 		wasEverFoodImbalancedWritten: false,
+		wasEverPredatorTribeImbalancedWritten: false,
 	};
 	registry.set(params.runId, run);
 }
@@ -939,6 +992,10 @@ export type ServerRunSnapshot = {
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
 	geneticDiversitySamples: number[];
+	// second-predator-tribe-prey-target Phase 3: same pause/resume treatment
+	// as geneticDiversitySamples — see resumeServerRun's `?? []` fallback
+	// below for a `savedState` row written before this field existed.
+	predatorTribeBalanceSamples: number[];
 	parameterChanges: ParameterChangeEntry[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
@@ -975,6 +1032,7 @@ export function snapshotServerRun(
 		populationCountSamples: run.populationCountSamples,
 		populationDensitySamples: run.populationDensitySamples,
 		geneticDiversitySamples: run.geneticDiversitySamples,
+		predatorTribeBalanceSamples: run.predatorTribeBalanceSamples,
 		parameterChanges: run.parameterChanges,
 		phaseHistory: run.phaseHistory,
 		elapsedSeconds: run.elapsedSeconds,
@@ -1038,6 +1096,15 @@ export function resumeServerRun(
 		// (single-run-lifecycle.ts) throws, silently killing the resumed run
 		// with a null score via `tick()`'s catch block.
 		geneticDiversitySamples: snapshot.geneticDiversitySamples ?? [],
+		// second-predator-tribe-prey-target Phase 3: same `?? []` fallback,
+		// same reason — a `savedState` row written before this field existed
+		// has no `predatorTribeBalanceSamples` key despite
+		// `ServerRunSnapshot`'s type claiming otherwise. Without this
+		// fallback, the next tick's
+		// `[...state.predatorTribeBalanceSamples, ...]` push
+		// (single-run-lifecycle.ts) throws, silently killing the resumed run
+		// with a null score via `tick()`'s catch block.
+		predatorTribeBalanceSamples: snapshot.predatorTribeBalanceSamples ?? [],
 		// live-parameter-adjustment (S-27): same `?? []` fallback, same
 		// reason — a `savedState` row written before this field existed has
 		// no `parameterChanges` key despite `ServerRunSnapshot`'s type
@@ -1075,6 +1142,7 @@ export function resumeServerRun(
 		unwatchedSinceMs: null,
 		wasEverThrottledWritten: false,
 		wasEverFoodImbalancedWritten: false,
+		wasEverPredatorTribeImbalancedWritten: false,
 	};
 	registry.set(runId, run);
 }

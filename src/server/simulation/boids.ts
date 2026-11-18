@@ -1570,6 +1570,10 @@ export function runTick(
 	// per-tribe-food-config Phase 5: this tick's imbalance sample — see
 	// `computeTribeFoodImbalanceSample`'s own comment for the formula.
 	tribeFoodImbalanceSample: number;
+	// second-predator-tribe-prey-target Phase 3: this tick's raw
+	// predator-tribe population-balance sample — see
+	// `computePredatorTribeBalanceSample`'s own comment for the formula.
+	predatorTribeBalanceSample: number;
 } {
 	const warnSink: DenseClusterWarnSink = { triggered: false };
 
@@ -1623,6 +1627,14 @@ export function runTick(
 		params.predatorTribeConfigs,
 		warnSink,
 	);
+	// second-predator-tribe-prey-target Phase 3: computed against
+	// `predatedPredators` — this tick's predator population after capture
+	// (both boid-capture-triggered and the new inter-predator-capture path)
+	// has already been applied, same "reflects the headcounts this tick's
+	// mechanic actually drew from" rationale `tribeFoodImbalanceSample`
+	// above follows for `steeredBoids`.
+	const predatorTribeBalanceSample =
+		computePredatorTribeBalanceSample(predatedPredators);
 
 	// Every surviving individual gains energy and ages by dtSeconds this
 	// tick. Boids' energy gain scales with food availability; predators have
@@ -1729,6 +1741,7 @@ export function runTick(
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: warnSink.triggered,
 		tribeFoodImbalanceSample,
+		predatorTribeBalanceSample,
 	};
 }
 
@@ -2142,6 +2155,66 @@ export function computeAreaPopulationDensity(densitySamples: number[]): number {
 	return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
 }
 
+// second-predator-tribe-prey-target Phase 3: the threshold a single tick's
+// predator-tribe balance sample must fall BELOW (i.e. the smaller tribe has
+// less than half the larger tribe's population) before a run's
+// `wasEverPredatorTribeImbalanced` sticky marker latches — same
+// "meaningfully imbalanced, not float noise around the perfectly-balanced
+// 1.0 case" rationale FOOD_IMBALANCE_EPSILON above gives for the food-
+// imbalance marker, chosen as a plain 2x-population-skew product-judgment
+// call (flagged for review in this phase's report), not a derived constant.
+export const PREDATOR_TRIBE_IMBALANCE_THRESHOLD = 0.5;
+
+// second-predator-tribe-prey-target Phase 3: one per-tick raw sample of how
+// balanced the predator tribes' populations are — min(population)/
+// max(population) across predator tribes that currently have at least one
+// living member. Returns the neutral 1.0 (no imbalance to speak of) when
+// fewer than 2 tribes have any members, mirroring
+// computeTribeFoodImbalanceSample's "nothing to be imbalanced relative to"
+// convention for the single-tribe/empty-population case. `runTick` below is
+// the real per-tick call site; exported so `single-run-lifecycle.ts`'s
+// accumulation and this file's own tests can both call it directly.
+export function computePredatorTribeBalanceSample(
+	predators: PredatorState[],
+): number {
+	const populationByFlock = new Map<number, number>();
+	for (const predator of predators) {
+		populationByFlock.set(
+			predator.genes.flockId,
+			(populationByFlock.get(predator.genes.flockId) ?? 0) + 1,
+		);
+	}
+	const populations = [...populationByFlock.values()].filter(
+		(count) => count > 0,
+	);
+	if (populations.length < 2) {
+		return 1.0;
+	}
+	const min = Math.min(...populations);
+	const max = Math.max(...populations);
+	return max > 0 ? min / max : 1.0;
+}
+
+// second-predator-tribe-prey-target Phase 3: the 6th scoring factor — a
+// time-averaged predator-tribe population-balance ratio, following the same
+// "raw per-tick samples in, normalization/aggregation happens here once"
+// shape `computeAreaPopulationDensity` established just above. Unlike that
+// function, an EMPTY sample array returns the neutral 1.0, not 0 — a legacy
+// run (predating this phase) or a run with fewer than 2 predator tribes has
+// nothing to disclose here, and multiplying computeScore's result by 0 would
+// wrongly zero out every such run's score rather than leaving it unaffected.
+export function computeAreaPredatorTribeBalance(
+	balanceSamples: number[],
+): number {
+	if (balanceSamples.length === 0) {
+		return 1.0;
+	}
+	return (
+		balanceSamples.reduce((sum, sample) => sum + sample, 0) /
+		balanceSamples.length
+	);
+}
+
 // S-04 (FR-010 full): the real five-factor formula (S-25 added the 5th,
 // areaPopulationDensity), replacing the 2-argument placeholder
 // (`elapsedTicks * average(cohesionSamples)`). Deliberately takes plain
@@ -2150,18 +2223,24 @@ export function computeAreaPopulationDensity(densitySamples: number[]): number {
 // client-staged path (which sends its signals over `stop`'s mutation input)
 // compute each factor from whatever state they hold, via the `compute*`
 // helpers above, before calling this.
+//
+// second-predator-tribe-prey-target Phase 3: widened to a 6th argument,
+// `predatorTribeBalance` — see `computeAreaPredatorTribeBalance`'s own
+// comment for why its neutral default is 1.0 (a no-op multiplier), not 0.
 export function computeScore(
 	elapsedTicks: number,
 	resourceManagement: number,
 	geneticDiversity: number,
 	phaseQuality: number,
 	areaPopulationDensity: number,
+	predatorTribeBalance: number,
 ): number {
 	return (
 		elapsedTicks *
 		resourceManagement *
 		geneticDiversity *
 		phaseQuality *
-		areaPopulationDensity
+		areaPopulationDensity *
+		predatorTribeBalance
 	);
 }

@@ -121,6 +121,11 @@ function buildState(
 		// pre-existing test here, none of which assert on genetic-diversity
 		// state.
 		geneticDiversitySamples: [],
+		// second-predator-tribe-prey-target Phase 3: threaded alongside
+		// geneticDiversitySamples — empty default is fine for every
+		// pre-existing test here, none of which assert on predator-tribe-
+		// balance state.
+		predatorTribeBalanceSamples: [],
 		phaseHistory: [],
 		elapsedSeconds: 0,
 		lastTimestamp: 0,

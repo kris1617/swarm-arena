@@ -391,6 +391,11 @@ export function SimulationCanvas({
 	// core as the other sample arrays — the client-staged path's own copy
 	// since it never calls into server-run-registry.ts.
 	const geneticDiversitySamplesRef = useRef<number[]>([]);
+	// second-predator-tribe-prey-target Phase 3: threaded through the same
+	// shared tick core as the other sample arrays — the client-staged path's
+	// own copy, sent to the `stop` mutation below so the server can compute
+	// the real 6th score factor.
+	const predatorTribeBalanceSamplesRef = useRef<number[]>([]);
 	const phaseHistoryRef = useRef<PopulationPhase[]>([]);
 	const elapsedSecondsRef = useRef(0);
 	const rafIdRef = useRef<number>(0);
@@ -693,6 +698,15 @@ export function SimulationCanvas({
 				geneticDiversitySamplesRef.current.length > 0
 					? geneticDiversitySamplesRef.current
 					: [0],
+			// second-predator-tribe-prey-target Phase 3: was tracked (fed into
+			// computeSingleRunTick every tick) — sent here so the server can
+			// compute the real 6th score factor, same fallback-to-`[1]`
+			// posture the other sample arrays use (1.0 being this factor's
+			// own neutral/no-op value, not 0).
+			predatorTribeBalanceSamples:
+				predatorTribeBalanceSamplesRef.current.length > 0
+					? predatorTribeBalanceSamplesRef.current
+					: [1],
 			// per-tribe-food-config impl-review F1: was tracked (fed into
 			// computeSingleRunTick every tick) but never sent — same gap/fix
 			// shape as populationCountSamples above.
@@ -777,6 +791,7 @@ export function SimulationCanvas({
 						populationCountSamples: populationCountSamplesRef.current,
 						populationDensitySamples: populationDensitySamplesRef.current,
 						geneticDiversitySamples: geneticDiversitySamplesRef.current,
+						predatorTribeBalanceSamples: predatorTribeBalanceSamplesRef.current,
 						phaseHistory: phaseHistoryRef.current,
 						elapsedSeconds: elapsedSecondsRef.current,
 						lastTimestamp: lastTimestampRef.current,
@@ -807,6 +822,8 @@ export function SimulationCanvas({
 				populationCountSamplesRef.current = result.populationCountSamples;
 				populationDensitySamplesRef.current = result.populationDensitySamples;
 				geneticDiversitySamplesRef.current = result.geneticDiversitySamples;
+				predatorTribeBalanceSamplesRef.current =
+					result.predatorTribeBalanceSamples;
 				phaseHistoryRef.current = result.phaseHistory;
 				elapsedSecondsRef.current = result.elapsedSeconds;
 				lastTimestampRef.current = result.lastTimestamp;

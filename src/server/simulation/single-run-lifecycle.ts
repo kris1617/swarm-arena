@@ -6,6 +6,7 @@ import {
 	FOOD_IMBALANCE_EPSILON,
 	PHASE_WINDOW_SIZE,
 	type PopulationPhase,
+	PREDATOR_TRIBE_IMBALANCE_THRESHOLD,
 	type PredatorState,
 	type PredatorTribeConfig,
 	runTick,
@@ -49,6 +50,12 @@ export function computeSingleRunTick(
 		// threaded through the same shared tick core as the other sample
 		// arrays so both execution paths collect it identically.
 		geneticDiversitySamples: number[];
+		// second-predator-tribe-prey-target Phase 3: one raw per-tick
+		// predator-tribe balance sample, threaded through the same shared
+		// tick core as the other sample arrays so both execution paths
+		// collect it identically — same convention as
+		// `populationDensitySamples` above.
+		predatorTribeBalanceSamples: number[];
 		phaseHistory: PopulationPhase[];
 		elapsedSeconds: number;
 		lastTimestamp: number | null;
@@ -112,6 +119,7 @@ export function computeSingleRunTick(
 	populationCountSamples: number[];
 	populationDensitySamples: number[];
 	geneticDiversitySamples: number[];
+	predatorTribeBalanceSamples: number[];
 	phaseHistory: PopulationPhase[];
 	elapsedSeconds: number;
 	lastTimestamp: number;
@@ -136,6 +144,12 @@ export function computeSingleRunTick(
 	// not merely that the array grew" posture `wasThrottledThisTick` already
 	// established just above.
 	wasImbalancedThisTick: boolean;
+	// second-predator-tribe-prey-target Phase 3: true iff this tick's own
+	// predator-tribe balance sample fell below
+	// PREDATOR_TRIBE_IMBALANCE_THRESHOLD — the caller latches its sticky
+	// `wasEverPredatorTribeImbalanced` marker on this, same derived-per-tick-
+	// signal posture `wasImbalancedThisTick` just above already established.
+	wasPredatorTribeImbalancedThisTick: boolean;
 } {
 	// A fresh first call has no prior frame to diff against, so treat it as
 	// dtSeconds = 0 rather than applying a huge dt derived from an absolute
@@ -158,6 +172,7 @@ export function computeSingleRunTick(
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: tickHasWarnedDenseClustering,
 		tribeFoodImbalanceSample,
+		predatorTribeBalanceSample,
 	} = runTick(
 		{
 			boids: state.boids,
@@ -197,6 +212,13 @@ export function computeSingleRunTick(
 	nextTribeFoodImbalanceSamples.push(tribeFoodImbalanceSample);
 	const wasImbalancedThisTick =
 		tribeFoodImbalanceSample > FOOD_IMBALANCE_EPSILON;
+	// second-predator-tribe-prey-target Phase 3: one raw per-tick sample,
+	// same mutate-in-place-growth convention as the other sample arrays
+	// above (see this function's own comment on `nextCohesionSamples`).
+	const nextPredatorTribeBalanceSamples = state.predatorTribeBalanceSamples;
+	nextPredatorTribeBalanceSamples.push(predatorTribeBalanceSample);
+	const wasPredatorTribeImbalancedThisTick =
+		predatorTribeBalanceSample < PREDATOR_TRIBE_IMBALANCE_THRESHOLD;
 	const nextPopulationCountSamples = state.populationCountSamples;
 	nextPopulationCountSamples.push(nextBoids.length);
 	// S-25 (FR-010 full, FR-035): one raw density sample per tick — combined
@@ -269,6 +291,7 @@ export function computeSingleRunTick(
 		populationCountSamples: nextPopulationCountSamples,
 		populationDensitySamples: nextPopulationDensitySamples,
 		geneticDiversitySamples: nextGeneticDiversitySamples,
+		predatorTribeBalanceSamples: nextPredatorTribeBalanceSamples,
 		phaseHistory: nextPhaseHistory,
 		elapsedSeconds: nextElapsedSeconds,
 		lastTimestamp: timestamp,
@@ -277,5 +300,6 @@ export function computeSingleRunTick(
 		hasWarnedDenseClustering: nextHasWarnedDenseClustering,
 		wasThrottledThisTick,
 		wasImbalancedThisTick,
+		wasPredatorTribeImbalancedThisTick,
 	};
 }

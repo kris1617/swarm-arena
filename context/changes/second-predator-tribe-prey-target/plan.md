@@ -488,18 +488,18 @@ the new factor as absent for those rows.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4)
-- [x] 2.2 Full test suite passes (495/496, 1 pre-existing skip)
-- [x] 2.3 Lint passes
+- [x] 2.1 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4) — 104916c
+- [x] 2.2 Full test suite passes (495/496, 1 pre-existing skip) — 104916c
+- [x] 2.3 Lint passes — 104916c
 
 ### Phase 3: Scoring — new 6th factor and comparability flag
 
 #### Automated
 
-- [ ] 3.1 Migration generated and reviewed
-- [ ] 3.2 Typecheck passes
-- [ ] 3.3 Full test suite passes
-- [ ] 3.4 Lint passes
+- [x] 3.1 Migration generated and reviewed (applied: 117 rows preserved, zero data loss)
+- [x] 3.2 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4)
+- [x] 3.3 Full test suite passes (502/503, 1 pre-existing skip)
+- [x] 3.4 Lint passes
 
 ### Phase 4: UI — prey-target control, start-form and live-edit
 

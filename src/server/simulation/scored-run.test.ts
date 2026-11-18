@@ -9,6 +9,7 @@ describe("ScoredRun", () => {
 				score: null,
 				wasEverThrottled: false,
 				wasEverFoodImbalanced: false,
+				wasEverPredatorTribeImbalanced: false,
 			}),
 		).toBe(null);
 	});
@@ -19,6 +20,7 @@ describe("ScoredRun", () => {
 			score: 0.8,
 			wasEverThrottled: false,
 			wasEverFoodImbalanced: false,
+			wasEverPredatorTribeImbalanced: false,
 		});
 		expect(run?.disclose()).toEqual({
 			score: 0.8,
@@ -33,6 +35,7 @@ describe("ScoredRun", () => {
 			score: 0.8,
 			wasEverThrottled: true,
 			wasEverFoodImbalanced: false,
+			wasEverPredatorTribeImbalanced: false,
 		});
 		const disclosure = run?.disclose();
 		expect(disclosure?.comparable).toBe(false);
@@ -49,11 +52,29 @@ describe("ScoredRun", () => {
 			score: 0.8,
 			wasEverThrottled: false,
 			wasEverFoodImbalanced: true,
+			wasEverPredatorTribeImbalanced: false,
 		});
 		const disclosure = run?.disclose();
 		expect(disclosure?.comparable).toBe(false);
 		expect(disclosure?.score).toBe(0.8);
 		expect(disclosure?.disclaimer).toContain("Run #9");
+	});
+
+	// second-predator-tribe-prey-target Phase 3: wasEverPredatorTribeImbalanced
+	// is a third, independent comparability reason — same shape as
+	// wasEverFoodImbalanced's test above.
+	it("discloses a predator-tribe-imbalanced run as non-comparable with a disclaimer naming the run", () => {
+		const run = ScoredRun.from({
+			id: 11,
+			score: 0.8,
+			wasEverThrottled: false,
+			wasEverFoodImbalanced: false,
+			wasEverPredatorTribeImbalanced: true,
+		});
+		const disclosure = run?.disclose();
+		expect(disclosure?.comparable).toBe(false);
+		expect(disclosure?.score).toBe(0.8);
+		expect(disclosure?.disclaimer).toContain("Run #11");
 	});
 
 	it("discloses a run that is both throttled and imbalanced with both disclaimers present", () => {
@@ -62,10 +83,26 @@ describe("ScoredRun", () => {
 			score: 0.8,
 			wasEverThrottled: true,
 			wasEverFoodImbalanced: true,
+			wasEverPredatorTribeImbalanced: false,
 		});
 		const disclosure = run?.disclose();
 		expect(disclosure?.comparable).toBe(false);
 		expect(disclosure?.disclaimer).toContain("accelerated rate");
 		expect(disclosure?.disclaimer).toContain("uneven per-tribe food");
+	});
+
+	it("discloses a run with all three reasons present in one disclaimer", () => {
+		const run = ScoredRun.from({
+			id: 5,
+			score: 0.8,
+			wasEverThrottled: true,
+			wasEverFoodImbalanced: true,
+			wasEverPredatorTribeImbalanced: true,
+		});
+		const disclosure = run?.disclose();
+		expect(disclosure?.comparable).toBe(false);
+		expect(disclosure?.disclaimer).toContain("accelerated rate");
+		expect(disclosure?.disclaimer).toContain("uneven per-tribe food");
+		expect(disclosure?.disclaimer).toContain("imbalanced predator-tribe");
 	});
 });

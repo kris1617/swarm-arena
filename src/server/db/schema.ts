@@ -171,6 +171,16 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 		.integer({ mode: "boolean" })
 		.notNull()
 		.default(false),
+	// second-predator-tribe-prey-target Phase 3: sticky comparability marker,
+	// same shape as `wasEverFoodImbalanced` just above — set true the first
+	// tick a real predator-tribe population imbalance (below
+	// PREDATOR_TRIBE_IMBALANCE_THRESHOLD, see boids.ts) is actually measured,
+	// never cleared once set. Defaults false; existing rows backfill to false
+	// automatically (they predate this feature).
+	wasEverPredatorTribeImbalanced: d
+		.integer({ mode: "boolean" })
+		.notNull()
+		.default(false),
 	// per-tribe-behavior-weights Phase 1: this run's per-tribe config (one
 	// entry per flock, index = flockId — see `TribeConfig` in
 	// ~/server/simulation/boids.ts), following the same JSON-column pattern

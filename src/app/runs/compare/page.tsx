@@ -61,6 +61,7 @@ type OkRow = {
 		geneticDiversity: number;
 		phaseQuality: number;
 		areaPopulationDensity: number | null;
+		predatorTribeBalance: number | null;
 	} | null;
 	comparable: boolean;
 	disclaimer: string | null;

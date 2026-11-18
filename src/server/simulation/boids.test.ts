@@ -7,9 +7,11 @@ import {
 	type BoidState,
 	classifyPopulationPhase,
 	computeAreaPopulationDensity,
+	computeAreaPredatorTribeBalance,
 	computeCohesion,
 	computeGeneticDiversity,
 	computePhaseQuality,
+	computePredatorTribeBalanceSample,
 	computeResourceManagement,
 	computeScore,
 	computeTribeFoodImbalanceSample,
@@ -2447,40 +2449,98 @@ describe("computePhaseQuality", () => {
 
 describe("computeScore", () => {
 	it("increases monotonically with elapsedTicks, holding every other factor fixed", () => {
-		expect(computeScore(20, 0.8, 0.8, 0.8, 1)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.8, 0.8, 1),
+		expect(computeScore(20, 0.8, 0.8, 0.8, 1, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8, 1, 1),
 		);
 	});
 
 	it("increases monotonically with resourceManagement, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.9, 0.8, 0.8, 1)).toBeGreaterThan(
-			computeScore(10, 0.2, 0.8, 0.8, 1),
+		expect(computeScore(10, 0.9, 0.8, 0.8, 1, 1)).toBeGreaterThan(
+			computeScore(10, 0.2, 0.8, 0.8, 1, 1),
 		);
 	});
 
 	it("increases monotonically with geneticDiversity, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.8, 0.9, 0.8, 1)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.2, 0.8, 1),
+		expect(computeScore(10, 0.8, 0.9, 0.8, 1, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.2, 0.8, 1, 1),
 		);
 	});
 
 	it("increases monotonically with phaseQuality, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.8, 0.8, 0.9, 1)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.8, 0.2, 1),
+		expect(computeScore(10, 0.8, 0.8, 0.9, 1, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.2, 1, 1),
 		);
 	});
 
 	it("increases monotonically with areaPopulationDensity, holding every other factor fixed", () => {
-		expect(computeScore(10, 0.8, 0.8, 0.8, 0.9)).toBeGreaterThan(
-			computeScore(10, 0.8, 0.8, 0.8, 0.2),
+		expect(computeScore(10, 0.8, 0.8, 0.8, 0.9, 1)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8, 0.2, 1),
+		);
+	});
+
+	// second-predator-tribe-prey-target Phase 3: the new 6th factor.
+	it("increases monotonically with predatorTribeBalance, holding every other factor fixed", () => {
+		expect(computeScore(10, 0.8, 0.8, 0.8, 0.8, 0.9)).toBeGreaterThan(
+			computeScore(10, 0.8, 0.8, 0.8, 0.8, 0.2),
 		);
 	});
 
 	it("is 0 when any single factor is 0 (true product, not a sum)", () => {
-		expect(computeScore(10, 0, 0.8, 0.8, 1)).toBe(0);
-		expect(computeScore(10, 0.8, 0, 0.8, 1)).toBe(0);
-		expect(computeScore(10, 0.8, 0.8, 0, 1)).toBe(0);
-		expect(computeScore(10, 0.8, 0.8, 0.8, 0)).toBe(0);
+		expect(computeScore(10, 0, 0.8, 0.8, 1, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0, 0.8, 1, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0, 1, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0.8, 0, 1)).toBe(0);
+		expect(computeScore(10, 0.8, 0.8, 0.8, 1, 0)).toBe(0);
+	});
+});
+
+// second-predator-tribe-prey-target Phase 3: minimal predator-tribe fixture
+// for computePredatorTribeBalanceSample — only `genes.flockId` matters, same
+// "don't need real positions/velocities" rationale makeTribeBoids above
+// gives for its boid equivalent.
+function makeTribePredators(flockId: number, count: number): PredatorState[] {
+	return Array.from({ length: count }, () => ({
+		x: 0,
+		y: 0,
+		z: 0,
+		vx: 0,
+		vy: 0,
+		vz: 0,
+		lifespan: 1000,
+		genes: makeGenes(WEIGHTS, { flockId }),
+		energy: 0,
+		age: 0,
+		gender: "a" as const,
+	}));
+}
+
+// second-predator-tribe-prey-target Phase 3: computePredatorTribeBalanceSample
+// and computeAreaPredatorTribeBalance.
+describe("computePredatorTribeBalanceSample", () => {
+	it("returns the neutral 1.0 when fewer than 2 predator tribes have any members", () => {
+		expect(computePredatorTribeBalanceSample([])).toBe(1.0);
+		expect(computePredatorTribeBalanceSample(makeTribePredators(0, 2))).toBe(
+			1.0,
+		);
+	});
+
+	it("returns min/max population ratio across tribes with members", () => {
+		expect(
+			computePredatorTribeBalanceSample([
+				...makeTribePredators(0, 2),
+				...makeTribePredators(1, 1),
+			]),
+		).toBeCloseTo(1 / 2, 5);
+	});
+});
+
+describe("computeAreaPredatorTribeBalance", () => {
+	it("returns the neutral 1.0 for an empty sample array", () => {
+		expect(computeAreaPredatorTribeBalance([])).toBe(1.0);
+	});
+
+	it("returns the time-average of its raw samples", () => {
+		expect(computeAreaPredatorTribeBalance([1, 0.5])).toBeCloseTo(0.75, 5);
 	});
 });
 
