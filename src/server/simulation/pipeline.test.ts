@@ -47,6 +47,10 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	detectionRadius: 50,
 	captureRadiusMult: 1,
 	crossbreedingEnabled: true,
+	// second-predator-tribe-prey-target Phase 1: new required field — this
+	// file's single-flock fixtures never exercise cross-tribe hunting, so
+	// "boids" keeps every existing behavior unchanged.
+	preyTarget: "boids",
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 const PARAMS = {
@@ -206,7 +210,7 @@ describe("applyPredation tie-break contract", () => {
 
 		const result = applyPredation([first, second], [predator], 0, WORLD_SIZE, [
 			PREDATOR_TRIBE_CONFIG,
-		]);
+		]).boids;
 
 		expect(result).toHaveLength(1);
 		expect(result[0]).toBe(second);
@@ -263,7 +267,7 @@ describe("applyPredation contested capture", () => {
 			0,
 			WORLD_SIZE,
 			[PREDATOR_TRIBE_CONFIG],
-		);
+		).boids;
 
 		expect(result).toHaveLength(1);
 		expect(result[0]).toBe(bystander);
@@ -332,7 +336,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			protectionThreshold,
 			WORLD_SIZE,
 			[PREDATOR_TRIBE_CONFIG],
-		);
+		).boids;
 		expect(afterDocumentedOrder).toHaveLength(1);
 		expect(afterDocumentedOrder[0]?.x).toBe(100);
 
@@ -344,7 +348,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			protectionThreshold,
 			WORLD_SIZE,
 			[PREDATOR_TRIBE_CONFIG],
-		);
+		).boids;
 		// The target's lifespan was still 1 (> 0) going into this call, so
 		// its removal here can only be the CAPTURE_RADIUS proximity check —
 		// it is captured, not starved.

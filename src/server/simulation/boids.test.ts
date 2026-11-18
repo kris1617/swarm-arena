@@ -79,6 +79,11 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	// per-tribe-predator-config Phase 1: new required field on
 	// PredatorTribeConfig — same rationale as TRIBE_CONFIG's above.
 	crossbreedingEnabled: true,
+	// second-predator-tribe-prey-target Phase 1: new required field —
+	// "boids" here so every pre-existing fixture using this constant (not
+	// exercising the cross-tribe-hunting gate itself) keeps compiling and
+	// behaving exactly as before.
+	preyTarget: "boids",
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -1723,7 +1728,7 @@ describe("predator-prey dynamics", () => {
 				protectionThreshold,
 				WORLD_SIZE,
 				[PREDATOR_TRIBE_CONFIG],
-			);
+			).boids;
 		}
 
 		expect(boids).toHaveLength(5);
@@ -1740,7 +1745,7 @@ describe("predator-prey dynamics", () => {
 
 		boids = applyPredation(boids, predators, protectionThreshold, WORLD_SIZE, [
 			PREDATOR_TRIBE_CONFIG,
-		]);
+		]).boids;
 
 		expect(boids.length).toBeLessThan(5);
 	});
@@ -1909,10 +1914,10 @@ describe("predator genetics wiring and capture aggressiveness (predator-tribe-co
 
 		const aggressiveResult = applyPredation([boid], [predator], 0, WORLD_SIZE, [
 			{ ...PREDATOR_TRIBE_CONFIG, captureRadiusMult: 2 },
-		]);
+		]).boids;
 		const baselineResult = applyPredation([boid], [predator], 0, WORLD_SIZE, [
 			{ ...PREDATOR_TRIBE_CONFIG, captureRadiusMult: 1 },
-		]);
+		]).boids;
 
 		expect(aggressiveResult).toHaveLength(0);
 		expect(baselineResult).toHaveLength(1);

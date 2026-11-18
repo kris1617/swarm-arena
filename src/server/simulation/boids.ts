@@ -91,6 +91,13 @@ export type PredatorTribeConfig = {
 	// `TribeConfig.crossbreedingEnabled` above — same both-tribes-must-allow
 	// gate in reproducePopulation, applied to predators' own tribe array.
 	crossbreedingEnabled: boolean;
+	// second-predator-tribe-prey-target Phase 1: what this tribe's predators
+	// hunt — `"boids"` (today's only behavior) or `"boids-and-predators"`
+	// (also hunts other tribes' predators, never its own tribemates
+	// regardless of this value — see stepPredators/applyPredation below).
+	// Controls only what a tribe hunts, never whether it can be hunted by
+	// another tribe (that's governed by the OTHER tribe's own preyTarget).
+	preyTarget: "boids" | "boids-and-predators";
 };
 
 // Per-individual heritable traits an individual is born with and may pass to
@@ -930,17 +937,74 @@ export function stepPredators(
 				nearestDz = dz;
 			}
 		}
+
+		// second-predator-tribe-prey-target Phase 1: when this predator's own
+		// tribe's preyTarget includes other predators, run a second flat scan
+		// over `predators` — same O(predators) shape as the boid scan above,
+		// never a spatial grid (plan's "Critical Implementation Details": flat
+		// scan, not a new grid, for predator-vs-predator detection) — to find
+		// the nearest cross-tribe predator candidate. Same-flockId candidates
+		// (tribemates) and the predator itself are always excluded, regardless
+		// of preyTarget's value (no self-cannibalization, ever).
+		const preyTarget = predatorTribeField(
+			predatorTribeConfigs,
+			predator.genes.flockId,
+			"preyTarget",
+		);
+		let nearestPredatorDist = Infinity;
+		let nearestPredatorDx = 0;
+		let nearestPredatorDy = 0;
+		let nearestPredatorDz = 0;
+		if (preyTarget === "boids-and-predators") {
+			for (const other of predators) {
+				if (
+					other === predator ||
+					other.genes.flockId === predator.genes.flockId
+				) {
+					continue;
+				}
+				const dx = wrappedDelta(other.x - predator.x, worldSize.x);
+				const dy = wrappedDelta(other.y - predator.y, worldSize.y);
+				const dz = wrappedDelta(other.z - predator.z, worldSize.z);
+				const dist = Math.hypot(dx, dy, dz);
+				if (dist < nearestPredatorDist) {
+					nearestPredatorDist = dist;
+					nearestPredatorDx = dx;
+					nearestPredatorDy = dy;
+					nearestPredatorDz = dz;
+				}
+			}
+		}
+
 		const detectionRadius = predatorTribeField(
 			predatorTribeConfigs,
 			predator.genes.flockId,
 			"detectionRadius",
 		);
-		const inDetectionRange =
-			detectionRadius === undefined || nearestDist <= detectionRadius;
-		if (nearestDist > 0 && nearestDist !== Infinity && inDetectionRange) {
+		const boidInRange =
+			nearestDist > 0 &&
+			nearestDist !== Infinity &&
+			(detectionRadius === undefined || nearestDist <= detectionRadius);
+		const predatorInRange =
+			nearestPredatorDist > 0 &&
+			nearestPredatorDist !== Infinity &&
+			(detectionRadius === undefined || nearestPredatorDist <= detectionRadius);
+
+		// Steer toward whichever candidate is actually nearer when both are in
+		// range; toward whichever one is in range when only one is; fall back
+		// to idle wander (below) when neither is found/in-range — exactly the
+		// plan's stated target-selection rule.
+		if (
+			boidInRange &&
+			(!predatorInRange || nearestDist <= nearestPredatorDist)
+		) {
 			steerX = nearestDx / nearestDist;
 			steerY = nearestDy / nearestDist;
 			steerZ = nearestDz / nearestDist;
+		} else if (predatorInRange) {
+			steerX = nearestPredatorDx / nearestPredatorDist;
+			steerY = nearestPredatorDy / nearestPredatorDist;
+			steerZ = nearestPredatorDz / nearestPredatorDist;
 		} else {
 			// Idle wander: a random unit direction, scaled down to
 			// WANDER_FORCE_FRACTION of the full pursuit force (same
@@ -1281,65 +1345,154 @@ export function applyPredation(
 	// further away than a lower one.
 	predatorTribeConfigs: PredatorTribeConfig[],
 	warnSink?: DenseClusterWarnSink,
-): BoidState[] {
-	if (boids.length <= protectionThreshold) {
-		return boids;
+): { boids: BoidState[]; predators: PredatorState[] } {
+	// Boid-capture path — the existing boid-population-only protection
+	// early-out below is UNTOUCHED (second-predator-tribe-prey-target Phase
+	// 1's own per-tribe predator-protection check lives entirely in the
+	// parallel predator-capture path further down, never here).
+	let resultBoids = boids;
+	if (boids.length > protectionThreshold) {
+		// Cell size reuses NEIGHBOR_RADIUS (the largest radius queried against
+		// a boid-population grid anywhere in this file), not CAPTURE_RADIUS
+		// itself — same tradeoff the Lua reference accepts: a coarser-than-
+		// strictly-needed grid returns some false-positive candidates per
+		// cell, still exact-filtered below, in exchange for one shared
+		// cell-size convention.
+		const boidGrid = buildSpatialGrid(
+			boids,
+			(b) => ({ x: b.x, y: b.y, z: b.z }),
+			NEIGHBOR_RADIUS,
+			worldSize,
+		);
+
+		const captured = new Set<BoidState>();
+		for (const predator of predators) {
+			// predator-tribe-concept Phase 4: THIS predator's own tribe's
+			// captureRadiusMult, computed once per predator before the query —
+			// a tribe with no corresponding entry (or a missing
+			// captureRadiusMult) falls back to 1 (today's exact fixed-
+			// CAPTURE_RADIUS behavior).
+			const captureRadius =
+				CAPTURE_RADIUS *
+				(predatorTribeField(
+					predatorTribeConfigs,
+					predator.genes.flockId,
+					"captureRadiusMult",
+				) ?? 1);
+			let nearest: BoidState | null = null;
+			let nearestDist = Infinity;
+			for (const boidIndex of boidGrid.queryRadius(
+				{ x: predator.x, y: predator.y, z: predator.z },
+				captureRadius,
+				warnSink,
+			)) {
+				const boid = boids[boidIndex];
+				if (!boid || captured.has(boid)) {
+					continue;
+				}
+				const dx = wrappedDelta(boid.x - predator.x, worldSize.x);
+				const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
+				const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
+				const dist = Math.hypot(dx, dy, dz);
+				if (dist <= captureRadius && dist < nearestDist) {
+					nearestDist = dist;
+					nearest = boid;
+				}
+			}
+			if (nearest) {
+				captured.add(nearest);
+			}
+		}
+
+		if (captured.size > 0) {
+			resultBoids = boids.filter((boid) => !captured.has(boid));
+		}
 	}
 
-	// Cell size reuses NEIGHBOR_RADIUS (the largest radius queried against a
-	// boid-population grid anywhere in this file), not CAPTURE_RADIUS itself
-	// — same tradeoff the Lua reference accepts: a coarser-than-strictly-
-	// needed grid returns some false-positive candidates per cell, still
-	// exact-filtered below, in exchange for one shared cell-size convention.
-	const boidGrid = buildSpatialGrid(
-		boids,
-		(b) => ({ x: b.x, y: b.y, z: b.z }),
-		NEIGHBOR_RADIUS,
-		worldSize,
-	);
+	// second-predator-tribe-prey-target Phase 1: parallel predator-capture
+	// path — a second spatial grid over `predators` (mirroring the boid-grid
+	// build above), gated per-predator by that predator's own tribe's
+	// `preyTarget`. Same-tribe candidates and the predator itself are always
+	// excluded (no self-cannibalization, ever); anything already captured
+	// this tick by any predator is excluded too. `protectionThreshold` is
+	// reused (not a new field, per the plan's "Protection-floor reuse" note)
+	// as a per-tribe floor: a tribe whose own population is at or below that
+	// threshold is immune to inter-predator capture — checked here, entirely
+	// separate from the boid-population-only early-out above.
+	let resultPredators = predators;
+	if (predators.length > 0) {
+		const predatorGrid = buildSpatialGrid(
+			predators,
+			(p) => ({ x: p.x, y: p.y, z: p.z }),
+			NEIGHBOR_RADIUS,
+			worldSize,
+		);
+		const populationByFlock = new Map<number, number>();
+		for (const p of predators) {
+			populationByFlock.set(
+				p.genes.flockId,
+				(populationByFlock.get(p.genes.flockId) ?? 0) + 1,
+			);
+		}
 
-	const captured = new Set<BoidState>();
-	for (const predator of predators) {
-		// predator-tribe-concept Phase 4: THIS predator's own tribe's
-		// captureRadiusMult, computed once per predator before the query — a
-		// tribe with no corresponding entry (or a missing captureRadiusMult)
-		// falls back to 1 (today's exact fixed-CAPTURE_RADIUS behavior).
-		const captureRadius =
-			CAPTURE_RADIUS *
-			(predatorTribeField(
+		const capturedPredators = new Set<PredatorState>();
+		for (const predator of predators) {
+			const preyTarget = predatorTribeField(
 				predatorTribeConfigs,
 				predator.genes.flockId,
-				"captureRadiusMult",
-			) ?? 1);
-		let nearest: BoidState | null = null;
-		let nearestDist = Infinity;
-		for (const boidIndex of boidGrid.queryRadius(
-			{ x: predator.x, y: predator.y, z: predator.z },
-			captureRadius,
-			warnSink,
-		)) {
-			const boid = boids[boidIndex];
-			if (!boid || captured.has(boid)) {
+				"preyTarget",
+			);
+			if (preyTarget !== "boids-and-predators") {
 				continue;
 			}
-			const dx = wrappedDelta(boid.x - predator.x, worldSize.x);
-			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
-			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
-			const dist = Math.hypot(dx, dy, dz);
-			if (dist <= captureRadius && dist < nearestDist) {
-				nearestDist = dist;
-				nearest = boid;
+			const captureRadius =
+				CAPTURE_RADIUS *
+				(predatorTribeField(
+					predatorTribeConfigs,
+					predator.genes.flockId,
+					"captureRadiusMult",
+				) ?? 1);
+			let nearest: PredatorState | null = null;
+			let nearestDist = Infinity;
+			for (const otherIndex of predatorGrid.queryRadius(
+				{ x: predator.x, y: predator.y, z: predator.z },
+				captureRadius,
+				warnSink,
+			)) {
+				const other = predators[otherIndex];
+				if (
+					!other ||
+					other === predator ||
+					other.genes.flockId === predator.genes.flockId ||
+					capturedPredators.has(other)
+				) {
+					continue;
+				}
+				const otherTribePopulation =
+					populationByFlock.get(other.genes.flockId) ?? 0;
+				if (otherTribePopulation <= protectionThreshold) {
+					continue;
+				}
+				const dx = wrappedDelta(other.x - predator.x, worldSize.x);
+				const dy = wrappedDelta(other.y - predator.y, worldSize.y);
+				const dz = wrappedDelta(other.z - predator.z, worldSize.z);
+				const dist = Math.hypot(dx, dy, dz);
+				if (dist <= captureRadius && dist < nearestDist) {
+					nearestDist = dist;
+					nearest = other;
+				}
+			}
+			if (nearest) {
+				capturedPredators.add(nearest);
 			}
 		}
-		if (nearest) {
-			captured.add(nearest);
+
+		if (capturedPredators.size > 0) {
+			resultPredators = predators.filter((p) => !capturedPredators.has(p));
 		}
 	}
 
-	if (captured.size === 0) {
-		return boids;
-	}
-	return boids.filter((boid) => !captured.has(boid));
+	return { boids: resultBoids, predators: resultPredators };
 }
 
 // Composes the single-run pipeline's documented fixed per-tick order into one
@@ -1462,7 +1615,7 @@ export function runTick(
 		totalFoodRegenRate,
 		params.tribeConfigs,
 	);
-	const predatedBoids = applyPredation(
+	const { boids: predatedBoids, predators: predatedPredators } = applyPredation(
 		fedBoids,
 		steeredPredators,
 		params.protectionThreshold,
@@ -1519,7 +1672,7 @@ export function runTick(
 			age: boid.age + params.dtSeconds,
 		};
 	});
-	const agedPredators = steeredPredators.map((predator) => ({
+	const agedPredators = predatedPredators.map((predator) => ({
 		...predator,
 		energy: Math.min(
 			ENERGY_MAX,
