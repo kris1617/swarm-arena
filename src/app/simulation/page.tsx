@@ -5,6 +5,7 @@ import { ServerRunViewer } from "~/app/simulation/_components/server-run-viewer"
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
+import { Select } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -247,6 +248,19 @@ export default function SimulationPage() {
 		setPredatorTribeConfigs((prev) =>
 			prev.map((config, i) =>
 				i === index ? { ...config, crossbreedingEnabled: value } : config,
+			),
+		);
+	}
+	// second-predator-tribe-prey-target Phase 4: a sibling setter rather than
+	// widening updatePredatorTribeField's value type, matching
+	// updatePredatorTribeCrossbreeding's own precedent above.
+	function updatePredatorTribePreyTarget(
+		index: number,
+		value: "boids" | "boids-and-predators",
+	) {
+		setPredatorTribeConfigs((prev) =>
+			prev.map((config, i) =>
+				i === index ? { ...config, preyTarget: value } : config,
 			),
 		);
 	}
@@ -733,7 +747,11 @@ export default function SimulationPage() {
 		{
 			field: Exclude<
 				keyof PredatorTribeConfig,
-				"crossbreedingEnabled" | "separation" | "alignment" | "cohesion"
+				| "crossbreedingEnabled"
+				| "separation"
+				| "alignment"
+				| "cohesion"
+				| "preyTarget"
 			>;
 			label: string;
 			min: number;
@@ -1115,6 +1133,27 @@ export default function SimulationPage() {
 													updatePredatorTribeCrossbreeding(i, checked)
 												}
 											/>
+										</label>
+										<label
+											className="flex flex-col gap-1 text-sm"
+											htmlFor={`predator-tribe-${i}-preyTarget`}
+										>
+											Prey target
+											<Select
+												id={`predator-tribe-${i}-preyTarget`}
+												onChange={(e) =>
+													updatePredatorTribePreyTarget(
+														i,
+														e.target.value as "boids" | "boids-and-predators",
+													)
+												}
+												value={predatorTribeConfig.preyTarget}
+											>
+												<option value="boids">Boids only</option>
+												<option value="boids-and-predators">
+													Boids and predators
+												</option>
+											</Select>
 										</label>
 									</TabsContent>
 								);

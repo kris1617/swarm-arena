@@ -496,24 +496,24 @@ the new factor as absent for those rows.
 
 #### Automated
 
-- [x] 3.1 Migration generated and reviewed (applied: 117 rows preserved, zero data loss)
-- [x] 3.2 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4)
-- [x] 3.3 Full test suite passes (502/503, 1 pre-existing skip)
-- [x] 3.4 Lint passes
+- [x] 3.1 Migration generated and reviewed (applied: 117 rows preserved, zero data loss) — b404d13
+- [x] 3.2 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4) — b404d13
+- [x] 3.3 Full test suite passes (502/503, 1 pre-existing skip) — b404d13
+- [x] 3.4 Lint passes — b404d13
 
 ### Phase 4: UI — prey-target control, start-form and live-edit
 
 #### Automated
 
-- [ ] 4.1 Typecheck passes
-- [ ] 4.2 Component tests pass
-- [ ] 4.3 Full test suite passes
-- [ ] 4.4 Lint passes
+- [x] 4.1 Typecheck passes (fully clean, repo-wide)
+- [x] 4.2 Component tests pass (39/39)
+- [x] 4.3 Full test suite passes (503/504, 1 pre-existing skip)
+- [x] 4.4 Lint passes
 
 #### Manual
 
-- [ ] 4.5 Start-form-configured prey target round-trips correctly
-- [ ] 4.6 Live-edit prey-target change persists through the next subscription push
+- [x] 4.5 Start-form-configured prey target round-trips correctly
+- [x] 4.6 Live-edit prey-target change persists through the next subscription push
 
 ### Phase 5: Verification
 

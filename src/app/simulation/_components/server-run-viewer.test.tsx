@@ -53,6 +53,9 @@ type PredatorTribeConfigFixture = {
 	detectionRadius: number;
 	captureRadiusMult: number;
 	crossbreedingEnabled: boolean;
+	// second-predator-tribe-prey-target Phase 4: now actually read/set by the
+	// component's new per-predator-tribe preyTarget Select.
+	preyTarget: "boids" | "boids-and-predators";
 };
 
 const BOID_TRIBE_FIXTURE: TribeConfigFixture = {
@@ -83,6 +86,7 @@ const PREDATOR_TRIBE_FIXTURE: PredatorTribeConfigFixture = {
 	detectionRadius: 50,
 	captureRadiusMult: 1,
 	crossbreedingEnabled: true,
+	preyTarget: "boids",
 };
 
 type CapturedWatchOptions = {
@@ -757,6 +761,18 @@ describe("ServerRunViewer", () => {
 				"#tribe-live-boid-0-crossbreedingEnabled",
 			);
 			expect(crossbreedingSwitch).not.toBeNull();
+
+			// second-predator-tribe-prey-target Phase 4: the new preyTarget
+			// Select, predator-only (no boid equivalent), pre-filled from the
+			// pushed snapshot.
+			const preyTargetSelect = container.querySelector(
+				"#tribe-live-predator-0-preyTarget",
+			) as HTMLSelectElement | null;
+			expect(preyTargetSelect).not.toBeNull();
+			expect(preyTargetSelect?.value).toBe(PREDATOR_TRIBE_FIXTURE.preyTarget);
+			expect(
+				container.querySelector("#tribe-live-boid-0-preyTarget"),
+			).toBeNull();
 		});
 
 		it("editing a field marks it dirty and survives a later subscription push for a different value", () => {
@@ -893,6 +909,45 @@ describe("ServerRunViewer", () => {
 			expect(getTribeFieldInput("predator", 0, "detectionRadius").value).toBe(
 				"33",
 			);
+		});
+
+		// second-predator-tribe-prey-target Phase 4: mirrors the numeric-field
+		// "clicking Apply sends the FULL current array" coverage shape above,
+		// for the new preyTarget Select's dedicated setter/overload instead of
+		// a NumberField.
+		it("changing a predator tribe's prey target Select and applying sends the FULL current predator tribe array", () => {
+			renderViewer();
+			pushTribeSnapshot([BOID_TRIBE_FIXTURE], [PREDATOR_TRIBE_FIXTURE]);
+
+			const select = container.querySelector(
+				"#tribe-live-predator-0-preyTarget",
+			) as HTMLSelectElement;
+			expect(select).not.toBeNull();
+			act(() => {
+				const nativeSelectValueSetter = Object.getOwnPropertyDescriptor(
+					window.HTMLSelectElement.prototype,
+					"value",
+				)?.set;
+				nativeSelectValueSetter?.call(select, "boids-and-predators");
+				select.dispatchEvent(new Event("change", { bubbles: true }));
+			});
+			expect(select.value).toBe("boids-and-predators");
+
+			const applyButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "Apply predator tribes",
+			);
+			expect(applyButton).not.toBeUndefined();
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			expect(updatePredatorTribeConfigsMutate).toHaveBeenCalledTimes(1);
+			expect(updatePredatorTribeConfigsMutate).toHaveBeenCalledWith({
+				runId: 42,
+				predatorTribeConfigs: [
+					{ ...PREDATOR_TRIBE_FIXTURE, preyTarget: "boids-and-predators" },
+				],
+			});
 		});
 	});
 });

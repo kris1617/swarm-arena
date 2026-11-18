@@ -20,6 +20,7 @@ import {
 import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
+import { Select } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import type {
 	BoidState,
@@ -86,8 +87,13 @@ const FLASH_DURATION_MS = 1000;
 // since page.tsx's definitions are local `const`s inside its own component,
 // not exported — same posture as this file's own `LIVE_FIELD_LABELS` being
 // a local duplicate of concepts defined elsewhere.
+// second-predator-tribe-prey-target Phase 4: also excludes "preyTarget" —
+// a no-op for T = TribeConfig (which has no such key at all) but required
+// for T = PredatorTribeConfig, which now has a string-enum field that isn't
+// numeric and must not appear in this numeric-field-def shape (it's rendered
+// via its own dedicated Select, not this array).
 type TribeFieldDef<T> = {
-	field: Exclude<keyof T, "crossbreedingEnabled">;
+	field: Exclude<keyof T, "crossbreedingEnabled" | "preyTarget">;
 	label: string;
 	min: number;
 	max: number;
@@ -393,7 +399,7 @@ export function ServerRunViewer({
 	// "first push pre-fills, later pushes only overwrite non-dirty cells"
 	// logic `syncLiveParams` already uses for the scalar panel, keyed per
 	// (species, tribeIndex, field) instead of per-field.
-	function syncTribeArray<T extends Record<string, number | boolean>>(
+	function syncTribeArray<T extends Record<string, number | boolean | string>>(
 		species: "boid" | "predator",
 		data: T[],
 		current: T[] | null,
@@ -432,7 +438,10 @@ export function ServerRunViewer({
 	function handleTribeFieldChange(
 		species: "predator",
 		index: number,
-		field: Exclude<keyof PredatorTribeConfig, "crossbreedingEnabled">,
+		field: Exclude<
+			keyof PredatorTribeConfig,
+			"crossbreedingEnabled" | "preyTarget"
+		>,
 		value: number,
 	): void;
 	function handleTribeFieldChange(
@@ -441,11 +450,20 @@ export function ServerRunViewer({
 		field: "crossbreedingEnabled",
 		value: boolean,
 	): void;
+	// second-predator-tribe-prey-target Phase 4: a new overload for the
+	// string-enum field, narrowed to "predator" only (boids have no
+	// preyTarget-equivalent) — not reusing the boolean overload above.
+	function handleTribeFieldChange(
+		species: "predator",
+		index: number,
+		field: "preyTarget",
+		value: "boids" | "boids-and-predators",
+	): void;
 	function handleTribeFieldChange(
 		species: "boid" | "predator",
 		index: number,
 		field: string,
-		value: number | boolean,
+		value: number | boolean | string,
 	) {
 		dirtyTribeFieldsRef.current.add(`${species}:${index}:${field}`);
 		if (species === "boid") {
@@ -588,7 +606,7 @@ export function ServerRunViewer({
 								index,
 								def.field as Exclude<
 									keyof PredatorTribeConfig,
-									"crossbreedingEnabled"
+									"crossbreedingEnabled" | "preyTarget"
 								>,
 								v,
 							);
@@ -628,6 +646,45 @@ export function ServerRunViewer({
 						handleTribeFieldChange(species, index, "crossbreedingEnabled", v)
 					}
 				/>
+			</label>
+		);
+	}
+
+	// second-predator-tribe-prey-target Phase 4: predator-only render
+	// helper (boids have no preyTarget-equivalent), mirroring
+	// renderTribeCrossbreedingSwitch's structure above but for the new
+	// string-enum field, using the dedicated "preyTarget" overload.
+	function renderTribePreyTargetSelect(
+		index: number,
+		value: "boids" | "boids-and-predators",
+	) {
+		const key = `predator:${index}:preyTarget`;
+		const flashed = flashPredatorTribeKeys.has(key);
+		const id = `tribe-live-predator-${index}-preyTarget`;
+		return (
+			<label
+				className={cn(
+					"flex flex-col gap-1 rounded-xl text-sm transition-shadow",
+					flashed ? "ring-chart-2 ring-2" : "",
+				)}
+				htmlFor={id}
+			>
+				Prey target
+				<Select
+					id={id}
+					onChange={(e) =>
+						handleTribeFieldChange(
+							"predator",
+							index,
+							"preyTarget",
+							e.target.value as "boids" | "boids-and-predators",
+						)
+					}
+					value={value}
+				>
+					<option value="boids">Boids only</option>
+					<option value="boids-and-predators">Boids and predators</option>
+				</Select>
 			</label>
 		);
 	}
@@ -1152,6 +1209,7 @@ export function ServerRunViewer({
 								index,
 								tribe.crossbreedingEnabled,
 							)}
+							{renderTribePreyTargetSelect(index, tribe.preyTarget)}
 						</div>
 					))}
 					<Button
