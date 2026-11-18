@@ -208,6 +208,11 @@ export type LiveRunSnapshot = {
 	// its own dedicated live-edit path, `applyLiveTribeConfigs`, below) —
 	// exposed the same way so a future live-edit panel can pre-fill from it.
 	tribeConfigs: TribeConfig[];
+	// per-tribe-predator-config Phase 5: predator-side sibling of
+	// `tribeConfigs` above — same rationale (its own dedicated live-edit
+	// path, `applyLivePredatorTribeConfigs`), exposed so the new per-tribe
+	// live-edit panel can pre-fill predator tribes too.
+	predatorTribeConfigs: PredatorTribeConfig[];
 };
 
 export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
@@ -229,6 +234,7 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 			mutationMagnitude: run.params.mutationMagnitude,
 		},
 		tribeConfigs: run.params.tribeConfigs,
+		predatorTribeConfigs: run.params.predatorTribeConfigs,
 	};
 }
 

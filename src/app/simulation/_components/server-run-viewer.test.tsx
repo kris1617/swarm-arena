@@ -35,6 +35,54 @@ type TribeConfigFixture = {
 	foodStockShare: number;
 	foodRegenShare: number;
 	foodConsumptionRate: number;
+	// per-tribe-predator-config Phase 5: now actually read by the component's
+	// new per-tribe live-edit panel (previously type-only, per this type's
+	// original comment above).
+	crossbreedingEnabled: boolean;
+};
+
+// per-tribe-predator-config Phase 5: predator-side sibling fixture, same
+// hand-duplicated-stand-in posture as `TribeConfigFixture` above.
+type PredatorTribeConfigFixture = {
+	separation: number;
+	alignment: number;
+	cohesion: number;
+	maxSpeed: number;
+	minSpeed: number;
+	matePreference: number;
+	detectionRadius: number;
+	captureRadiusMult: number;
+	crossbreedingEnabled: boolean;
+};
+
+const BOID_TRIBE_FIXTURE: TribeConfigFixture = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
+};
+
+const PREDATOR_TRIBE_FIXTURE: PredatorTribeConfigFixture = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 
 type CapturedWatchOptions = {
@@ -48,11 +96,16 @@ type CapturedWatchOptions = {
 			// `liveParams` on the real `LiveRunSnapshot` (server-run-registry.ts),
 			// not nested inside it — `tribeConfigs` has its own dedicated
 			// live-edit path (`applyLiveTribeConfigs`), separate from
-			// `LiveAdjustableParams`. Optional here: this component doesn't
-			// read it yet (no tribeConfigs UI this phase — Phase 8's job), so
-			// no existing call site below needs updating; kept so a fixture
-			// that does want to assert on it can type-check.
+			// `LiveAdjustableParams`. per-tribe-predator-config Phase 5: now
+			// actually read by the new per-tribe live-edit panel — still
+			// optional so pre-Phase-5 test cases that never push it keep
+			// type-checking.
 			tribeConfigs?: TribeConfigFixture[];
+			// per-tribe-predator-config Phase 5: predator-side sibling of
+			// `tribeConfigs` above — see server-run-registry.ts's
+			// `LiveRunSnapshot.predatorTribeConfigs` (this phase's own fix to
+			// that type, per the gap note in this change's own task).
+			predatorTribeConfigs?: PredatorTribeConfigFixture[];
 		};
 	}) => void;
 	onError?: (error: { message: string }) => void;
@@ -92,6 +145,38 @@ type CapturedAdjustPopulationOptions = {
 let capturedAdjustPopulationOptions: CapturedAdjustPopulationOptions = {};
 let adjustPopulationMutate: ReturnType<typeof vi.fn>;
 
+// per-tribe-predator-config Phase 5: same capture-the-options-object pattern
+// as `updateRunParams`/`adjustLivePopulation` above, for the two new
+// tribe-array live-edit mutations the new panel calls.
+type UpdateTribeConfigsVariables = {
+	runId: number;
+	tribeConfigs: TribeConfigFixture[];
+};
+type CapturedUpdateTribeConfigsOptions = {
+	onSuccess?: (
+		data: { ok: true; warnings: string[] },
+		variables: UpdateTribeConfigsVariables,
+	) => void;
+	onError?: (error: { message: string }) => void;
+};
+let capturedUpdateTribeConfigsOptions: CapturedUpdateTribeConfigsOptions = {};
+let updateTribeConfigsMutate: ReturnType<typeof vi.fn>;
+
+type UpdatePredatorTribeConfigsVariables = {
+	runId: number;
+	predatorTribeConfigs: PredatorTribeConfigFixture[];
+};
+type CapturedUpdatePredatorTribeConfigsOptions = {
+	onSuccess?: (
+		data: { ok: true; warnings: string[] },
+		variables: UpdatePredatorTribeConfigsVariables,
+	) => void;
+	onError?: (error: { message: string }) => void;
+};
+let capturedUpdatePredatorTribeConfigsOptions: CapturedUpdatePredatorTribeConfigsOptions =
+	{};
+let updatePredatorTribeConfigsMutate: ReturnType<typeof vi.fn>;
+
 vi.mock("~/trpc/react", () => ({
 	api: {
 		simulation: {
@@ -122,6 +207,40 @@ vi.mock("~/trpc/react", () => ({
 					adjustPopulationMutate = vi.fn();
 					return {
 						mutate: adjustPopulationMutate,
+						isPending: false,
+						data: undefined,
+						error: undefined,
+					};
+				},
+			},
+			// per-tribe-predator-config Phase 5: this component now also calls
+			// `getParameterRanges` (to build the per-tribe field defs' min/max,
+			// mirroring page.tsx's own `ranges` query) — stub it returning no
+			// data, so the component's own `?? DEFAULT_PARAMETER_RANGES`
+			// fallback kicks in, same as page.tsx's loading-state behavior.
+			getParameterRanges: {
+				useQuery: () => ({ data: undefined }),
+			},
+			updateTribeConfigs: {
+				useMutation: (options: CapturedUpdateTribeConfigsOptions = {}) => {
+					capturedUpdateTribeConfigsOptions = options;
+					updateTribeConfigsMutate = vi.fn();
+					return {
+						mutate: updateTribeConfigsMutate,
+						isPending: false,
+						data: undefined,
+						error: undefined,
+					};
+				},
+			},
+			updatePredatorTribeConfigs: {
+				useMutation: (
+					options: CapturedUpdatePredatorTribeConfigsOptions = {},
+				) => {
+					capturedUpdatePredatorTribeConfigsOptions = options;
+					updatePredatorTribeConfigsMutate = vi.fn();
+					return {
+						mutate: updatePredatorTribeConfigsMutate,
 						isPending: false,
 						data: undefined,
 						error: undefined,
@@ -170,6 +289,8 @@ describe("ServerRunViewer", () => {
 		capturedWatchOptions = {};
 		capturedUpdateRunParamsOptions = {};
 		capturedAdjustPopulationOptions = {};
+		capturedUpdateTribeConfigsOptions = {};
+		capturedUpdatePredatorTribeConfigsOptions = {};
 		vi.mocked(drawScene).mockClear();
 		// happy-dom doesn't implement a real canvas 2d context; stub
 		// getContext so the component's `if (ctx)` guard passes and
@@ -549,6 +670,228 @@ describe("ServerRunViewer", () => {
 
 			expect(container.textContent).toContain(
 				"boidCount + predatorCount would be 11, over the limit",
+			);
+		});
+	});
+
+	describe("per-tribe-predator-config Phase 5: per-tribe live-edit panel", () => {
+		function renderViewer() {
+			act(() => {
+				root.render(
+					<ServerRunViewer
+						onClose={vi.fn()}
+						runId={42}
+						xyArea={200}
+						zDepth={200}
+					/>,
+				);
+			});
+		}
+
+		function pushTribeSnapshot(
+			tribeConfigs: TribeConfigFixture[],
+			predatorTribeConfigs: PredatorTribeConfigFixture[],
+		) {
+			act(() => {
+				capturedWatchOptions.onData?.({
+					id: "0",
+					data: {
+						boids: [],
+						predators: [],
+						liveParams: LIVE_PARAMS_FIXTURE,
+						tribeConfigs,
+						predatorTribeConfigs,
+					},
+				});
+			});
+		}
+
+		function getTribeFieldInput(
+			species: "boid" | "predator",
+			index: number,
+			field: string,
+		): HTMLInputElement {
+			const input = container.querySelector(
+				`#tribe-live-${species}-${index}-${field}`,
+			);
+			expect(input).not.toBeNull();
+			return input as HTMLInputElement;
+		}
+
+		function setTribeFieldValue(
+			species: "boid" | "predator",
+			index: number,
+			field: string,
+			value: number,
+		) {
+			const input = getTribeFieldInput(species, index, field);
+			act(() => {
+				const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				)?.set;
+				nativeInputValueSetter?.call(input, String(value));
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+			});
+		}
+
+		it("renders one tribe card per boid/predator tribe in the pushed snapshot, pre-filled with their current values", () => {
+			renderViewer();
+			pushTribeSnapshot(
+				[BOID_TRIBE_FIXTURE, { ...BOID_TRIBE_FIXTURE, maxSpeed: 99 }],
+				[PREDATOR_TRIBE_FIXTURE],
+			);
+
+			expect(container.textContent).toContain("Boid tribe 1");
+			expect(container.textContent).toContain("Boid tribe 2");
+			expect(container.textContent).toContain("Predator tribe 1");
+			expect(getTribeFieldInput("boid", 0, "maxSpeed").value).toBe(
+				String(BOID_TRIBE_FIXTURE.maxSpeed),
+			);
+			expect(getTribeFieldInput("boid", 1, "maxSpeed").value).toBe("99");
+			expect(getTribeFieldInput("predator", 0, "detectionRadius").value).toBe(
+				String(PREDATOR_TRIBE_FIXTURE.detectionRadius),
+			);
+
+			const crossbreedingSwitch = container.querySelector(
+				"#tribe-live-boid-0-crossbreedingEnabled",
+			);
+			expect(crossbreedingSwitch).not.toBeNull();
+		});
+
+		it("editing a field marks it dirty and survives a later subscription push for a different value", () => {
+			renderViewer();
+			pushTribeSnapshot([BOID_TRIBE_FIXTURE], [PREDATOR_TRIBE_FIXTURE]);
+
+			setTribeFieldValue("boid", 0, "maxSpeed", 123);
+
+			// A later push races in with a different value for the same field
+			// (e.g. the run's own unchanged current value) — the in-progress
+			// edit must survive it, same "dirty cell is never overwritten"
+			// contract `syncLiveParams` already gives the scalar panel.
+			pushTribeSnapshot(
+				[{ ...BOID_TRIBE_FIXTURE, maxSpeed: 55 }],
+				[PREDATOR_TRIBE_FIXTURE],
+			);
+
+			expect(getTribeFieldInput("boid", 0, "maxSpeed").value).toBe("123");
+			// A field the user hasn't touched still re-syncs from the push.
+			expect(getTribeFieldInput("boid", 0, "minSpeed").value).toBe(
+				String(BOID_TRIBE_FIXTURE.minSpeed),
+			);
+		});
+
+		it("clicking 'Apply boid tribes' sends the FULL current boid tribe array, not a partial patch", () => {
+			renderViewer();
+			const secondTribe = { ...BOID_TRIBE_FIXTURE, maxSpeed: 77 };
+			pushTribeSnapshot(
+				[BOID_TRIBE_FIXTURE, secondTribe],
+				[PREDATOR_TRIBE_FIXTURE],
+			);
+
+			// Only tribe 0's maxSpeed is edited — tribe 1 is left untouched.
+			setTribeFieldValue("boid", 0, "maxSpeed", 200);
+
+			const applyButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "Apply boid tribes",
+			);
+			expect(applyButton).not.toBeUndefined();
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			expect(updateTribeConfigsMutate).toHaveBeenCalledTimes(1);
+			expect(updateTribeConfigsMutate).toHaveBeenCalledWith({
+				runId: 42,
+				tribeConfigs: [{ ...BOID_TRIBE_FIXTURE, maxSpeed: 200 }, secondTribe],
+			});
+		});
+
+		it("clicking 'Apply predator tribes' sends the FULL current predator tribe array", () => {
+			renderViewer();
+			pushTribeSnapshot([BOID_TRIBE_FIXTURE], [PREDATOR_TRIBE_FIXTURE]);
+
+			setTribeFieldValue("predator", 0, "detectionRadius", 80);
+
+			const applyButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "Apply predator tribes",
+			);
+			expect(applyButton).not.toBeUndefined();
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			expect(updatePredatorTribeConfigsMutate).toHaveBeenCalledTimes(1);
+			expect(updatePredatorTribeConfigsMutate).toHaveBeenCalledWith({
+				runId: 42,
+				predatorTribeConfigs: [
+					{ ...PREDATOR_TRIBE_FIXTURE, detectionRadius: 80 },
+				],
+			});
+		});
+
+		it("a successful Apply clears dirty state so the next push can overwrite the field again", () => {
+			renderViewer();
+			pushTribeSnapshot([BOID_TRIBE_FIXTURE], [PREDATOR_TRIBE_FIXTURE]);
+
+			setTribeFieldValue("boid", 0, "maxSpeed", 200);
+
+			const applyButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "Apply boid tribes",
+			);
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			act(() => {
+				capturedUpdateTribeConfigsOptions.onSuccess?.(
+					{ ok: true, warnings: [] },
+					{
+						runId: 42,
+						tribeConfigs: [{ ...BOID_TRIBE_FIXTURE, maxSpeed: 200 }],
+					},
+				);
+			});
+
+			// No longer dirty — a later push can now move the field again.
+			pushTribeSnapshot(
+				[{ ...BOID_TRIBE_FIXTURE, maxSpeed: 61 }],
+				[PREDATOR_TRIBE_FIXTURE],
+			);
+			expect(getTribeFieldInput("boid", 0, "maxSpeed").value).toBe("61");
+		});
+
+		it("a successful predator-tribe Apply clears dirty state for predator fields too", () => {
+			renderViewer();
+			pushTribeSnapshot([BOID_TRIBE_FIXTURE], [PREDATOR_TRIBE_FIXTURE]);
+
+			setTribeFieldValue("predator", 0, "detectionRadius", 80);
+
+			const applyButton = Array.from(container.querySelectorAll("button")).find(
+				(b) => b.textContent === "Apply predator tribes",
+			);
+			act(() => {
+				applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			});
+
+			act(() => {
+				capturedUpdatePredatorTribeConfigsOptions.onSuccess?.(
+					{ ok: true, warnings: [] },
+					{
+						runId: 42,
+						predatorTribeConfigs: [
+							{ ...PREDATOR_TRIBE_FIXTURE, detectionRadius: 80 },
+						],
+					},
+				);
+			});
+
+			pushTribeSnapshot(
+				[BOID_TRIBE_FIXTURE],
+				[{ ...PREDATOR_TRIBE_FIXTURE, detectionRadius: 33 }],
+			);
+			expect(getTribeFieldInput("predator", 0, "detectionRadius").value).toBe(
+				"33",
 			);
 		});
 	});

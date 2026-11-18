@@ -8,6 +8,7 @@ import {
 	type BoidGenes,
 	type BoidState,
 	INITIAL_ENERGY,
+	MATURITY_AGE_SECONDS,
 } from "~/server/simulation/boids";
 import {
 	adjustLivePopulation,
@@ -624,6 +625,145 @@ describe("applyLiveParams", () => {
 		});
 		activeRunIds.length = 0;
 	});
+
+	// per-tribe-predator-config Phase 5 (lessons.md: "UI accepts input is not
+	// feature verified" — a live-adjust feature's manual check must trace the
+	// actual *read* site, not just the stored value): proves
+	// `applyLiveTribeConfigs` — the exact function the new live-edit panel's
+	// Apply button calls — doesn't just overwrite `run.params.tribeConfigs`,
+	// it changes what `reproducePopulation` (boids.ts) actually decides on
+	// the very next ticks, the real read site for `crossbreedingEnabled`
+	// (confirmed by reading `tick()` above: it passes
+	// `tribeConfigs: run.params.tribeConfigs` straight off the mutable
+	// `run.params` object every call, never a frozen copy). Mirrors
+	// `simulation.test.ts`'s own "both tribes must allow it" behavioral test
+	// (same signal: a cross-tribe mating blends the two tribes' distinct seed
+	// colors), but against a single run whose tribeConfigs starts false/false
+	// and is flipped to true/true mid-run via a live edit, rather than three
+	// separately-seeded runs — the live-edit transition itself is the thing
+	// under test here, not the gate's three static states (already covered
+	// by boids.test.ts Phase 1 and the router-level test).
+	it("a live crossbreedingEnabled flip via applyLiveTribeConfigs changes whether a cross-tribe pair mates on the next ticks", async () => {
+		const fixtureParams = {
+			...BASE_PARAMS,
+			boidCount: 4,
+			predatorCount: 0,
+			flockCount: 2,
+			energyThreshold: 1,
+			foodRegenRate: 50,
+			foodStockInitial: 200,
+			maxDurationSeconds: 600,
+			// A world tiny relative to MATE_DISTANCE_RADIUS (30, boids.ts) —
+			// with wrapping, the farthest any two points can be along one axis
+			// is half the world size, so hypot(10,10,10) ≈ 17.3 < 30 for every
+			// pair regardless of where flocking/drift moves them. This removes
+			// any dependency on slow flocking convergence or a hand-measured
+			// seed — the engineered closeness alone is enough for the mate
+			// check's distance gate to always pass.
+			xyArea: 20,
+			zDepth: 20,
+			// Zeroed so blendNumber's jitter can never perturb a color channel —
+			// the only way a boid's color can differ from its own flock's single
+			// seeded color is by blending with the OTHER flock's color, i.e. an
+			// actual inter-flock mating (same rationale as
+			// simulation.test.ts's own crossbreeding test).
+			mutationChance: 0,
+			mutationMagnitude: 0,
+			tribeConfigs: [
+				{ ...DEFAULT_TRIBE_CONFIG, crossbreedingEnabled: false },
+				{ ...DEFAULT_TRIBE_CONFIG, crossbreedingEnabled: false },
+			],
+		};
+
+		const { runId } = await insertOwnedRunningRun(47);
+		activeRunIds.push(runId);
+
+		vi.useFakeTimers();
+		startServerRun({ runId, seed: 47, ...fixtureParams });
+
+		// Directly engineer every boid into "always eligible, always in
+		// range, always color-compatible" — isolates the crossbreedingEnabled
+		// variable this test is actually about, rather than depending on
+		// natural maturation/energy/flocking dynamics to get there.
+		// `getLiveRunState` returns the registry's own live array (not a
+		// copy), so mutating in place reaches the registered run. Every tribe
+		// 0 boid is forced to gender "a" and every tribe 1 boid to gender
+		// "b" — `reproducePopulation` requires opposite genders to mate at
+		// all, so this makes a SAME-tribe pair impossible (both tribe 0
+		// members share a gender, same for tribe 1) and a CROSS-tribe pair
+		// the only kind that could ever mate. That isolates the
+		// crossbreedingEnabled gate as the sole variable deciding whether
+		// ANY reproduction happens here, rather than letting same-tribe
+		// mating (always allowed) win the first-match scan before a
+		// cross-tribe pair is ever considered.
+		const liveBoids = getLiveRunState(runId)?.boids ?? [];
+		for (const boid of liveBoids) {
+			boid.genes.matePreference = 10;
+			boid.age = MATURITY_AGE_SECONDS + 1;
+			boid.energy = INITIAL_ENERGY * 10;
+			boid.lifespan = fixtureParams.maxDurationSeconds;
+			boid.gender = boid.genes.flockId === 0 ? "a" : "b";
+		}
+
+		function pureFlockColors(
+			state: ReturnType<typeof getLiveRunState>,
+		): Map<number, { r: number; g: number; b: number }> {
+			const byFlock = new Map<number, { r: number; g: number; b: number }>();
+			for (const boid of state?.boids ?? []) {
+				if (!byFlock.has(boid.genes.flockId)) {
+					byFlock.set(boid.genes.flockId, boid.genes.color);
+				}
+			}
+			return byFlock;
+		}
+
+		function hasBlendedColor(
+			state: ReturnType<typeof getLiveRunState>,
+			pure: Map<number, { r: number; g: number; b: number }>,
+		): boolean {
+			const epsilon = 1e-9;
+			return (state?.boids ?? []).some((boid) => {
+				for (const pureColor of pure.values()) {
+					if (
+						Math.abs(boid.genes.color.r - pureColor.r) < epsilon &&
+						Math.abs(boid.genes.color.g - pureColor.g) < epsilon &&
+						Math.abs(boid.genes.color.b - pureColor.b) < epsilon
+					) {
+						return false;
+					}
+				}
+				return true;
+			});
+		}
+
+		const pureColors = pureFlockColors(getLiveRunState(runId));
+
+		// Phase 1: both tribes still disallow crossbreeding (the run's
+		// start-time config). Every boid is mature/energized/in-range, but
+		// every possible pair is now cross-tribe (per the gender setup
+		// above) — so with the gate closed, NO reproduction can happen at
+		// all: population stays exactly at its starting count.
+		await vi.advanceTimersByTimeAsync(500);
+		const afterPhase1 = getLiveRunState(runId);
+		expect(afterPhase1?.boids.length).toBe(fixtureParams.boidCount);
+		expect(hasBlendedColor(afterPhase1, pureColors)).toBe(false);
+
+		// Phase 2: the live edit under test — flip BOTH tribes' flags to true
+		// via applyLiveTribeConfigs (the exact function the new panel's Apply
+		// button calls), then advance further ticks. If the live edit only
+		// touched the stored config and `reproducePopulation` never re-read
+		// it, no blend would ever appear here either.
+		const applied = applyLiveTribeConfigs(runId, [
+			{ ...DEFAULT_TRIBE_CONFIG, crossbreedingEnabled: true },
+			{ ...DEFAULT_TRIBE_CONFIG, crossbreedingEnabled: true },
+		]);
+		expect(applied).toEqual({ status: "applied" });
+
+		await vi.advanceTimersByTimeAsync(500);
+		const afterPhase2 = getLiveRunState(runId);
+		expect(afterPhase2?.boids.length).toBeGreaterThan(fixtureParams.boidCount);
+		expect(hasBlendedColor(afterPhase2, pureColors)).toBe(true);
+	}, 30_000);
 
 	// impl-review (live-parameter-adjustment, F1): the client's own 500ms
 	// Apply cooldown is UI-only — this is the real gate against a direct

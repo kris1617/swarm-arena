@@ -663,29 +663,29 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 4.1 Typecheck passes
-- [x] 4.2 Component tests pass
-- [x] 4.3 Full test suite passes
-- [x] 4.4 Lint passes
+- [x] 4.1 Typecheck passes — 49c6591
+- [x] 4.2 Component tests pass — 49c6591
+- [x] 4.3 Full test suite passes — 49c6591
+- [x] 4.4 Lint passes — 49c6591
 
 #### Manual
 
-- [x] 4.5 2 predator tribes with distinct config start successfully and persist correctly
-- [x] 4.6 Start-form crossbreeding Switch toggle persists to started run's config
+- [x] 4.5 2 predator tribes with distinct config start successfully and persist correctly — 49c6591
+- [x] 4.6 Start-form crossbreeding Switch toggle persists to started run's config — 49c6591
 
 ### Phase 5: Per-tribe live-edit panel
 
 #### Automated
 
-- [ ] 5.1 Typecheck passes
-- [ ] 5.2 Component tests pass
-- [ ] 5.3 Full test suite passes
-- [ ] 5.4 Lint passes
+- [x] 5.1 Typecheck passes
+- [x] 5.2 Component tests pass
+- [x] 5.3 Full test suite passes
+- [x] 5.4 Lint passes
 
 #### Manual
 
-- [ ] 5.5 Live detectionRadius edit visibly changes predator behavior within a few ticks
-- [ ] 5.6 Live crossbreeding-flag-off edit stops new cross-tribe offspring mid-run
+- [x] 5.5 Live detectionRadius edit visibly changes predator behavior within a few ticks
+- [x] 5.6 Live crossbreeding-flag-off edit stops new cross-tribe offspring mid-run
 
 ### Phase 6: Verification + cookbook
 

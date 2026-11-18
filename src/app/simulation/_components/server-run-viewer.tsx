@@ -21,8 +21,16 @@ import { useCamera } from "~/app/simulation/_components/use-camera";
 import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
 import { Switch } from "~/components/ui/switch";
-import type { BoidState, PredatorState } from "~/server/simulation/boids";
-import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
+import type {
+	BoidState,
+	PredatorState,
+	PredatorTribeConfig,
+	TribeConfig,
+} from "~/server/simulation/boids";
+import {
+	DEFAULT_PARAMETER_RANGES,
+	type ParameterRanges,
+} from "~/server/simulation/parameter-ranges";
 import type { LiveAdjustableParams } from "~/server/simulation/server-run-registry";
 import { api } from "~/trpc/react";
 
@@ -70,6 +78,164 @@ const APPLY_COOLDOWN_MS = 500;
 
 // How long a successfully-applied field keeps its success-flash styling.
 const FLASH_DURATION_MS = 1000;
+
+// per-tribe-predator-config Phase 5: the per-tribe live-edit panel's field
+// shape — mirrors page.tsx's `tribeFieldDefs`/`predatorTribeFieldDefs`
+// exactly (same field set, same exclusion of `crossbreedingEnabled`, which
+// is rendered separately as a Switch), duplicated here rather than shared
+// since page.tsx's definitions are local `const`s inside its own component,
+// not exported — same posture as this file's own `LIVE_FIELD_LABELS` being
+// a local duplicate of concepts defined elsewhere.
+type TribeFieldDef<T> = {
+	field: Exclude<keyof T, "crossbreedingEnabled">;
+	label: string;
+	min: number;
+	max: number;
+	step: string;
+};
+
+function buildBoidTribeFieldDefs(
+	ranges: ParameterRanges,
+): TribeFieldDef<TribeConfig>[] {
+	return [
+		{
+			field: "separation",
+			label: "Separation weight",
+			min: ranges.separationWeight.min,
+			max: ranges.separationWeight.max,
+			step: "0.1",
+		},
+		{
+			field: "alignment",
+			label: "Alignment weight",
+			min: ranges.alignmentWeight.min,
+			max: ranges.alignmentWeight.max,
+			step: "0.1",
+		},
+		{
+			field: "cohesion",
+			label: "Cohesion weight",
+			min: ranges.cohesionWeight.min,
+			max: ranges.cohesionWeight.max,
+			step: "0.1",
+		},
+		// maxSpeed/minSpeed have no admin-configured range for boids (same gap
+		// page.tsx's own tribeFieldDefs documents) — fixed, generous bounds
+		// matching that same fallback.
+		{ field: "maxSpeed", label: "Max speed", min: 1, max: 300, step: "1" },
+		{ field: "minSpeed", label: "Min speed", min: 0, max: 300, step: "1" },
+		{
+			field: "matePreference",
+			label: "Mate preference",
+			min: ranges.matePreference.min,
+			max: ranges.matePreference.max,
+			step: "0.05",
+		},
+		{
+			field: "neighborRadius",
+			label: "Neighbor radius",
+			min: ranges.neighborRadius.min,
+			max: ranges.neighborRadius.max,
+			step: "1",
+		},
+		{
+			field: "separationRadius",
+			label: "Separation radius",
+			min: ranges.separationRadius.min,
+			max: ranges.separationRadius.max,
+			step: "1",
+		},
+		{
+			field: "predatorDetectionRadius",
+			label: "Predator detection radius",
+			min: ranges.predatorDetectionRadius.min,
+			max: ranges.predatorDetectionRadius.max,
+			step: "1",
+		},
+		{
+			field: "burstMult",
+			label: "Burst multiplier",
+			min: ranges.burstMult.min,
+			max: ranges.burstMult.max,
+			step: "0.1",
+		},
+		{
+			field: "burstCostMult",
+			label: "Burst cost multiplier",
+			min: ranges.burstCostMult.min,
+			max: ranges.burstCostMult.max,
+			step: "0.1",
+		},
+		{
+			field: "foodStockShare",
+			label: "Food stock share",
+			min: ranges.foodStockShare.min,
+			max: ranges.foodStockShare.max,
+			step: "1",
+		},
+		{
+			field: "foodRegenShare",
+			label: "Food regen share",
+			min: ranges.foodRegenShare.min,
+			max: ranges.foodRegenShare.max,
+			step: "0.1",
+		},
+		{
+			field: "foodConsumptionRate",
+			label: "Food consumption rate",
+			min: ranges.foodConsumptionRate.min,
+			max: ranges.foodConsumptionRate.max,
+			step: "0.1",
+		},
+	];
+}
+
+// per-tribe-predator-config Phase 5: predator-side sibling of
+// `buildBoidTribeFieldDefs` — only the 5 non-inert `PredatorTribeConfig`
+// fields (separation/alignment/cohesion stay on the type but are not
+// rendered, per plan.md's "What We're NOT Doing"), mirroring page.tsx's
+// `predatorTribeFieldDefs` exactly.
+function buildPredatorTribeFieldDefs(
+	ranges: ParameterRanges,
+): TribeFieldDef<PredatorTribeConfig>[] {
+	return [
+		{
+			field: "maxSpeed",
+			label: "Max speed",
+			min: ranges.maxSpeed.min,
+			max: ranges.maxSpeed.max,
+			step: "1",
+		},
+		{
+			field: "minSpeed",
+			label: "Min speed",
+			min: ranges.minSpeed.min,
+			max: ranges.minSpeed.max,
+			step: "1",
+		},
+		{
+			field: "matePreference",
+			label: "Mate preference",
+			min: ranges.matePreference.min,
+			max: ranges.matePreference.max,
+			step: "0.05",
+		},
+		{
+			field: "detectionRadius",
+			label: "Detection radius",
+			min: ranges.detectionRadius.min,
+			max: ranges.detectionRadius.max,
+			step: "1",
+		},
+		{
+			field: "captureRadiusMult",
+			label: "Capture radius multiplier",
+			min: ranges.captureRadiusMult.min,
+			max: ranges.captureRadiusMult.max,
+			step: "0.1",
+		},
+	];
+}
 
 type ServerRunViewerProps = {
 	runId: number;
@@ -169,6 +335,247 @@ export function ServerRunViewer({
 	// re-derived from `liveValues`, which may have moved on if the user kept
 	// typing while the request was in flight).
 	const pendingPatchRef = useRef<Partial<LiveFormValues>>({});
+
+	// per-tribe-predator-config Phase 5: the per-tribe live-edit panel's own
+	// state — a PARALLEL structure to `liveValues`/`LiveFormValues` above, not
+	// a widening of it (an array of per-tribe objects doesn't fit
+	// `Record<LiveField, number>`). `null` until the first subscription push
+	// arrives, same as `liveValues`. Boid and predator tribes are tracked as
+	// two independent arrays (and have two independent Apply buttons/
+	// mutations below) since `updateTribeConfigs`/`updatePredatorTribeConfigs`
+	// are two separate router procedures, each replacing only its own
+	// species' array wholesale.
+	const [boidTribeValues, setBoidTribeValues] = useState<TribeConfig[] | null>(
+		null,
+	);
+	const [predatorTribeValues, setPredatorTribeValues] = useState<
+		PredatorTribeConfig[] | null
+	>(null);
+	// Dirty cells across BOTH species, keyed `${species}:${tribeIndex}:${field}`
+	// (field includes "crossbreedingEnabled") — one shared set, same posture as
+	// the scalar panel's `dirtyFieldsRef`, since a dirty cell is never
+	// overwritten by a later subscription push regardless of which species it
+	// belongs to.
+	const dirtyTribeFieldsRef = useRef<Set<string>>(new Set());
+	const [flashBoidTribeKeys, setFlashBoidTribeKeys] = useState<
+		ReadonlySet<string>
+	>(new Set());
+	const [flashPredatorTribeKeys, setFlashPredatorTribeKeys] = useState<
+		ReadonlySet<string>
+	>(new Set());
+	const [boidTribeApplyCooldown, setBoidTribeApplyCooldown] = useState(false);
+	const [predatorTribeApplyCooldown, setPredatorTribeApplyCooldown] =
+		useState(false);
+	const [tribeWarnings, setTribeWarnings] = useState<string[]>([]);
+	// The dirty keys present at the moment Apply was clicked, read back in
+	// `onSuccess` to clear exactly those cells and flash them — mirrors
+	// `pendingPatchRef`'s "read back what was actually sent, not what the
+	// form may have moved on to" rationale.
+	const pendingBoidTribeKeysRef = useRef<string[]>([]);
+	const pendingPredatorTribeKeysRef = useRef<string[]>([]);
+
+	const rangesQuery = api.simulation.getParameterRanges.useQuery();
+	const ranges = rangesQuery.data?.parameterRanges ?? DEFAULT_PARAMETER_RANGES;
+	const boidTribeFieldDefs = buildBoidTribeFieldDefs(ranges);
+	const predatorTribeFieldDefs = buildPredatorTribeFieldDefs(ranges);
+
+	// Shared by both species: on the first push, pre-fill everything; on later
+	// pushes, only overwrite cells that aren't currently dirty — the exact
+	// "first push pre-fills, later pushes only overwrite non-dirty cells"
+	// logic `syncLiveParams` already uses for the scalar panel, keyed per
+	// (species, tribeIndex, field) instead of per-field.
+	function syncTribeArray<T extends Record<string, number | boolean>>(
+		species: "boid" | "predator",
+		data: T[],
+		current: T[] | null,
+	): T[] {
+		if (!current) {
+			return data.map((tribe) => ({ ...tribe }));
+		}
+		return data.map((tribe, index) => {
+			const prevTribe = current[index];
+			if (!prevTribe) {
+				return { ...tribe };
+			}
+			const merged = { ...tribe };
+			for (const key of Object.keys(tribe) as (keyof T)[]) {
+				const dirtyKey = `${species}:${index}:${String(key)}`;
+				if (dirtyTribeFieldsRef.current.has(dirtyKey)) {
+					merged[key] = prevTribe[key];
+				}
+			}
+			return merged;
+		});
+	}
+
+	function handleTribeFieldChange(
+		species: "boid" | "predator",
+		index: number,
+		field: string,
+		value: number | boolean,
+	) {
+		dirtyTribeFieldsRef.current.add(`${species}:${index}:${field}`);
+		if (species === "boid") {
+			setBoidTribeValues((current) =>
+				current
+					? current.map((tribe, i) =>
+							i === index ? { ...tribe, [field]: value } : tribe,
+						)
+					: current,
+			);
+		} else {
+			setPredatorTribeValues((current) =>
+				current
+					? current.map((tribe, i) =>
+							i === index ? { ...tribe, [field]: value } : tribe,
+						)
+					: current,
+			);
+		}
+	}
+
+	const updateTribeConfigsMutation =
+		api.simulation.updateTribeConfigs.useMutation({
+			onSuccess: (data) => {
+				for (const key of pendingBoidTribeKeysRef.current) {
+					dirtyTribeFieldsRef.current.delete(key);
+				}
+				setTribeWarnings((current) => [
+					...current.filter((w) => !w.startsWith("tribe ")),
+					...data.warnings,
+				]);
+				setFlashBoidTribeKeys(new Set(pendingBoidTribeKeysRef.current));
+				setTimeout(() => {
+					setFlashBoidTribeKeys(new Set());
+				}, FLASH_DURATION_MS);
+				setBoidTribeApplyCooldown(true);
+				setTimeout(() => {
+					setBoidTribeApplyCooldown(false);
+				}, APPLY_COOLDOWN_MS);
+			},
+			onError: (error) => {
+				setViewError(error.message);
+			},
+		});
+
+	const updatePredatorTribeConfigsMutation =
+		api.simulation.updatePredatorTribeConfigs.useMutation({
+			onSuccess: (data) => {
+				for (const key of pendingPredatorTribeKeysRef.current) {
+					dirtyTribeFieldsRef.current.delete(key);
+				}
+				setTribeWarnings((current) => [
+					...current.filter((w) => !w.startsWith("predator tribe ")),
+					...data.warnings,
+				]);
+				setFlashPredatorTribeKeys(new Set(pendingPredatorTribeKeysRef.current));
+				setTimeout(() => {
+					setFlashPredatorTribeKeys(new Set());
+				}, FLASH_DURATION_MS);
+				setPredatorTribeApplyCooldown(true);
+				setTimeout(() => {
+					setPredatorTribeApplyCooldown(false);
+				}, APPLY_COOLDOWN_MS);
+			},
+			onError: (error) => {
+				setViewError(error.message);
+			},
+		});
+
+	// impl: Apply always sends the WHOLE current tribe-config array for that
+	// species — the router's hard length-match check against the run's own
+	// flockCount/predatorFlockCount requires it (see plan.md's Phase 5
+	// "CRITICAL" note); a partial/single-tribe patch is not a valid payload.
+	function handleApplyBoidTribes() {
+		if (!boidTribeValues) {
+			return;
+		}
+		pendingBoidTribeKeysRef.current = Array.from(
+			dirtyTribeFieldsRef.current,
+		).filter((key) => key.startsWith("boid:"));
+		updateTribeConfigsMutation.mutate({
+			runId,
+			tribeConfigs: boidTribeValues,
+		});
+	}
+
+	function handleApplyPredatorTribes() {
+		if (!predatorTribeValues) {
+			return;
+		}
+		pendingPredatorTribeKeysRef.current = Array.from(
+			dirtyTribeFieldsRef.current,
+		).filter((key) => key.startsWith("predator:"));
+		updatePredatorTribeConfigsMutation.mutate({
+			runId,
+			predatorTribeConfigs: predatorTribeValues,
+		});
+	}
+
+	function renderTribeField(
+		species: "boid" | "predator",
+		index: number,
+		def: TribeFieldDef<TribeConfig> | TribeFieldDef<PredatorTribeConfig>,
+		value: number,
+	) {
+		const key = `${species}:${index}:${String(def.field)}`;
+		const flashed =
+			species === "boid"
+				? flashBoidTribeKeys.has(key)
+				: flashPredatorTribeKeys.has(key);
+		return (
+			<div
+				className={cn(
+					"flex flex-col gap-1 rounded-xl transition-shadow",
+					flashed ? "ring-chart-2 ring-2" : "",
+				)}
+				key={String(def.field)}
+			>
+				<NumberField
+					id={`tribe-live-${species}-${index}-${String(def.field)}`}
+					label={def.label}
+					max={def.max}
+					min={def.min}
+					onChange={(v) =>
+						handleTribeFieldChange(species, index, String(def.field), v)
+					}
+					step={def.step}
+					value={value}
+				/>
+			</div>
+		);
+	}
+
+	function renderTribeCrossbreedingSwitch(
+		species: "boid" | "predator",
+		index: number,
+		checked: boolean,
+	) {
+		const key = `${species}:${index}:crossbreedingEnabled`;
+		const flashed =
+			species === "boid"
+				? flashBoidTribeKeys.has(key)
+				: flashPredatorTribeKeys.has(key);
+		const id = `tribe-live-${species}-${index}-crossbreedingEnabled`;
+		return (
+			<label
+				className={cn(
+					"flex items-center gap-2 rounded-xl text-sm transition-shadow",
+					flashed ? "ring-chart-2 ring-2" : "",
+				)}
+				htmlFor={id}
+			>
+				Crossbreeding enabled
+				<Switch
+					checked={checked}
+					id={id}
+					onCheckedChange={(v) =>
+						handleTribeFieldChange(species, index, "crossbreedingEnabled", v)
+					}
+				/>
+			</label>
+		);
+	}
 
 	// per-tribe-predator-config Phase 4: every remaining `LiveAdjustableParams`
 	// field is a plain number now that `crossbreedingEnabled` moved to the
@@ -492,6 +899,22 @@ export function ServerRunViewer({
 				});
 				redraw();
 				syncLiveParams(data.liveParams);
+				// per-tribe-predator-config Phase 5: `data.tribeConfigs`/
+				// `data.predatorTribeConfigs` are optional on this test file's own
+				// fixture type (pre-Phase-5 tests push `onData` payloads that never
+				// set them) — tolerate `undefined` the same way other post-hoc
+				// LiveRunSnapshot fields are tolerated elsewhere in this codebase,
+				// rather than requiring every existing call site to be touched.
+				if (data.tribeConfigs) {
+					setBoidTribeValues((current) =>
+						syncTribeArray("boid", data.tribeConfigs, current),
+					);
+				}
+				if (data.predatorTribeConfigs) {
+					setPredatorTribeValues((current) =>
+						syncTribeArray("predator", data.predatorTribeConfigs, current),
+					);
+				}
 			},
 			onError: (error) => {
 				setViewError(error.message);
@@ -607,6 +1030,93 @@ export function ServerRunViewer({
 							{warning}
 						</p>
 					))}
+				</div>
+			) : null}
+			{boidTribeValues && boidTribeValues.length > 0 ? (
+				<div className="bg-input/40 flex w-full flex-col gap-2 rounded-2xl p-3">
+					<p className="text-foreground text-sm font-semibold">
+						Boid tribes (live)
+					</p>
+					{boidTribeValues.map((tribe, index) => (
+						<div
+							className="bg-input/30 flex flex-col gap-2 rounded-xl p-2"
+							// biome-ignore lint/suspicious/noArrayIndexKey: tribe index IS the stable identity here — boidTribeValues is the run's fixed-size flockCount array, indexed by flockId, never reordered/filtered.
+							key={index}
+						>
+							<p className="text-foreground text-xs font-semibold">
+								Boid tribe {index + 1}
+							</p>
+							{boidTribeFieldDefs.map((def) =>
+								renderTribeField("boid", index, def, tribe[def.field]),
+							)}
+							{renderTribeCrossbreedingSwitch(
+								"boid",
+								index,
+								tribe.crossbreedingEnabled,
+							)}
+						</div>
+					))}
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-6 py-2 text-sm font-semibold"
+						disabled={
+							boidTribeApplyCooldown || updateTribeConfigsMutation.isPending
+						}
+						onClick={handleApplyBoidTribes}
+						type="button"
+					>
+						{boidTribeApplyCooldown ? "Applied" : "Apply boid tribes"}
+					</Button>
+					{tribeWarnings
+						.filter((warning) => !warning.startsWith("predator tribe "))
+						.map((warning) => (
+							<p className="text-destructive text-xs" key={warning}>
+								{warning}
+							</p>
+						))}
+				</div>
+			) : null}
+			{predatorTribeValues && predatorTribeValues.length > 0 ? (
+				<div className="bg-input/40 flex w-full flex-col gap-2 rounded-2xl p-3">
+					<p className="text-foreground text-sm font-semibold">
+						Predator tribes (live)
+					</p>
+					{predatorTribeValues.map((tribe, index) => (
+						<div
+							className="bg-input/30 flex flex-col gap-2 rounded-xl p-2"
+							// biome-ignore lint/suspicious/noArrayIndexKey: predator tribe index IS the stable identity here — predatorTribeValues is the run's fixed-size predatorFlockCount array, indexed by predatorFlockId, never reordered/filtered.
+							key={index}
+						>
+							<p className="text-foreground text-xs font-semibold">
+								Predator tribe {index + 1}
+							</p>
+							{predatorTribeFieldDefs.map((def) =>
+								renderTribeField("predator", index, def, tribe[def.field]),
+							)}
+							{renderTribeCrossbreedingSwitch(
+								"predator",
+								index,
+								tribe.crossbreedingEnabled,
+							)}
+						</div>
+					))}
+					<Button
+						className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-6 py-2 text-sm font-semibold"
+						disabled={
+							predatorTribeApplyCooldown ||
+							updatePredatorTribeConfigsMutation.isPending
+						}
+						onClick={handleApplyPredatorTribes}
+						type="button"
+					>
+						{predatorTribeApplyCooldown ? "Applied" : "Apply predator tribes"}
+					</Button>
+					{tribeWarnings
+						.filter((warning) => warning.startsWith("predator tribe "))
+						.map((warning) => (
+							<p className="text-destructive text-xs" key={warning}>
+								{warning}
+							</p>
+						))}
 				</div>
 			) : null}
 			{viewError ? <p className="text-destructive">{viewError}</p> : null}
