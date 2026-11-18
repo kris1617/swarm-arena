@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	createInitialPopulation,
 	createInitialPredators,
+	type PredatorTribeConfig,
 	runTick,
 	type TribeConfig,
 } from "~/server/simulation/boids";
@@ -25,6 +26,18 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+};
+// predator-tribe-concept Phase 2: createInitialPredators now takes
+// `PredatorTribeConfig[]`, not `TribeConfig[]`.
+const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both
@@ -68,7 +81,7 @@ function buildState(boidCount: number, predatorCount: number) {
 			createRng(2),
 			100,
 			1,
-			[TRIBE_CONFIG],
+			[PREDATOR_TRIBE_CONFIG],
 			WORLD_SIZE,
 		),
 		foodStock: 1000,

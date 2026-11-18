@@ -651,16 +651,16 @@ param.
 
 #### Automated
 
-- [x] 1.1 npm run typecheck passes
-- [x] 1.2 npm run db:generate produces a clean additive migration; db:push/db:migrate applies it without a destructive-change warning
-- [x] 1.3 npx vitest run src/server/api/routers/simulation.test.ts passes
+- [x] 1.1 npm run typecheck passes — 4be59b5
+- [x] 1.2 npm run db:generate produces a clean additive migration; db:push/db:migrate applies it without a destructive-change warning — 4be59b5
+- [x] 1.3 npx vitest run src/server/api/routers/simulation.test.ts passes — 4be59b5
 
 ### Phase 2: Independent predator-tribe spawning
 
 #### Automated
 
-- [ ] 2.1 npm run typecheck passes
-- [ ] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes
+- [x] 2.1 npm run typecheck passes
+- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes
 
 ### Phase 3: Detection radius & idle wander
 

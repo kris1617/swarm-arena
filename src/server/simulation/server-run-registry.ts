@@ -15,6 +15,7 @@ import {
 	createInitialPredators,
 	type PopulationPhase,
 	type PredatorState,
+	type PredatorTribeConfig,
 	type TribeConfig,
 	type WorldSize,
 } from "~/server/simulation/boids";
@@ -68,6 +69,13 @@ export type ServerRunParams = {
 	// `startServerRun`/`adjustLivePopulation`'s `createInitialPopulation`/
 	// `createInitialPredators` calls below.
 	tribeConfigs: TribeConfig[];
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — sibling to flockCount/tribeConfigs above, not a reuse of them.
+	// `createInitialPredators`'s call sites below (startServerRun,
+	// adjustLivePopulation's predator-growth branch) now read these instead
+	// of params.flockCount/params.tribeConfigs.
+	predatorFlockCount: number;
+	predatorTribeConfigs: PredatorTribeConfig[];
 };
 
 // live-parameter-adjustment (S-27): the subset of ServerRunParams a running
@@ -480,8 +488,8 @@ export function adjustLivePopulation(
 				delta,
 				run.rng,
 				maxLifespan,
-				run.params.flockCount,
-				run.params.tribeConfigs,
+				run.params.predatorFlockCount,
+				run.params.predatorTribeConfigs,
 				worldSize,
 			);
 			clusterNewIndividuals(generated, run.predators, worldSize);
@@ -788,8 +796,8 @@ export function startServerRun(params: ServerRunParams): void {
 		params.predatorCount,
 		rng,
 		maxLifespan,
-		params.flockCount,
-		params.tribeConfigs,
+		params.predatorFlockCount,
+		params.predatorTribeConfigs,
 		worldSize,
 	);
 

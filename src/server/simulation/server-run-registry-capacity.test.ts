@@ -59,6 +59,22 @@ const BASE_PARAMS: Omit<
 	xyArea: 200,
 	zDepth: 200,
 	tribeConfigs: [DEFAULT_TRIBE_CONFIG, DEFAULT_TRIBE_CONFIG],
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — a single default-valued tribe, same posture as
+	// server-run-registry.test.ts's own BASE_PARAMS fixture.
+	predatorFlockCount: 1,
+	predatorTribeConfigs: [
+		{
+			separation: 1,
+			alignment: 1,
+			cohesion: 1,
+			maxSpeed: 40,
+			minSpeed: 15,
+			matePreference: 0.5,
+			detectionRadius: 50,
+			captureRadiusMult: 1,
+		},
+	],
 };
 
 const trackedOwnerIds: string[] = [];

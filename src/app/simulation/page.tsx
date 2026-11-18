@@ -8,7 +8,10 @@ import { NumberField } from "~/components/ui/number-field";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import type { TribeConfig } from "~/server/simulation/boids";
+import type {
+	PredatorTribeConfig,
+	TribeConfig,
+} from "~/server/simulation/boids";
 import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import { api } from "~/trpc/react";
 
@@ -26,6 +29,10 @@ type ActiveRun = {
 	foodStockInitial: number;
 	foodRegenRate: number;
 	flockCount: number;
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — sibling to flockCount/tribeConfigs above, not a reuse of them.
+	predatorFlockCount: number;
+	predatorTribeConfigs: PredatorTribeConfig[];
 	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
@@ -454,6 +461,8 @@ export default function SimulationPage() {
 				foodStockInitial: variables.foodStockInitial,
 				foodRegenRate: variables.foodRegenRate,
 				flockCount: variables.flockCount,
+				predatorFlockCount: variables.predatorFlockCount,
+				predatorTribeConfigs: variables.predatorTribeConfigs,
 				crossbreedingEnabled: variables.crossbreedingEnabled,
 				energyThreshold: variables.energyThreshold,
 				mutationChance: variables.mutationChance,
@@ -701,6 +710,8 @@ export default function SimulationPage() {
 					mutationMagnitude={activeRun.mutationMagnitude}
 					onFinished={() => setActiveRun(null)}
 					predatorCount={activeRun.predatorCount}
+					predatorFlockCount={activeRun.predatorFlockCount}
+					predatorTribeConfigs={activeRun.predatorTribeConfigs}
 					protectionThreshold={activeRun.protectionThreshold}
 					runId={activeRun.runId}
 					seed={activeRun.seed}

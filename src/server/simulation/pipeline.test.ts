@@ -8,6 +8,7 @@ import {
 	createInitialPopulation,
 	createInitialPredators,
 	type PredatorState,
+	type PredatorTribeConfig,
 	runTick,
 	type TribeConfig,
 } from "~/server/simulation/boids";
@@ -31,6 +32,19 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+};
+// predator-tribe-concept Phase 2: createInitialPredators now takes
+// `PredatorTribeConfig[]`, not `TribeConfig[]` — predators' own independent
+// tribe space, sibling to TRIBE_CONFIG above.
+const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
+	separation: WEIGHTS.separation,
+	alignment: WEIGHTS.alignment,
+	cohesion: WEIGHTS.cohesion,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 const PARAMS = {
@@ -119,7 +133,7 @@ describe("runTick", () => {
 					createRng(2),
 					100,
 					1,
-					[TRIBE_CONFIG],
+					[PREDATOR_TRIBE_CONFIG],
 					WORLD_SIZE,
 				),
 				foodStock: 20,

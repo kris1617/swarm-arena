@@ -92,6 +92,22 @@ const BASE_PROPS = {
 	foodStockInitial: 100,
 	foodRegenRate: 0,
 	flockCount: 2,
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — a single default-valued tribe (predatorCount is 0 above, so
+	// no fixture here exercises per-predator-tribe seeding behavior).
+	predatorFlockCount: 1,
+	predatorTribeConfigs: [
+		{
+			separation: 0,
+			alignment: 0,
+			cohesion: 0,
+			maxSpeed: 40,
+			minSpeed: 15,
+			matePreference: 0.5,
+			detectionRadius: 50,
+			captureRadiusMult: 1,
+		},
+	],
 	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,

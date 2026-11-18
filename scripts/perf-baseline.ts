@@ -31,6 +31,7 @@ import {
 	createInitialPredators,
 	type PopulationPhase,
 	type PredatorState,
+	type PredatorTribeConfig,
 	type TribeConfig,
 	type WorldSize,
 } from "~/server/simulation/boids";
@@ -85,6 +86,20 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+};
+// predator-tribe-concept Phase 2 (ADAPT): createInitialPredators now takes
+// `PredatorTribeConfig[]`, not `TribeConfig[]` — predators' own independent
+// tribe space, sibling to TRIBE_CONFIG above, same values so this
+// benchmark's per-tick cost is unaffected.
+const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
 };
 const MAX_LIFESPAN = 100;
 const FLOCK_COUNT = 1;
@@ -142,7 +157,7 @@ function createTickState(
 		createRng(2 + seedOffset),
 		MAX_LIFESPAN,
 		FLOCK_COUNT,
-		[TRIBE_CONFIG],
+		[PREDATOR_TRIBE_CONFIG],
 		worldSize,
 	);
 

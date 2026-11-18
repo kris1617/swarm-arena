@@ -21,6 +21,7 @@ import {
 	MATURITY_AGE_SECONDS,
 	type PopulationPhase,
 	type PredatorState,
+	type PredatorTribeConfig,
 	reproducePopulation,
 	runTick,
 	segmentCompletedCycles,
@@ -54,6 +55,23 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+};
+
+// predator-tribe-concept Phase 2: createInitialPredators now takes
+// `PredatorTribeConfig[]`, not `TribeConfig[]` — predators' own independent
+// tribe space, sibling to TRIBE_CONFIG above, not a reuse of it. Same
+// separation/alignment/cohesion/maxSpeed/minSpeed/matePreference values as
+// TRIBE_CONFIG so every existing predator fixture below keeps producing
+// byte-for-byte identical genes/output.
+const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
+	separation: WEIGHTS.separation,
+	alignment: WEIGHTS.alignment,
+	cohesion: WEIGHTS.cohesion,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this
@@ -189,9 +207,9 @@ describe("createInitialPredators (per-tribe seeding)", () => {
 	// the same per-tribe seeding (decision #5: one shared rule, not a
 	// "simpler" predator path).
 	it("seeds each flock's predator genes from its own tribe's config, not a shared value", () => {
-		const tribeConfigs: TribeConfig[] = [
-			{ ...TRIBE_CONFIG, separation: 0.5, maxSpeed: 20, minSpeed: 5 },
-			{ ...TRIBE_CONFIG, separation: 4, maxSpeed: 90, minSpeed: 60 },
+		const predatorTribeConfigs: PredatorTribeConfig[] = [
+			{ ...PREDATOR_TRIBE_CONFIG, separation: 0.5, maxSpeed: 20, minSpeed: 5 },
+			{ ...PREDATOR_TRIBE_CONFIG, separation: 4, maxSpeed: 90, minSpeed: 60 },
 		];
 
 		const predators = createInitialPredators(
@@ -199,7 +217,7 @@ describe("createInitialPredators (per-tribe seeding)", () => {
 			createRng(11),
 			100,
 			2,
-			tribeConfigs,
+			predatorTribeConfigs,
 			WORLD_SIZE,
 		);
 
@@ -217,6 +235,53 @@ describe("createInitialPredators (per-tribe seeding)", () => {
 			expect(predator.genes.separationWeight).toBe(4);
 			expect(predator.genes.maxSpeed).toBe(90);
 			expect(predator.genes.minSpeed).toBe(60);
+		}
+	});
+
+	// predator-tribe-concept Phase 2 (plan's Success Criteria): predators now
+	// spawn into their own fully independent tribe space — a run's boid
+	// flockCount/tribeConfigs must have zero influence on predator seeding,
+	// and predators must split across their OWN predatorFlockCount, not
+	// boids'.
+	it("seeds predators from their own independent predatorTribeConfigs, regardless of the run's boid flockCount/tribeConfigs", () => {
+		// 2 boid tribes in this run — deliberately different from the 3
+		// predator tribes below, to prove predator seeding doesn't read
+		// boids' flockCount/tribeConfigs at all.
+		const tribeConfigs: TribeConfig[] = [TRIBE_CONFIG, TRIBE_CONFIG];
+		createInitialPopulation(10, createRng(5), 100, 2, tribeConfigs, WORLD_SIZE);
+
+		const predatorTribeConfigs: PredatorTribeConfig[] = [
+			{ ...PREDATOR_TRIBE_CONFIG, maxSpeed: 20, matePreference: 0.1 },
+			{ ...PREDATOR_TRIBE_CONFIG, maxSpeed: 50, matePreference: 0.5 },
+			{ ...PREDATOR_TRIBE_CONFIG, maxSpeed: 90, matePreference: 0.9 },
+		];
+
+		const predators = createInitialPredators(
+			9,
+			createRng(5),
+			100,
+			3,
+			predatorTribeConfigs,
+			WORLD_SIZE,
+		);
+
+		// Split 3 ways (predatorFlockCount: 3), not 2 ways (boids' flockCount).
+		const predatorCounts = [0, 1, 2].map(
+			(flockId) =>
+				predators.filter((predator) => predator.genes.flockId === flockId)
+					.length,
+		);
+		expect(predatorCounts).toEqual([3, 3, 3]);
+
+		for (const [flockId, config] of predatorTribeConfigs.entries()) {
+			const flock = predators.filter(
+				(predator) => predator.genes.flockId === flockId,
+			);
+			expect(flock.length).toBeGreaterThan(0);
+			for (const predator of flock) {
+				expect(predator.genes.maxSpeed).toBe(config.maxSpeed);
+				expect(predator.genes.matePreference).toBe(config.matePreference);
+			}
 		}
 	});
 });
@@ -242,7 +307,7 @@ describe("createInitialPopulation / createInitialPredators flock split", () => {
 			createRng(7),
 			100,
 			3,
-			tribeConfigs,
+			[PREDATOR_TRIBE_CONFIG, PREDATOR_TRIBE_CONFIG, PREDATOR_TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 
@@ -2215,7 +2280,7 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 			createRng(2),
 			100,
 			1,
-			[TRIBE_CONFIG],
+			[PREDATOR_TRIBE_CONFIG],
 			WORLD_SIZE,
 		);
 		const params = {

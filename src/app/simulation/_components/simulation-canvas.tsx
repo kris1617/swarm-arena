@@ -23,6 +23,7 @@ import {
 	createInitialPredators,
 	type PopulationPhase,
 	type PredatorState,
+	type PredatorTribeConfig,
 	type TribeConfig,
 } from "~/server/simulation/boids";
 import { Color } from "~/server/simulation/color";
@@ -148,6 +149,12 @@ type SimulationCanvasProps = {
 	foodStockInitial: number;
 	foodRegenRate: number;
 	flockCount: number;
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — sibling to flockCount/tribeConfigs above, not a reuse of them.
+	// This client-staged path's own `createInitialPredators` call below now
+	// reads these instead of flockCount/tribeConfigs.
+	predatorFlockCount: number;
+	predatorTribeConfigs: PredatorTribeConfig[];
 	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
@@ -347,6 +354,8 @@ export function SimulationCanvas({
 	foodStockInitial,
 	foodRegenRate,
 	flockCount,
+	predatorFlockCount,
+	predatorTribeConfigs,
 	crossbreedingEnabled,
 	energyThreshold,
 	mutationChance,
@@ -753,7 +762,7 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/tribeConfigs/maxDurationSeconds/predatorCount/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude/crossbreedingEnabled are read via their refs (client-staged-live-parameter-parity Phase 2, live-crossbreeding-toggle Phase 3) so a panel edit reaches this closure without restarting the loop.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/tribeConfigs/maxDurationSeconds/predatorCount/predatorFlockCount/predatorTribeConfigs/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude/crossbreedingEnabled are read via their refs (client-staged-live-parameter-parity Phase 2, live-crossbreeding-toggle Phase 3) so a panel edit reaches this closure without restarting the loop.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -781,8 +790,8 @@ export function SimulationCanvas({
 			predatorCount,
 			rngRef.current,
 			maxLifespan,
-			flockCount,
-			tribeConfigs,
+			predatorFlockCount,
+			predatorTribeConfigs,
 			worldSize,
 		);
 		// per-tribe-food-config Phase 2: client-staged seed mirrors

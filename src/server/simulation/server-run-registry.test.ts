@@ -63,6 +63,23 @@ const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
 	xyArea: 200,
 	zDepth: 200,
 	tribeConfigs: [DEFAULT_TRIBE_CONFIG, DEFAULT_TRIBE_CONFIG],
+	// predator-tribe-concept Phase 2: predators' own independent tribe
+	// space — a single default-valued tribe (same posture as page.tsx's
+	// own not-yet-per-tab predatorTribeConfigsOutput bridge), since no
+	// fixture in this file exercises per-predator-tribe behavior.
+	predatorFlockCount: 1,
+	predatorTribeConfigs: [
+		{
+			separation: 1,
+			alignment: 1,
+			cohesion: 1,
+			maxSpeed: 40,
+			minSpeed: 15,
+			matePreference: 0.5,
+			detectionRadius: 50,
+			captureRadiusMult: 1,
+		},
+	],
 };
 
 // refactor-opportunities Phase 1: exact `{ score, history }` fixtures

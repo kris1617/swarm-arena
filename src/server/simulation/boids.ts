@@ -441,19 +441,25 @@ export function createInitialPopulation(
 
 // Symmetric with createInitialPopulation per decision #5 — predators get
 // flocks/genes/energy/age/gender too, no "simpler" predator path.
+//
+// predator-tribe-concept Phase 2: `flockCount`/`tribeConfigs: TribeConfig[]`
+// -> `predatorFlockCount`/`predatorTribeConfigs: PredatorTribeConfig[]` —
+// predators now spawn into their own independent tribe space, seeded from
+// their own tribe's config, regardless of whatever flockCount/tribeConfigs
+// boids are configured with in the same run.
 export function createInitialPredators(
 	count: number,
 	rng: () => number,
 	maxLifespan: number,
-	flockCount: number,
-	tribeConfigs: TribeConfig[],
+	predatorFlockCount: number,
+	predatorTribeConfigs: PredatorTribeConfig[],
 	worldSize: WorldSize,
 ): PredatorState[] {
-	const countsPerFlock = splitCountAcrossFlocks(count, flockCount);
-	const colors = createFlockColors(flockCount, PREDATOR_SEED_COLOR);
+	const countsPerFlock = splitCountAcrossFlocks(count, predatorFlockCount);
+	const colors = createFlockColors(predatorFlockCount, PREDATOR_SEED_COLOR);
 	const predators: PredatorState[] = [];
-	for (let flockId = 0; flockId < flockCount; flockId++) {
-		const tribeConfig = tribeConfigs[flockId];
+	for (let flockId = 0; flockId < predatorFlockCount; flockId++) {
+		const tribeConfig = predatorTribeConfigs[flockId];
 		const color = colors[flockId];
 		if (!tribeConfig || !color) {
 			continue;
