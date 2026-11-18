@@ -41,6 +41,9 @@ const VALID_TRIBE_CONFIG = {
 	predatorDetectionRadius: 50,
 	burstMult: 1,
 	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
 };
 
 const VALID_START_INPUT = {
@@ -362,6 +365,30 @@ describe("simulationRouter.start", () => {
 				tribeConfigs: [
 					VALID_TRIBE_CONFIG,
 					{ ...VALID_TRIBE_CONFIG, matePreference: 1.5 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	// per-tribe-food-config Phase 1: the three new food fields are validated
+	// through the exact same TRIBE_RANGED_FIELD_NAMES loop as the
+	// per-tribe-behavior-weights fields above.
+	it("rejects a tribeConfigs entry with a food field outside the shared admin range", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				tribeConfigs: [
+					VALID_TRIBE_CONFIG,
+					{ ...VALID_TRIBE_CONFIG, foodConsumptionRate: 11 },
 				],
 			}),
 		).rejects.toMatchObject({

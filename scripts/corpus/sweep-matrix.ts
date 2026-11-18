@@ -84,6 +84,10 @@ export function buildSweepMatrix(): SweepRunParams[] {
 						DEFAULT_PARAMETER_RANGES.predatorDetectionRadius.default,
 					burstMult: DEFAULT_PARAMETER_RANGES.burstMult.default,
 					burstCostMult: DEFAULT_PARAMETER_RANGES.burstCostMult.default,
+					foodStockShare: DEFAULT_PARAMETER_RANGES.foodStockShare.default,
+					foodRegenShare: DEFAULT_PARAMETER_RANGES.foodRegenShare.default,
+					foodConsumptionRate:
+						DEFAULT_PARAMETER_RANGES.foodConsumptionRate.default,
 				};
 				rows.push({
 					sweepIndex,

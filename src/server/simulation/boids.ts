@@ -42,6 +42,17 @@ export type TribeConfig = {
 	predatorDetectionRadius: number;
 	burstMult: number;
 	burstCostMult: number;
+	// per-tribe-food-config Phase 1: this tribe's share of the run's food
+	// dynamics — NOT YET wired into the engine's food-stock/consumption math
+	// (that's a later phase); defined here so validation/admin-range
+	// machinery has a stable type to validate against. At `flockCount`
+	// tribes each left at their admin-range default, these three sum back
+	// to today's pre-change scalar defaults (foodStockInitial/foodRegenRate/
+	// FOOD_CONSUMPTION_PER_BOID), so an untouched multi-tribe run's food
+	// dynamics are unchanged once a later phase wires them in.
+	foodStockShare: number;
+	foodRegenShare: number;
+	foodConsumptionRate: number;
 };
 
 // Per-individual heritable traits an individual is born with and may pass to

@@ -22,6 +22,9 @@ const TRIBE_CONFIG: TribeConfig = {
 	predatorDetectionRadius: 50,
 	burstMult: 1,
 	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both

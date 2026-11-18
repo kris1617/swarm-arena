@@ -30,6 +30,12 @@ export const RANGED_PARAMETER_NAMES = [
 	"burstMult",
 	"burstCostMult",
 	"matePreference",
+	// per-tribe-food-config Phase 1: one shared range for all tribes
+	// (decided, same posture as the per-tribe-behavior-weights fields above)
+	// bounding each new `TribeConfig` food field.
+	"foodStockShare",
+	"foodRegenShare",
+	"foodConsumptionRate",
 ] as const;
 
 export type RangedParameterName = (typeof RANGED_PARAMETER_NAMES)[number];
@@ -49,6 +55,9 @@ export const TRIBE_RANGED_FIELD_NAMES = [
 	"burstMult",
 	"burstCostMult",
 	"matePreference",
+	"foodStockShare",
+	"foodRegenShare",
+	"foodConsumptionRate",
 ] as const satisfies readonly RangedParameterName[];
 
 export type TribeRangedFieldName = (typeof TRIBE_RANGED_FIELD_NAMES)[number];
@@ -125,6 +134,18 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	// default consistent with that scale; [0,1] bounds the per-tribe
 	// starting value to the same range new boids are seeded within.
 	matePreference: { min: 0, max: 1, default: 0.5 },
+	// per-tribe-food-config Phase 1: defaults chosen so `flockCount` tribes
+	// (default 2) each left at default reproduce today's exact pre-change
+	// scalar behavior once a later phase wires these into the engine's food
+	// math: foodStockShare's default (50) * 2 = foodStockInitial's own
+	// default (100); foodRegenShare's default (5) * 2 = foodRegenRate's own
+	// default (10); foodConsumptionRate's default (0.5) matches the
+	// engine's existing fixed FOOD_CONSUMPTION_PER_BOID constant exactly
+	// (boids.ts) — per-boid, so it doesn't scale with flockCount the way
+	// the two per-tribe share fields do.
+	foodStockShare: { min: 0, max: 10_000, default: 50 },
+	foodRegenShare: { min: 0, max: 1_000, default: 5 },
+	foodConsumptionRate: { min: 0, max: 10, default: 0.5 },
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;

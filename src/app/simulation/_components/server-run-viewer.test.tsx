@@ -33,6 +33,9 @@ type TribeConfigFixture = {
 	predatorDetectionRadius: number;
 	burstMult: number;
 	burstCostMult: number;
+	foodStockShare: number;
+	foodRegenShare: number;
+	foodConsumptionRate: number;
 };
 
 type CapturedWatchOptions = {

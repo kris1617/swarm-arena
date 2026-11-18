@@ -82,6 +82,9 @@ const TRIBE_CONFIG: TribeConfig = {
 	predatorDetectionRadius: 50,
 	burstMult: 1,
 	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
 };
 const MAX_LIFESPAN = 100;
 const FLOCK_COUNT = 1;

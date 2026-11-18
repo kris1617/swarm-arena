@@ -94,6 +94,12 @@ const tribeConfigSchema = z.object({
 	predatorDetectionRadius: z.number().finite(),
 	burstMult: z.number().finite(),
 	burstCostMult: z.number().finite(),
+	// per-tribe-food-config Phase 1: validated via the same generic
+	// checkAgainstAdminRanges loop as the per-tribe-behavior-weights fields
+	// above, once added to TRIBE_RANGED_FIELD_NAMES.
+	foodStockShare: z.number().finite(),
+	foodRegenShare: z.number().finite(),
+	foodConsumptionRate: z.number().finite(),
 });
 
 const startInputSchema = z.object({

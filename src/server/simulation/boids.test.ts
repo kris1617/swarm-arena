@@ -50,6 +50,9 @@ const TRIBE_CONFIG: TribeConfig = {
 	predatorDetectionRadius: 50,
 	burstMult: 1,
 	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
 };
 
 // Minimal placeholder genes for raw BoidState/PredatorState literals in this

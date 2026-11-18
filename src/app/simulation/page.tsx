@@ -70,6 +70,11 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		predatorDetectionRadius: 150, // sqrt(predPerceptionSq=150^2)
 		burstMult: 1.5,
 		burstCostMult: 3.0,
+		// per-tribe-food-config Phase 1: matches the shared admin-range
+		// default (parameter-ranges.ts) — not yet wired into the engine.
+		foodStockShare: 50,
+		foodRegenShare: 5,
+		foodConsumptionRate: 0.5,
 	},
 	{
 		// Lua tribe 2 ("Blue"): maxSpeed 120, minSpeed 15.
@@ -84,6 +89,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		predatorDetectionRadius: 100, // sqrt(predPerceptionSq=100^2)
 		burstMult: 1.5,
 		burstCostMult: 3.0,
+		foodStockShare: 50,
+		foodRegenShare: 5,
+		foodConsumptionRate: 0.5,
 	},
 	{
 		// Lua tribe 3 ("Purple"): maxSpeed 170, minSpeed 25.
@@ -98,6 +106,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		predatorDetectionRadius: 120, // sqrt(predPerceptionSq=120^2)
 		burstMult: 1.6,
 		burstCostMult: 3.5,
+		foodStockShare: 50,
+		foodRegenShare: 5,
+		foodConsumptionRate: 0.5,
 	},
 	{
 		// Tribe 4: no Lua counterpart — implementer's own default,
@@ -113,6 +124,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		predatorDetectionRadius: 110,
 		burstMult: 1.55,
 		burstCostMult: 3.2,
+		foodStockShare: 50,
+		foodRegenShare: 5,
+		foodConsumptionRate: 0.5,
 	},
 ];
 
@@ -296,6 +310,21 @@ export default function SimulationPage() {
 				burstCostMult: Math.min(
 					Math.max(ranges.burstCostMult.min, tribeConfig.burstCostMult),
 					ranges.burstCostMult.max,
+				),
+				foodStockShare: Math.min(
+					Math.max(ranges.foodStockShare.min, tribeConfig.foodStockShare),
+					ranges.foodStockShare.max,
+				),
+				foodRegenShare: Math.min(
+					Math.max(ranges.foodRegenShare.min, tribeConfig.foodRegenShare),
+					ranges.foodRegenShare.max,
+				),
+				foodConsumptionRate: Math.min(
+					Math.max(
+						ranges.foodConsumptionRate.min,
+						tribeConfig.foodConsumptionRate,
+					),
+					ranges.foodConsumptionRate.max,
 				),
 			}));
 		return {
