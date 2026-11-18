@@ -120,6 +120,10 @@ export function buildSweepMatrix(): SweepRunParams[] {
 					detectionRadius: DEFAULT_PARAMETER_RANGES.detectionRadius.default,
 					captureRadiusMult: DEFAULT_PARAMETER_RANGES.captureRadiusMult.default,
 					crossbreedingEnabled: true,
+					// second-predator-tribe-prey-target Phase 2: matches today's
+					// actual behavior exactly (predators have never hunted
+					// anything but boids); not part of this sweep's axes.
+					preyTarget: "boids" as const,
 				};
 				rows.push({
 					sweepIndex,

@@ -480,17 +480,17 @@ the new factor as absent for those rows.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes (clean for Phase 1's files; remaining errors confined to Phase 2/4's scope)
-- [x] 1.2 boids.test.ts passes (110/110, includes pipeline.test.ts)
-- [x] 1.3 Lint passes
+- [x] 1.1 Typecheck passes (clean for Phase 1's files; remaining errors confined to Phase 2/4's scope) — ff9c149
+- [x] 1.2 boids.test.ts passes (110/110, includes pipeline.test.ts) — ff9c149
+- [x] 1.3 Lint passes — ff9c149
 
 ### Phase 2: Schema, validation, and bridge defaults
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Full test suite passes
-- [ ] 2.3 Lint passes
+- [x] 2.1 Typecheck passes (clean except the known UI-layer territory deferred to Phase 4)
+- [x] 2.2 Full test suite passes (495/496, 1 pre-existing skip)
+- [x] 2.3 Lint passes
 
 ### Phase 3: Scoring — new 6th factor and comparability flag
 

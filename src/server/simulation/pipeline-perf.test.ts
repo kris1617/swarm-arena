@@ -40,6 +40,9 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	detectionRadius: 50,
 	captureRadiusMult: 1,
 	crossbreedingEnabled: true,
+	// second-predator-tribe-prey-target Phase 2: matches today's actual
+	// behavior exactly (predators have never hunted anything but boids).
+	preyTarget: "boids",
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both

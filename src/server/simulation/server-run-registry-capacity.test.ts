@@ -74,6 +74,10 @@ const BASE_PARAMS: Omit<
 			detectionRadius: 50,
 			captureRadiusMult: 1,
 			crossbreedingEnabled: true,
+			// second-predator-tribe-prey-target Phase 2: matches today's
+			// actual behavior exactly (predators have never hunted anything
+			// but boids).
+			preyTarget: "boids",
 		},
 	],
 };

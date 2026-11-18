@@ -50,6 +50,9 @@ const DEFAULT_PREDATOR_TRIBE_CONFIG = {
 	detectionRadius: 200,
 	captureRadiusMult: 1,
 	crossbreedingEnabled: true,
+	// second-predator-tribe-prey-target Phase 2: matches today's actual
+	// behavior exactly (predators have never hunted anything but boids).
+	preyTarget: "boids" as const,
 };
 
 const VALID_START_INPUT: StartCorpusRunParams = {

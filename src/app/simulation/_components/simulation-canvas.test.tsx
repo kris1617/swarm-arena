@@ -112,6 +112,10 @@ const BASE_PROPS = {
 			// per-tribe-predator-config Phase 4: see BASE_TRIBE_CONFIG's own
 			// comment above for the semantics.
 			crossbreedingEnabled: true,
+			// second-predator-tribe-prey-target Phase 2: matches today's
+			// actual behavior exactly (predators have never hunted anything
+			// but boids).
+			preyTarget: "boids" as const,
 		},
 	],
 	energyThreshold: 50,

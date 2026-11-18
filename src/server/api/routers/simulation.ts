@@ -128,6 +128,12 @@ const predatorTribeConfigSchema = z.object({
 	// per-tribe-predator-config Phase 2: see `tribeConfigSchema`'s identical
 	// field above for the semantics.
 	crossbreedingEnabled: z.boolean(),
+	// second-predator-tribe-prey-target Phase 2: fixed 2-value enum, not an
+	// admin-rangeable number — deliberately NOT added to
+	// PREDATOR_TRIBE_RANGED_FIELD_NAMES (parameter-ranges.ts). Backs both
+	// startInputSchema.predatorTribeConfigs and updatePredatorTribeConfigs's
+	// input via this single shared schema.
+	preyTarget: z.enum(["boids", "boids-and-predators"]),
 });
 
 const startInputSchema = z.object({

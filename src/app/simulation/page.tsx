@@ -172,6 +172,10 @@ const DEFAULT_PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	// per-tribe-predator-config Phase 2: replaces the old run-level flag —
 	// see PredatorTribeConfig.crossbreedingEnabled in boids.ts.
 	crossbreedingEnabled: true,
+	// second-predator-tribe-prey-target Phase 2: matches today's actual
+	// behavior exactly (predators have never hunted anything but boids), so
+	// no existing or default-configured run changes behavior.
+	preyTarget: "boids",
 };
 
 const DEFAULT_PREDATOR_TRIBE_CONFIGS: readonly PredatorTribeConfig[] =
@@ -462,6 +466,14 @@ export default function SimulationPage() {
 				// min/max), carried straight through from this tribe's own state —
 				// see tribeConfigsOutput's own field above for the semantics.
 				crossbreedingEnabled: tribeConfig.crossbreedingEnabled,
+				// second-predator-tribe-prey-target Phase 2: not admin-ranged
+				// (fixed 2-value enum), carried straight through from this
+				// tribe's own state — same passthrough shape as
+				// crossbreedingEnabled above. The Select control that lets the
+				// user change this value is Phase 4's job; this line only keeps
+				// buildStartInput's default ("boids") flowing through so the
+				// submit path still compiles and behaves identically to today.
+				preyTarget: tribeConfig.preyTarget,
 			}));
 		return {
 			tribeConfigs: tribeConfigsOutput,
