@@ -332,6 +332,26 @@ export function applyLiveTribeConfigs(
 		oldValue: 0,
 		newValue: 1,
 	});
+	// per-tribe-food-config Phase 4: foodStockShare gets a one-time
+	// delta-injection against the live pool instead of the wholesale-replace
+	// every other field gets — the pool's current level is not something a
+	// config replace should silently reset. Diffed against the CURRENT
+	// stored value (the tribe's own last-submitted share, composable across
+	// repeated edits), computed BEFORE `run.params` is replaced below so the
+	// diff is always against the immediately-prior state, never the
+	// original run-start value. foodRegenShare/foodConsumptionRate need no
+	// such handling — Phase 2/3 already read `run.params.tribeConfigs` fresh
+	// every tick, so the wholesale replace alone makes them take effect
+	// starting the next tick.
+	let foodStockDelta = 0;
+	for (const [index, tribeConfig] of patch.entries()) {
+		const previous = run.params.tribeConfigs[index];
+		if (!previous) {
+			continue;
+		}
+		foodStockDelta += tribeConfig.foodStockShare - previous.foodStockShare;
+	}
+	run.foodStock = Math.max(0, run.foodStock + foodStockDelta);
 	run.params = { ...run.params, tribeConfigs: patch };
 	run.lastParamUpdateAt = now;
 	return { status: "applied" };

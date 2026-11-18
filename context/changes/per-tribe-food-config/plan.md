@@ -440,13 +440,13 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 3: Engine — per-tribe consumption
 #### Automated
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 3.1 npm run typecheck passes — 82c5242
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes — 82c5242
 
 ### Phase 4: Live adjustment
 #### Automated
-- [ ] 4.1 npm run typecheck passes
-- [ ] 4.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
+- [x] 4.1 npm run typecheck passes
+- [x] 4.2 npx vitest run src/server/simulation/server-run-registry.test.ts passes
 
 ### Phase 5: Scoring
 #### Automated

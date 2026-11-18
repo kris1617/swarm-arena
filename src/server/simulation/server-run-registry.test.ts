@@ -1167,6 +1167,149 @@ describe("applyLiveTribeConfigs", () => {
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
 	});
+
+	// per-tribe-food-config Phase 4 success criterion: a live edit raising
+	// tribe 0's foodStockShare by 10 (50 -> 60, DEFAULT_TRIBE_CONFIG's
+	// foodStockShare is 50) adds exactly 10 to the live pool once — not
+	// repeatedly, and not a full reseed from the new shares' sum.
+	it("a live edit raising tribe 0's foodStockShare by 10 adds exactly 10 to the live pool once", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(54);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 54,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const foodStockBefore = before.foodStock;
+
+		expect(
+			applyLiveTribeConfigs(runId, [
+				{ ...DEFAULT_TRIBE_CONFIG, foodStockShare: 60 },
+				DEFAULT_TRIBE_CONFIG,
+			]),
+		).toEqual({ status: "applied" });
+
+		// Immediately after the patch call, before any further tick runs —
+		// this is a one-time injection against the live pool, not something
+		// that accrues per tick.
+		const after = getLiveRunState(runId);
+		expect(after?.foodStock).toBe(foodStockBefore + 10);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	// per-tribe-food-config Phase 4 success criterion: a SECOND live edit
+	// that resubmits the full tribeConfigs array but doesn't change tribe
+	// 0's foodStockShare injects zero delta, even though the whole array was
+	// resubmitted — the diff is per-field against the immediately-prior
+	// stored value, not "any resubmission reseeds".
+	it("a second live edit that resubmits tribeConfigs without changing foodStockShare injects zero delta", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(55);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 55,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const firstPatch = [
+			{ ...DEFAULT_TRIBE_CONFIG, foodStockShare: 60 },
+			DEFAULT_TRIBE_CONFIG,
+		];
+		expect(applyLiveTribeConfigs(runId, firstPatch)).toEqual({
+			status: "applied",
+		});
+		// Past PARAM_UPDATE_THROTTLE_MS so this second call isn't rejected as
+		// throttled — ticking continues in between (regen/consumption), so the
+		// pool level right BEFORE the second patch (not right after the
+		// first) is this test's baseline for the zero-delta assertion below.
+		await vi.advanceTimersByTimeAsync(500);
+		const beforeSecond = getLiveRunState(runId);
+		if (!beforeSecond) {
+			throw new Error("expected a live run");
+		}
+		const foodStockBeforeSecond = beforeSecond.foodStock;
+
+		// Resubmits the FULL array (including tribe 0's unchanged
+		// foodStockShare: 60), but also bumps maxSpeed — an unrelated field —
+		// to prove this is a genuine second wholesale patch, not a no-op call.
+		expect(
+			applyLiveTribeConfigs(runId, [
+				{ ...DEFAULT_TRIBE_CONFIG, foodStockShare: 60, maxSpeed: 99 },
+				{ ...DEFAULT_TRIBE_CONFIG, maxSpeed: 99 },
+			]),
+		).toEqual({ status: "applied" });
+
+		const afterSecond = getLiveRunState(runId);
+		expect(afterSecond?.foodStock).toBe(foodStockBeforeSecond);
+		expect(afterSecond?.tribeConfigs[0]?.maxSpeed).toBe(99);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	// per-tribe-food-config Phase 4 success criterion: a live edit to
+	// foodRegenShare/foodConsumptionRate changes the NEXT tick's regen/
+	// consumption — via the existing wholesale replace, already read fresh
+	// every tick by Phase 2/3 — without directly touching the pool's current
+	// level the way foodStockShare's delta-injection does. The pool must not
+	// jump immediately on the patch call itself.
+	it("a live edit to foodRegenShare/foodConsumptionRate changes the next tick's regen/consumption without touching the pool's current level directly", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(56);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 56,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const foodStockBefore = before.foodStock;
+
+		// A decoy regen share three orders of magnitude above
+		// DEFAULT_TRIBE_CONFIG's (5): if the pool jumped immediately on the
+		// patch call itself, foodStock would leap by roughly 2_000_000 right
+		// here. It must not.
+		expect(
+			applyLiveTribeConfigs(runId, [
+				{ ...DEFAULT_TRIBE_CONFIG, foodRegenShare: 1_000_000 },
+				{ ...DEFAULT_TRIBE_CONFIG, foodRegenShare: 1_000_000 },
+			]),
+		).toEqual({ status: "applied" });
+
+		const immediatelyAfterPatch = getLiveRunState(runId);
+		expect(immediatelyAfterPatch?.foodStock).toBe(foodStockBefore);
+
+		// Now let the next tick actually run — the new regen share should
+		// drive a large jump on THIS tick, not the patch call.
+		await vi.advanceTimersByTimeAsync(64);
+		const afterTick = getLiveRunState(runId);
+		if (!afterTick) {
+			throw new Error("expected a live run");
+		}
+		expect(afterTick.foodStock).toBeGreaterThan(foodStockBefore + 1000);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
 });
 
 describe("snapshotServerRun / resumeServerRun", () => {

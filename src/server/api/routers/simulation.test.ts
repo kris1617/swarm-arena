@@ -3436,6 +3436,54 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		expect(delta).toBeLessThan(100);
 	});
 
+	// per-tribe-food-config Phase 4 replacement test (promised by the comment
+	// on the test above): a LIVE EDIT to tribeConfigs[0].foodRegenShare via
+	// applyLiveTribeConfigs changes the food trajectory on the NEXT tick —
+	// the behavior that superseded patching the flat foodRegenRate field.
+	it("a live edit to tribeConfigs[0].foodRegenShare via applyLiveTribeConfigs changes the food trajectory on the next tick", async () => {
+		const { runId } = await insertOwnedRunningRun(3, VALID_START_INPUT);
+
+		// Fake timers engage only once the DB-touching setup above has fully
+		// settled — see the foodRegenRate test above for why.
+		vi.useFakeTimers();
+		serverRunRegistry.startServerRun({
+			runId,
+			seed: 3,
+			...VALID_START_INPUT,
+		});
+
+		const before = serverRunRegistry.getLiveRunState(runId);
+		if (!before) {
+			throw new Error(`run ${runId} is not active after startServerRun`);
+		}
+		const foodStockBefore = before.foodStock;
+
+		// A decoy regen share three orders of magnitude above either tribe's
+		// VALID_TRIBE_CONFIG.foodRegenShare (5): if this live edit didn't take
+		// effect, foodStock would drift by a comparatively tiny amount over one
+		// tick.
+		const patched = serverRunRegistry.applyLiveTribeConfigs(runId, [
+			{ ...VALID_TRIBE_CONFIG, foodRegenShare: 1_000_000 },
+			VALID_TRIBE_CONFIG,
+		]);
+		expect(patched).toEqual({ status: "applied" });
+
+		// Immediately after the patch call, before any further tick runs —
+		// foodRegenShare takes effect on the NEXT tick, not the patch call
+		// itself (that immediate-pool-level guarantee belongs to
+		// foodStockShare's dedicated delta-injection, not this field).
+		const immediatelyAfterPatch = serverRunRegistry.getLiveRunState(runId);
+		expect(immediatelyAfterPatch?.foodStock).toBe(foodStockBefore);
+
+		await vi.advanceTimersByTimeAsync(500);
+		const after = serverRunRegistry.getLiveRunState(runId);
+		if (!after) {
+			throw new Error(`run ${runId} is no longer active after ticking`);
+		}
+
+		expect(after.foodStock - foodStockBefore).toBeGreaterThan(1000);
+	});
+
 	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", async () => {
 		const fixture = {
 			...VALID_START_INPUT,
