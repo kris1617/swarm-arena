@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ServerRunViewer } from "~/app/simulation/_components/server-run-viewer";
 import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas";
 import { Button } from "~/components/ui/button";
@@ -596,104 +596,111 @@ export default function SimulationPage() {
 	// this array drives only numeric NumberField rows; the boolean field has
 	// no min/max/default and is rendered separately (Phase 4 adds its own
 	// per-tribe Switch).
-	const tribeFieldDefs: {
-		field: Exclude<keyof TribeConfig, "crossbreedingEnabled">;
-		label: string;
-		min: number;
-		max: number;
-		step: string;
-	}[] = [
+	// impl-review F3: memoized so this array isn't rebuilt on every render —
+	// only recomputed when `ranges` actually changes.
+	const tribeFieldDefs = useMemo<
 		{
-			field: "separation",
-			label: "Separation weight",
-			min: ranges.separationWeight.min,
-			max: ranges.separationWeight.max,
-			step: "0.1",
-		},
-		{
-			field: "alignment",
-			label: "Alignment weight",
-			min: ranges.alignmentWeight.min,
-			max: ranges.alignmentWeight.max,
-			step: "0.1",
-		},
-		{
-			field: "cohesion",
-			label: "Cohesion weight",
-			min: ranges.cohesionWeight.min,
-			max: ranges.cohesionWeight.max,
-			step: "0.1",
-		},
-		// maxSpeed/minSpeed have no admin-configured range (tribeConfigSchema
-		// only requires them finite, per simulation.ts) — fixed, generous
-		// bounds matching the Lua reference's own speed scale (predator
-		// maxSpeed 280 is the highest value anywhere in that file).
-		{ field: "maxSpeed", label: "Max speed", min: 1, max: 300, step: "1" },
-		{ field: "minSpeed", label: "Min speed", min: 0, max: 300, step: "1" },
-		{
-			field: "matePreference",
-			label: "Mate preference",
-			min: ranges.matePreference.min,
-			max: ranges.matePreference.max,
-			step: "0.05",
-		},
-		{
-			field: "neighborRadius",
-			label: "Neighbor radius",
-			min: ranges.neighborRadius.min,
-			max: ranges.neighborRadius.max,
-			step: "1",
-		},
-		{
-			field: "separationRadius",
-			label: "Separation radius",
-			min: ranges.separationRadius.min,
-			max: ranges.separationRadius.max,
-			step: "1",
-		},
-		{
-			field: "predatorDetectionRadius",
-			label: "Predator detection radius",
-			min: ranges.predatorDetectionRadius.min,
-			max: ranges.predatorDetectionRadius.max,
-			step: "1",
-		},
-		{
-			field: "burstMult",
-			label: "Burst multiplier",
-			min: ranges.burstMult.min,
-			max: ranges.burstMult.max,
-			step: "0.1",
-		},
-		{
-			field: "burstCostMult",
-			label: "Burst cost multiplier",
-			min: ranges.burstCostMult.min,
-			max: ranges.burstCostMult.max,
-			step: "0.1",
-		},
-		{
-			field: "foodStockShare",
-			label: "Food stock share",
-			min: ranges.foodStockShare.min,
-			max: ranges.foodStockShare.max,
-			step: "1",
-		},
-		{
-			field: "foodRegenShare",
-			label: "Food regen share",
-			min: ranges.foodRegenShare.min,
-			max: ranges.foodRegenShare.max,
-			step: "0.1",
-		},
-		{
-			field: "foodConsumptionRate",
-			label: "Food consumption rate",
-			min: ranges.foodConsumptionRate.min,
-			max: ranges.foodConsumptionRate.max,
-			step: "0.1",
-		},
-	];
+			field: Exclude<keyof TribeConfig, "crossbreedingEnabled">;
+			label: string;
+			min: number;
+			max: number;
+			step: string;
+		}[]
+	>(
+		() => [
+			{
+				field: "separation",
+				label: "Separation weight",
+				min: ranges.separationWeight.min,
+				max: ranges.separationWeight.max,
+				step: "0.1",
+			},
+			{
+				field: "alignment",
+				label: "Alignment weight",
+				min: ranges.alignmentWeight.min,
+				max: ranges.alignmentWeight.max,
+				step: "0.1",
+			},
+			{
+				field: "cohesion",
+				label: "Cohesion weight",
+				min: ranges.cohesionWeight.min,
+				max: ranges.cohesionWeight.max,
+				step: "0.1",
+			},
+			// maxSpeed/minSpeed have no admin-configured range (tribeConfigSchema
+			// only requires them finite, per simulation.ts) — fixed, generous
+			// bounds matching the Lua reference's own speed scale (predator
+			// maxSpeed 280 is the highest value anywhere in that file).
+			{ field: "maxSpeed", label: "Max speed", min: 1, max: 300, step: "1" },
+			{ field: "minSpeed", label: "Min speed", min: 0, max: 300, step: "1" },
+			{
+				field: "matePreference",
+				label: "Mate preference",
+				min: ranges.matePreference.min,
+				max: ranges.matePreference.max,
+				step: "0.05",
+			},
+			{
+				field: "neighborRadius",
+				label: "Neighbor radius",
+				min: ranges.neighborRadius.min,
+				max: ranges.neighborRadius.max,
+				step: "1",
+			},
+			{
+				field: "separationRadius",
+				label: "Separation radius",
+				min: ranges.separationRadius.min,
+				max: ranges.separationRadius.max,
+				step: "1",
+			},
+			{
+				field: "predatorDetectionRadius",
+				label: "Predator detection radius",
+				min: ranges.predatorDetectionRadius.min,
+				max: ranges.predatorDetectionRadius.max,
+				step: "1",
+			},
+			{
+				field: "burstMult",
+				label: "Burst multiplier",
+				min: ranges.burstMult.min,
+				max: ranges.burstMult.max,
+				step: "0.1",
+			},
+			{
+				field: "burstCostMult",
+				label: "Burst cost multiplier",
+				min: ranges.burstCostMult.min,
+				max: ranges.burstCostMult.max,
+				step: "0.1",
+			},
+			{
+				field: "foodStockShare",
+				label: "Food stock share",
+				min: ranges.foodStockShare.min,
+				max: ranges.foodStockShare.max,
+				step: "1",
+			},
+			{
+				field: "foodRegenShare",
+				label: "Food regen share",
+				min: ranges.foodRegenShare.min,
+				max: ranges.foodRegenShare.max,
+				step: "0.1",
+			},
+			{
+				field: "foodConsumptionRate",
+				label: "Food consumption rate",
+				min: ranges.foodConsumptionRate.min,
+				max: ranges.foodConsumptionRate.max,
+				step: "0.1",
+			},
+		],
+		[ranges],
+	);
 
 	// per-tribe-predator-config Phase 4: predator-side sibling of
 	// visibleTribeCount — same clamp buildStartInput applies to
@@ -708,52 +715,59 @@ export default function SimulationPage() {
 	// rendered, per the plan's "What We're NOT Doing"). crossbreedingEnabled
 	// is excluded here too — rendered separately as its own Switch, same as
 	// the boid tab.
-	const predatorTribeFieldDefs: {
-		field: Exclude<
-			keyof PredatorTribeConfig,
-			"crossbreedingEnabled" | "separation" | "alignment" | "cohesion"
-		>;
-		label: string;
-		min: number;
-		max: number;
-		step: string;
-	}[] = [
+	// impl-review F3: memoized so this array isn't rebuilt on every render —
+	// only recomputed when `ranges` actually changes.
+	const predatorTribeFieldDefs = useMemo<
 		{
-			field: "maxSpeed",
-			label: "Max speed",
-			min: ranges.maxSpeed.min,
-			max: ranges.maxSpeed.max,
-			step: "1",
-		},
-		{
-			field: "minSpeed",
-			label: "Min speed",
-			min: ranges.minSpeed.min,
-			max: ranges.minSpeed.max,
-			step: "1",
-		},
-		{
-			field: "matePreference",
-			label: "Mate preference",
-			min: ranges.matePreference.min,
-			max: ranges.matePreference.max,
-			step: "0.05",
-		},
-		{
-			field: "detectionRadius",
-			label: "Detection radius",
-			min: ranges.detectionRadius.min,
-			max: ranges.detectionRadius.max,
-			step: "1",
-		},
-		{
-			field: "captureRadiusMult",
-			label: "Capture radius multiplier",
-			min: ranges.captureRadiusMult.min,
-			max: ranges.captureRadiusMult.max,
-			step: "0.1",
-		},
-	];
+			field: Exclude<
+				keyof PredatorTribeConfig,
+				"crossbreedingEnabled" | "separation" | "alignment" | "cohesion"
+			>;
+			label: string;
+			min: number;
+			max: number;
+			step: string;
+		}[]
+	>(
+		() => [
+			{
+				field: "maxSpeed",
+				label: "Max speed",
+				min: ranges.maxSpeed.min,
+				max: ranges.maxSpeed.max,
+				step: "1",
+			},
+			{
+				field: "minSpeed",
+				label: "Min speed",
+				min: ranges.minSpeed.min,
+				max: ranges.minSpeed.max,
+				step: "1",
+			},
+			{
+				field: "matePreference",
+				label: "Mate preference",
+				min: ranges.matePreference.min,
+				max: ranges.matePreference.max,
+				step: "0.05",
+			},
+			{
+				field: "detectionRadius",
+				label: "Detection radius",
+				min: ranges.detectionRadius.min,
+				max: ranges.detectionRadius.max,
+				step: "1",
+			},
+			{
+				field: "captureRadiusMult",
+				label: "Capture radius multiplier",
+				min: ranges.captureRadiusMult.min,
+				max: ranges.captureRadiusMult.max,
+				step: "0.1",
+			},
+		],
+		[ranges],
+	);
 
 	return (
 		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">

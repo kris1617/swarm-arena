@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "cn";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
 	resolveCameraForFrame,
@@ -376,8 +376,17 @@ export function ServerRunViewer({
 
 	const rangesQuery = api.simulation.getParameterRanges.useQuery();
 	const ranges = rangesQuery.data?.parameterRanges ?? DEFAULT_PARAMETER_RANGES;
-	const boidTribeFieldDefs = buildBoidTribeFieldDefs(ranges);
-	const predatorTribeFieldDefs = buildPredatorTribeFieldDefs(ranges);
+	// impl-review F3: memoized so these ~13/~5-entry arrays aren't rebuilt on
+	// every render (this component re-renders on each `watch` subscription
+	// push) — only recomputed when `ranges` actually changes.
+	const boidTribeFieldDefs = useMemo(
+		() => buildBoidTribeFieldDefs(ranges),
+		[ranges],
+	);
+	const predatorTribeFieldDefs = useMemo(
+		() => buildPredatorTribeFieldDefs(ranges),
+		[ranges],
+	);
 
 	// Shared by both species: on the first push, pre-fill everything; on later
 	// pushes, only overwrite cells that aren't currently dirty — the exact
@@ -408,6 +417,30 @@ export function ServerRunViewer({
 		});
 	}
 
+	// impl-review F1: overloads give each call site a field type narrowed to
+	// its own species' real keys (matching page.tsx's two-typed-setter
+	// convention for this same split), so a typo'd field name fails to
+	// compile instead of silently no-oping at runtime. The implementation
+	// signature keeps a loose `field: string` only because one shared body
+	// serves both branches below — every caller goes through an overload.
+	function handleTribeFieldChange(
+		species: "boid",
+		index: number,
+		field: Exclude<keyof TribeConfig, "crossbreedingEnabled">,
+		value: number,
+	): void;
+	function handleTribeFieldChange(
+		species: "predator",
+		index: number,
+		field: Exclude<keyof PredatorTribeConfig, "crossbreedingEnabled">,
+		value: number,
+	): void;
+	function handleTribeFieldChange(
+		species: "boid" | "predator",
+		index: number,
+		field: "crossbreedingEnabled",
+		value: boolean,
+	): void;
 	function handleTribeFieldChange(
 		species: "boid" | "predator",
 		index: number,
@@ -536,9 +569,31 @@ export function ServerRunViewer({
 					label={def.label}
 					max={def.max}
 					min={def.min}
-					onChange={(v) =>
-						handleTribeFieldChange(species, index, String(def.field), v)
-					}
+					onChange={(v) => {
+						// `species` and `def` are independently-typed params (not a
+						// discriminated union), so narrowing `species` alone can't
+						// narrow `def.field` for TS — this is the one documented
+						// boundary cast impl-review F1 accepted, immediately after
+						// the narrowing check that makes it actually safe at runtime.
+						if (species === "boid") {
+							handleTribeFieldChange(
+								"boid",
+								index,
+								def.field as Exclude<keyof TribeConfig, "crossbreedingEnabled">,
+								v,
+							);
+						} else {
+							handleTribeFieldChange(
+								"predator",
+								index,
+								def.field as Exclude<
+									keyof PredatorTribeConfig,
+									"crossbreedingEnabled"
+								>,
+								v,
+							);
+						}
+					}}
 					step={def.step}
 					value={value}
 				/>

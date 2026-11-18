@@ -62,6 +62,7 @@ The VPS is live and deployed — these are the steps already executed, documente
 6. Generate a separate read-only keypair directly on the VPS, register its public half as a GitHub repo deploy key (`gh repo deploy-key add`, read-only), use it for `git pull` on the VPS via `git config core.sshCommand`.
 7. Clone the repo into `/opt/swarm-arena`, `chown` the `data/` subdirectory to match the container's non-root uid (1001), run `docker compose up -d --build`.
 8. Run Drizzle migrations against the production DB once: `docker run --rm -v /opt/swarm-arena:/app -v /opt/swarm-arena/data:/data -w /app -e DATABASE_URL=file:/data/db.sqlite node:22-alpine sh -c "npm ci && npx drizzle-kit push"`.
+   - **Caveat (per-tribe-predator-config impl-review, 2026-11-18):** `drizzle-kit push` prompts interactively for confirmation on a destructive change (e.g. a `DROP COLUMN`), which this non-interactive `docker run` one-liner cannot answer — it will hang or fail for any migration that drops a column (first one: `drizzle/0014_freezing_synch.sql`). For such a migration, run `npx drizzle-kit migrate` instead (applies already-generated SQL files directly, no confirmation prompt) or apply the generated `.sql` file's statements directly.
 
 ## Out of Scope
 
