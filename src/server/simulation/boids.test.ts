@@ -2086,6 +2086,42 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 		expect(a.hasWarnedDenseClustering).toBe(false);
 		expect(a).toEqual(b);
 	});
+
+	// per-tribe-food-config Phase 2 success criterion: regen is the sum of
+	// the CURRENT per-tribe foodRegenShare values (4 + 6 = 10), matching the
+	// exact foodStock trajectory a pre-change run would get from a flat
+	// `foodRegenRate: 10` — asserted directly against applyHunger (the
+	// function runTick's regen math still delegates to, unchanged) rather
+	// than a hand-computed number, so this test tracks applyHunger's own
+	// math instead of duplicating it.
+	it("runTick's regen is the sum of per-tribe foodRegenShare, not params.foodRegenRate", () => {
+		const tribeConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodRegenShare: 4 },
+			{ ...TRIBE_CONFIG, foodRegenShare: 6 },
+		];
+		const params = {
+			dtSeconds: 1,
+			foodRegenRate: 999, // must be ignored — only the per-tribe sum below should apply
+			protectionThreshold: 0,
+			rng: createRng(1),
+			crossbreedingEnabled: false,
+			energyThreshold: 50,
+			mutationChance: 0,
+			mutationMagnitude: 0.2,
+			populationCap: 500,
+			foodStockInitial: 100,
+			worldSize: WORLD_SIZE,
+			tribeConfigs,
+		};
+
+		const result = runTick(
+			{ boids: [], predators: [], foodStock: 100 },
+			params,
+		);
+		const expected = applyHunger([], 100, 1, 10);
+
+		expect(result.foodStock).toBe(expected.foodStock);
+	});
 });
 
 describe("computeAreaPopulationDensity", () => {

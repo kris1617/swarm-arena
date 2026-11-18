@@ -728,12 +728,25 @@ export function startServerRun(params: ServerRunParams): void {
 		worldSize,
 	);
 
+	// per-tribe-food-config Phase 2: the live pool's initial stock is the
+	// sum of each tribe's own foodStockShare, not the flat top-level
+	// params.foodStockInitial scalar. params.foodStockInitial itself stays
+	// on ServerRunParams/the DB schema (read by parameter-suggestion.ts and
+	// corpus scripts, and kept for legacy history) but no longer drives a
+	// live run's seed — same "old scalar field still exists, no longer
+	// drives engine behavior" split F-09 already established for the
+	// run-level separation/alignment/cohesion scalars above.
+	const foodStockSeed = params.tribeConfigs.reduce(
+		(sum, t) => sum + t.foodStockShare,
+		0,
+	);
+
 	const run: LiveRun = {
 		params,
 		rng,
 		boids,
 		predators,
-		foodStock: params.foodStockInitial,
+		foodStock: foodStockSeed,
 		cohesionSamples: [],
 		foodRatioSamples: [],
 		populationCountSamples: [],

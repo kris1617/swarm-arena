@@ -772,7 +772,15 @@ export function SimulationCanvas({
 			tribeConfigs,
 			worldSize,
 		);
-		foodStockRef.current = foodStockInitial;
+		// per-tribe-food-config Phase 2: client-staged seed mirrors
+		// server-run-registry.ts's startServerRun — the sum of each tribe's
+		// own foodStockShare, not the flat foodStockInitial prop. The prop
+		// stays (still read below by computeSingleRunTick's
+		// foodAvailabilityRatio denominator) but no longer seeds the pool.
+		foodStockRef.current = tribeConfigs.reduce(
+			(sum, t) => sum + t.foodStockShare,
+			0,
+		);
 		redraw();
 
 		function stop() {

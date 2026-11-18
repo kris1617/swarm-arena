@@ -1200,6 +1200,12 @@ export function runTick(
 	state: { boids: BoidState[]; predators: PredatorState[]; foodStock: number },
 	params: {
 		dtSeconds: number;
+		// per-tribe-food-config Phase 2: kept on this type so every existing
+		// caller (single-run-lifecycle.ts, this file's own tests) still
+		// compiles unchanged, but no longer READ below — regen now sums
+		// tribeConfigs' own foodRegenShare fresh each tick (see the
+		// applyHunger call site). Same "old scalar field still exists,
+		// no longer drives engine behavior" split as foodStockInitial below.
 		foodRegenRate: number;
 		protectionThreshold: number;
 		rng: () => number;
@@ -1254,11 +1260,22 @@ export function runTick(
 		params.dtSeconds,
 		params.worldSize,
 	);
+	// per-tribe-food-config Phase 2: regen is the sum of the CURRENT
+	// per-tribe regen shares, recomputed fresh every tick — not a cached
+	// total — so a live edit to one tribe's share changes the effective
+	// regen on the very next tick (matches S-27's "live edit takes effect
+	// next tick" convention). params.foodRegenRate stays on the signature
+	// below (applyHunger's own math is untouched) but is no longer read
+	// from the run's flat scalar param here.
+	const totalFoodRegenRate = params.tribeConfigs.reduce(
+		(sum, t) => sum + t.foodRegenShare,
+		0,
+	);
 	const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
 		steeredBoids,
 		state.foodStock,
 		params.dtSeconds,
-		params.foodRegenRate,
+		totalFoodRegenRate,
 	);
 	const predatedBoids = applyPredation(
 		fedBoids,

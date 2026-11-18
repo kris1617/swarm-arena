@@ -433,7 +433,13 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 				populationCap: 500,
 				foodStockInitial: 20,
 				worldSize: WORLD_SIZE,
-				tribeConfigs: [TRIBE_CONFIG],
+				// per-tribe-food-config Phase 2: regen now sums tribeConfigs[].
+				// foodRegenShare, not params.foodRegenRate above (which stays at
+				// 0 but no longer isolates this). Override the shared
+				// TRIBE_CONFIG fixture's foodRegenShare (5) to 0 here too, so
+				// this test's hand-computed oracle (consumption only, no regen)
+				// still holds.
+				tribeConfigs: [{ ...TRIBE_CONFIG, foodRegenShare: 0 }],
 			},
 		);
 

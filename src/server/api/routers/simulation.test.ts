@@ -3387,53 +3387,53 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		return state;
 	}
 
-	it("patching foodRegenRate changes the food-stock delta observed over a subsequent tick, not just the stored value", async () => {
-		const { runId: highRunId } = await insertOwnedRunningRun(
-			1,
-			VALID_START_INPUT,
-		);
-		const { runId: lowRunId } = await insertOwnedRunningRun(
-			2,
-			VALID_START_INPUT,
-		);
+	// per-tribe-food-config Phase 2: foodRegenRate is still accepted/stored
+	// by applyLiveParams (the field stays in LiveAdjustableParams for this
+	// phase), but per-tick regen now sums tribeConfigs[].foodRegenShare
+	// instead of reading this flat field — so patching it alone no longer
+	// changes the run's food trajectory. This INVERTS the old assertion
+	// (a live patch to this flat field used to change the trajectory; now
+	// it deliberately doesn't) and is an intentional, documented consequence
+	// of this phase's own change, not a regression. Phase 4 (live
+	// adjustment) will add the replacement behavioral test exercising a
+	// live edit to tribeConfigs[].foodRegenShare via applyLiveTribeConfigs/
+	// updateTribeConfigs instead.
+	it("patching the flat foodRegenRate no longer changes the food-stock trajectory — regen now sums tribeConfigs[].foodRegenShare instead", async () => {
+		// Single run, single patch+tick (not a two-run comparison): this
+		// describe block's registry drives every started run off one shared
+		// fake-timer clock (see afterEach's unconditional vi.useRealTimers()
+		// comment above), so two sequential patchLiveParamsAndTick calls on
+		// two SEPARATE runs give the first run extra, asymmetric tick
+		// exposure while the second's own advanceTimersByTimeAsync call is
+		// also in flight — not a fair comparison. A decoy value on one run
+		// avoids that confound entirely.
+		const { runId } = await insertOwnedRunningRun(1, VALID_START_INPUT);
 
 		// Fake timers engage only once the DB-touching setup above has fully
 		// settled — any DB-touching call made after this point would hang
 		// (see the describe-level comment above).
 		vi.useFakeTimers();
 		serverRunRegistry.startServerRun({
-			runId: highRunId,
+			runId,
 			seed: 1,
-			...VALID_START_INPUT,
-		});
-		serverRunRegistry.startServerRun({
-			runId: lowRunId,
-			seed: 2,
 			...VALID_START_INPUT,
 		});
 
 		const foodStockBefore = VALID_START_INPUT.foodStockInitial;
 
-		const highAfter = await patchLiveParamsAndTick(
-			highRunId,
-			{ foodRegenRate: 50 },
-			500,
-		);
-		const lowAfter = await patchLiveParamsAndTick(
-			lowRunId,
-			{ foodRegenRate: 0 },
+		// A decoy regen rate three orders of magnitude above any per-tribe
+		// foodRegenShare in VALID_START_INPUT.tribeConfigs: if this flat
+		// field still drove regen, foodStock would increase by roughly
+		// 1_000_000 * 0.5s = 500_000 over this tick. It doesn't.
+		const after = await patchLiveParamsAndTick(
+			runId,
+			{ foodRegenRate: 1_000_000 },
 			500,
 		);
 
-		const highDelta = highAfter.foodStock - foodStockBefore;
-		const lowDelta = lowAfter.foodStock - foodStockBefore;
+		const delta = after.foodStock - foodStockBefore;
 
-		// A high regen rate must leave the run with MORE food than a low one
-		// did, over the identical tick window — not merely that the field
-		// round-tripped through storage.
-		expect(highDelta).toBeGreaterThan(lowDelta);
-		expect(highDelta).toBeGreaterThan(0);
-		expect(lowDelta).toBeLessThan(0);
+		expect(delta).toBeLessThan(100);
 	});
 
 	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", async () => {

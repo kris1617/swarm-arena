@@ -13,6 +13,27 @@ import {
 } from "~/server/simulation/single-run-lifecycle";
 
 const WEIGHTS = { separation: 0, alignment: 0, cohesion: 0 };
+// per-tribe-food-config Phase 2: named/exported from the fixture (rather
+// than an inline literal inside PARAMS.tribeConfigs) so tests that need a
+// variant of this one tribe (e.g. a different foodRegenShare) can spread it
+// without an array-index-access-on-possibly-undefined type error.
+const BASE_TRIBE_CONFIG = {
+	separation: WEIGHTS.separation,
+	alignment: WEIGHTS.alignment,
+	cohesion: WEIGHTS.cohesion,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	neighborRadius: 70,
+	separationRadius: 25,
+	predatorDetectionRadius: 50,
+	burstMult: 1,
+	burstCostMult: 1,
+	foodStockShare: 50,
+	foodRegenShare: 5,
+	foodConsumptionRate: 0.5,
+} satisfies TribeConfig;
+
 const PARAMS = {
 	foodRegenRate: 0,
 	protectionThreshold: 0,
@@ -37,24 +58,7 @@ const PARAMS = {
 	// matching the old global NEIGHBOR_RADIUS/SEPARATION_RADIUS/
 	// PREDATOR_DETECTION_RADIUS constants keeps every pre-existing test's
 	// behavior unchanged.
-	tribeConfigs: [
-		{
-			separation: WEIGHTS.separation,
-			alignment: WEIGHTS.alignment,
-			cohesion: WEIGHTS.cohesion,
-			maxSpeed: 40,
-			minSpeed: 15,
-			matePreference: 0.5,
-			neighborRadius: 70,
-			separationRadius: 25,
-			predatorDetectionRadius: 50,
-			burstMult: 1,
-			burstCostMult: 1,
-			foodStockShare: 50,
-			foodRegenShare: 5,
-			foodConsumptionRate: 0.5,
-		} satisfies TribeConfig,
-	],
+	tribeConfigs: [BASE_TRIBE_CONFIG],
 };
 
 const GENES: BoidGenes = {
@@ -463,10 +467,23 @@ describe("computeSingleRunTick", () => {
 // found triggers a real non-terminating engine bug (tracked separately, out
 // of scope here).
 describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral effects", () => {
-	it("a higher foodRegenRate leaves MORE food than a lower one over the same simulated duration", () => {
-		function foodStockAfter(foodRegenRate: number) {
+	it("a higher per-tribe foodRegenShare leaves MORE food than a lower one over the same simulated duration", () => {
+		// per-tribe-food-config Phase 2: regen now sums tribeConfigs[].
+		// foodRegenShare, not the flat params.foodRegenRate — retargeted from
+		// the old flat-field version of this test (which this phase's own
+		// change makes meaningless: foodRegenRate is still accepted/stored
+		// but no longer read at this decision site, same "old scalar stays
+		// in the schema, stops driving engine behavior" pattern F-09 and this
+		// phase's own plan both document). foodRegenRate is deliberately set
+		// to a decoy (999) on both runs to prove it's ignored.
+		function foodStockAfter(foodRegenShare: number) {
 			let state = buildState({ lastTimestamp: 0, foodStock: 100 });
-			const params = { ...PARAMS, foodRegenRate, foodStockInitial: 100 };
+			const params = {
+				...PARAMS,
+				foodRegenRate: 999,
+				foodStockInitial: 100,
+				tribeConfigs: [{ ...BASE_TRIBE_CONFIG, foodRegenShare }],
+			};
 			let timestamp = 0;
 			for (let i = 0; i < 5; i++) {
 				timestamp += 50;
@@ -478,7 +495,7 @@ describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral
 		const highFoodStock = foodStockAfter(100);
 		const lowFoodStock = foodStockAfter(0);
 
-		// A higher regen rate must leave the run with MORE food than a lower
+		// A higher regen share must leave the run with MORE food than a lower
 		// one did, over the identical tick window — not merely that the field
 		// round-tripped through storage.
 		expect(highFoodStock).toBeGreaterThan(lowFoodStock);
