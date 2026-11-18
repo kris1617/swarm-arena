@@ -295,7 +295,9 @@ disclosure marker, extending the existing `ScoredRun` comparability pattern.
   both reasons when both apply (reuse the existing `?` ternary shape,
   extended to two independent conditions rather than one). `ScoredRun.from()`
   has 3 production call sites (plan-review F2): two (`simulation.ts:815`
-  inside `listCompleted`, `simulation.ts:885` inside
+  inside `listLeaderboard` — corrected via impl-review O1; the plan
+  originally misnamed this as `listCompleted`, which never uses
+  `ScoredRun` — `simulation.ts:885` inside
   `getParameterSuggestion`) use an explicit `.select({...})` that must add
   `wasEverFoodImbalanced: simulationRuns.wasEverFoodImbalanced` alongside
   their existing `wasEverThrottled` select; the third

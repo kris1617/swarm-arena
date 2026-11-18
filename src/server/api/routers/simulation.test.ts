@@ -546,6 +546,91 @@ describe("simulationRouter.stop authorization", () => {
 		});
 	});
 
+	// per-tribe-food-config impl-review F1: the client-staged path's own
+	// food-imbalance samples were tracked client-side but never sent to
+	// stop(), and stop() never set wasEverFoodImbalanced -- confirms both
+	// the input schema accepts the field and the handler actually uses it
+	// to change the score, not just round-trip it into history.
+	//
+	// Two surviving boids with different maxLifespan give a nonzero
+	// computeGeneticDiversity factor, so the 4-factor score product isn't
+	// already zeroed by an unrelated factor the way the single-boid
+	// contrast case above is -- the only variable between the two calls
+	// below is tribeFoodImbalanceSamples.
+	const BASE_SURVIVING_BOID_GENES = {
+		color: { r: 0, g: 0, b: 0 },
+		flockId: 0,
+		separationWeight: 1,
+		alignmentWeight: 1,
+		cohesionWeight: 1,
+		maxSpeed: 40,
+		minSpeed: 15,
+		maxLifespan: 100,
+		matePreference: 0,
+	};
+	const TWO_DIVERSE_BOIDS = [
+		{ ...BASE_SURVIVING_BOID_GENES, maxLifespan: 100 },
+		{ ...BASE_SURVIVING_BOID_GENES, maxLifespan: 600 },
+	];
+
+	it("a severe imbalance zeroes the score and sets wasEverFoodImbalanced, versus an unimbalanced contrast", async () => {
+		const unimbalanced = await insertOwnedRunningRun();
+		const imbalanced = await insertOwnedRunningRun();
+
+		const callerFor = (ownerId: string) =>
+			createCaller({
+				db,
+				headers: new Headers(),
+				allowSelfElevation: false,
+				session: {
+					user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+					expires: new Date(Date.now() + 60_000).toISOString(),
+				},
+			});
+
+		const unimbalancedResult = await callerFor(
+			unimbalanced.ownerId,
+		).simulation.stop({
+			...VALID_STOP_EXTRAS,
+			runId: unimbalanced.runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			foodRatioSamples: [1],
+			survivingBoidGenes: TWO_DIVERSE_BOIDS,
+			// No tribeFoodImbalanceSamples: reproduces the pre-change
+			// baseRatio formula exactly, same as leaving it unset.
+		});
+		expect(unimbalancedResult.score).toBeGreaterThan(0);
+
+		const imbalancedResult = await callerFor(
+			imbalanced.ownerId,
+		).simulation.stop({
+			...VALID_STOP_EXTRAS,
+			runId: imbalanced.runId,
+			elapsedTicks: 1,
+			cohesionSamples: [0.5],
+			foodRatioSamples: [1],
+			survivingBoidGenes: TWO_DIVERSE_BOIDS,
+			// A severe, sustained imbalance clamps averageImbalance to 1,
+			// so computeResourceManagement returns exactly 0.
+			tribeFoodImbalanceSamples: [1, 1, 1],
+		});
+		expect(imbalancedResult.score).toBe(0);
+
+		const imbalancedRow = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, imbalanced.runId),
+		});
+		expect(imbalancedRow?.wasEverFoodImbalanced).toBe(true);
+		expect(imbalancedRow?.history).toMatchObject({
+			tribeFoodImbalanceSamples: [1, 1, 1],
+		});
+
+		const unimbalancedRow = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, unimbalanced.runId),
+		});
+		expect(unimbalancedRow?.wasEverFoodImbalanced).toBe(false);
+	});
+
 	// client-staged-live-parameter-parity Phase 3: the two-sided change S-27
 	// made for the server-owned path (applyLiveParams -> history), here for
 	// the client-staged path's one-shot stop() call.

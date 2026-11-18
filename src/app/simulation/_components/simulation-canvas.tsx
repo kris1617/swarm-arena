@@ -738,6 +738,13 @@ export function SimulationCanvas({
 				geneticDiversitySamplesRef.current.length > 0
 					? geneticDiversitySamplesRef.current
 					: [0],
+			// per-tribe-food-config impl-review F1: was tracked (fed into
+			// computeSingleRunTick every tick) but never sent — same gap/fix
+			// shape as populationCountSamples above.
+			tribeFoodImbalanceSamples:
+				tribeFoodImbalanceSamplesRef.current.length > 0
+					? tribeFoodImbalanceSamplesRef.current
+					: [0],
 			// client-staged-live-parameter-parity Phase 3: the applied-edits
 			// changelog — `[]` is a legitimate value (the user may never have
 			// touched the live-edit panel), unlike the sample arrays above

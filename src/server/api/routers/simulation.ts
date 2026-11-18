@@ -16,6 +16,7 @@ import {
 	computePhaseQuality,
 	computeResourceManagement,
 	computeScore,
+	FOOD_IMBALANCE_EPSILON,
 	type PopulationPhase,
 	segmentCompletedCycles,
 } from "~/server/simulation/boids";
@@ -553,6 +554,17 @@ export const simulationRouter = createTRPCRouter({
 					.min(1)
 					.max(50_000)
 					.optional(),
+				// per-tribe-food-config impl-review F1: the client-staged path's
+				// own per-tick food-imbalance sample array, mirroring the
+				// server-owned path's equivalent (server-run-registry.ts's
+				// `tick()`). Optional, same backward-compat posture as
+				// `geneticDiversitySamples` above — a caller/test fixture built
+				// before this field existed still validates.
+				tribeFoodImbalanceSamples: z
+					.array(z.number().min(0))
+					.min(1)
+					.max(50_000)
+					.optional(),
 				// client-staged-live-parameter-parity Phase 3: the client-staged
 				// path's own changelog of applied live edits, matching the
 				// server-owned path's `ParameterChangeEntry` shape
@@ -620,11 +632,22 @@ export const simulationRouter = createTRPCRouter({
 
 			const score = computeScore(
 				clampedElapsedTicks,
-				computeResourceManagement(input.foodRatioSamples),
+				computeResourceManagement(
+					input.foodRatioSamples,
+					input.tribeFoodImbalanceSamples,
+				),
 				computeGeneticDiversity(input.survivingBoidGenes),
 				computePhaseQuality(input.phaseHistory),
 				computeAreaPopulationDensity(input.populationDensitySamples),
 			);
+			// per-tribe-food-config impl-review F1: mirrors the server-owned
+			// path's write-once `wasEverFoodImbalanced` marker — this path has
+			// no live interval to latch it tick-by-tick, so it's derived once
+			// here from the full sample array instead.
+			const wasEverFoodImbalanced =
+				input.tribeFoodImbalanceSamples?.some(
+					(sample) => sample > FOOD_IMBALANCE_EPSILON,
+				) ?? false;
 
 			// Race-safety net: a second concurrent `stop` call for the same run
 			// can pass the read-time check above before either write lands. The
@@ -636,11 +659,13 @@ export const simulationRouter = createTRPCRouter({
 					status: "stopped",
 					score,
 					stoppedAt: new Date(),
+					wasEverFoodImbalanced,
 					// F-05 (MS-08): persist alongside the score instead of
 					// discarding — matches server-run-registry.ts's finishRun.
 					history: {
 						phaseHistory: input.phaseHistory,
 						foodRatioSamples: input.foodRatioSamples,
+						tribeFoodImbalanceSamples: input.tribeFoodImbalanceSamples,
 						survivorGenes: input.survivingBoidGenes,
 						populationCountSamples: input.populationCountSamples,
 						populationDensitySamples: input.populationDensitySamples,
