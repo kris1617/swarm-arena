@@ -104,11 +104,17 @@ export type ParameterChangeEntry = {
 	// shape doesn't fit `oldValue`/`newValue: number` cleanly, so this entry
 	// is a simplified boolean-style marker like `crossbreedingEnabled`'s
 	// 0/1 coercion below, not a real before/after value).
+	// predator-tribe-concept Phase 5: widened again for
+	// `applyLivePredatorTribeConfigs`'s own changelog entry — same
+	// simplified boolean-style marker posture as "tribeConfigs" above, not a
+	// real before/after value (array-shaped, doesn't fit `oldValue`/
+	// `newValue: number`).
 	field:
 		| keyof LiveAdjustableParams
 		| "boidCount"
 		| "predatorCount"
-		| "tribeConfigs";
+		| "tribeConfigs"
+		| "predatorTribeConfigs";
 	oldValue: number;
 	newValue: number;
 };
@@ -368,6 +374,53 @@ export function applyLiveTribeConfigs(
 	}
 	run.foodStock = Math.max(0, run.foodStock + foodStockDelta);
 	run.params = { ...run.params, tribeConfigs: patch };
+	run.lastParamUpdateAt = now;
+	return { status: "applied" };
+}
+
+// predator-tribe-concept Phase 5: live-edit parity for the independent
+// predator-tribe array — mirrors `applyLiveTribeConfigs` exactly (same
+// not-found/throttle checks, same `lastParamUpdateAt` update, same shared
+// throttle window), minus the `foodStockShare` delta-injection block: no
+// predator-tribe field ties to a live mutable resource pool the way
+// `tribeConfigs[].foodStockShare` does, so this is a pure wholesale
+// replace. `tick()` reads `run.params.predatorTribeConfigs` straight off
+// the mutable `run.params` object every tick (stepPredators' detection
+// radius/burst/capture checks), so this patch is visible starting the very
+// next tick — same "live edit visible on the next read, not frozen at
+// creation" guarantee every other live-edit path here gives. It does NOT
+// retroactively change any already-alive predator's own heritable genes,
+// set once at birth and never re-read from `predatorTribeConfigs`
+// afterward. impl-review F3 (mirrored): this function trusts `patch`'s
+// length wholesale — the router's `updatePredatorTribeConfigs` mutation
+// (simulation.ts) is what enforces `patch.length === predatorFlockCount`
+// before calling here.
+export function applyLivePredatorTribeConfigs(
+	runId: number,
+	patch: PredatorTribeConfig[],
+): ApplyLiveParamsResult {
+	const run = registry.get(runId);
+	if (!run) {
+		return { status: "not-found" };
+	}
+	const now = Date.now();
+	if (run.lastParamUpdateAt !== null) {
+		const elapsed = now - run.lastParamUpdateAt;
+		if (elapsed < PARAM_UPDATE_THROTTLE_MS) {
+			return {
+				status: "throttled",
+				retryAfterMs: PARAM_UPDATE_THROTTLE_MS - elapsed,
+			};
+		}
+	}
+	const tick = run.populationCountSamples.length;
+	run.parameterChanges.push({
+		tick,
+		field: "predatorTribeConfigs",
+		oldValue: 0,
+		newValue: 1,
+	});
+	run.params = { ...run.params, predatorTribeConfigs: patch };
 	run.lastParamUpdateAt = now;
 	return { status: "applied" };
 }

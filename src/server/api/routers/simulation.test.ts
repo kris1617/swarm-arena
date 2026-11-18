@@ -3467,6 +3467,184 @@ describe("simulationRouter.updateRunParams", () => {
 	});
 });
 
+// predator-tribe-concept Phase 5: router-level tests for the new
+// `updatePredatorTribeConfigs` mutation. ADAPT (plan said "mirroring
+// updateTribeConfigs's own existing tests") — `updateTribeConfigs` itself
+// has no router-level `describe` block in this file (only the registry-level
+// `applyLiveTribeConfigs` function it delegates to is tested directly, in
+// server-run-registry.test.ts); the actual established router-level
+// ownership/active-run/length/soft-range convention for a live-edit
+// mutation in THIS file is `simulationRouter.updateRunParams`'s describe
+// block just above, so these tests mirror that one's shape instead, plus
+// the length-mismatch check `updatePredatorTribeConfigs` has that
+// `updateRunParams` does not (mirroring the length-mismatch test already
+// covering `startServer`'s own predatorTribeConfigs/predatorFlockCount
+// validation above in this file).
+describe("simulationRouter.updatePredatorTribeConfigs", () => {
+	async function insertOwnerAndCaller() {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+		return { ownerId: owner.id, caller };
+	}
+
+	it("applies a valid patch and returns ok with no warnings", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const result = await caller.simulation.updatePredatorTribeConfigs({
+			runId,
+			predatorTribeConfigs: [{ ...VALID_PREDATOR_TRIBE_CONFIG, maxSpeed: 60 }],
+		});
+
+		expect(result).toEqual({ ok: true, warnings: [] });
+	});
+
+	it("applies an out-of-range value and returns a non-empty warnings array without rejecting", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		// detectionRadius's default admin range is 1-500
+		// (DEFAULT_PARAMETER_RANGES); zod only requires `finite()`, so 99999
+		// passes schema validation but trips the soft admin-range warning.
+		const result = await caller.simulation.updatePredatorTribeConfigs({
+			runId,
+			predatorTribeConfigs: [
+				{ ...VALID_PREDATOR_TRIBE_CONFIG, detectionRadius: 99999 },
+			],
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings.length).toBeGreaterThan(0);
+	});
+
+	it("rejects a predatorTribeConfigs array whose length doesn't match the run's own predatorFlockCount", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		// VALID_START_INPUT's predatorFlockCount is 1 — two entries mismatch.
+		await expect(
+			caller.simulation.updatePredatorTribeConfigs({
+				runId,
+				predatorTribeConfigs: [
+					VALID_PREDATOR_TRIBE_CONFIG,
+					VALID_PREDATOR_TRIBE_CONFIG,
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	// impl-review F1 (updateRunParams' own rationale, mirrored): the
+	// client's own Apply cooldown is UI-only; this is the real server-side
+	// gate against unbounded parameterChanges growth, shared with every
+	// other live-edit mutation via the one `lastParamUpdateAt` field.
+	it("rejects a second call within the throttle window with TOO_MANY_REQUESTS", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		await caller.simulation.updatePredatorTribeConfigs({
+			runId,
+			predatorTribeConfigs: [{ ...VALID_PREDATOR_TRIBE_CONFIG, maxSpeed: 61 }],
+		});
+
+		await expect(
+			caller.simulation.updatePredatorTribeConfigs({
+				runId,
+				predatorTribeConfigs: [
+					{ ...VALID_PREDATOR_TRIBE_CONFIG, maxSpeed: 62 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with FORBIDDEN for a non-owner", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.updatePredatorTribeConfigs({
+				runId,
+				predatorTribeConfigs: [
+					{ ...VALID_PREDATOR_TRIBE_CONFIG, maxSpeed: 60 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST for a saved (non-active) run", async () => {
+		const { caller } = await insertOwnerAndCaller();
+		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(runId);
+		await caller.simulation.savePause({ runId });
+
+		await expect(
+			caller.simulation.updatePredatorTribeConfigs({
+				runId,
+				predatorTribeConfigs: [
+					{ ...VALID_PREDATOR_TRIBE_CONFIG, maxSpeed: 60 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+
+		// Clean up: this run is "saved" (no live interval) — resume+stop so
+		// afterEach's trackedServerRunIds loop can tear it down.
+		await caller.simulation.resume({ runId });
+	});
+
+	it("rejects with BAD_REQUEST for a non-existent run", async () => {
+		const { caller } = await insertOwnerAndCaller();
+
+		await expect(
+			caller.simulation.updatePredatorTribeConfigs({
+				runId: 999_999,
+				predatorTribeConfigs: [VALID_PREDATOR_TRIBE_CONFIG],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 // test-plan-refresh-2026-11-16 Phase 1: behavioral-effect tests for the
 // live-adjustable params above — S-27/S-28's own plan (Progress 2.6)
 // flagged energyThreshold/mutationMagnitude as manually verified only, and

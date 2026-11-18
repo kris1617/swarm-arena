@@ -50,6 +50,7 @@ import {
 	// that procedure's body for the alias in use.
 	adjustLivePopulation as adjustLivePopulationRegistry,
 	applyLiveParams,
+	applyLivePredatorTribeConfigs,
 	applyLiveTribeConfigs,
 	getLiveRunState,
 	isServerRunActive,
@@ -635,7 +636,17 @@ export const simulationRouter = createTRPCRouter({
 							// it never touches `applyLiveTribeConfigs`), but this input
 							// schema must still accept the full shape of what it's
 							// typed to receive.
-							field: z.enum([...RANGED_PARAMETER_NAMES, "tribeConfigs"]),
+							// predator-tribe-concept Phase 5: widened again by
+							// "predatorTribeConfigs" for the same reason — the
+							// client-staged path never produces this entry either (it
+							// never touches `applyLivePredatorTribeConfigs`), but the
+							// schema must accept the full `ParameterChangeEntry.field`
+							// union it's typed to receive.
+							field: z.enum([
+								...RANGED_PARAMETER_NAMES,
+								"tribeConfigs",
+								"predatorTribeConfigs",
+							]),
 							oldValue: z.number(),
 							newValue: z.number(),
 						}),
@@ -1350,6 +1361,76 @@ export const simulationRouter = createTRPCRouter({
 			}
 
 			const result = applyLiveTribeConfigs(input.runId, input.tribeConfigs);
+			if (result.status === "not-found") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is no longer active",
+				});
+			}
+			if (result.status === "throttled") {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: `Try again in ${result.retryAfterMs}ms`,
+				});
+			}
+			return { ok: true, warnings };
+		}),
+
+	// predator-tribe-concept Phase 5: a dedicated live-edit mutation for
+	// `predatorTribeConfigs`, mirroring `updateTribeConfigs`'s exact
+	// ownership/active-run/length/soft-range-check shape — only the length
+	// check is against `predatorFlockCount` (this run's own independent
+	// predator-tribe count) rather than `flockCount`, and the soft range
+	// check loops `PREDATOR_TRIBE_RANGED_FIELD_NAMES` rather than
+	// `TRIBE_RANGED_FIELD_NAMES`.
+	updatePredatorTribeConfigs: protectedProcedure
+		.input(
+			z.object({
+				runId: z.number(),
+				predatorTribeConfigs: z.array(predatorTribeConfigSchema).min(1),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+			});
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "running" || !isServerRunActive(input.runId)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Run is not an active server-run simulation",
+				});
+			}
+			if (input.predatorTribeConfigs.length !== run.predatorFlockCount) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `predatorTribeConfigs must have exactly ${run.predatorFlockCount} entries (one per predator flock), got ${input.predatorTribeConfigs.length}`,
+				});
+			}
+
+			const { parameterRanges } = await getOrSeedAdminSettings(ctx.db);
+			const warnings: string[] = [];
+			for (const [index, tribeConfig] of input.predatorTribeConfigs.entries()) {
+				for (const name of PREDATOR_TRIBE_RANGED_FIELD_NAMES) {
+					const value = tribeConfig[name];
+					const range = parameterRanges[name];
+					if (value < range.min || value > range.max) {
+						warnings.push(
+							`predator tribe ${index}: ${name} (${value}) is outside the configured range ${range.min}-${range.max}`,
+						);
+					}
+				}
+			}
+
+			const result = applyLivePredatorTribeConfigs(
+				input.runId,
+				input.predatorTribeConfigs,
+			);
 			if (result.status === "not-found") {
 				throw new TRPCError({
 					code: "BAD_REQUEST",

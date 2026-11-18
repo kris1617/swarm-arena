@@ -673,15 +673,15 @@ param.
 
 #### Automated
 
-- [x] 4.1 npm run typecheck passes
-- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 4.1 npm run typecheck passes — 1fbfbc1
+- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes — 1fbfbc1
 
 ### Phase 5: Live adjustment
 
 #### Automated
 
-- [ ] 5.1 npm run typecheck passes
-- [ ] 5.2 npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts passes
+- [x] 5.1 npm run typecheck passes
+- [x] 5.2 npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts passes
 
 ### Phase 6: Verification
 

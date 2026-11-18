@@ -12,6 +12,7 @@ import {
 import {
 	adjustLivePopulation,
 	applyLiveParams,
+	applyLivePredatorTribeConfigs,
 	applyLiveTribeConfigs,
 	getLiveRunState,
 	type ParameterChangeEntry,
@@ -43,6 +44,21 @@ const DEFAULT_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+};
+
+// predator-tribe-concept Phase 5: the predator-side sibling of
+// DEFAULT_TRIBE_CONFIG above, matching BASE_PARAMS.predatorTribeConfigs[0]'s
+// own values exactly so this phase's new tests can spread/override from one
+// shared baseline the same way the boid-tribe tests do.
+const DEFAULT_PREDATOR_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 50,
+	captureRadiusMult: 1,
 };
 
 const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
@@ -1323,6 +1339,282 @@ describe("applyLiveTribeConfigs", () => {
 			throw new Error("expected a live run");
 		}
 		expect(afterTick.foodStock).toBeGreaterThan(foodStockBefore + 1000);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+});
+
+// predator-tribe-concept Phase 5: live-edit parity for the independent
+// predator-tribe array — same structural tests as the `applyLiveTribeConfigs`
+// describe block above (not-found, already-alive genes untouched, throttle),
+// plus the plan's own extended success criterion: a live edit raising one
+// tribe's detectionRadius makes a previously-wandering predator start
+// pursuing a boid it previously couldn't detect, on a SUBSEQUENT tick — not
+// just that the stored `run.params.predatorTribeConfigs` value round-trips.
+describe("applyLivePredatorTribeConfigs", () => {
+	it("returns not-found for an unregistered runId", () => {
+		expect(
+			applyLivePredatorTribeConfigs(999_999, [DEFAULT_PREDATOR_TRIBE_CONFIG]),
+		).toEqual({ status: "not-found" });
+	});
+
+	it("replaces run.params.predatorTribeConfigs wholesale, pushing a 'predatorTribeConfigs' changelog marker", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(60);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 60,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const newPredatorTribeConfigs = [
+			{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, maxSpeed: 99, detectionRadius: 200 },
+		];
+		const applied = applyLivePredatorTribeConfigs(
+			runId,
+			newPredatorTribeConfigs,
+		);
+		expect(applied).toEqual({ status: "applied" });
+
+		await stopServerRun(runId);
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq }) => eq(t.id, runId),
+		});
+		const changes = (
+			row?.history as {
+				parameterChanges?: ParameterChangeEntry[];
+			} | null
+		)?.parameterChanges;
+		expect(changes).toContainEqual({
+			tick: expect.any(Number),
+			field: "predatorTribeConfigs",
+			oldValue: 0,
+			newValue: 1,
+		});
+		activeRunIds.length = 0;
+	});
+
+	it("does NOT change an already-alive predator's own genes", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(61);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 61,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		const before = getLiveRunState(runId);
+		if (!before) {
+			throw new Error("expected a live run");
+		}
+		const beforeGenes = before.predators.map((p) => ({ ...p.genes }));
+
+		applyLivePredatorTribeConfigs(runId, [
+			{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, maxSpeed: 999, minSpeed: 998 },
+		]);
+
+		const after = getLiveRunState(runId);
+		if (!after) {
+			throw new Error("expected a live run");
+		}
+		expect(after.predators).toHaveLength(beforeGenes.length);
+		for (const [index, predator] of after.predators.entries()) {
+			expect(predator.genes).toEqual(beforeGenes[index]);
+		}
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	it("throttles a second call within PARAM_UPDATE_THROTTLE_MS of the first", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(62);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 62,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+
+		expect(
+			applyLivePredatorTribeConfigs(runId, [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, detectionRadius: 55 },
+			]),
+		).toEqual({ status: "applied" });
+
+		const second = applyLivePredatorTribeConfigs(runId, [
+			{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, detectionRadius: 66 },
+		]);
+		expect(second.status).toBe("throttled");
+		if (second.status === "throttled") {
+			expect(second.retryAfterMs).toBeGreaterThan(0);
+		}
+
+		await vi.advanceTimersByTimeAsync(500);
+		expect(
+			applyLivePredatorTribeConfigs(runId, [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, detectionRadius: 77 },
+			]),
+		).toEqual({ status: "applied" });
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	// This project's own "UI accepts input is not feature verified" lesson
+	// (lessons.md), applied to the live-edit path itself: proves the live
+	// edit changes ACTUAL BEHAVIOR on a subsequent tick, not just that
+	// `run.params.predatorTribeConfigs` round-trips the new value.
+	//
+	// Deterministic setup via the snapshot/resume cycle (same pattern
+	// `resumeServerRun`'s own tests use): a lone predator at (0,0,0) and a
+	// lone boid at (80,0,0) in a 200x200x200 world (BASE_PARAMS.xyArea/
+	// zDepth), both velocities zeroed, with `lastTimestamp` set far enough
+	// in the past that the very next tick's dtSeconds clamps to
+	// MAX_DT_SECONDS (0.1s, single-run-lifecycle.ts) regardless of real
+	// wall-clock timing — makes the single next tick's steering math exact:
+	// pursuit (steerX=1, steerY=steerZ=0) from a zeroed starting velocity
+	// always lands at vx=genes.minSpeed (15), vy=0, vz=0 after the
+	// min-speed clamp in `stepPredators` (boids.ts), which preserves
+	// direction exactly.
+	//
+	// Phase 1: detectionRadius=10 (< the 80-unit distance) — the predator
+	// wanders (direction is rng-driven, not aligned with the boid).
+	// Phase 2: live-edit raises detectionRadius to 500 (comfortably covers
+	// 80) — positions/velocities reset to the same clean zeroed state via a
+	// second snapshot/resume cycle, then the next tick must show the
+	// predator pursuing in a straight line toward the boid (vx=15, vy=0,
+	// vz=0), not wandering.
+	it("a live edit raising detectionRadius makes a previously-wandering predator start pursuing on the next tick", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(63);
+		activeRunIds.push(runId);
+		startServerRun({
+			runId,
+			seed: 63,
+			...BASE_PARAMS,
+			boidCount: 1,
+			predatorCount: 1,
+			predatorFlockCount: 1,
+			predatorTribeConfigs: [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, detectionRadius: 10 },
+			],
+			maxDurationSeconds: 600,
+		});
+
+		// Phase 1: too-small detectionRadius (10) against an 80-unit gap —
+		// the predator cannot detect the boid and wanders instead.
+		const initialSnapshot = snapshotServerRun(runId);
+		if (!initialSnapshot) {
+			throw new Error("expected a snapshot");
+		}
+		const boidBefore = initialSnapshot.boids[0];
+		const predatorBefore = initialSnapshot.predators[0];
+		if (!boidBefore || !predatorBefore) {
+			throw new Error("expected one boid and one predator");
+		}
+		initialSnapshot.boids[0] = {
+			...boidBefore,
+			x: 80,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+		};
+		initialSnapshot.predators[0] = {
+			...predatorBefore,
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+		};
+		// Far enough in the past that the next tick's dtSeconds clamps to
+		// MAX_DT_SECONDS (0.1s) regardless of real wall-clock timing between
+		// resume and the next scheduled tick.
+		initialSnapshot.lastTimestamp = Date.now() - 10_000;
+		resumeServerRun(runId, initialSnapshot);
+
+		await vi.advanceTimersByTimeAsync(16);
+		const afterWander = getLiveRunState(runId);
+		if (!afterWander) {
+			throw new Error("expected a live run");
+		}
+		const wanderingPredator = afterWander.predators[0];
+		if (!wanderingPredator) {
+			throw new Error("expected a predator");
+		}
+		// A wandering predator's velocity is a random unit direction scaled
+		// to genes.minSpeed (15) — it is not aligned with the boid, which sits
+		// directly on the +x axis (pure pursuit would give vy=vz=0 exactly).
+		expect(
+			Math.abs(wanderingPredator.vy) + Math.abs(wanderingPredator.vz),
+		).toBeGreaterThan(0);
+
+		// Phase 2: reset to the same clean zeroed state, then live-edit
+		// detectionRadius up to 500 (comfortably covers the 80-unit gap)
+		// before the next tick runs.
+		const resetSnapshot = snapshotServerRun(runId);
+		if (!resetSnapshot) {
+			throw new Error("expected a snapshot");
+		}
+		const boidMid = resetSnapshot.boids[0];
+		const predatorMid = resetSnapshot.predators[0];
+		if (!boidMid || !predatorMid) {
+			throw new Error("expected one boid and one predator");
+		}
+		resetSnapshot.boids[0] = {
+			...boidMid,
+			x: 80,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+		};
+		resetSnapshot.predators[0] = {
+			...predatorMid,
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+		};
+		resetSnapshot.lastTimestamp = Date.now() - 10_000;
+		resumeServerRun(runId, resetSnapshot);
+
+		expect(
+			applyLivePredatorTribeConfigs(runId, [
+				{ ...DEFAULT_PREDATOR_TRIBE_CONFIG, detectionRadius: 500 },
+			]),
+		).toEqual({ status: "applied" });
+
+		await vi.advanceTimersByTimeAsync(16);
+		const afterEdit = getLiveRunState(runId);
+		if (!afterEdit) {
+			throw new Error("expected a live run");
+		}
+		const pursuingPredator = afterEdit.predators[0];
+		if (!pursuingPredator) {
+			throw new Error("expected a predator");
+		}
+		// Pursuit: a straight line toward the boid, which sits directly on
+		// the +x axis from the predator's reset position.
+		expect(pursuingPredator.vx).toBe(15);
+		expect(pursuingPredator.vy).toBe(0);
+		expect(pursuingPredator.vz).toBe(0);
 
 		await stopServerRun(runId);
 		activeRunIds.length = 0;
