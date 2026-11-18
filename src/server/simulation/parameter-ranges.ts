@@ -46,6 +46,16 @@ export const RANGED_PARAMETER_NAMES = [
 	// entry rather than a second one).
 	"detectionRadius",
 	"captureRadiusMult",
+	// per-tribe-predator-config Phase 3: closes the F-10 gap — predator
+	// maxSpeed/minSpeed get a real admin range here. NOT a reuse of boids'
+	// own same-named TribeConfig fields (unlike matePreference above):
+	// boids' maxSpeed/minSpeed have no admin range at all (see page.tsx's
+	// tribeFieldDefs) and deliberately differ in scale from predators', so
+	// these are two genuinely new string literals, scoped to
+	// PREDATOR_TRIBE_RANGED_FIELD_NAMES only (below) — boids' fields stay
+	// ungoverned by any admin range.
+	"maxSpeed",
+	"minSpeed",
 ] as const;
 
 export type RangedParameterName = (typeof RANGED_PARAMETER_NAMES)[number];
@@ -86,6 +96,8 @@ export const PREDATOR_TRIBE_RANGED_FIELD_NAMES = [
 	"detectionRadius",
 	"captureRadiusMult",
 	"matePreference",
+	"maxSpeed",
+	"minSpeed",
 ] as const satisfies readonly RangedParameterName[];
 
 export type PredatorTribeRangedFieldName =
@@ -195,6 +207,13 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	// predator-tribe-concept Phase 1: default 1 is no change from today's
 	// fixed CAPTURE_RADIUS.
 	captureRadiusMult: { min: 0.1, max: 5, default: 1 },
+	// per-tribe-predator-config Phase 3: bounds match the UI-hardcoded
+	// bounds boids' own equivalent fields already use (page.tsx's
+	// tribeFieldDefs); defaults match the F-10 bridge's existing hardcoded
+	// 55/20 values, so no run that doesn't explicitly configure these sees
+	// any behavior change.
+	maxSpeed: { min: 1, max: 300, default: 55 },
+	minSpeed: { min: 0, max: 300, default: 20 },
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;

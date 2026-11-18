@@ -646,18 +646,18 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes (clean except 2 files explicitly deferred to Phase 4)
-- [x] 2.2 Migration generated and matches expected DROP COLUMN statement
-- [x] 2.3 Full test suite passes (490/494; 3 failures confined to the Phase-4-deferred Switch tests)
-- [x] 2.4 Lint passes
+- [x] 2.1 Typecheck passes (clean except 2 files explicitly deferred to Phase 4) — c27440d
+- [x] 2.2 Migration generated and matches expected DROP COLUMN statement — c27440d
+- [x] 2.3 Full test suite passes (490/494; 3 failures confined to the Phase-4-deferred Switch tests) — c27440d
+- [x] 2.4 Lint passes — c27440d
 
 ### Phase 3: Predator speed admin range
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes
-- [ ] 3.2 Range-validation tests pass
-- [ ] 3.3 Lint passes
+- [x] 3.1 Typecheck passes
+- [x] 3.2 Range-validation tests pass
+- [x] 3.3 Lint passes
 
 ### Phase 4: Start-form UI — predator tribe tabs + per-tribe crossbreeding Switch
 
