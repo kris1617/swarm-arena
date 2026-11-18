@@ -3,7 +3,7 @@
 import { useFormStatus } from "react-dom";
 import { Button } from "~/components/ui/button";
 
-export default function SignOutButton() {
+export function SignOutButton() {
 	const { pending } = useFormStatus();
 
 	return (

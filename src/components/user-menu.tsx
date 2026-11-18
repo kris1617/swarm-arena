@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import SignOutButton from "~/components/sign-out-button";
+import { SignOutButton } from "~/components/sign-out-button";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -73,6 +73,11 @@ export function UserMenu({
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
+			{/* Deliberately a sibling of DropdownMenu with its own controlled
+			`open` state, not an AlertDialogTrigger nested inside the
+			DropdownMenuItem above — Radix's DropdownMenu unmounts its content
+			as soon as an item is selected, which would unmount a nested
+			AlertDialog before it could render. Do not nest the trigger back in. */}
 			<AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>

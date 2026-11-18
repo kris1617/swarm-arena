@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { AuthBanner } from "~/app/login/_components/auth-banner";
-import SignInButton from "~/app/login/_components/sign-in-button";
+import { SignInButton } from "~/app/login/_components/sign-in-button";
 import { resolveAuthErrorMessage } from "~/app/login/auth-error-messages";
 import { resolveSafeRedirect } from "~/app/login/safe-redirect";
 import { signIn } from "~/server/auth";

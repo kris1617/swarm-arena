@@ -1,7 +1,7 @@
 ---
 change_id: google-style-auth-ux
 title: Google-style polish for the GitHub sign-in/sign-out experience
-status: implemented
+status: impl_reviewed
 created: 2026-11-18
 updated: 2026-11-18
 archived_at: null

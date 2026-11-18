@@ -32,6 +32,18 @@ describe("resolveSafeRedirect", () => {
 		).toBe("/fallback");
 	});
 
+	it("rejects a dot-segment path that resolves to a protocol-relative URL", () => {
+		// impl-review F1: new URL("/.//evil.com", ORIGIN).origin === ORIGIN
+		// (passes the same-origin check) but its pathname is "//evil.com" —
+		// a protocol-relative string a browser would treat as cross-origin.
+		expect(resolveSafeRedirect("/.//evil.com", ORIGIN, "/fallback")).toBe(
+			"/fallback",
+		);
+		expect(resolveSafeRedirect("/..//evil.com", ORIGIN, "/fallback")).toBe(
+			"/fallback",
+		);
+	});
+
 	it("rejects malformed input", () => {
 		expect(resolveSafeRedirect("http://", ORIGIN, "/fallback")).toBe(
 			"/fallback",

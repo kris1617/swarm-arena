@@ -25,7 +25,16 @@ export function resolveSafeRedirect(
 		if (resolved.origin !== currentOrigin) {
 			return fallback;
 		}
-		return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+		const result = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+		// impl-review F1: a dot-segment input like "/.//evil.com" resolves
+		// to a same-origin URL (passing the check above) but a
+		// protocol-relative pathname ("//evil.com") — reject that shape
+		// explicitly rather than relying on the caller's own redirect
+		// logic to happen to treat it as same-origin.
+		if (result.startsWith("//")) {
+			return fallback;
+		}
+		return result;
 	} catch {
 		return fallback;
 	}
