@@ -11,7 +11,8 @@
 			"!.10x-cli.json",
 			"!.agents",
 			"!.claude",
-			"!drizzle"
+			"!drizzle",
+			"!public"
 		]
 	},
 	"vcs": {
