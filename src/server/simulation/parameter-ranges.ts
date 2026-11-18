@@ -13,7 +13,6 @@ export const RANGED_PARAMETER_NAMES = [
 	"foodStockInitial",
 	"foodRegenRate",
 	"flockCount",
-	"crossbreedingEnabled",
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
@@ -138,15 +137,6 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	foodStockInitial: { min: 0.1, max: 10_000, default: 100 },
 	foodRegenRate: { min: 0, max: 1_000, default: 10 },
 	flockCount: { min: 2, max: 4, default: 2 },
-	// live-crossbreeding-toggle: degenerate 0-1 range — a boolean toggle
-	// admitted into the numeric admin-range machinery rather than branched
-	// around it. Default of 1 matches the staging form's own default
-	// (page.tsx, useState(true)). This entry is structurally inert: it is
-	// filtered out of the admin settings UI (admin-settings-form.tsx) and
-	// always skipped by checkAgainstAdminRanges's boolean short-circuit
-	// (simulation.ts), so it can only be changed via a raw
-	// updateParameterRanges API call, and even then has no observable effect.
-	crossbreedingEnabled: { min: 0, max: 1, default: 1 },
 	energyThreshold: { min: 0.1, max: 500, default: 50 },
 	mutationChance: { min: 0, max: 1, default: 0.1 },
 	mutationMagnitude: { min: 0, max: 1, default: 0.2 },

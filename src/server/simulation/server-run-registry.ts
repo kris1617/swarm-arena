@@ -56,7 +56,6 @@ export type ServerRunParams = {
 	foodStockInitial: number;
 	foodRegenRate: number;
 	flockCount: number;
-	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
@@ -87,7 +86,6 @@ export type LiveAdjustableParams = Pick<
 	| "energyThreshold"
 	| "mutationChance"
 	| "mutationMagnitude"
-	| "crossbreedingEnabled"
 >;
 
 export type LiveParamPatch = Partial<LiveAdjustableParams>;
@@ -102,8 +100,8 @@ export type ParameterChangeEntry = {
 	// `applyLiveTribeConfigs`'s own changelog entry — "tribeConfigs" marks a
 	// wholesale array replacement, not a per-field numeric diff (the array
 	// shape doesn't fit `oldValue`/`newValue: number` cleanly, so this entry
-	// is a simplified boolean-style marker like `crossbreedingEnabled`'s
-	// 0/1 coercion below, not a real before/after value).
+	// is a simplified boolean-style marker like a boolean field's 0/1
+	// coercion in `applyLiveParams` below, not a real before/after value).
 	// predator-tribe-concept Phase 5: widened again for
 	// `applyLivePredatorTribeConfigs`'s own changelog entry — same
 	// simplified boolean-style marker posture as "tribeConfigs" above, not a
@@ -229,7 +227,6 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 			energyThreshold: run.params.energyThreshold,
 			mutationChance: run.params.mutationChance,
 			mutationMagnitude: run.params.mutationMagnitude,
-			crossbreedingEnabled: run.params.crossbreedingEnabled,
 		},
 		tribeConfigs: run.params.tribeConfigs,
 	};
@@ -342,11 +339,12 @@ export function applyLiveTribeConfigs(
 	}
 	const tick = run.populationCountSamples.length;
 	// Simplified marker entry, not a per-field diff — see this function's own
-	// comment above for why. Mirrors `crossbreedingEnabled`'s 0/1 coercion in
-	// `applyLiveParams`: `oldValue: 0, newValue: 1` reads as "changed" to any
-	// consumer of the existing numeric changelog shape (e.g. the analysis
+	// comment above for why. `oldValue: 0, newValue: 1` reads as "changed" to
+	// any consumer of the existing numeric changelog shape (e.g. the analysis
 	// view's ReferenceLine overlay), without claiming a real before/after
-	// numeric value that doesn't exist for an array field.
+	// numeric value that doesn't exist for an array field — mirrors the same
+	// boolean-as-0/1 coercion `applyLiveParams`'s own generic boolean handling
+	// still performs for any boolean-shaped `LiveAdjustableParams` field.
 	run.parameterChanges.push({
 		tick,
 		field: "tribeConfigs",
@@ -720,7 +718,6 @@ function tick(runId: number): void {
 				maxDurationSeconds: run.params.maxDurationSeconds,
 				foodStockInitial: run.params.foodStockInitial,
 				rng: run.rng,
-				crossbreedingEnabled: run.params.crossbreedingEnabled,
 				energyThreshold: run.params.energyThreshold,
 				mutationChance: run.params.mutationChance,
 				mutationMagnitude: run.params.mutationMagnitude,

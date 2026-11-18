@@ -9,6 +9,16 @@
 // `DEFAULT_PARAMETER_RANGES` default — this sweep is about the
 // separation/food-regen/crossbreeding interaction, not a full-dimensional
 // grid search.
+//
+// per-tribe-predator-config Phase 2 (#6a): `crossbreedingEnabled` moved from
+// a top-level `StartCorpusRunParams` scalar to a per-tribe `TribeConfig`
+// field. The sweep axis is redesigned to sweep tribe 0's
+// `crossbreedingEnabled` specifically — `flockCount` defaults to 2 (its
+// admin-range floor), so every row already has a second tribe to gate
+// against; tribe 0 carries the swept boolean while every other tribe
+// (index 1+) stays pinned at `true` so a cross-tribe pair's gate outcome is
+// driven entirely by tribe 0's own swept value, not a confound from the
+// other tribe's flag also varying.
 import { DEFAULT_PARAMETER_RANGES } from "~/server/simulation/parameter-ranges";
 import type { StartCorpusRunParams } from "./harness";
 
@@ -73,7 +83,11 @@ export function buildSweepMatrix(): SweepRunParams[] {
 				// this row's own swept/pinned weights, so a tribeConfigs-aware
 				// future reader sees the same values this sweep has always pinned
 				// at the top level.
-				const tribeConfig = {
+				// per-tribe-predator-config Phase 2 (#6a): `crossbreedingEnabled`
+				// is intentionally NOT set here — it's assigned per-index below
+				// (tribe 0 = this row's swept value, tribes 1+ = `true`), so this
+				// base shape can't accidentally apply the swept value uniformly.
+				const baseTribeConfig = {
 					separation: separationWeight,
 					alignment: DEFAULT_PARAMETER_RANGES.alignmentWeight.default,
 					cohesion: DEFAULT_PARAMETER_RANGES.cohesionWeight.default,
@@ -93,7 +107,9 @@ export function buildSweepMatrix(): SweepRunParams[] {
 				};
 				// predator-tribe-concept Phase 1: type-only field this phase — not
 				// yet read by any engine code. Pinned at its own defaults, same
-				// posture as `tribeConfig` above.
+				// posture as `baseTribeConfig` above — predators are not part of
+				// this sweep's crossbreeding axis, so every predator tribe stays
+				// pinned at `crossbreedingEnabled: true`.
 				const predatorTribeConfig = {
 					separation: DEFAULT_PARAMETER_RANGES.separationWeight.default,
 					alignment: DEFAULT_PARAMETER_RANGES.alignmentWeight.default,
@@ -103,6 +119,7 @@ export function buildSweepMatrix(): SweepRunParams[] {
 					matePreference: DEFAULT_PARAMETER_RANGES.matePreference.default,
 					detectionRadius: DEFAULT_PARAMETER_RANGES.detectionRadius.default,
 					captureRadiusMult: DEFAULT_PARAMETER_RANGES.captureRadiusMult.default,
+					crossbreedingEnabled: true,
 				};
 				rows.push({
 					sweepIndex,
@@ -122,13 +139,19 @@ export function buildSweepMatrix(): SweepRunParams[] {
 						{ length: predatorFlockCount },
 						() => predatorTribeConfig,
 					),
-					crossbreedingEnabled,
 					energyThreshold: DEFAULT_PARAMETER_RANGES.energyThreshold.default,
 					mutationChance: DEFAULT_PARAMETER_RANGES.mutationChance.default,
 					mutationMagnitude: DEFAULT_PARAMETER_RANGES.mutationMagnitude.default,
 					xyArea: DEFAULT_PARAMETER_RANGES.xyArea.default,
 					zDepth: DEFAULT_PARAMETER_RANGES.zDepth.default,
-					tribeConfigs: Array.from({ length: flockCount }, () => tribeConfig),
+					// per-tribe-predator-config Phase 2 (#6a): tribe 0 carries this
+					// row's swept `crossbreedingEnabled` value; every other tribe
+					// (index 1+) stays pinned at `true` — see this function's own
+					// comment above for why.
+					tribeConfigs: Array.from({ length: flockCount }, (_, index) => ({
+						...baseTribeConfig,
+						crossbreedingEnabled: index === 0 ? crossbreedingEnabled : true,
+					})),
 				});
 			}
 		}

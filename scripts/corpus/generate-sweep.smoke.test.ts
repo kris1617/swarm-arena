@@ -69,7 +69,12 @@ describe("generateCorpus smoke test", () => {
 				expect(run.sweepIndex).toBe(row?.sweepIndex);
 				expect(run.separationWeight).toBe(row?.separationWeight);
 				expect(run.foodRegenRate).toBe(row?.foodRegenRate);
-				expect(run.crossbreedingEnabled).toBe(row?.crossbreedingEnabled);
+				// per-tribe-predator-config Phase 2 (#6a): the swept value now
+				// lives on tribe 0 (see sweep-matrix.ts's own comment), not as a
+				// top-level field on `row`.
+				expect(run.crossbreedingEnabled).toBe(
+					row?.tribeConfigs[0]?.crossbreedingEnabled,
+				);
 				expect(run.maxDurationSeconds).toBe(2);
 				expect(run.score).not.toBeNull();
 				expect(typeof run.finalGeneticDiversity).toBe("number");

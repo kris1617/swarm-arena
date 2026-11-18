@@ -18,9 +18,17 @@ import {
 // `TRIBE_RANGED_FIELD_NAMES`) live inside `tribeConfigs[]`, not as a single
 // scalar per run, so they're out of scope for this suggestion heuristic as
 // it exists today (no change requested to extend it here).
+// per-tribe-predator-config Phase 2 (#6): narrowed from `number | boolean`
+// to `number` — `crossbreedingEnabled` was the only boolean-typed
+// `TopLevelRangedParameterName`, and it moved to a per-tribe field this
+// phase; no boolean-typed top-level ranged parameter remains. The
+// `Number(...)` coercion in `suggestParameterChange` below is left in place
+// (now a no-op over an already-numeric value) rather than stripped, so a
+// future boolean-typed top-level field would still correlate correctly
+// without this function needing a second look.
 export type SuggestionInputRow = {
 	score: number;
-} & Record<TopLevelRangedParameterName, number | boolean>;
+} & Record<TopLevelRangedParameterName, number>;
 
 export type ParameterSuggestion =
 	| { status: "insufficient-data" }
@@ -53,7 +61,6 @@ const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
 	// `src/app/reference/parameters/page.tsx`'s own `PARAMETER_LABELS`, same
 	// verified-identical-naming rule this file's own comment above states.
 	predatorFlockCount: "Predator flock count",
-	crossbreedingEnabled: "Crossbreeding enabled",
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",

@@ -32,6 +32,7 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 };
 // predator-tribe-concept Phase 2: createInitialPredators now takes
 // `PredatorTribeConfig[]`, not `TribeConfig[]` — predators' own independent
@@ -45,6 +46,7 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	matePreference: 0.5,
 	detectionRadius: 50,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 const PARAMS = {
@@ -52,7 +54,6 @@ const PARAMS = {
 	foodRegenRate: 5,
 	protectionThreshold: 0,
 	rng: createRng(99),
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -451,7 +452,6 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 				// this tick, far short of MATURITY_AGE_SECONDS (5) — so these are
 				// inert placeholders, not asserted on.
 				rng: createRng(1),
-				crossbreedingEnabled: true,
 				energyThreshold: 50,
 				mutationChance: 0.1,
 				mutationMagnitude: 0.2,

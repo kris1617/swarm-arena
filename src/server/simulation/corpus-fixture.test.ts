@@ -16,7 +16,6 @@ const FULL_PARAM_FIELDS = [
 	"foodStockInitial",
 	"foodRegenRate",
 	"flockCount",
-	"crossbreedingEnabled",
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
@@ -36,7 +35,7 @@ describe("loadCorpusFixture", () => {
 		expect(indices).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
 	});
 
-	it("reconstructs the full 16-field params for sweepIndex 1", () => {
+	it("reconstructs the full 15-field params for sweepIndex 1", () => {
 		const row = loadCorpusFixture().find((r) => r.sweepIndex === 1);
 		expect(row).toBeDefined();
 
@@ -46,7 +45,10 @@ describe("loadCorpusFixture", () => {
 
 		expect(row?.params.separationWeight).toBe(0.5);
 		expect(row?.params.foodRegenRate).toBe(2);
-		expect(row?.params.crossbreedingEnabled).toBe(true);
+		// per-tribe-predator-config Phase 2 (#6a): the swept value now lives
+		// on tribe 0 (see sweep-matrix.ts's own comment), not as a top-level
+		// field.
+		expect(row?.params.tribeConfigs[0]?.crossbreedingEnabled).toBe(true);
 		expect(row?.score).toBe(0);
 	});
 

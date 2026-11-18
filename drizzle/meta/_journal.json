@@ -99,6 +99,13 @@
       "when": 1794989954376,
       "tag": "0013_jazzy_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1795001885808,
+      "tag": "0014_freezing_synch",
+      "breakpoints": true
     }
   ]
 }

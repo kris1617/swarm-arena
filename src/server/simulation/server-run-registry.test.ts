@@ -44,6 +44,7 @@ const DEFAULT_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 };
 
 // predator-tribe-concept Phase 5: the predator-side sibling of
@@ -59,6 +60,7 @@ const DEFAULT_PREDATOR_TRIBE_CONFIG = {
 	matePreference: 0.5,
 	detectionRadius: 50,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 
 const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
@@ -72,7 +74,6 @@ const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
 	foodStockInitial: 100,
 	foodRegenRate: 1,
 	flockCount: 2,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -94,6 +95,7 @@ const BASE_PARAMS: Omit<ServerRunParams, "runId" | "seed"> = {
 			matePreference: 0.5,
 			detectionRadius: 50,
 			captureRadiusMult: 1,
+			crossbreedingEnabled: true,
 		},
 	],
 };
@@ -160,7 +162,6 @@ async function insertOwnedRunningRun(seed: number) {
 			foodStockInitial: BASE_PARAMS.foodStockInitial,
 			foodRegenRate: BASE_PARAMS.foodRegenRate,
 			flockCount: BASE_PARAMS.flockCount,
-			crossbreedingEnabled: BASE_PARAMS.crossbreedingEnabled,
 			energyThreshold: BASE_PARAMS.energyThreshold,
 			mutationChance: BASE_PARAMS.mutationChance,
 			mutationMagnitude: BASE_PARAMS.mutationMagnitude,
@@ -577,12 +578,16 @@ describe("applyLiveParams", () => {
 		activeRunIds.length = 0;
 	});
 
-	// live-crossbreeding-toggle Phase 1: crossbreedingEnabled is a boolean on
-	// run.params, but ParameterChangeEntry.oldValue/newValue are typed
-	// number — confirms the generic typeof-coercion in applyLiveParams
-	// stores 0/1 in the changelog while run.params itself keeps the real
-	// boolean.
-	it("coerces a boolean field's oldValue/newValue to 0/1 in the changelog, while run.params stays a real boolean", async () => {
+	// per-tribe-predator-config Phase 2: rewritten from
+	// `applyLiveParams({ crossbreedingEnabled })` (the old flat scalar path)
+	// to `applyLiveTribeConfigs` against a tribe array — crossbreedingEnabled
+	// moved to a per-tribe TribeConfig field, which lives on the
+	// wholesale-array-replace live-edit path, not the scalar one. Confirms
+	// the replaced tribe's own field actually changes in the live snapshot,
+	// and that the changelog records the array-replace's simplified
+	// "tribeConfigs" 0/1 marker (not a real before/after value — see
+	// applyLiveTribeConfigs's own comment).
+	it("applyLiveTribeConfigs replaces a tribe's crossbreedingEnabled and records a 'tribeConfigs' marker in the changelog", async () => {
 		vi.useFakeTimers();
 		const { runId } = await insertOwnedRunningRun(24);
 		activeRunIds.push(runId);
@@ -590,15 +595,17 @@ describe("applyLiveParams", () => {
 			runId,
 			seed: 24,
 			...BASE_PARAMS,
-			crossbreedingEnabled: true,
 			maxDurationSeconds: 600,
 		});
 		await vi.advanceTimersByTimeAsync(64);
 
-		const applied = applyLiveParams(runId, { crossbreedingEnabled: false });
+		const applied = applyLiveTribeConfigs(runId, [
+			{ ...DEFAULT_TRIBE_CONFIG, crossbreedingEnabled: false },
+			DEFAULT_TRIBE_CONFIG,
+		]);
 		expect(applied).toEqual({ status: "applied" });
 		const state = getLiveRunState(runId);
-		expect(state?.liveParams.crossbreedingEnabled).toBe(false);
+		expect(state?.tribeConfigs[0]?.crossbreedingEnabled).toBe(false);
 
 		await stopServerRun(runId);
 		const row = await db.query.simulationRuns.findFirst({
@@ -611,9 +618,9 @@ describe("applyLiveParams", () => {
 		)?.parameterChanges;
 		expect(changes).toContainEqual({
 			tick: expect.any(Number),
-			field: "crossbreedingEnabled",
-			oldValue: 1,
-			newValue: 0,
+			field: "tribeConfigs",
+			oldValue: 0,
+			newValue: 1,
 		});
 		activeRunIds.length = 0;
 	});

@@ -116,7 +116,6 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// populated production table without an interactive default-value prompt —
 	// every INSERT from `start` still always supplies a real value explicitly.
 	flockCount: d.integer().notNull().default(2),
-	crossbreedingEnabled: d.integer({ mode: "boolean" }).notNull().default(true),
 	energyThreshold: d.real().notNull().default(50),
 	mutationChance: d.real().notNull().default(0.1),
 	mutationMagnitude: d.real().notNull().default(0.2),

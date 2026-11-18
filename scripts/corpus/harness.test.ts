@@ -32,6 +32,7 @@ const DEFAULT_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 };
 
 // predator-tribe-concept Phase 1: type-only fields this phase — not yet read
@@ -48,6 +49,7 @@ const DEFAULT_PREDATOR_TRIBE_CONFIG = {
 	matePreference: 0.5,
 	detectionRadius: 200,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 
 const VALID_START_INPUT: StartCorpusRunParams = {
@@ -61,7 +63,6 @@ const VALID_START_INPUT: StartCorpusRunParams = {
 	foodStockInitial: 100,
 	foodRegenRate: 1,
 	flockCount: 2,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,

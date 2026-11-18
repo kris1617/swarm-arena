@@ -56,7 +56,6 @@ const LIVE_FIELDS = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
-	"crossbreedingEnabled",
 ] as const satisfies readonly (keyof LiveAdjustableParams)[];
 
 type LiveField = (typeof LIVE_FIELDS)[number];
@@ -69,7 +68,6 @@ const LIVE_FIELD_LABELS: Record<LiveField, string> = {
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",
-	crossbreedingEnabled: "Crossbreeding enabled",
 };
 
 // Mirrors server-run-viewer.tsx's identical grouping — the panel groups the
@@ -85,7 +83,6 @@ const FUTURE_OFFSPRING_FIELDS = [
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",
-	"crossbreedingEnabled",
 ] as const satisfies readonly LiveField[];
 
 // How long a field's Apply button stays disabled after a successful apply —
@@ -155,7 +152,6 @@ type SimulationCanvasProps = {
 	// reads these instead of flockCount/tribeConfigs.
 	predatorFlockCount: number;
 	predatorTribeConfigs: PredatorTribeConfig[];
-	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
@@ -356,7 +352,6 @@ export function SimulationCanvas({
 	flockCount,
 	predatorFlockCount,
 	predatorTribeConfigs,
-	crossbreedingEnabled,
 	energyThreshold,
 	mutationChance,
 	mutationMagnitude,
@@ -455,11 +450,6 @@ export function SimulationCanvas({
 	const energyThresholdRef = useRef(energyThreshold);
 	const mutationChanceRef = useRef(mutationChance);
 	const mutationMagnitudeRef = useRef(mutationMagnitude);
-	// live-crossbreeding-toggle Phase 3: initialized as a number (not a
-	// boolean) to match liveFieldRefs's Record<LiveField, RefObject<number>>
-	// typing — the one ref in this map whose underlying prop is a boolean,
-	// converted back at the single read site in tick() below.
-	const crossbreedingEnabledRef = useRef(Number(crossbreedingEnabled));
 
 	// client-staged-live-parameter-parity Phase 3: the client-staged path's
 	// own changelog of applied live edits, mirroring `ParameterChangeEntry`'s
@@ -478,7 +468,6 @@ export function SimulationCanvas({
 		energyThreshold: energyThresholdRef,
 		mutationChance: mutationChanceRef,
 		mutationMagnitude: mutationMagnitudeRef,
-		crossbreedingEnabled: crossbreedingEnabledRef,
 	};
 
 	// client-staged-live-parameter-parity Phase 2: the panel's staged (not
@@ -493,7 +482,6 @@ export function SimulationCanvas({
 		energyThreshold,
 		mutationChance,
 		mutationMagnitude,
-		crossbreedingEnabled: Number(crossbreedingEnabled),
 	});
 	const [fieldWarnings, setFieldWarnings] = useState<
 		Partial<Record<LiveField, string[]>>
@@ -538,12 +526,6 @@ export function SimulationCanvas({
 				return next;
 			});
 		}, FLASH_DURATION_MS);
-		// impl-review F3: crossbreedingEnabled has no Apply button to read
-		// cooldownFields (it applies immediately on flip), so tracking its
-		// cooldown here would be a dead state update.
-		if (field === "crossbreedingEnabled") {
-			return;
-		}
 		setCooldownFields((current) => new Set(current).add(field));
 		setTimeout(() => {
 			setCooldownFields((current) => {
@@ -568,42 +550,6 @@ export function SimulationCanvas({
 				: field === "mutationChance" || field === "mutationMagnitude"
 					? "0.05"
 					: "0.1";
-		// live-crossbreeding-toggle Phase 3: a boolean toggle applies
-		// immediately on flip rather than needing a separate stage-then-apply
-		// step — there's no intermediate "typing" state the way a number
-		// field has. Mirrors server-run-viewer.tsx's Phase 2 branch.
-		if (field === "crossbreedingEnabled") {
-			return (
-				<div
-					className={cn(
-						"flex flex-col gap-1 rounded-xl transition-shadow",
-						flashFields.has(field) ? "ring-chart-2 ring-2" : "",
-					)}
-					key={field}
-				>
-					<label
-						className="flex items-center gap-2 text-sm"
-						htmlFor={`live-param-${field}`}
-					>
-						{LIVE_FIELD_LABELS[field]}
-						<Switch
-							checked={Boolean(liveValues[field])}
-							id={`live-param-${field}`}
-							onCheckedChange={(checked) => {
-								const value = checked ? 1 : 0;
-								handleLiveFieldDraftChange(field, value);
-								handleApplyLiveField(field, value);
-							}}
-						/>
-					</label>
-					{warnings.map((warning) => (
-						<p className="text-destructive text-xs" key={warning}>
-							{warning}
-						</p>
-					))}
-				</div>
-			);
-		}
 		const fieldRange = liveRanges[field];
 		return (
 			<div
@@ -762,7 +708,7 @@ export function SimulationCanvas({
 		};
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/tribeConfigs/maxDurationSeconds/predatorCount/predatorFlockCount/predatorTribeConfigs/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude/crossbreedingEnabled are read via their refs (client-staged-live-parameter-parity Phase 2, live-crossbreeding-toggle Phase 3) so a panel edit reaches this closure without restarting the loop.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once-per-run effect — seed/boidCount/tribeConfigs/maxDurationSeconds/predatorCount/predatorFlockCount/predatorTribeConfigs/foodStockInitial/flockCount/xyArea/zDepth/worldSize/redraw/stopRun.mutate are fixed for the lifetime of one run and only runId identifies a new run. foodRegenRate/protectionThreshold/energyThreshold/mutationChance/mutationMagnitude are read via their refs (client-staged-live-parameter-parity Phase 2) so a panel edit reaches this closure without restarting the loop.
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		const maybeCtx = canvas?.getContext("2d");
@@ -843,7 +789,6 @@ export function SimulationCanvas({
 						maxDurationSeconds,
 						foodStockInitial,
 						rng: rngRef.current,
-						crossbreedingEnabled: Boolean(crossbreedingEnabledRef.current),
 						energyThreshold: energyThresholdRef.current,
 						mutationChance: mutationChanceRef.current,
 						mutationMagnitude: mutationMagnitudeRef.current,

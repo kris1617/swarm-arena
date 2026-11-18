@@ -38,6 +38,7 @@ const DEFAULT_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 };
 
 const BASE_PARAMS: Omit<
@@ -52,7 +53,6 @@ const BASE_PARAMS: Omit<
 	foodStockInitial: 100,
 	foodRegenRate: 1,
 	flockCount: 2,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -73,6 +73,7 @@ const BASE_PARAMS: Omit<
 			matePreference: 0.5,
 			detectionRadius: 50,
 			captureRadiusMult: 1,
+			crossbreedingEnabled: true,
 		},
 	],
 };
@@ -123,7 +124,6 @@ async function insertOwnedRunningRun(
 			foodStockInitial: params.foodStockInitial,
 			foodRegenRate: params.foodRegenRate,
 			flockCount: params.flockCount,
-			crossbreedingEnabled: params.crossbreedingEnabled,
 			energyThreshold: params.energyThreshold,
 			mutationChance: params.mutationChance,
 			mutationMagnitude: params.mutationMagnitude,

@@ -76,7 +76,12 @@ describe("generateCorpus full-matrix generation", () => {
 				expect(record.sweepIndex).toBe(row.sweepIndex);
 				expect(record.separationWeight).toBe(row.separationWeight);
 				expect(record.foodRegenRate).toBe(row.foodRegenRate);
-				expect(record.crossbreedingEnabled).toBe(row.crossbreedingEnabled);
+				// per-tribe-predator-config Phase 2 (#6a): the swept value now
+				// lives on tribe 0 (see sweep-matrix.ts's own comment), not as a
+				// top-level field on `row`.
+				expect(record.crossbreedingEnabled).toBe(
+					row.tribeConfigs[0]?.crossbreedingEnabled,
+				);
 				expect(record.maxDurationSeconds).toBe(3600);
 				expect(typeof record.endedViaExtinction).toBe("boolean");
 				expect(record.score === null || typeof record.score === "number").toBe(

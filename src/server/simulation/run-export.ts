@@ -19,7 +19,6 @@ export type RunExportRow = {
 	foodStockInitial: number;
 	foodRegenRate: number;
 	flockCount: number;
-	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
@@ -49,7 +48,6 @@ const CSV_COLUMNS = [
 	"foodStockInitial",
 	"foodRegenRate",
 	"flockCount",
-	"crossbreedingEnabled",
 	"energyThreshold",
 	"mutationChance",
 	"mutationMagnitude",

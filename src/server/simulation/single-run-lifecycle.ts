@@ -69,7 +69,6 @@ export function computeSingleRunTick(
 		// state between calls itself, so creating a fresh rng here would make
 		// reproduction's mutation/gender rolls non-deterministic across ticks.
 		rng: () => number;
-		crossbreedingEnabled: boolean;
 		energyThreshold: number;
 		mutationChance: number;
 		mutationMagnitude: number;
@@ -170,7 +169,6 @@ export function computeSingleRunTick(
 			foodRegenRate: params.foodRegenRate,
 			protectionThreshold: params.protectionThreshold,
 			rng: params.rng,
-			crossbreedingEnabled: params.crossbreedingEnabled,
 			energyThreshold: params.energyThreshold,
 			mutationChance: params.mutationChance,
 			mutationMagnitude: params.mutationMagnitude,

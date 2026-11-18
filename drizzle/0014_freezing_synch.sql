@@ -1,0 +1,1 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` DROP COLUMN `crossbreedingEnabled`;

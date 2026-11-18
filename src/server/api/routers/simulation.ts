@@ -103,6 +103,11 @@ const tribeConfigSchema = z.object({
 	foodStockShare: z.number().finite(),
 	foodRegenShare: z.number().finite(),
 	foodConsumptionRate: z.number().finite(),
+	// per-tribe-predator-config Phase 2: replaces the old run-level
+	// `crossbreedingEnabled` flag — cross-tribe mating is now allowed only
+	// when BOTH tribes involved have this set true; same-tribe mating is
+	// always allowed regardless (see `reproducePopulation` in boids.ts).
+	crossbreedingEnabled: z.boolean(),
 });
 
 // predator-tribe-concept Phase 1: predators' own, fully independent
@@ -120,6 +125,9 @@ const predatorTribeConfigSchema = z.object({
 	matePreference: z.number().finite(),
 	detectionRadius: z.number().finite(),
 	captureRadiusMult: z.number().finite(),
+	// per-tribe-predator-config Phase 2: see `tribeConfigSchema`'s identical
+	// field above for the semantics.
+	crossbreedingEnabled: z.boolean(),
 });
 
 const startInputSchema = z.object({
@@ -133,7 +141,6 @@ const startInputSchema = z.object({
 	foodStockInitial: z.number().finite().positive(),
 	foodRegenRate: z.number().finite().nonnegative(),
 	flockCount: z.number().int().min(2).max(4),
-	crossbreedingEnabled: z.boolean(),
 	energyThreshold: z.number().finite().positive(),
 	mutationChance: z.number().min(0).max(1),
 	mutationMagnitude: z.number().min(0).max(1),
@@ -422,7 +429,6 @@ async function insertRunningSimulation(
 			foodStockInitial: input.foodStockInitial,
 			foodRegenRate: input.foodRegenRate,
 			flockCount: input.flockCount,
-			crossbreedingEnabled: input.crossbreedingEnabled,
 			energyThreshold: input.energyThreshold,
 			mutationChance: input.mutationChance,
 			mutationMagnitude: input.mutationMagnitude,
@@ -954,7 +960,6 @@ export const simulationRouter = createTRPCRouter({
 					foodStockInitial: simulationRuns.foodStockInitial,
 					foodRegenRate: simulationRuns.foodRegenRate,
 					flockCount: simulationRuns.flockCount,
-					crossbreedingEnabled: simulationRuns.crossbreedingEnabled,
 					energyThreshold: simulationRuns.energyThreshold,
 					mutationChance: simulationRuns.mutationChance,
 					mutationMagnitude: simulationRuns.mutationMagnitude,
@@ -1251,7 +1256,6 @@ export const simulationRouter = createTRPCRouter({
 				energyThreshold: z.number().finite().positive().optional(),
 				mutationChance: z.number().min(0).max(1).optional(),
 				mutationMagnitude: z.number().min(0).max(1).optional(),
-				crossbreedingEnabled: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

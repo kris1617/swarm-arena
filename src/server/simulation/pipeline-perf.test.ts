@@ -26,6 +26,7 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 };
 // predator-tribe-concept Phase 2: createInitialPredators now takes
 // `PredatorTribeConfig[]`, not `TribeConfig[]`.
@@ -38,6 +39,7 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	matePreference: 0.5,
 	detectionRadius: 50,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 const WORLD_SIZE = { x: 200, y: 200, z: 200 };
 // protectionThreshold: 0 keeps applyPredation's scan reachable in both
@@ -51,7 +53,6 @@ const BASE_PARAMS = {
 	foodRegenRate: 10,
 	protectionThreshold: 0,
 	rng: createRng(99),
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,

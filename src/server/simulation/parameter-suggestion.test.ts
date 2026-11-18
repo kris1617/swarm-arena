@@ -22,7 +22,6 @@ const BASELINE = {
 	// predator-tribe-concept Phase 1: sibling to `flockCount` above —
 	// `SuggestionInputRow` now requires it.
 	predatorFlockCount: 1,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -166,28 +165,13 @@ describe("suggestParameterChange", () => {
 		}
 	});
 
-	it("picks a boolean parameter (crossbreedingEnabled) when it has the strongest correlation", () => {
-		// crossbreedingEnabled is the only field that varies — RANGED_PARAMETER_NAMES
-		// grew to include booleans after the heuristic was built on a
-		// "numeric-only" assumption an archived plan-review asserted; this
-		// confirms suggestParameterChange's `Number()` coercion lets a boolean
-		// candidate actually win. `true` rows score far higher than `false`
-		// rows, an unambiguous, large gap so the assertion isn't sensitive to
-		// iteration-order tie-breaking.
-		const crossbreedingValues = [true, false, true, false, true];
-		const scores = [100, 10, 100, 10, 100];
-
-		const rows = scores.map((score, i) =>
-			makeRow(score, { crossbreedingEnabled: crossbreedingValues[i] }),
-		);
-
-		const result = suggestParameterChange(rows);
-		expect(result.status).toBe("ok");
-		if (result.status === "ok") {
-			expect(result.parameter).toBe("crossbreedingEnabled");
-			expect(result.direction).toBe("increase");
-		}
-	});
+	// per-tribe-predator-config Phase 2 (#6): the boolean-parameter test that
+	// used to live here (`crossbreedingEnabled` was the one boolean-typed
+	// `TopLevelRangedParameterName`) is removed, not retargeted —
+	// `crossbreedingEnabled` moved to a per-tribe field this phase, and no
+	// other boolean-typed top-level ranged parameter exists to exercise the
+	// same `Number()`-coercion behavior (see `SuggestionInputRow`'s own
+	// comment in parameter-suggestion.ts).
 
 	// unwatched-run-tick-throttling Phase 3: the optional throttledCount
 	// param composes a disclosure clause into the rationale without

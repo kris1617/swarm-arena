@@ -32,6 +32,7 @@ const BASE_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	crossbreedingEnabled: true,
 } satisfies TribeConfig;
 
 const PARAMS = {
@@ -47,7 +48,6 @@ const PARAMS = {
 	// instead of hardcoding them — mirrors the TODO(phase 6) placeholder
 	// values the tests below already assume (energyThreshold=50 etc. in
 	// their own comments).
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -626,11 +626,15 @@ describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral
 		expect(Math.max(...deviations)).toBeGreaterThan(0.01);
 	});
 
-	it("toggling crossbreedingEnabled changes whether inter-flock reproduction occurs on a subsequent tick", () => {
+	it("a cross-tribe pair mates only when both tribes' crossbreedingEnabled flags are true", () => {
 		// Two opposite-gender boids from DIFFERENT flocks, close enough to
 		// mate and already past maturity/energy eligibility — the only gate
-		// between them is crossbreedingEnabled.
-		function boidCountAfter(crossbreedingEnabled: boolean) {
+		// between them is each parent's own tribe's crossbreedingEnabled.
+		// per-tribe-predator-config Phase 2: reworked from a flat boolean
+		// param to a per-tribe tribeConfigs array — one entry per flockId
+		// (0 and 1, matching the two boids below), each carrying its own
+		// crossbreedingEnabled.
+		function boidCountAfter(tribeCrossbreeding: [boolean, boolean]) {
 			const state = buildState({
 				boids: [
 					buildBoid({
@@ -654,17 +658,29 @@ describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral
 			});
 			const params = {
 				...PARAMS,
-				crossbreedingEnabled,
+				tribeConfigs: [
+					{
+						...BASE_TRIBE_CONFIG,
+						crossbreedingEnabled: tribeCrossbreeding[0],
+					},
+					{
+						...BASE_TRIBE_CONFIG,
+						crossbreedingEnabled: tribeCrossbreeding[1],
+					},
+				],
 				energyThreshold: 1,
 			};
 			return computeSingleRunTick(state, 50, params).boids.length;
 		}
 
-		// Disabled: the cross-flock pair is the only eligible pair, and it's
-		// gated off — no reproduction occurs.
-		expect(boidCountAfter(false)).toBe(2);
-		// Enabled: the same pair is now eligible to mate.
-		expect(boidCountAfter(true)).toBeGreaterThan(2);
+		// Both disabled: the cross-flock pair is the only eligible pair, and
+		// it's gated off — no reproduction occurs.
+		expect(boidCountAfter([false, false])).toBe(2);
+		// Asymmetric: one tribe disallows it, so the both-tribes-must-allow
+		// gate still blocks the pair.
+		expect(boidCountAfter([true, false])).toBe(2);
+		// Both enabled: the same pair is now eligible to mate.
+		expect(boidCountAfter([true, true])).toBeGreaterThan(2);
 	});
 });
 

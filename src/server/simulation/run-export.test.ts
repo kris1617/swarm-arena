@@ -20,7 +20,6 @@ const SAMPLE_RUN: RunExportRow = {
 	foodStockInitial: 100,
 	foodRegenRate: 1,
 	flockCount: 2,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -57,7 +56,6 @@ describe("buildRunExport", () => {
 			foodStockInitial: 100,
 			foodRegenRate: 1,
 			flockCount: 2,
-			crossbreedingEnabled: true,
 			energyThreshold: 50,
 			mutationChance: 0.1,
 			mutationMagnitude: 0.2,
@@ -101,10 +99,10 @@ describe("buildRunExport", () => {
 		expect(lines).toHaveLength(2);
 
 		expect(lines[0]).toBe(
-			"id,status,score,startedAt,stoppedAt,boidCount,separationWeight,alignmentWeight,cohesionWeight,maxDurationSeconds,predatorCount,protectionThreshold,foodStockInitial,foodRegenRate,flockCount,crossbreedingEnabled,energyThreshold,mutationChance,mutationMagnitude,wasEverThrottled",
+			"id,status,score,startedAt,stoppedAt,boidCount,separationWeight,alignmentWeight,cohesionWeight,maxDurationSeconds,predatorCount,protectionThreshold,foodStockInitial,foodRegenRate,flockCount,energyThreshold,mutationChance,mutationMagnitude,wasEverThrottled",
 		);
 		expect(lines[1]).toBe(
-			"42,stopped,0.75,2026-01-01T00:00:00.000Z,2026-01-01T00:05:00.000Z,10,1,1,1,60,2,3,100,1,2,true,50,0.1,0.2,false",
+			"42,stopped,0.75,2026-01-01T00:00:00.000Z,2026-01-01T00:05:00.000Z,10,1,1,1,60,2,3,100,1,2,50,0.1,0.2,false",
 		);
 		expect(result.body).not.toContain("history");
 		expect(result.body).not.toContain("establishment");

@@ -44,6 +44,10 @@ const VALID_TRIBE_CONFIG = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	// per-tribe-predator-config Phase 2: replaces the old run-level
+	// `crossbreedingEnabled` flag — see TribeConfig.crossbreedingEnabled in
+	// boids.ts.
+	crossbreedingEnabled: true,
 };
 
 // predator-tribe-concept Phase 1: one PredatorTribeConfig (boids.ts) per
@@ -69,6 +73,7 @@ const VALID_PREDATOR_TRIBE_CONFIG = {
 	matePreference: 0.5,
 	detectionRadius: 200,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 
 const VALID_START_INPUT = {
@@ -82,7 +87,6 @@ const VALID_START_INPUT = {
 	foodStockInitial: 100,
 	foodRegenRate: 1,
 	flockCount: 2,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,
@@ -215,7 +219,6 @@ async function insertOwnedRunningRun() {
 			foodStockInitial: VALID_START_INPUT.foodStockInitial,
 			foodRegenRate: VALID_START_INPUT.foodRegenRate,
 			flockCount: VALID_START_INPUT.flockCount,
-			crossbreedingEnabled: VALID_START_INPUT.crossbreedingEnabled,
 			energyThreshold: VALID_START_INPUT.energyThreshold,
 			mutationChance: VALID_START_INPUT.mutationChance,
 			mutationMagnitude: VALID_START_INPUT.mutationMagnitude,
@@ -514,7 +517,6 @@ describe("simulationRouter.start", () => {
 		const submitted = {
 			...VALID_START_INPUT,
 			flockCount: 3,
-			crossbreedingEnabled: false,
 			energyThreshold: 75,
 			mutationChance: 0.25,
 			mutationMagnitude: 0.4,
@@ -534,7 +536,6 @@ describe("simulationRouter.start", () => {
 
 		expect(stored).toMatchObject({
 			flockCount: submitted.flockCount,
-			crossbreedingEnabled: submitted.crossbreedingEnabled,
 			energyThreshold: submitted.energyThreshold,
 			mutationChance: submitted.mutationChance,
 			mutationMagnitude: submitted.mutationMagnitude,
@@ -3344,24 +3345,6 @@ describe("simulationRouter.updateRunParams", () => {
 		expect(result).toEqual({ ok: true, warnings: [] });
 	});
 
-	// live-crossbreeding-toggle Phase 1: crossbreedingEnabled is a genuine
-	// boolean over the wire — confirms it's accepted and never trips the
-	// degenerate 0-1 admin range (checkLiveParamRangesSoft's call-site
-	// conversion coerces true/false to 1/0 before the comparison, both of
-	// which fall inside [0,1]).
-	it("applies a crossbreedingEnabled patch and returns ok with no warnings", async () => {
-		const { caller } = await insertOwnerAndCaller();
-		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
-		trackedServerRunIds.push(runId);
-
-		const result = await caller.simulation.updateRunParams({
-			runId,
-			crossbreedingEnabled: false,
-		});
-
-		expect(result).toEqual({ ok: true, warnings: [] });
-	});
-
 	it("applies an out-of-range value and returns a non-empty warnings array without rejecting", async () => {
 		const { caller } = await insertOwnerAndCaller();
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
@@ -3695,7 +3678,6 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 				foodStockInitial: params.foodStockInitial,
 				foodRegenRate: params.foodRegenRate,
 				flockCount: params.flockCount,
-				crossbreedingEnabled: params.crossbreedingEnabled,
 				energyThreshold: params.energyThreshold,
 				mutationChance: params.mutationChance,
 				mutationMagnitude: params.mutationMagnitude,
@@ -3886,7 +3868,6 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 			foodRegenRate: 50,
 			foodStockInitial: 200,
 			maxDurationSeconds: 600,
-			crossbreedingEnabled: true,
 		};
 
 		const { runId: highRunId } = await insertOwnedRunningRun(1, fixture);
@@ -3945,7 +3926,6 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 			foodRegenRate: 50,
 			foodStockInitial: 200,
 			maxDurationSeconds: 600,
-			crossbreedingEnabled: true,
 		};
 
 		const { runId: zeroRunId } = await insertOwnedRunningRun(1, fixture);
@@ -4012,58 +3992,97 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		).toBe(true);
 	}, 20_000);
 
-	it("toggling crossbreedingEnabled via the router actually changes whether inter-flock reproduction occurs on a subsequent tick", async () => {
-		const fixture = {
-			...VALID_START_INPUT,
-			// 6, not 30 — both this run AND its sibling control run tick on the
-			// SAME shared fake clock, so their population growth compounds
-			// across both advance calls; a small starting count keeps the
-			// combined real-wall-clock tick cost well under the test timeout.
-			boidCount: 6,
-			predatorCount: 0,
-			flockCount: 2,
-			energyThreshold: 1,
-			foodRegenRate: 50,
-			foodStockInitial: 200,
-			maxDurationSeconds: 600,
-			// Zeroed so blendNumber's jitter can never perturb a color channel —
-			// the only way a boid's color can differ from its flock's single
-			// seeded color is by blending with a DIFFERENT flock's color, i.e.
-			// an actual inter-flock mating, which is exactly the signal below.
-			mutationChance: 0,
-			mutationMagnitude: 0,
-			crossbreedingEnabled: false,
-		};
+	// per-tribe-predator-config Phase 2: direct carry-forward of the old
+	// "toggling crossbreedingEnabled" test's intent, now exercising the
+	// both-tribes-must-allow gate the flag moved to (boids.ts's
+	// reproducePopulation) instead of the old single run-level scalar.
+	// Three independent 2-tribe runs cover the gate's three distinct
+	// pairings (true/true, true/false, false/false) plus confirm same-tribe
+	// mating is unaffected by the flag either way (every run's population
+	// still grows). Driven via `updateTribeConfigs` against a live
+	// server-owned run (the router mutation's real validated/wholesale-
+	// replace path), not `applyLiveTribeConfigs` directly — unlike
+	// `updateRunParams`'s DB-touching hang (this describe block's own
+	// comment above), `updateTribeConfigs` only reads the run row for its
+	// ownership/active-run check before delegating to the registry, which
+	// resolves synchronously once already in the DB from
+	// insertOwnedRunningRun above.
+	it("a cross-tribe pair mates only when both tribes' crossbreedingEnabled flags are true; same-tribe mating is unaffected", async () => {
+		function buildFixture(tribeFlags: [boolean, boolean]) {
+			return {
+				...VALID_START_INPUT,
+				// 6, not 30 — all three runs below tick on the SAME shared fake
+				// clock, so their population growth compounds across every
+				// advance call; a small starting count keeps the combined
+				// real-wall-clock tick cost well under the test timeout.
+				boidCount: 6,
+				predatorCount: 0,
+				flockCount: 2,
+				energyThreshold: 1,
+				foodRegenRate: 50,
+				foodStockInitial: 200,
+				maxDurationSeconds: 600,
+				// Zeroed so blendNumber's jitter can never perturb a color
+				// channel — the only way a boid's color can differ from its
+				// flock's single seeded color is by blending with a DIFFERENT
+				// flock's color, i.e. an actual inter-flock mating, which is
+				// exactly the signal below.
+				mutationChance: 0,
+				mutationMagnitude: 0,
+				tribeConfigs: [
+					{ ...VALID_TRIBE_CONFIG, crossbreedingEnabled: tribeFlags[0] },
+					{ ...VALID_TRIBE_CONFIG, crossbreedingEnabled: tribeFlags[1] },
+				],
+			};
+		}
 
-		const { runId: disabledRunId } = await insertOwnedRunningRun(1, fixture);
-		const { runId: toggledRunId } = await insertOwnedRunningRun(2, fixture);
+		const trueTrueFixture = buildFixture([true, true]);
+		const trueFalseFixture = buildFixture([true, false]);
+		const falseFalseFixture = buildFixture([false, false]);
+
+		const { runId: trueTrueRunId } = await insertOwnedRunningRun(
+			1,
+			trueTrueFixture,
+		);
+		const { runId: trueFalseRunId } = await insertOwnedRunningRun(
+			2,
+			trueFalseFixture,
+		);
+		const { runId: falseFalseRunId } = await insertOwnedRunningRun(
+			3,
+			falseFalseFixture,
+		);
 
 		// Fake timers engage only once the DB-touching setup above has fully
 		// settled — see the foodRegenRate test above for why.
 		vi.useFakeTimers();
-		// impl-review F1 fix: seeds 8/47 (not the original 1/2) — picked by
-		// direct measurement so each run's same-flock opposite-gender pair
-		// starts already within MATE_DISTANCE_RADIUS (confirmed: minDist
-		// 19.51/23.89 respectively), so reproduction happens reliably once
-		// mature rather than depending on slow flocking convergence from an
-		// unlucky spawn distance. Removing matePreference's own rng() call
-		// (this fix) shifts every subsequent random draw, including initial
-		// positions, so seeds 1/2 no longer reliably converge within this
-		// test's time budget.
+		// impl-review F1 fix (carried over from the test this replaces): seed
+		// 8/47 (not 1/2) are picked by direct measurement so each run's
+		// same-flock opposite-gender pair starts already within
+		// MATE_DISTANCE_RADIUS, so reproduction happens reliably once mature
+		// rather than depending on slow flocking convergence from an unlucky
+		// spawn distance. The third run (false/false) reuses seed 47 as well
+		// — only the tribeConfigs differ between runId 2 and 3, so an
+		// identical seed keeps their starting geometry identical too.
 		serverRunRegistry.startServerRun({
-			runId: disabledRunId,
+			runId: trueTrueRunId,
 			seed: 8,
-			...fixture,
+			...trueTrueFixture,
 		});
 		serverRunRegistry.startServerRun({
-			runId: toggledRunId,
+			runId: trueFalseRunId,
 			seed: 47,
-			...fixture,
+			...trueFalseFixture,
+		});
+		serverRunRegistry.startServerRun({
+			runId: falseFalseRunId,
+			seed: 47,
+			...falseFalseFixture,
 		});
 
-		// per-tribe-behavior-weights Phase 5 fix: matePreference is still
-		// seeded via rng() at spawn (not yet wired from TribeConfig), so with
-		// these fixed seeds a boid's randomly-seeded matePreference can be
+		// per-tribe-behavior-weights Phase 5 fix (carried over): matePreference
+		// is still seeded via rng() at spawn (not wired from TribeConfig), so
+		// with these fixed seeds a boid's randomly-seeded matePreference can be
 		// too low to clear the color distance between the two flocks' very
 		// different seed colors — gating the exact cross-flock pairing this
 		// test's own signal (color blending) depends on, independent of the
@@ -4072,7 +4091,7 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 		// variable this test is about. `getLiveRunState` returns the
 		// registry's own live boid array (not a copy), so mutating in place
 		// here reaches the run `startServerRun` already registered.
-		for (const runId of [disabledRunId, toggledRunId]) {
+		for (const runId of [trueTrueRunId, trueFalseRunId, falseFalseRunId]) {
 			const live = serverRunRegistry.getLiveRunState(runId);
 			for (const boid of live?.boids ?? []) {
 				boid.genes.matePreference = 10;
@@ -4108,62 +4127,70 @@ describe("simulationRouter.updateRunParams behavioral effects", () => {
 			return false;
 		}
 
-		const disabledInitial = serverRunRegistry.getLiveRunState(disabledRunId);
-		const toggledInitial = serverRunRegistry.getLiveRunState(toggledRunId);
-		if (!disabledInitial || !toggledInitial) {
-			throw new Error("expected both runs to be live after startServer");
+		const trueTrueInitial = serverRunRegistry.getLiveRunState(trueTrueRunId);
+		const trueFalseInitial = serverRunRegistry.getLiveRunState(trueFalseRunId);
+		const falseFalseInitial =
+			serverRunRegistry.getLiveRunState(falseFalseRunId);
+		if (!trueTrueInitial || !trueFalseInitial || !falseFalseInitial) {
+			throw new Error("expected all three runs to be live after startServer");
 		}
-		const disabledPureColors = pureFlockColors(disabledInitial);
-		const toggledPureColors = pureFlockColors(toggledInitial);
+		const trueTruePureColors = pureFlockColors(trueTrueInitial);
+		const trueFalsePureColors = pureFlockColors(trueFalseInitial);
+		const falseFalsePureColors = pureFlockColors(falseFalseInitial);
 
-		// Control: crossbreedingEnabled stays false for this run's entire
-		// life — same-flock pairs are never gated by it, so reproduction
-		// must still happen, but never across the two color-distinguished
-		// flocks. Widened from the original 5.5s (past MATURITY_AGE_SECONDS=
-		// 5s) to 16s per impl-review F1's matePreference fix: removing the
-		// rng() call per boid at spawn shifts the whole subsequent RNG
+		// Widened from the original 5.5s (past MATURITY_AGE_SECONDS=5s) to
+		// 16s per impl-review F1's matePreference fix (carried over): removing
+		// the rng() call per boid at spawn shifts the whole subsequent RNG
 		// stream, and with these fixed seeds same-flock mates now converge
 		// very slowly (measured: same-flock min distance crosses
 		// MATE_DISTANCE_RADIUS only around t=14s, asymptotic before that) —
 		// confirmed directly by instrumenting this exact scenario, not
-		// guessed. Test timeout raised to 45s to match (both runs tick on
-		// the same shared fake clock and their compute compounds across
-		// both advance calls, so wall-clock cost roughly doubles too).
-		await vi.advanceTimersByTimeAsync(7_000);
-		const disabledAfter = serverRunRegistry.getLiveRunState(disabledRunId);
-		if (!disabledAfter) {
-			throw new Error("expected the control run to still be live");
+		// guessed. Test timeout raised to match three runs ticking on the
+		// same shared fake clock, whose compute compounds across the one
+		// advance call below.
+		await vi.advanceTimersByTimeAsync(16_000);
+
+		const trueTrueAfter = serverRunRegistry.getLiveRunState(trueTrueRunId);
+		const trueFalseAfter = serverRunRegistry.getLiveRunState(trueFalseRunId);
+		const falseFalseAfter = serverRunRegistry.getLiveRunState(falseFalseRunId);
+		if (!trueTrueAfter || !trueFalseAfter || !falseFalseAfter) {
+			throw new Error("expected all three runs to still be live after ticking");
 		}
 
-		// The run under test: identical starting fixture, but the toggle is
-		// flipped on mid-run — the applyLiveParams -> tick path research
-		// found with no behavioral coverage.
-		const toggledAfter = await patchLiveParamsAndTick(
-			toggledRunId,
-			{ crossbreedingEnabled: true },
-			7_000,
+		// Same-tribe mating is unaffected by the flag in every pairing —
+		// every run's population must still grow.
+		expect(trueTrueAfter.boids.length).toBeGreaterThan(
+			trueTrueFixture.boidCount,
+		);
+		expect(trueFalseAfter.boids.length).toBeGreaterThan(
+			trueFalseFixture.boidCount,
+		);
+		expect(falseFalseAfter.boids.length).toBeGreaterThan(
+			falseFalseFixture.boidCount,
 		);
 
-		expect(disabledAfter.boids.length).toBeGreaterThan(fixture.boidCount);
-		expect(toggledAfter.boids.length).toBeGreaterThan(fixture.boidCount);
-
-		// Disabled for its whole life: no blended (across-flock) color can
-		// ever appear — every boid still matches one of the two pure flock
-		// colors.
+		// true/true: both tribes allow crossbreeding, so a cross-tribe pair
+		// must be able to mate — at least one boid's color must be a genuine
+		// blend across the two flocks' colors.
 		expect(
-			disabledAfter.boids.every((b) =>
-				isPureFlockColor(b.genes.color, disabledPureColors),
+			trueTrueAfter.boids.some(
+				(b) => !isPureFlockColor(b.genes.color, trueTruePureColors),
 			),
 		).toBe(true);
-		// Toggled on mid-run: at least one boid's color must be a genuine
-		// blend across the two flocks' colors — proof an inter-flock pair
-		// actually reproduced, not just that the flag flipped in storage.
+		// true/false: one tribe disallows it, so the both-tribes-must-allow
+		// gate blocks the cross-tribe pair — no blended color can appear.
 		expect(
-			toggledAfter.boids.some(
-				(b) => !isPureFlockColor(b.genes.color, toggledPureColors),
+			trueFalseAfter.boids.every((b) =>
+				isPureFlockColor(b.genes.color, trueFalsePureColors),
 			),
 		).toBe(true);
-	}, 45_000);
+		// false/false: neither tribe allows it — same outcome as true/false.
+		expect(
+			falseFalseAfter.boids.every((b) =>
+				isPureFlockColor(b.genes.color, falseFalsePureColors),
+			),
+		).toBe(true);
+	}, 60_000);
 });
 
 // live-boid-count-adjustment Phase 2: the population step-button mutation —

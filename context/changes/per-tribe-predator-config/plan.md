@@ -638,18 +638,18 @@ have the field since the zod schema makes it required going forward.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
-- [x] 1.2 boids.test.ts passes
-- [x] 1.3 Lint passes
+- [x] 1.1 Typecheck passes — 4dd58aa
+- [x] 1.2 boids.test.ts passes — 4dd58aa
+- [x] 1.3 Lint passes — 4dd58aa
 
 ### Phase 2: Schema, validation, and thread-through removal
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Migration generated and matches expected DROP COLUMN statement
-- [ ] 2.3 Full test suite passes
-- [ ] 2.4 Lint passes
+- [x] 2.1 Typecheck passes (clean except 2 files explicitly deferred to Phase 4)
+- [x] 2.2 Migration generated and matches expected DROP COLUMN statement
+- [x] 2.3 Full test suite passes (490/494; 3 failures confined to the Phase-4-deferred Switch tests)
+- [x] 2.4 Lint passes
 
 ### Phase 3: Predator speed admin range
 

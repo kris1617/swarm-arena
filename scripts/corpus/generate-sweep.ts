@@ -108,7 +108,12 @@ function buildExportRow(
 		sweepIndex: row.sweepIndex,
 		separationWeight: row.separationWeight,
 		foodRegenRate: row.foodRegenRate,
-		crossbreedingEnabled: row.crossbreedingEnabled,
+		// per-tribe-predator-config Phase 2 (#6a): the swept value now lives on
+		// tribe 0 (see sweep-matrix.ts's own comment) rather than as a
+		// top-level scalar — `?? false` only guards the type (every row this
+		// orchestrator builds always has a tribe 0; `noUncheckedIndexedAccess`
+		// can't know that statically).
+		crossbreedingEnabled: row.tribeConfigs[0]?.crossbreedingEnabled ?? false,
 		maxDurationSeconds: row.maxDurationSeconds,
 		endedViaExtinction,
 	};

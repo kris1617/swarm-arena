@@ -40,11 +40,6 @@ const PARAMETER_DESCRIPTIONS: Record<TopLevelRangedParameterName, string> = {
 	mutationMagnitude: "How large a gene mutation can be when one occurs.",
 	xyArea: "The side length of the square area the simulation wraps within.",
 	zDepth: "The depth of the volume the simulation wraps within.",
-	// live-crossbreeding-toggle: has its own hand-written card below the loop
-	// (a boolean has no min/max/default to describe here) — a placeholder
-	// value keeps this Record exhaustive without being rendered anywhere,
-	// since the loop below filters this key out.
-	crossbreedingEnabled: "",
 };
 
 const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
@@ -64,7 +59,6 @@ const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
 	mutationMagnitude: "Mutation magnitude",
 	xyArea: "Area size",
 	zDepth: "Depth size",
-	crossbreedingEnabled: "",
 };
 
 export default function ParametersPage() {
@@ -81,9 +75,7 @@ export default function ParametersPage() {
 				</p>
 
 				<div className="flex flex-col gap-3">
-					{TOP_LEVEL_RANGED_PARAMETER_NAMES.filter(
-						(name) => name !== "crossbreedingEnabled",
-					).map((name) => {
+					{TOP_LEVEL_RANGED_PARAMETER_NAMES.map((name) => {
 						const key = name;
 						const range = DEFAULT_PARAMETER_RANGES[key];
 						return (
@@ -103,16 +95,6 @@ export default function ParametersPage() {
 							</div>
 						);
 					})}
-
-					<div className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4">
-						<span className="text-foreground font-semibold">
-							Crossbreeding enabled
-						</span>
-						<span className="text-foreground text-sm">
-							Whether boids from different flocks can breed with each other. A
-							boolean toggle, not a ranged numeric parameter.
-						</span>
-					</div>
 				</div>
 
 				<Link

@@ -86,6 +86,11 @@ const TRIBE_CONFIG: TribeConfig = {
 	foodStockShare: 50,
 	foodRegenShare: 5,
 	foodConsumptionRate: 0.5,
+	// per-tribe-predator-config Phase 2 (#6a): moved off TICK_PARAMS_BASE's
+	// own now-removed top-level `crossbreedingEnabled` scalar — this
+	// benchmark's single fixed tribe stays at `true`, reproducing the old
+	// scalar's default exactly.
+	crossbreedingEnabled: true,
 };
 // predator-tribe-concept Phase 2 (ADAPT): createInitialPredators now takes
 // `PredatorTribeConfig[]`, not `TribeConfig[]` — predators' own independent
@@ -100,6 +105,7 @@ const PREDATOR_TRIBE_CONFIG: PredatorTribeConfig = {
 	matePreference: 0.5,
 	detectionRadius: 50,
 	captureRadiusMult: 1,
+	crossbreedingEnabled: true,
 };
 const MAX_LIFESPAN = 100;
 const FLOCK_COUNT = 1;
@@ -107,7 +113,6 @@ const FLOCK_COUNT = 1;
 const TICK_PARAMS_BASE = {
 	foodRegenRate: 10,
 	protectionThreshold: 0,
-	crossbreedingEnabled: true,
 	energyThreshold: 50,
 	mutationChance: 0.1,
 	mutationMagnitude: 0.2,

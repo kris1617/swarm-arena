@@ -6,7 +6,6 @@ import { SimulationCanvas } from "~/app/simulation/_components/simulation-canvas
 import { Button } from "~/components/ui/button";
 import { NumberField } from "~/components/ui/number-field";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import type {
 	PredatorTribeConfig,
@@ -33,7 +32,6 @@ type ActiveRun = {
 	// space — sibling to flockCount/tribeConfigs above, not a reuse of them.
 	predatorFlockCount: number;
 	predatorTribeConfigs: PredatorTribeConfig[];
-	crossbreedingEnabled: boolean;
 	energyThreshold: number;
 	mutationChance: number;
 	mutationMagnitude: number;
@@ -82,6 +80,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		foodStockShare: 50,
 		foodRegenShare: 5,
 		foodConsumptionRate: 0.5,
+		// per-tribe-predator-config Phase 2: replaces the old run-level
+		// flag — see TribeConfig.crossbreedingEnabled in boids.ts.
+		crossbreedingEnabled: true,
 	},
 	{
 		// Lua tribe 2 ("Blue"): maxSpeed 120, minSpeed 15.
@@ -99,6 +100,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		foodStockShare: 50,
 		foodRegenShare: 5,
 		foodConsumptionRate: 0.5,
+		// per-tribe-predator-config Phase 2: replaces the old run-level
+		// flag — see TribeConfig.crossbreedingEnabled in boids.ts.
+		crossbreedingEnabled: true,
 	},
 	{
 		// Lua tribe 3 ("Purple"): maxSpeed 170, minSpeed 25.
@@ -116,6 +120,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		foodStockShare: 50,
 		foodRegenShare: 5,
 		foodConsumptionRate: 0.5,
+		// per-tribe-predator-config Phase 2: replaces the old run-level
+		// flag — see TribeConfig.crossbreedingEnabled in boids.ts.
+		crossbreedingEnabled: true,
 	},
 	{
 		// Tribe 4: no Lua counterpart — implementer's own default,
@@ -134,6 +141,9 @@ const DEFAULT_TRIBE_CONFIGS: readonly TribeConfig[] = [
 		foodStockShare: 50,
 		foodRegenShare: 5,
 		foodConsumptionRate: 0.5,
+		// per-tribe-predator-config Phase 2: replaces the old run-level
+		// flag — see TribeConfig.crossbreedingEnabled in boids.ts.
+		crossbreedingEnabled: true,
 	},
 ];
 
@@ -167,7 +177,6 @@ export default function SimulationPage() {
 			),
 		);
 	}
-	const [crossbreedingEnabled, setCrossbreedingEnabled] = useState(true);
 	const [energyThreshold, setEnergyThreshold] = useState(50);
 	const [mutationChance, setMutationChance] = useState(0.1);
 	const [mutationMagnitude, setMutationMagnitude] = useState(0.2);
@@ -333,6 +342,9 @@ export default function SimulationPage() {
 					),
 					ranges.foodConsumptionRate.max,
 				),
+				// per-tribe-predator-config Phase 2: not admin-ranged (boolean, no
+				// min/max), carried straight through from this tribe's own state.
+				crossbreedingEnabled: tribeConfig.crossbreedingEnabled,
 			}));
 		// predator-tribe-concept Phase 1: a single uniform bridge value, same
 		// posture as per-tribe-behavior-weights Phase 1's own
@@ -357,6 +369,9 @@ export default function SimulationPage() {
 				matePreference: ranges.matePreference.default,
 				detectionRadius: ranges.detectionRadius.default,
 				captureRadiusMult: ranges.captureRadiusMult.default,
+				// per-tribe-predator-config Phase 2: see tribeConfigsOutput's own
+				// field above for the semantics.
+				crossbreedingEnabled: true,
 			},
 		];
 		return {
@@ -406,7 +421,6 @@ export default function SimulationPage() {
 				ranges.foodRegenRate.max,
 			),
 			flockCount: clampedFlockCount,
-			crossbreedingEnabled,
 			energyThreshold: Math.min(
 				Math.max(ranges.energyThreshold.min, energyThreshold),
 				ranges.energyThreshold.max,
@@ -463,7 +477,6 @@ export default function SimulationPage() {
 				flockCount: variables.flockCount,
 				predatorFlockCount: variables.predatorFlockCount,
 				predatorTribeConfigs: variables.predatorTribeConfigs,
-				crossbreedingEnabled: variables.crossbreedingEnabled,
 				energyThreshold: variables.energyThreshold,
 				mutationChance: variables.mutationChance,
 				mutationMagnitude: variables.mutationMagnitude,
@@ -490,8 +503,12 @@ export default function SimulationPage() {
 	// bounds (reusing the same admin ranges buildStartInput clamps against)
 	// and its onChange wiring — avoids hand-duplicating 11 NumberFields x 4
 	// tribes below.
+	// per-tribe-predator-config Phase 2: excludes "crossbreedingEnabled" —
+	// this array drives only numeric NumberField rows; the boolean field has
+	// no min/max/default and is rendered separately (Phase 4 adds its own
+	// per-tribe Switch).
 	const tribeFieldDefs: {
-		field: keyof TribeConfig;
+		field: Exclude<keyof TribeConfig, "crossbreedingEnabled">;
 		label: string;
 		min: number;
 		max: number;
@@ -699,7 +716,6 @@ export default function SimulationPage() {
 			{activeRun ? (
 				<SimulationCanvas
 					boidCount={activeRun.boidCount}
-					crossbreedingEnabled={activeRun.crossbreedingEnabled}
 					energyThreshold={activeRun.energyThreshold}
 					flockCount={activeRun.flockCount}
 					foodRegenRate={activeRun.foodRegenRate}
@@ -854,17 +870,6 @@ export default function SimulationPage() {
 							})}
 						</Tabs>
 					</div>
-					<label
-						className="flex items-center justify-between gap-2"
-						htmlFor="crossbreeding-enabled"
-					>
-						Crossbreeding enabled
-						<Switch
-							checked={crossbreedingEnabled}
-							id="crossbreeding-enabled"
-							onCheckedChange={setCrossbreedingEnabled}
-						/>
-					</label>
 					<NumberField
 						id="energy-threshold"
 						label="Energy threshold"
