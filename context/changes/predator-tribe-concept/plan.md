@@ -687,14 +687,14 @@ param.
 
 #### Automated
 
-- [x] 6.1 npm run typecheck passes
-- [x] 6.2 npm test passes (full suite)
+- [x] 6.1 npm run typecheck passes — 05c1a75
+- [x] 6.2 npm test passes (full suite) — 05c1a75
 
 #### Manual
 
-- [x] 6.3 Predators split across independent predator tribes, independent of boids' flockCount
-- [x] 6.4 Low-detectionRadius tribe wanders instead of pursuing out-of-range boids; high-detectionRadius tribe pursues the same boid
-- [x] 6.5 High-captureRadiusMult tribe captures from a measurably greater distance than low-multiplier tribe
-- [x] 6.6 Live-edit to a predator tribe changes next-tick behavior, not just the stored value
-- [x] 6.7 Cross-tribe predator mating still occurs
-- [x] 6.8 predatorFlockCount: 1 starts and ticks without error
+- [x] 6.3 Predators split across independent predator tribes, independent of boids' flockCount — 05c1a75
+- [x] 6.4 Low-detectionRadius tribe wanders instead of pursuing out-of-range boids; high-detectionRadius tribe pursues the same boid — 05c1a75
+- [x] 6.5 High-captureRadiusMult tribe captures from a measurably greater distance than low-multiplier tribe — 05c1a75
+- [x] 6.6 Live-edit to a predator tribe changes next-tick behavior, not just the stored value — 05c1a75
+- [x] 6.7 Cross-tribe predator mating still occurs — 05c1a75
+- [x] 6.8 predatorFlockCount: 1 starts and ticks without error — 05c1a75
