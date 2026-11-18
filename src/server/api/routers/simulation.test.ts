@@ -55,8 +55,17 @@ const VALID_PREDATOR_TRIBE_CONFIG = {
 	separation: 1,
 	alignment: 1,
 	cohesion: 1,
-	maxSpeed: 40,
-	minSpeed: 15,
+	// predator-tribe-concept Phase 4: these values now have a real
+	// behavioral effect (stepPredators' speed clamp reads them directly)
+	// -- matching the old fixed PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED
+	// constants (20/55) they replaced, not VALID_TRIBE_CONFIG's boid
+	// maxSpeed (40), preserves the genuine speed advantage predation
+	// tests in this file rely on. The original 40/15 picked here in
+	// Phase 1 (before this field was behaviorally wired) accidentally
+	// matched boids' own maxSpeed exactly, erasing that advantage the
+	// moment Phase 4 landed.
+	maxSpeed: 55,
+	minSpeed: 20,
 	matePreference: 0.5,
 	detectionRadius: 200,
 	captureRadiusMult: 1,

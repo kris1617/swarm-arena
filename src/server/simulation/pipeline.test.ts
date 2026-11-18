@@ -203,7 +203,9 @@ describe("applyPredation tie-break contract", () => {
 			lifespan: 100,
 		});
 
-		const result = applyPredation([first, second], [predator], 0, WORLD_SIZE);
+		const result = applyPredation([first, second], [predator], 0, WORLD_SIZE, [
+			PREDATOR_TRIBE_CONFIG,
+		]);
 
 		expect(result).toHaveLength(1);
 		expect(result[0]).toBe(second);
@@ -259,6 +261,7 @@ describe("applyPredation contested capture", () => {
 			[predatorA, predatorB],
 			0,
 			WORLD_SIZE,
+			[PREDATOR_TRIBE_CONFIG],
 		);
 
 		expect(result).toHaveLength(1);
@@ -327,6 +330,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			[predator],
 			protectionThreshold,
 			WORLD_SIZE,
+			[PREDATOR_TRIBE_CONFIG],
 		);
 		expect(afterDocumentedOrder).toHaveLength(1);
 		expect(afterDocumentedOrder[0]?.x).toBe(100);
@@ -338,6 +342,7 @@ describe("hunger-before-predation order is load-bearing", () => {
 			[predator],
 			protectionThreshold,
 			WORLD_SIZE,
+			[PREDATOR_TRIBE_CONFIG],
 		);
 		// The target's lifespan was still 1 (> 0) going into this call, so
 		// its removal here can only be the CAPTURE_RADIUS proximity check —

@@ -1417,7 +1417,12 @@ describe("predator-prey dynamics", () => {
 		expect(distanceAfter).toBeGreaterThan(distanceBefore);
 	});
 
-	it("stepPredators clamps predator speed into PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED regardless of starting speed", () => {
+	// predator-tribe-concept Phase 4: the clamp now reads the predator's own
+	// genes.minSpeed/genes.maxSpeed (makePredator's default genes, via
+	// makeGenes(WEIGHTS), are minSpeed: 15 / maxSpeed: 40 — the same values
+	// the module's own now-unread PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED
+	// constants used to hard-code), not the removed fixed module constants.
+	it("stepPredators clamps predator speed into its own genes.minSpeed/genes.maxSpeed regardless of starting speed", () => {
 		const boid = makeBoid({
 			x: 0,
 			y: 0,
@@ -1473,10 +1478,10 @@ describe("predator-prey dynamics", () => {
 			(steppedFast as PredatorState).vy,
 			(steppedFast as PredatorState).vz,
 		);
-		expect(slowSpeed).toBeGreaterThanOrEqual(20 - 1e-9);
-		expect(slowSpeed).toBeLessThanOrEqual(55 + 1e-9);
-		expect(fastSpeed).toBeGreaterThanOrEqual(20 - 1e-9);
-		expect(fastSpeed).toBeLessThanOrEqual(55 + 1e-9);
+		expect(slowSpeed).toBeGreaterThanOrEqual(15 - 1e-9);
+		expect(slowSpeed).toBeLessThanOrEqual(40 + 1e-9);
+		expect(fastSpeed).toBeGreaterThanOrEqual(15 - 1e-9);
+		expect(fastSpeed).toBeLessThanOrEqual(40 + 1e-9);
 	});
 
 	// predator-tribe-concept Phase 3: the nearest boid sits exactly on the
@@ -1666,7 +1671,13 @@ describe("predator-prey dynamics", () => {
 		const protectionThreshold = 5;
 
 		for (let i = 0; i < 10; i++) {
-			boids = applyPredation(boids, predators, protectionThreshold, WORLD_SIZE);
+			boids = applyPredation(
+				boids,
+				predators,
+				protectionThreshold,
+				WORLD_SIZE,
+				[PREDATOR_TRIBE_CONFIG],
+			);
 		}
 
 		expect(boids).toHaveLength(5);
@@ -1681,9 +1692,184 @@ describe("predator-prey dynamics", () => {
 		];
 		const protectionThreshold = 0;
 
-		boids = applyPredation(boids, predators, protectionThreshold, WORLD_SIZE);
+		boids = applyPredation(boids, predators, protectionThreshold, WORLD_SIZE, [
+			PREDATOR_TRIBE_CONFIG,
+		]);
 
 		expect(boids.length).toBeLessThan(5);
+	});
+});
+
+// predator-tribe-concept Phase 4: closes the "inherited but never read"
+// genetics gap — stepPredators' speed clamp now reads each predator's own
+// genes.minSpeed/genes.maxSpeed (seeded at spawn from its own tribe's
+// PredatorTribeConfig, Phase 2) instead of the fixed PREDATOR_MIN_SPEED/
+// PREDATOR_MAX_SPEED module constants, and applyPredation scales
+// CAPTURE_RADIUS by each predator's own tribe's captureRadiusMult.
+describe("predator genetics wiring and capture aggressiveness (predator-tribe-concept Phase 4)", () => {
+	it("two predator tribes with different genes.maxSpeed reach measurably different top speeds under the same (saturating) steering force, not the removed fixed PREDATOR_MAX_SPEED constant", () => {
+		// A boid sitting on the predator's own +x axis with a huge starting
+		// vx (aligned with the pursuit direction) saturates the pre-clamp
+		// speed well above either tribe's maxSpeed, so the post-clamp result
+		// is exactly each predator's own genes.maxSpeed — same saturation
+		// trick the existing burst test above uses.
+		const boid = makeBoid({
+			x: 50,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+		});
+		function buildPredator(maxSpeed: number, minSpeed: number): PredatorState {
+			return {
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 1000,
+				vy: 0,
+				vz: 0,
+				lifespan: 100,
+				genes: makeGenes(WEIGHTS, { maxSpeed, minSpeed }),
+				energy: 0,
+				age: 0,
+				gender: "a",
+			};
+		}
+		// Both values are deliberately outside the removed fixed
+		// PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED range (20-55) — a regression
+		// back to reading the module constants would clamp both to 55
+		// regardless of these genes, collapsing the two results to the same
+		// value.
+		const lowGeneTribePredator = buildPredator(30, 5);
+		const highGeneTribePredator = buildPredator(90, 5);
+
+		const [steppedLow] = stepPredators(
+			[lowGeneTribePredator],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(1),
+		);
+		const [steppedHigh] = stepPredators(
+			[highGeneTribePredator],
+			[boid],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(1),
+		);
+
+		const lowSpeed = Math.hypot(
+			(steppedLow as PredatorState).vx,
+			(steppedLow as PredatorState).vy,
+			(steppedLow as PredatorState).vz,
+		);
+		const highSpeed = Math.hypot(
+			(steppedHigh as PredatorState).vx,
+			(steppedHigh as PredatorState).vy,
+			(steppedHigh as PredatorState).vz,
+		);
+
+		expect(lowSpeed).toBeCloseTo(30, 5);
+		expect(highSpeed).toBeCloseTo(90, 5);
+		expect(highSpeed).toBeGreaterThan(lowSpeed);
+	});
+
+	it("two predator tribes with different genes.minSpeed reach measurably different floor-clamped speeds when steering force is negligible (idle wander, no boid in range)", () => {
+		// No boids at all keeps nearestDist at Infinity, so the wander branch
+		// fires unconditionally regardless of predatorTribeConfigs — the
+		// resulting pre-clamp speed (WANDER_FORCE_FRACTION * STEERING_FORCE_SCALE
+		// * dtSeconds = 0.2 * 120 * 0.1 = 2.4) sits well below either tribe's
+		// minSpeed below, so the post-clamp result is exactly each predator's
+		// own genes.minSpeed. A very high maxSpeed on both keeps the ceiling
+		// from ever interfering.
+		function buildPredator(minSpeed: number): PredatorState {
+			return {
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 100,
+				genes: makeGenes(WEIGHTS, { minSpeed, maxSpeed: 1000 }),
+				energy: 0,
+				age: 0,
+				gender: "a",
+			};
+		}
+		const lowFloorPredator = buildPredator(5);
+		const highFloorPredator = buildPredator(50);
+
+		const [steppedLow] = stepPredators(
+			[lowFloorPredator],
+			[],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(3),
+		);
+		const [steppedHigh] = stepPredators(
+			[highFloorPredator],
+			[],
+			0.1,
+			WORLD_SIZE,
+			[],
+			createRng(3),
+		);
+
+		const lowSpeed = Math.hypot(
+			(steppedLow as PredatorState).vx,
+			(steppedLow as PredatorState).vy,
+			(steppedLow as PredatorState).vz,
+		);
+		const highSpeed = Math.hypot(
+			(steppedHigh as PredatorState).vx,
+			(steppedHigh as PredatorState).vy,
+			(steppedHigh as PredatorState).vz,
+		);
+
+		expect(lowSpeed).toBeCloseTo(5, 5);
+		expect(highSpeed).toBeCloseTo(50, 5);
+		expect(highSpeed).toBeGreaterThan(lowSpeed);
+	});
+
+	it("a predator in a captureRadiusMult: 2 tribe captures a boid at a distance the fixed CAPTURE_RADIUS alone would have missed, while an otherwise-identical captureRadiusMult: 1 tribe predator does not", () => {
+		// Distance 9 sits strictly between CAPTURE_RADIUS (6) and
+		// CAPTURE_RADIUS * 2 (12) — a captureRadiusMult: 1 tribe's effective
+		// radius (6) misses it, a captureRadiusMult: 2 tribe's effective
+		// radius (12) reaches it.
+		const boid = makeBoid({
+			x: 9,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 10_000,
+		});
+		const predator = makePredator({
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 10_000,
+		});
+
+		const aggressiveResult = applyPredation([boid], [predator], 0, WORLD_SIZE, [
+			{ ...PREDATOR_TRIBE_CONFIG, captureRadiusMult: 2 },
+		]);
+		const baselineResult = applyPredation([boid], [predator], 0, WORLD_SIZE, [
+			{ ...PREDATOR_TRIBE_CONFIG, captureRadiusMult: 1 },
+		]);
+
+		expect(aggressiveResult).toHaveLength(0);
+		expect(baselineResult).toHaveLength(1);
 	});
 });
 
@@ -2314,7 +2500,14 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 		const predators = makeDensePredators(1);
 		const warnSink: DenseClusterWarnSink = { triggered: false };
 
-		applyPredation(boids, predators, 0, WORLD_SIZE, warnSink);
+		applyPredation(
+			boids,
+			predators,
+			0,
+			WORLD_SIZE,
+			[PREDATOR_TRIBE_CONFIG],
+			warnSink,
+		);
 
 		expect(warnSink.triggered).toBe(true);
 	});

@@ -173,11 +173,17 @@ const STEERING_FORCE_SCALE = 120;
 // established "small jitter" scale reference point, chosen so wandering
 // reads as idle drift rather than erratic darting.
 const WANDER_FORCE_FRACTION = 0.2;
-// Predator cruise-speed bounds — deliberately faster than boids' MIN_SPEED/
-// MAX_SPEED (15-40) so a predator can actually close the gap on a fleeing
-// boid instead of hunting being invisible.
-const PREDATOR_MIN_SPEED = 20;
-const PREDATOR_MAX_SPEED = 55;
+// predator-tribe-concept Phase 4: the fixed PREDATOR_MIN_SPEED/
+// PREDATOR_MAX_SPEED constants that used to bound every predator's cruise
+// speed (20-55) were removed outright, not left defined-but-unread --
+// stepPredators' speed clamp now reads each predator's own inherited
+// genes.minSpeed/genes.maxSpeed instead (closing the "inherited but never
+// read" genetics gap this plan's Current State Analysis documents),
+// mirroring how boids' own global MAX_SPEED/MIN_SPEED constants were
+// deleted outright when their per-individual gene replacement landed (see
+// BoidGenes's comment above). A PredatorTribeConfig's own minSpeed/
+// maxSpeed values (seeded into genes at spawn, same fields TribeConfig
+// already uses for boids) now fully determine a predator's speed bounds.
 // Distance at which a predator captures the nearest boid in applyPredation.
 // Sized just above MIN_SEPARATION_DISTANCE (so capture needs real contact,
 // not just proximity) and well below SEPARATION_RADIUS.
@@ -930,10 +936,17 @@ export function stepPredators(
 		const steeredVy = predator.vy + steerY * STEERING_FORCE_SCALE * dtSeconds;
 		const steeredVz = predator.vz + steerZ * STEERING_FORCE_SCALE * dtSeconds;
 
+		// predator-tribe-concept Phase 4: reads THIS predator's own inherited
+		// genes.minSpeed/genes.maxSpeed (seeded at spawn from its own tribe's
+		// PredatorTribeConfig, Phase 2) instead of the fixed
+		// PREDATOR_MIN_SPEED/PREDATOR_MAX_SPEED module constants — closes the
+		// "inherited but never read" gap: a PredatorTribeConfig's maxSpeed/
+		// minSpeed now has a real behavioral effect, not just a seeded-but-
+		// ignored gene value.
 		const speed = Math.hypot(steeredVx, steeredVy, steeredVz);
 		const clampedSpeed = Math.min(
-			Math.max(speed, PREDATOR_MIN_SPEED),
-			PREDATOR_MAX_SPEED,
+			Math.max(speed, predator.genes.minSpeed),
+			predator.genes.maxSpeed,
 		);
 		const vx = speed > 0 ? (steeredVx / speed) * clampedSpeed : clampedSpeed;
 		const vy = speed > 0 ? (steeredVy / speed) * clampedSpeed : 0;
@@ -1218,6 +1231,15 @@ export function applyPredation(
 	predators: PredatorState[],
 	protectionThreshold: number,
 	worldSize: WorldSize,
+	// predator-tribe-concept Phase 4: one PredatorTribeConfig per predator
+	// flock, index = predatorFlockId — same convention as stepPredators'
+	// predatorTribeConfigs param. Scales each predator's own
+	// CAPTURE_RADIUS query by its own tribe's captureRadiusMult (default 1,
+	// via the same optional-chaining-with-fallback convention every other
+	// `tribeConfigs[x.genes.flockId]?.field ?? default` read in this file
+	// already uses), so a higher-aggressiveness tribe catches prey from
+	// further away than a lower one.
+	predatorTribeConfigs: PredatorTribeConfig[],
 	warnSink?: DenseClusterWarnSink,
 ): BoidState[] {
 	if (boids.length <= protectionThreshold) {
@@ -1238,11 +1260,18 @@ export function applyPredation(
 
 	const captured = new Set<BoidState>();
 	for (const predator of predators) {
+		// predator-tribe-concept Phase 4: THIS predator's own tribe's
+		// captureRadiusMult, computed once per predator before the query — a
+		// tribe with no corresponding entry (or a missing captureRadiusMult)
+		// falls back to 1 (today's exact fixed-CAPTURE_RADIUS behavior).
+		const captureRadius =
+			CAPTURE_RADIUS *
+			(predatorTribeConfigs[predator.genes.flockId]?.captureRadiusMult ?? 1);
 		let nearest: BoidState | null = null;
 		let nearestDist = Infinity;
 		for (const boidIndex of boidGrid.queryRadius(
 			{ x: predator.x, y: predator.y, z: predator.z },
-			CAPTURE_RADIUS,
+			captureRadius,
 			warnSink,
 		)) {
 			const boid = boids[boidIndex];
@@ -1253,7 +1282,7 @@ export function applyPredation(
 			const dy = wrappedDelta(boid.y - predator.y, worldSize.y);
 			const dz = wrappedDelta(boid.z - predator.z, worldSize.z);
 			const dist = Math.hypot(dx, dy, dz);
-			if (dist <= CAPTURE_RADIUS && dist < nearestDist) {
+			if (dist <= captureRadius && dist < nearestDist) {
 				nearestDist = dist;
 				nearest = boid;
 			}
@@ -1395,6 +1424,7 @@ export function runTick(
 		steeredPredators,
 		params.protectionThreshold,
 		params.worldSize,
+		params.predatorTribeConfigs,
 		warnSink,
 	);
 

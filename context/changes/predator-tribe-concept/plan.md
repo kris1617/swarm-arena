@@ -666,15 +666,15 @@ param.
 
 #### Automated
 
-- [x] 3.1 npm run typecheck passes
-- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts passes
+- [x] 3.1 npm run typecheck passes — 37d7d39
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/single-run-lifecycle.test.ts passes — 37d7d39
 
 ### Phase 4: Genes wiring & capture aggressiveness
 
 #### Automated
 
-- [ ] 4.1 npm run typecheck passes
-- [ ] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 4.1 npm run typecheck passes
+- [x] 4.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 5: Live adjustment
 
