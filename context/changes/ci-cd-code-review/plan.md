@@ -81,13 +81,21 @@ not the agent, per "What We're NOT Doing".
 
 **Composite action step execution context**: a *local* composite action's
 `run:` steps execute with the **repository's** working directory by
-default, not the action's own directory — `${{ github.action_path }}`
-must be used explicitly to reference files inside the action (e.g. to `cd`
-into `tools/ai-reviewer` before `npm ci`/`npm run review`), since the
-reviewer package lives there, not at the action's own path. This is the one
-non-obvious wiring detail the templates don't spell out for this repo's
-specific directory layout (reviewer lives outside the action folder,
-unlike the course's `dist/review.js`-in-the-action-folder assumption).
+default, not the action's own directory. `tools/ai-reviewer` is a path
+inside the *consuming repo's checkout*, not inside the *action's own*
+directory — so the correct reference is `$GITHUB_WORKSPACE` (the stable
+repo-root path), not `$GITHUB_ACTION_PATH` (which always points at wherever
+the action definition itself lives, `.github/actions/ai-reviewer/`,
+regardless of call depth or nesting). This is the one non-obvious wiring
+detail the templates don't spell out for this repo's specific directory
+layout (reviewer lives outside the action folder, unlike the course's
+`dist/review.js`-in-the-action-folder assumption).
+
+**Post-completion fix (2026-11-17)**: the reviewer's own `npm run review`
+script prepends an `> ai-reviewer@0.1.0 review` banner line to stdout,
+corrupting the JSON the next step parses. The composite action runs
+`npx tsx src/review.ts` directly instead — identical behavior, clean
+stdout. Impl-review F3 (2026-11-18).
 
 ## Phase 1: Commit the reviewer, add the composite action
 
@@ -129,10 +137,12 @@ override; install dependencies and run the reviewer; emit the parsed
 - `runs.using: composite`. Steps: `actions/setup-node` pinned to a commit
   SHA (Node 22, matching `deploy.yml`'s existing convention — research.md
   §"Node version"), then a `run:` step with `shell: bash` that `cd`s into
-  `tools/ai-reviewer` under `$GITHUB_ACTION_PATH` (per "Critical
+  `tools/ai-reviewer` under `$GITHUB_WORKSPACE` (per "Critical
   Implementation Details" above), runs `npm ci`, then
-  `DIFF_FILE=<diff-file> PR_TITLE=<pr-title> PR_BODY=<pr-body> ANTHROPIC_API_KEY=<api-key> REVIEW_MODEL=<model> npm run review > "$RUNNER_TEMP/ai-review.json"`,
-  parses `verdict` from that JSON with a small inline `node -e`, and writes
+  `DIFF_FILE=<diff-file> PR_TITLE=<pr-title> PR_BODY=<pr-body> ANTHROPIC_API_KEY=<api-key> REVIEW_MODEL=<model> npx tsx src/review.ts > "$RUNNER_TEMP/ai-review.json"`
+  (not `npm run review` — its banner line corrupts the captured JSON, see
+  "Critical Implementation Details"), parses `verdict` from that JSON with
+  a small inline `node -e`, and writes
   both outputs via `$GITHUB_OUTPUT`. Validate `verdict` is one of
   `pass`/`fail` before writing it — same shape as
   `m5l3-action.yml.template`'s own validation, adapted to the Claude Agent
@@ -151,7 +161,7 @@ override; install dependencies and run the reviewer; emit the parsed
 
 #### Manual Verification:
 
-- Read `.github/actions/ai-reviewer/action.yml` and confirm the `cd` target resolves correctly relative to `$GITHUB_ACTION_PATH` given this repo's actual directory layout (cannot be fully verified until Phase 2's workflow actually invokes it on a runner — flag this phase's composite-action correctness as provisional until Phase 2's end-to-end run)
+- Read `.github/actions/ai-reviewer/action.yml` and confirm the `cd` target resolves correctly relative to `$GITHUB_WORKSPACE` given this repo's actual directory layout (cannot be fully verified until Phase 2's workflow actually invokes it on a runner — flag this phase's composite-action correctness as provisional until Phase 2's end-to-end run)
 
 ---
 

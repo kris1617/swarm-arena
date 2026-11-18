@@ -23,6 +23,7 @@ jobs:
   review:
     if: github.event.action != 'labeled' || github.event.label.name == 'ai-cr:review'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
