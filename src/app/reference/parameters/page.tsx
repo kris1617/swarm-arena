@@ -27,6 +27,13 @@ const PARAMETER_DESCRIPTIONS: Record<TopLevelRangedParameterName, string> = {
 		"How much food is available in the environment at the start of a run.",
 	foodRegenRate: "How quickly consumed food is replenished over time.",
 	flockCount: "How many separate flocks the boid population is divided into.",
+	// predator-tribe-concept Phase 1: predators' own, fully independent
+	// tribe-count field — documents the same way `flockCount` does above.
+	// The two new per-predator-tribe fields (`PREDATOR_TRIBE_RANGED_FIELD_NAMES`)
+	// live inside each `predatorTribeConfigs[]` entry, not as a run-level
+	// scalar, same posture as `TRIBE_RANGED_FIELD_NAMES`'s own fields above.
+	predatorFlockCount:
+		"How many separate tribes the predator population is divided into.",
 	energyThreshold: "The energy level below which a boid dies of starvation.",
 	mutationChance:
 		"The probability that a newly bred boid's genes mutate from its parents'.",
@@ -51,6 +58,7 @@ const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
 	foodStockInitial: "Initial food stock",
 	foodRegenRate: "Food regen rate",
 	flockCount: "Flock count",
+	predatorFlockCount: "Predator flock count",
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",
 	mutationMagnitude: "Mutation magnitude",

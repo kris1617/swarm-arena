@@ -1,0 +1,2 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `predatorFlockCount` integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `predatorTribeConfigs` text;

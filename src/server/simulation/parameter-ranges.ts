@@ -36,6 +36,17 @@ export const RANGED_PARAMETER_NAMES = [
 	"foodStockShare",
 	"foodRegenShare",
 	"foodConsumptionRate",
+	// predator-tribe-concept Phase 1: top-level tribe-count field for
+	// predators, sibling to `flockCount` — NOT added to
+	// TRIBE_RANGED_FIELD_NAMES (it's a top-level `startInputSchema` field,
+	// never a per-tribe-config field).
+	"predatorFlockCount",
+	// predator-tribe-concept Phase 1: the two genuinely new per-predator-tribe
+	// fields — see PREDATOR_TRIBE_RANGED_FIELD_NAMES below for the full set
+	// (including `matePreference`, which reuses this same array's existing
+	// entry rather than a second one).
+	"detectionRadius",
+	"captureRadiusMult",
 ] as const;
 
 export type RangedParameterName = (typeof RANGED_PARAMETER_NAMES)[number];
@@ -62,12 +73,45 @@ export const TRIBE_RANGED_FIELD_NAMES = [
 
 export type TribeRangedFieldName = (typeof TRIBE_RANGED_FIELD_NAMES)[number];
 
-// Every RANGED_PARAMETER_NAMES entry EXCEPT the six above — i.e. the names
-// that genuinely are top-level `startInputSchema` fields, the set every
+// predator-tribe-concept Phase 1: the predator-side sibling of
+// TRIBE_RANGED_FIELD_NAMES — RANGED_PARAMETER_NAMES entries that exist only
+// inside each `PredatorTribeConfig` entry
+// (`simulation.ts`'s `startInputSchema.predatorTribeConfigs`), never as a
+// top-level `startInputSchema` field. `matePreference` reuses the exact same
+// existing name/range boids' own `TribeConfig.matePreference` already uses
+// (`ParameterRanges` has no mechanism for two distinct ranges under one
+// string key, and none is needed here since the same {min:0, max:1,
+// default:0.5} values apply to both species) — it is NOT a duplicate entry
+// in RANGED_PARAMETER_NAMES above.
+export const PREDATOR_TRIBE_RANGED_FIELD_NAMES = [
+	"detectionRadius",
+	"captureRadiusMult",
+	"matePreference",
+] as const satisfies readonly RangedParameterName[];
+
+export type PredatorTribeRangedFieldName =
+	(typeof PREDATOR_TRIBE_RANGED_FIELD_NAMES)[number];
+
+// Every RANGED_PARAMETER_NAMES entry EXCEPT the boid-tribe and
+// predator-tribe per-tribe-config fields above — i.e. the names that
+// genuinely are top-level `startInputSchema` fields, the set every
 // pre-existing consumer of `RangedParameterName` actually assumed.
+// predator-tribe-concept Phase 1 (filter fix): this derivation previously
+// only subtracted the boid-side set, which would have silently
+// misclassified `detectionRadius`/`captureRadiusMult` as top-level scalar
+// fields the moment they were added to RANGED_PARAMETER_NAMES above — the
+// exact bug class this comment (and TRIBE_RANGED_FIELD_NAMES's own, above)
+// was written to prevent.
 export const TOP_LEVEL_RANGED_PARAMETER_NAMES = RANGED_PARAMETER_NAMES.filter(
-	(name) => !TRIBE_RANGED_FIELD_NAMES.includes(name as TribeRangedFieldName),
-) as Exclude<RangedParameterName, TribeRangedFieldName>[];
+	(name) =>
+		!TRIBE_RANGED_FIELD_NAMES.includes(name as TribeRangedFieldName) &&
+		!PREDATOR_TRIBE_RANGED_FIELD_NAMES.includes(
+			name as PredatorTribeRangedFieldName,
+		),
+) as Exclude<
+	RangedParameterName,
+	TribeRangedFieldName | PredatorTribeRangedFieldName
+>[];
 
 export type TopLevelRangedParameterName =
 	(typeof TOP_LEVEL_RANGED_PARAMETER_NAMES)[number];
@@ -146,6 +190,21 @@ export const DEFAULT_PARAMETER_RANGES: ParameterRanges = {
 	foodStockShare: { min: 0, max: 10_000, default: 50 },
 	foodRegenShare: { min: 0, max: 1_000, default: 5 },
 	foodConsumptionRate: { min: 0, max: 10, default: 0.5 },
+	// predator-tribe-concept Phase 1: min/default of 1 deliberately reproduce
+	// today's effective single-undifferentiated-predator-tribe behavior for
+	// any run that doesn't explicitly configure more, unlike boids' own
+	// `flockCount` floor/default of 2. A run that never touches this new
+	// param sees zero behavior change from this plan at the tribe-count
+	// level.
+	predatorFlockCount: { min: 1, max: 8, default: 1 },
+	// predator-tribe-concept Phase 1: a generous ceiling (relative to this
+	// project's xyArea/zDepth defaults of 200) so a default-configured
+	// predator tribe rarely misses a target in practice, reproducing today's
+	// unconditional-scan behavior as closely as possible.
+	detectionRadius: { min: 1, max: 500, default: 200 },
+	// predator-tribe-concept Phase 1: default 1 is no change from today's
+	// fixed CAPTURE_RADIUS.
+	captureRadiusMult: { min: 0.1, max: 5, default: 1 },
 };
 
 export const DEFAULT_MAX_OBJECT_COUNT = 500;

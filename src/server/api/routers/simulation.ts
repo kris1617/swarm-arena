@@ -26,6 +26,7 @@ import {
 	DEFAULT_MAX_OBJECT_COUNT,
 	DEFAULT_PARAMETER_RANGES,
 	type ParameterRanges,
+	PREDATOR_TRIBE_RANGED_FIELD_NAMES,
 	RANGED_PARAMETER_NAMES,
 	TOP_LEVEL_RANGED_PARAMETER_NAMES,
 	TRIBE_RANGED_FIELD_NAMES,
@@ -103,6 +104,23 @@ const tribeConfigSchema = z.object({
 	foodConsumptionRate: z.number().finite(),
 });
 
+// predator-tribe-concept Phase 1: predators' own, fully independent
+// per-tribe config shape — mirrors `tribeConfigSchema` above (same
+// one-schema-two-consumers pattern: reused by both `startInputSchema` below
+// and a future (Phase 5) `updatePredatorTribeConfigs` mutation's input), but
+// validated against `PredatorTribeConfig` (boids.ts), never against boids'
+// own `TribeConfig`.
+const predatorTribeConfigSchema = z.object({
+	separation: z.number().finite(),
+	alignment: z.number().finite(),
+	cohesion: z.number().finite(),
+	maxSpeed: z.number().finite(),
+	minSpeed: z.number().finite(),
+	matePreference: z.number().finite(),
+	detectionRadius: z.number().finite(),
+	captureRadiusMult: z.number().finite(),
+});
+
 const startInputSchema = z.object({
 	boidCount: z.number().int().positive(),
 	separationWeight: z.number().finite(),
@@ -128,6 +146,13 @@ const startInputSchema = z.object({
 	// length-matches-flockCount check lives in `checkAgainstAdminRanges`
 	// below instead, alongside the per-tribe range checks.
 	tribeConfigs: z.array(tribeConfigSchema),
+	// predator-tribe-concept Phase 1: predators' own, fully independent
+	// tribe-count/tribe-config pair — same length-matches-count check posture
+	// as `tribeConfigs`/`flockCount` above, enforced in
+	// `checkAgainstAdminRanges` below since zod can't cross-reference a
+	// sibling field inside this z.object.
+	predatorFlockCount: z.number().int(),
+	predatorTribeConfigs: z.array(predatorTribeConfigSchema),
 });
 
 // Singleton row id for `adminSettings` — see schema.ts's comment on the
@@ -319,6 +344,29 @@ function checkAgainstAdminRanges(
 			}
 		}
 	}
+
+	// predator-tribe-concept Phase 1: predators' own, fully independent
+	// tribe-count/tribe-config pair — same length-matches-count and
+	// per-tribe-range checks as boids' own tribeConfigs/flockCount above,
+	// against the predator-specific field set.
+	if (input.predatorTribeConfigs.length !== input.predatorFlockCount) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `predatorTribeConfigs must have exactly ${input.predatorFlockCount} entries (one per predator flock), got ${input.predatorTribeConfigs.length}`,
+		});
+	}
+	for (const predatorTribeConfig of input.predatorTribeConfigs) {
+		for (const name of PREDATOR_TRIBE_RANGED_FIELD_NAMES) {
+			const value = predatorTribeConfig[name];
+			const range = ranges[name];
+			if (value < range.min || value > range.max) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `${name} must be between ${range.min} and ${range.max}`,
+				});
+			}
+		}
+	}
 }
 
 // Shared by `start` and `startServer` — both need identical validation,
@@ -380,6 +428,8 @@ async function insertRunningSimulation(
 			xyArea: input.xyArea,
 			zDepth: input.zDepth,
 			tribeConfigs: input.tribeConfigs,
+			predatorFlockCount: input.predatorFlockCount,
+			predatorTribeConfigs: input.predatorTribeConfigs,
 			status: "running",
 		})
 		.returning({ id: simulationRuns.id });
@@ -899,6 +949,10 @@ export const simulationRouter = createTRPCRouter({
 					mutationMagnitude: simulationRuns.mutationMagnitude,
 					xyArea: simulationRuns.xyArea,
 					zDepth: simulationRuns.zDepth,
+					// predator-tribe-concept Phase 1: sibling to `flockCount` above —
+					// `SuggestionInputRow` now requires it (derived from
+					// `TopLevelRangedParameterName`, which gained `predatorFlockCount`).
+					predatorFlockCount: simulationRuns.predatorFlockCount,
 					// unwatched-run-tick-throttling Phase 3: included so throttled
 					// rows can be counted (flag-and-include, not excluded from
 					// the correlation input) and disclosed in the rationale.

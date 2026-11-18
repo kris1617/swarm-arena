@@ -327,8 +327,35 @@ export default function SimulationPage() {
 					ranges.foodConsumptionRate.max,
 				),
 			}));
+		// predator-tribe-concept Phase 1: a single uniform bridge value, same
+		// posture as per-tribe-behavior-weights Phase 1's own
+		// pre-per-tab-UI bridge for boids' tribeConfigs — predators get their
+		// own fully independent tribe-count/tribe-config pair, but no
+		// per-tab predator UI exists yet (that's a later phase), so this
+		// pins predatorFlockCount at 1 with one default-valued
+		// PredatorTribeConfig, reproducing today's effective
+		// single-undifferentiated-predator-tribe behavior exactly.
+		const predatorTribeConfigsOutput = [
+			{
+				separation: ranges.separationWeight.default,
+				alignment: ranges.alignmentWeight.default,
+				cohesion: ranges.cohesionWeight.default,
+				// Mirrors boids.ts's own fixed PREDATOR_MAX_SPEED/PREDATOR_MIN_SPEED
+				// engine constants (55/20) — there is no admin range for predator
+				// cruise speed yet, and these fields stay behaviorally inert for
+				// predators this phase regardless (see PredatorTribeConfig's own
+				// comment in boids.ts).
+				maxSpeed: 55,
+				minSpeed: 20,
+				matePreference: ranges.matePreference.default,
+				detectionRadius: ranges.detectionRadius.default,
+				captureRadiusMult: ranges.captureRadiusMult.default,
+			},
+		];
 		return {
 			tribeConfigs: tribeConfigsOutput,
+			predatorFlockCount: 1,
+			predatorTribeConfigs: predatorTribeConfigsOutput,
 			boidCount: Math.min(
 				Math.max(ranges.boidCount.min, Math.round(boidCount)),
 				ranges.boidCount.max,

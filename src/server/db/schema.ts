@@ -178,6 +178,15 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// as `savedState`/`history` above. Nullable — legacy rows predate this
 	// column and have none.
 	tribeConfigs: d.text({ mode: "json" }),
+	// predator-tribe-concept Phase 1: predators' own, fully independent
+	// tribe-count/tribe-config pair — same column shapes as
+	// `flockCount`/`tribeConfigs` above (notNull-with-default for the count,
+	// nullable JSON for the per-tribe array), but a separate pair, never
+	// shared with boids' own fields. Default of 1 reproduces today's
+	// effective single-undifferentiated-predator-tribe behavior for any
+	// pre-existing row/run that doesn't explicitly configure more.
+	predatorFlockCount: d.integer().notNull().default(1),
+	predatorTribeConfigs: d.text({ mode: "json" }),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config

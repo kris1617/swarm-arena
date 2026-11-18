@@ -34,6 +34,22 @@ const DEFAULT_TRIBE_CONFIG = {
 	foodConsumptionRate: 0.5,
 };
 
+// predator-tribe-concept Phase 1: type-only fields this phase — not yet read
+// by any engine code, so a single shared default matching
+// parameter-ranges.ts's new defaults (detectionRadius: 200,
+// captureRadiusMult: 1) is sufficient for every fixture here, same posture
+// as DEFAULT_TRIBE_CONFIG above.
+const DEFAULT_PREDATOR_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 200,
+	captureRadiusMult: 1,
+};
+
 const VALID_START_INPUT: StartCorpusRunParams = {
 	boidCount: 10,
 	separationWeight: 1,
@@ -52,6 +68,8 @@ const VALID_START_INPUT: StartCorpusRunParams = {
 	xyArea: 200,
 	zDepth: 200,
 	tribeConfigs: [DEFAULT_TRIBE_CONFIG, DEFAULT_TRIBE_CONFIG],
+	predatorFlockCount: 1,
+	predatorTribeConfigs: [DEFAULT_PREDATOR_TRIBE_CONFIG],
 };
 
 async function readAdminRanges(): Promise<typeof DEFAULT_PARAMETER_RANGES> {

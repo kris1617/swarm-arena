@@ -66,6 +66,8 @@ export function buildSweepMatrix(): SweepRunParams[] {
 
 				sweepIndex += 1;
 				const flockCount = DEFAULT_PARAMETER_RANGES.flockCount.default;
+				const predatorFlockCount =
+					DEFAULT_PARAMETER_RANGES.predatorFlockCount.default;
 				// per-tribe-behavior-weights Phase 1: type-only field this phase —
 				// not yet read by any engine code. Uniform across tribes, mirroring
 				// this row's own swept/pinned weights, so a tribeConfigs-aware
@@ -89,6 +91,19 @@ export function buildSweepMatrix(): SweepRunParams[] {
 					foodConsumptionRate:
 						DEFAULT_PARAMETER_RANGES.foodConsumptionRate.default,
 				};
+				// predator-tribe-concept Phase 1: type-only field this phase — not
+				// yet read by any engine code. Pinned at its own defaults, same
+				// posture as `tribeConfig` above.
+				const predatorTribeConfig = {
+					separation: DEFAULT_PARAMETER_RANGES.separationWeight.default,
+					alignment: DEFAULT_PARAMETER_RANGES.alignmentWeight.default,
+					cohesion: DEFAULT_PARAMETER_RANGES.cohesionWeight.default,
+					maxSpeed: 40,
+					minSpeed: 15,
+					matePreference: DEFAULT_PARAMETER_RANGES.matePreference.default,
+					detectionRadius: DEFAULT_PARAMETER_RANGES.detectionRadius.default,
+					captureRadiusMult: DEFAULT_PARAMETER_RANGES.captureRadiusMult.default,
+				};
 				rows.push({
 					sweepIndex,
 					boidCount: DEFAULT_PARAMETER_RANGES.boidCount.default,
@@ -102,6 +117,11 @@ export function buildSweepMatrix(): SweepRunParams[] {
 					foodStockInitial: DEFAULT_PARAMETER_RANGES.foodStockInitial.default,
 					foodRegenRate,
 					flockCount,
+					predatorFlockCount,
+					predatorTribeConfigs: Array.from(
+						{ length: predatorFlockCount },
+						() => predatorTribeConfig,
+					),
 					crossbreedingEnabled,
 					energyThreshold: DEFAULT_PARAMETER_RANGES.energyThreshold.default,
 					mutationChance: DEFAULT_PARAMETER_RANGES.mutationChance.default,

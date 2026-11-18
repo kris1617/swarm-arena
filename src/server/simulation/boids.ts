@@ -55,6 +55,34 @@ export type TribeConfig = {
 	foodConsumptionRate: number;
 };
 
+// predator-tribe-concept Phase 1: the predator-side sibling of `TribeConfig`
+// above — predators get their own fully independent tribe system (one entry
+// per predator flock, index = predatorFlockId, same convention as
+// `TribeConfig[]`/`tribeConfigs[flockId]`), rather than sharing boids'
+// `TribeConfig`/`tribeConfigs`. `separation`/`alignment`/`cohesion` are
+// seeded into genes exactly like boids' equivalents (required because
+// `PredatorGenes = BoidGenes` still needs every heritable field populated at
+// spawn) but stay BEHAVIORALLY INERT for predators today — `stepPredators`
+// below reads no steering weights at all (predators pursue in a straight
+// line, no separation/alignment/cohesion among predators, out of scope this
+// slice) — same as boids' own `separationWeight`/etc. are inert for
+// predators today regardless of this type's independence from
+// `TribeConfig`. `detectionRadius`/`captureRadiusMult` are the two genuinely
+// new fields later phases (3-4) wire into the engine: `detectionRadius`
+// replaces the fixed `PREDATOR_DETECTION_RADIUS`-equivalent a predator
+// scans with, and `captureRadiusMult` scales the fixed `CAPTURE_RADIUS`
+// predators capture within.
+export type PredatorTribeConfig = {
+	separation: number;
+	alignment: number;
+	cohesion: number;
+	maxSpeed: number;
+	minSpeed: number;
+	matePreference: number;
+	detectionRadius: number;
+	captureRadiusMult: number;
+};
+
 // Per-individual heritable traits an individual is born with and may pass to
 // offspring (reproduction arrives in Phase 2 via `inheritGenes` below) — not
 // the transient per-tick state (position/velocity/lifespan) BoidState/

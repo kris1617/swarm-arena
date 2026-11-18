@@ -48,6 +48,11 @@ const PARAMETER_LABELS: Record<TopLevelRangedParameterName, string> = {
 	foodStockInitial: "Initial food stock",
 	foodRegenRate: "Food regen rate",
 	flockCount: "Flock count",
+	// predator-tribe-concept Phase 1: sibling to `flockCount` above, added to
+	// `TopLevelRangedParameterName` the same way — exact label match with
+	// `src/app/reference/parameters/page.tsx`'s own `PARAMETER_LABELS`, same
+	// verified-identical-naming rule this file's own comment above states.
+	predatorFlockCount: "Predator flock count",
 	crossbreedingEnabled: "Crossbreeding enabled",
 	energyThreshold: "Energy threshold",
 	mutationChance: "Mutation chance",

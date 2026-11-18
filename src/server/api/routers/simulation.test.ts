@@ -46,6 +46,22 @@ const VALID_TRIBE_CONFIG = {
 	foodConsumptionRate: 0.5,
 };
 
+// predator-tribe-concept Phase 1: one PredatorTribeConfig (boids.ts) per
+// predator flock — values mirror parameter-ranges.ts's new defaults
+// (detectionRadius: 200, captureRadiusMult: 1) plus the shared
+// boid/predator defaults VALID_TRIBE_CONFIG above already uses
+// (maxSpeed/minSpeed/matePreference, separation/alignment/cohesion of 1).
+const VALID_PREDATOR_TRIBE_CONFIG = {
+	separation: 1,
+	alignment: 1,
+	cohesion: 1,
+	maxSpeed: 40,
+	minSpeed: 15,
+	matePreference: 0.5,
+	detectionRadius: 200,
+	captureRadiusMult: 1,
+};
+
 const VALID_START_INPUT = {
 	boidCount: 10,
 	separationWeight: 1,
@@ -66,6 +82,10 @@ const VALID_START_INPUT = {
 	// Length matches `flockCount` above (2) — see checkAgainstAdminRanges's
 	// per-tribe length check in simulation.ts.
 	tribeConfigs: [VALID_TRIBE_CONFIG, VALID_TRIBE_CONFIG],
+	// predator-tribe-concept Phase 1: length matches `predatorFlockCount`
+	// below (1) — same convention as `tribeConfigs`/`flockCount` above.
+	predatorFlockCount: 1,
+	predatorTribeConfigs: [VALID_PREDATOR_TRIBE_CONFIG],
 };
 
 // S-04 (FR-010 full, FR-019): the stop input's new required fields —
@@ -412,6 +432,52 @@ describe("simulationRouter.start", () => {
 				...VALID_START_INPUT,
 				flockCount: 2,
 				tribeConfigs: [VALID_TRIBE_CONFIG],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	// predator-tribe-concept Phase 1: a predatorTribeConfigs entry with a
+	// field outside the shared admin range rejects, same posture as
+	// `tribeConfigs`'s own range-rejection test above.
+	it("rejects a predatorTribeConfigs entry with a field outside the shared admin range", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				predatorFlockCount: 1,
+				predatorTribeConfigs: [
+					{ ...VALID_PREDATOR_TRIBE_CONFIG, detectionRadius: 9999 },
+				],
+			}),
+		).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	// predator-tribe-concept Phase 1: predatorTribeConfigs must have exactly
+	// one entry per predator flock — same length-mismatch rejection as
+	// `tribeConfigs`/`flockCount`'s own test above.
+	it("rejects a predatorTribeConfigs array whose length doesn't match predatorFlockCount", async () => {
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: SESSION,
+		});
+
+		await expect(
+			caller.simulation.start({
+				...VALID_START_INPUT,
+				predatorFlockCount: 2,
+				predatorTribeConfigs: [VALID_PREDATOR_TRIBE_CONFIG],
 			}),
 		).rejects.toMatchObject({
 			code: "BAD_REQUEST",

@@ -9,6 +9,7 @@ import { vi } from "vitest";
 import { createCaller } from "~/server/api/root";
 import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, users } from "~/server/db/schema";
+import type { PredatorTribeConfig } from "~/server/simulation/boids";
 import {
 	DEFAULT_MAX_CONCURRENT_OBJECT_COUNT,
 	DEFAULT_MAX_OBJECT_COUNT,
@@ -28,7 +29,19 @@ export type DB = typeof dbSingleton;
 // from the exported `ServerRunParams` instead, which the router already
 // keeps in lockstep with that schema (see `startServerRun({ runId, seed,
 // ...input })` in simulation.ts).
-export type StartCorpusRunParams = Omit<ServerRunParams, "runId" | "seed">;
+//
+// predator-tribe-concept Phase 1: `ServerRunParams` itself does NOT yet
+// declare `predatorFlockCount`/`predatorTribeConfigs` (that type is owned by
+// server-run-registry.ts, whose own engine wiring is out of this phase's
+// scope — "zero engine-behavior change yet") but `startInputSchema` (the
+// real `startServer` input this harness drives through the real tRPC path)
+// now requires both, so this type adds them on top of the `ServerRunParams`
+// omission rather than waiting for a later phase to widen `ServerRunParams`
+// itself.
+export type StartCorpusRunParams = Omit<ServerRunParams, "runId" | "seed"> & {
+	predatorFlockCount: number;
+	predatorTribeConfigs: PredatorTribeConfig[];
+};
 
 // Singleton row id for `adminSettings` — matches the constant of the same
 // name in `src/server/api/routers/simulation.ts`, this module's
