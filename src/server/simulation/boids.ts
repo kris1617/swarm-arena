@@ -1099,9 +1099,24 @@ export function applyHunger(
 	foodStock: number,
 	dtSeconds: number,
 	foodRegenRate: number,
+	// per-tribe-food-config Phase 3: one TribeConfig per flock, index =
+	// flockId — same convention as stepBoids' tribeConfigs parameter.
+	// Optional, defaulting to `[]` (which makes every per-boid lookup below
+	// `undefined` and falls back to the pre-Phase-3 flat
+	// FOOD_CONSUMPTION_PER_BOID constant) so every pre-existing call site in
+	// this file and its tests keeps compiling and behaving exactly as
+	// before; runTick (the real production composition point) always
+	// passes the run's actual tribeConfigs.
+	tribeConfigs: TribeConfig[] = [],
 ): { boids: BoidState[]; foodStock: number } {
-	const depleted =
-		foodStock - boids.length * FOOD_CONSUMPTION_PER_BOID * dtSeconds;
+	const totalConsumption = boids.reduce(
+		(sum, boid) =>
+			sum +
+			(tribeConfigs[boid.genes.flockId]?.foodConsumptionRate ??
+				FOOD_CONSUMPTION_PER_BOID),
+		0,
+	);
+	const depleted = foodStock - totalConsumption * dtSeconds;
 	const nextFoodStock = depleted + foodRegenRate * dtSeconds;
 
 	if (nextFoodStock >= 0) {
@@ -1276,6 +1291,7 @@ export function runTick(
 		state.foodStock,
 		params.dtSeconds,
 		totalFoodRegenRate,
+		params.tribeConfigs,
 	);
 	const predatedBoids = applyPredation(
 		fedBoids,

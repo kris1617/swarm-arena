@@ -435,13 +435,13 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 2: Engine — pool seeding & regen (sum combination)
 #### Automated
-- [x] 2.1 npm run typecheck passes
-- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes
+- [x] 2.1 npm run typecheck passes — fa6321f
+- [x] 2.2 npx vitest run src/server/simulation/boids.test.ts src/server/simulation/server-run-registry.test.ts passes — fa6321f
 
 ### Phase 3: Engine — per-tribe consumption
 #### Automated
-- [ ] 3.1 npm run typecheck passes
-- [ ] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
+- [x] 3.1 npm run typecheck passes
+- [x] 3.2 npx vitest run src/server/simulation/boids.test.ts passes
 
 ### Phase 4: Live adjustment
 #### Automated

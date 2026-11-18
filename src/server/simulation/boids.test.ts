@@ -1393,6 +1393,70 @@ describe("predator-prey dynamics", () => {
 		expect(fed.boids[0]?.lifespan).toBe(10);
 	});
 
+	// per-tribe-food-config Phase 3: applyHunger's optional 5th `tribeConfigs`
+	// param — same convention as stepBoids' tribeConfigs and
+	// computeGeneticDiversity's tribeConfigs: per-boid lookup keyed by
+	// genes.flockId, falling back to the flat constant when a boid's tribe
+	// has no entry.
+	it("sums each boid's own tribe's foodConsumptionRate, so two equal-headcount tribes with different rates deplete the shared pool at different rates", () => {
+		function buildSubject(flockId: number): BoidState {
+			return {
+				x: 0,
+				y: 0,
+				z: 0,
+				vx: 0,
+				vy: 0,
+				vz: 0,
+				lifespan: 100,
+				genes: makeGenes(WEIGHTS, { flockId }),
+				energy: 0,
+				age: 0,
+				gender: "a",
+			};
+		}
+		const lowRateConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodConsumptionRate: 0.2 },
+		];
+		const highRateConfigs: TribeConfig[] = [
+			{ ...TRIBE_CONFIG, foodConsumptionRate: 2 },
+		];
+		const lowRateBoids = [buildSubject(0), buildSubject(0), buildSubject(0)];
+		const highRateBoids = [buildSubject(0), buildSubject(0), buildSubject(0)];
+
+		const lowRateResult = applyHunger(lowRateBoids, 100, 1, 0, lowRateConfigs);
+		const highRateResult = applyHunger(
+			highRateBoids,
+			100,
+			1,
+			0,
+			highRateConfigs,
+		);
+
+		// Hand-computed from the oracle (the tribe's own configured rate), not
+		// mirrored from applyHunger's own implementation: 3 boids * rate * 1s.
+		expect(lowRateResult.foodStock).toBeCloseTo(100 - 3 * 0.2, 10);
+		expect(highRateResult.foodStock).toBeCloseTo(100 - 3 * 2, 10);
+		expect(highRateResult.foodStock).toBeLessThan(lowRateResult.foodStock);
+	});
+
+	it("omitting tribeConfigs reproduces today's exact flat-rate behavior byte-for-byte", () => {
+		const boids: BoidState[] = [
+			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
+			makeBoid({ x: 1, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
+		];
+
+		const result = applyHunger(boids, 100, 2, 5);
+
+		// Hand-computed from the source constant documented in
+		// parameter-ranges.ts (foodConsumptionRate's default, 0.5, "matches
+		// the [pre-per-tribe] flat FOOD_CONSUMPTION_PER_BOID constant") —
+		// not captured from a prior run of this same code.
+		const FOOD_CONSUMPTION_PER_BOID = 0.5;
+		const expectedFoodStock =
+			100 - boids.length * FOOD_CONSUMPTION_PER_BOID * 2 + 5 * 2;
+		expect(result.foodStock).toBe(expectedFoodStock);
+	});
+
 	it("protection threshold: a flock at or below the threshold is never attacked", () => {
 		// Long lifespans isolate predation from natural death — any boid loss
 		// here can only be attributable to applyPredation.
