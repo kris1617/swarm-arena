@@ -548,24 +548,24 @@ None — no schema or data changes.
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `npm run typecheck`
-- [x] 3.2 Lint passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — 9e2a115
+- [x] 3.2 Lint passes: `npm run check` — 9e2a115
+- [x] 3.3 Full suite still passes: `npm test` — 9e2a115
 
 #### Manual
 
-- [x] 3.4 Sidebar footer shows avatar + name instead of a bare "Sign out" button
-- [x] 3.5 "Sign out" opens a confirm dialog instead of signing out immediately
-- [x] 3.6 Cancel keeps the session; confirm shows a pending state then lands on `/login?signedOut=1` with the acknowledgment banner
-- [x] 3.7 Missing-avatar case falls back to initials, not a broken image
+- [x] 3.4 Sidebar footer shows avatar + name instead of a bare "Sign out" button — 9e2a115
+- [x] 3.5 "Sign out" opens a confirm dialog instead of signing out immediately — 9e2a115
+- [x] 3.6 Cancel keeps the session; confirm shows a pending state then lands on `/login?signedOut=1` with the acknowledgment banner — 9e2a115
+- [x] 3.7 Missing-avatar case falls back to initials, not a broken image — 9e2a115
 
 ### Phase 4: E2E coverage
 
 #### Automated
 
-- [ ] 4.1 New spec passes: `npx playwright test tests/e2e/auth-ux.spec.ts`
-- [ ] 4.2 Full E2E suite still passes: `npx playwright test`
+- [x] 4.1 New spec passes: `npx playwright test tests/e2e/auth-ux.spec.ts`
+- [x] 4.2 Full E2E suite still passes: `npx playwright test` (7/8 — the 1 failure, `authenticated-simulation-run.spec.ts`, is a pre-existing, unrelated strict-mode locator bug confirmed present on the pre-change baseline commit 6feed91 via a throwaway worktree; out of this change's scope)
 
 #### Manual
 
-- [ ] 4.3 Spec locators reviewed against this project's E2E anti-pattern checklist
+- [x] 4.3 Spec locators reviewed against this project's E2E anti-pattern checklist

@@ -20,10 +20,10 @@ test("unauthenticated visit to / is gated by sign-in", async ({ page }) => {
 	// and no protected content is rendered.
 	await page.waitForURL("**/login**");
 	await expect(
-		page.getByRole("heading", { name: "Sign in", level: 1 }),
+		page.getByRole("heading", { name: "Swarm Arena", level: 1 }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Sign in with GitHub" }),
+		page.getByRole("button", { name: "Continue with GitHub" }),
 	).toBeVisible();
 
 	// No data created by this test, so nothing to clean up.
