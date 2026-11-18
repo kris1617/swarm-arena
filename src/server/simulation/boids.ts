@@ -556,6 +556,21 @@ function resolveOverlaps(
 // cells. Falls back to the pre-Phase-3 global constant when `tribeConfigs`
 // is empty (callers that don't care about per-tribe radii, e.g. most of
 // boids.test.ts's direct stepBoids calls, keep today's exact behavior).
+// impl-review O1: shared lookup for predatorTribeConfigs[flockId]?.field,
+// factored out of stepPredators/applyPredation's two near-identical inline
+// lookups — each call site still owns its own fallback (stepPredators
+// deliberately keeps `undefined` for detectionRadius to preserve "no
+// config entry = unconditional pursuit"; applyPredation falls back to 1
+// for captureRadiusMult), so this only extracts the indexing, not the
+// fallback semantics.
+function predatorTribeField<K extends keyof PredatorTribeConfig>(
+	predatorTribeConfigs: PredatorTribeConfig[],
+	flockId: number,
+	field: K,
+): PredatorTribeConfig[K] | undefined {
+	return predatorTribeConfigs[flockId]?.[field];
+}
+
 function maxTribeRadius(
 	tribeConfigs: TribeConfig[],
 	field: "neighborRadius" | "predatorDetectionRadius",
@@ -905,8 +920,11 @@ export function stepPredators(
 				nearestDz = dz;
 			}
 		}
-		const detectionRadius =
-			predatorTribeConfigs[predator.genes.flockId]?.detectionRadius;
+		const detectionRadius = predatorTribeField(
+			predatorTribeConfigs,
+			predator.genes.flockId,
+			"detectionRadius",
+		);
 		const inDetectionRange =
 			detectionRadius === undefined || nearestDist <= detectionRadius;
 		if (nearestDist > 0 && nearestDist !== Infinity && inDetectionRange) {
@@ -1266,7 +1284,11 @@ export function applyPredation(
 		// falls back to 1 (today's exact fixed-CAPTURE_RADIUS behavior).
 		const captureRadius =
 			CAPTURE_RADIUS *
-			(predatorTribeConfigs[predator.genes.flockId]?.captureRadiusMult ?? 1);
+			(predatorTribeField(
+				predatorTribeConfigs,
+				predator.genes.flockId,
+				"captureRadiusMult",
+			) ?? 1);
 		let nearest: BoidState | null = null;
 		let nearestDist = Infinity;
 		for (const boidIndex of boidGrid.queryRadius(
