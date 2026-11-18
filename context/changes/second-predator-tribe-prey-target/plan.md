@@ -519,11 +519,11 @@ the new factor as absent for those rows.
 
 #### Automated
 
-- [x] 5.1 Full test suite passes (510/511, 1 pre-existing skip)
-- [x] 5.2 Typecheck passes
-- [x] 5.3 Lint passes
-- [x] 5.4 Full build succeeds
+- [x] 5.1 Full test suite passes (510/511, 1 pre-existing skip) — c596c7d
+- [x] 5.2 Typecheck passes — c596c7d
+- [x] 5.3 Lint passes — c596c7d
+- [x] 5.4 Full build succeeds — c596c7d
 
 #### Manual
 
-- [x] 5.5 Verification script's assertions all pass
+- [x] 5.5 Verification script's assertions all pass — c596c7d
