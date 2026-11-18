@@ -680,21 +680,21 @@ param.
 
 #### Automated
 
-- [x] 5.1 npm run typecheck passes
-- [x] 5.2 npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts passes
+- [x] 5.1 npm run typecheck passes — 88fbf1c
+- [x] 5.2 npx vitest run src/server/simulation/server-run-registry.test.ts src/server/api/routers/simulation.test.ts passes — 88fbf1c
 
 ### Phase 6: Verification
 
 #### Automated
 
-- [ ] 6.1 npm run typecheck passes
-- [ ] 6.2 npm test passes (full suite)
+- [x] 6.1 npm run typecheck passes
+- [x] 6.2 npm test passes (full suite)
 
 #### Manual
 
-- [ ] 6.3 Predators split across independent predator tribes, independent of boids' flockCount
-- [ ] 6.4 Low-detectionRadius tribe wanders instead of pursuing out-of-range boids; high-detectionRadius tribe pursues the same boid
-- [ ] 6.5 High-captureRadiusMult tribe captures from a measurably greater distance than low-multiplier tribe
-- [ ] 6.6 Live-edit to a predator tribe changes next-tick behavior, not just the stored value
-- [ ] 6.7 Cross-tribe predator mating still occurs
-- [ ] 6.8 predatorFlockCount: 1 starts and ticks without error
+- [x] 6.3 Predators split across independent predator tribes, independent of boids' flockCount
+- [x] 6.4 Low-detectionRadius tribe wanders instead of pursuing out-of-range boids; high-detectionRadius tribe pursues the same boid
+- [x] 6.5 High-captureRadiusMult tribe captures from a measurably greater distance than low-multiplier tribe
+- [x] 6.6 Live-edit to a predator tribe changes next-tick behavior, not just the stored value
+- [x] 6.7 Cross-tribe predator mating still occurs
+- [x] 6.8 predatorFlockCount: 1 starts and ticks without error
