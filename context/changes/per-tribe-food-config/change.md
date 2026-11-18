@@ -1,7 +1,7 @@
 ---
 change_id: per-tribe-food-config
 title: Per-tribe food config
-status: implementing
+status: implemented
 created: 2026-11-18
 updated: 2026-11-18
 archived_at: null

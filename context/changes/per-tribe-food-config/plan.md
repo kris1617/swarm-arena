@@ -462,11 +462,11 @@ involvement. No wall-clock regression risk comparable to F-09's Phase 3
 
 ### Phase 7: Backward compatibility & verification
 #### Automated
-- [x] 7.1 npm run typecheck passes
-- [x] 7.2 npm test passes (full suite)
+- [x] 7.1 npm run typecheck passes — 8d5b413
+- [x] 7.2 npm test passes (full suite) — 8d5b413
 #### Manual
-- [x] 7.3 Seeded foodStock equals sum of configured stock shares (direct inspection)
-- [x] 7.4 Live stock-share delta injects exactly once per actual change
-- [x] 7.5 Live regen/consumption edits change next-tick trajectory
-- [x] 7.6 Imbalanced vs balanced scenario scores differ; disclose() reports correctly
-- [x] 7.7 Legacy run shows no error and comparable: true
+- [x] 7.3 Seeded foodStock equals sum of configured stock shares (direct inspection) — 8d5b413
+- [x] 7.4 Live stock-share delta injects exactly once per actual change — 8d5b413
+- [x] 7.5 Live regen/consumption edits change next-tick trajectory — 8d5b413
+- [x] 7.6 Imbalanced vs balanced scenario scores differ; disclose() reports correctly — 8d5b413
+- [x] 7.7 Legacy run shows no error and comparable: true — 8d5b413
