@@ -23,7 +23,10 @@ test("signed-in user starts a run, sees it running, and stops it to a scored sum
 	await expect(
 		page.getByRole("heading", { name: "Flocking Simulation" }),
 	).toBeVisible();
-	const startButton = page.getByRole("button", { name: "Start" });
+	const startButton = page.getByRole("button", {
+		name: "Start",
+		exact: true,
+	});
 	await expect(startButton).toBeVisible();
 
 	// Keep the run itself cheap/fast — only the state transitions matter here.
@@ -37,7 +40,7 @@ test("signed-in user starts a run, sees it running, and stops it to a scored sum
 
 	// The config form is gone; the canvas is running with a Stop control.
 	await expect(startButton).toBeHidden();
-	const stopButton = page.getByRole("button", { name: "Stop" });
+	const stopButton = page.getByRole("button", { name: "Stop", exact: true });
 	await expect(stopButton).toBeVisible();
 
 	// Action: stop the run.
@@ -54,7 +57,9 @@ test("signed-in user starts a run, sees it running, and stops it to a scored sum
 
 	// Closing the loop: the flow can run again, not just once.
 	await startNewRunButton.click();
-	await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Start", exact: true }),
+	).toBeVisible();
 });
 
 // risk: a numeric field's HTML `min` attribute can fall off the `step`

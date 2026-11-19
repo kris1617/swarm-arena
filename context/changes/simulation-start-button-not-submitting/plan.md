@@ -268,19 +268,19 @@ None — client-side-only fix, no schema/data change.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 New/extended test passes: `npx playwright test authenticated-simulation-run`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — fddd275
+- [x] 1.2 Lint passes: `npm run check` — fddd275
+- [x] 1.3 Full suite still passes: `npm test` — fddd275
+- [x] 1.4 New/extended test passes: `npx playwright test authenticated-simulation-run` — fddd275
 
 #### Manual
 
-- [ ] 1.5 Deliberate-break check: reverted min, confirmed red, restored
+- [x] 1.5 Deliberate-break check: reverted min, confirmed red, restored — fddd275
 
 ### Phase 2: Fix the separate button-name-collision defect
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Spec passes in isolation: `npx playwright test authenticated-simulation-run`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.3 Spec passes in isolation: `npx playwright test authenticated-simulation-run`
