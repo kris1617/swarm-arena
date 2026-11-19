@@ -1,10 +1,10 @@
 ---
 change_id: simulation-start-button-not-submitting
 title: /simulation's Start button click silently reloads instead of submitting
-status: impl_reviewed
+status: archived
 created: 2026-11-19
 updated: 2026-11-19
-archived_at: null
+archived_at: 2026-11-19T14:51:48Z
 ---
 
 ## Notes
