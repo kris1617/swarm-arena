@@ -71,6 +71,15 @@ Add food as a positioned entity with regen-driven spawning and proximity-based e
 
 **Contract**: For each live boid, query nearby food items via the existing generic spatial-hash grid (`spatial-grid.ts`'s `buildSpatialGrid`/`queryRadius`, extended to also index the food array by its `x/y/z`). On a hit within `FOOD_EAT_RADIUS`: remove that one food item from the array, decrement `foodStock` by `tribeConfigs[boid.genes.flockId]?.foodConsumptionRate ?? FOOD_CONSUMPTION_PER_BOID` (the exact existing per-tribe lookup, now applied per-eat-event instead of aggregated per-tick across the whole population), and add `FOOD_ENERGY_BOOST` to that boid's `energy` (clamped to `ENERGY_MAX`, same clamp pattern as the existing energy update at `:1675-1683`). A boid eats at most one item per tick.
 
+**Blast radius (plan-review F1)**: this replaces the exact formula 5 existing tests hardcode — these are not optional cleanup, they are required for Phase 1's own "full suite passes" success criterion to be achievable at all:
+- `boids.test.ts:1637` ("applies extra decay only when foodStock goes negative")
+- `boids.test.ts:1656` (asserts exact `foodStock` deltas from the per-tribe rate formula)
+- `boids.test.ts:1697` ("reproduces today's exact flat-rate behavior byte-for-byte")
+- `boids.test.ts:3208` (another direct `applyHunger(...)` call)
+- `pipeline.test.ts:320-376` ("documented hunger-before-predation order" + swapped-order variant, asserting literal `foodStock` values computed from the current formula)
+
+Rewrite each to assert the new proximity-based behavior (or remove/replace if the old assertion has no equivalent under the new model). Confirmed via grep: no other production call site of `applyHunger` exists — blast radius is fully confined to these two test files plus `runTick` itself.
+
 #### 4. Starvation safety-net retrigger condition
 
 **File**: `src/server/simulation/boids.ts` (same region)
@@ -93,7 +102,7 @@ Add food as a positioned entity with regen-driven spawning and proximity-based e
 
 - Typecheck passes: `npm run typecheck`
 - Lint passes: `npm run check`
-- New unit tests pass: `npx vitest run src/server/simulation/boids.test.ts` (or wherever `applyHunger`'s existing tests live — confirm exact path during implementation) covering: regen accumulates and spawns an item at the threshold; spawning respects the combined object-count cap and preserves backlog when capped; a boid within `FOOD_EAT_RADIUS` consumes the nearest item, decrementing `foodStock` by its own tribe's rate and gaining `FOOD_ENERGY_BOOST`; the starvation accelerant fires only when both `foodStock <= 0` and `foodItems.length === 0`, not when either alone is true; predators never consume food items.
+- New/rewritten unit tests pass: `npx vitest run src/server/simulation/boids.test.ts src/server/simulation/pipeline.test.ts` covering: regen accumulates and spawns an item at the threshold; spawning respects the combined object-count cap and preserves backlog when capped; a boid within `FOOD_EAT_RADIUS` consumes the nearest item, decrementing `foodStock` by its own tribe's rate and gaining `FOOD_ENERGY_BOOST`; the starvation accelerant fires only when both `foodStock <= 0` and `foodItems.length === 0`, not when either alone is true; predators never consume food items. Also rewrites the 5 existing tests named in "Blast radius" above, which hardcode the formula being replaced.
 - Full suite still passes: `npm test`
 
 #### Manual Verification:
@@ -120,11 +129,11 @@ Thread the new `foodItems` array through save/resume, following this project's o
 
 #### 2. Live-push payload (watch subscription)
 
-**File**: `src/server/simulation/server-run-registry.ts` (the `watchServerRun`/live-push payload, exact site to confirm during implementation — not pinned by `research.md`)
+**File**: `src/server/simulation/server-run-registry.ts`
 
 **Intent**: The server-run live view's SSE push currently streams boids/predators per tick; it needs to stream the current `foodItems` array the same way, or the live canvas will never see food positions even though they exist in the live run object.
 
-**Contract**: Add `foodItems` to whatever payload shape `watchServerRun` currently pushes alongside `boids`/`predators`. Implementer note: `research.md` did not pin this exact site — confirm it's additive to the existing push shape, not a new channel, before wiring Phase 3's client-side consumption.
+**Contract**: Add `foodItems: FoodState[]` to `LiveRunSnapshot` (`:200-225`) alongside its existing `boids`/`predators`/`foodStock` fields — this is the exact type `watchServerRun` (`:1158`) yields via `getLiveRunState` (`:227`), confirmed during plan-review (F3) as the right site.
 
 ### Success Criteria:
 
@@ -197,6 +206,7 @@ None — this phase is verification-only, no file changes.
 #### Manual Verification:
 
 - Run a simulation to completion and observe: food count visibly grows/shrinks with the stock level over time; population dynamics look reasonable (no instant population explosion from the energy boost, no unexpectedly-absent starvation pressure when food runs out).
+- Watch the run's population-lifecycle-phase classification (growth/overshoot/crash/recovery, analysis view) and confirm it still reads sensibly — not just population counts in isolation. `classifyPopulationPhase` averages `foodAvailabilityRatio` over a 20-tick window (`boids.ts:1932-1970`); discrete per-eat-event depletion (vs. the old smooth per-tick rate) could make this signal steppier than today (plan-review F2) — this check is detection, not a fix, since the effect's magnitude is unverified either way.
 - Save/pause a run with nonzero food items, resume it, and confirm food positions are preserved (not reset to empty).
 - Resume (or construct a fixture for) a run saved before this change and confirm it resumes cleanly with zero food items, no crash.
 - Confirm predators never visibly interact with food items (they should path around them exactly as before, no change to predator behavior).
@@ -272,6 +282,7 @@ No DB schema migration — `savedState` is an existing JSON blob column; `foodIt
 #### Manual
 
 - [ ] 4.1 Food count visibly tracks stock level; population dynamics look reasonable (no instant explosion, starvation pressure still present when food runs out)
-- [ ] 4.2 Save/resume preserves food positions
-- [ ] 4.3 A pre-existing saved run (predating this change) resumes cleanly with zero food items
-- [ ] 4.4 Predators show no behavior change around food items
+- [ ] 4.2 Population-lifecycle-phase classification still reads sensibly (growth/overshoot/crash/recovery)
+- [ ] 4.3 Save/resume preserves food positions
+- [ ] 4.4 A pre-existing saved run (predating this change) resumes cleanly with zero food items
+- [ ] 4.5 Predators show no behavior change around food items
