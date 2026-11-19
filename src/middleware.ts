@@ -1,7 +1,34 @@
-// NextAuth v5's documented middleware pattern: export its `auth` wrapper
-// as the named `middleware` export (a default export of `auth` is not
-// recognized as the gate and silently lets every request through).
-export { auth as middleware } from "~/server/auth";
+import { NextResponse } from "next/server";
+import { SECURITY_HEADERS } from "~/lib/security-headers";
+// NextAuth v5's `auth` dispatch (node_modules/next-auth/lib/index.js
+// `handleAuth`) is a 3-way branch: authConfig's `authorized` callback
+// returning a Response wins; else a custom middleware callback (this one)
+// runs INSTEAD OF the automatic unauthorized->signIn redirect, not after
+// it — passing a callback here does not layer on top of that redirect, it
+// replaces it. So this callback must replicate that default redirect logic
+// itself (mirroring handleAuth's own `!authorized` branch exactly,
+// including the already-on-signin-page guard) rather than relying on
+// `authorized` to have handled it, so the net auth behavior for every
+// protected page stays identical to the plain `export { auth as
+// middleware }` this replaces — only the headers are new.
+import { auth } from "~/server/auth";
+
+export default auth((req) => {
+	const isAuthorized = !!req.auth?.user;
+	let response: NextResponse;
+	if (!isAuthorized && req.nextUrl.pathname !== "/login") {
+		const signInUrl = req.nextUrl.clone();
+		signInUrl.pathname = "/login";
+		signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
+		response = NextResponse.redirect(signInUrl);
+	} else {
+		response = NextResponse.next();
+	}
+	for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+		response.headers.set(key, value);
+	}
+	return response;
+});
 
 // Required so `auth()` can run its database-session check against
 // db.sqlite via the Drizzle adapter — the default Edge middleware

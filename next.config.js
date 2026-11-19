@@ -3,10 +3,22 @@
  * for Docker builds.
  */
 import "./src/env.js";
+import { SECURITY_HEADERS } from "./src/lib/security-headers.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
 	output: "standalone",
+	async headers() {
+		return [
+			{
+				source: "/(.*)",
+				headers: Object.entries(SECURITY_HEADERS).map(([key, value]) => ({
+					key,
+					value,
+				})),
+			},
+		];
+	},
 	// Self-hosted behind a reverse proxy (Caddy): without this, middleware's
 	// own request.nextUrl (used by next-auth's auth() middleware wrapper to
 	// build the /login?callbackUrl=... redirect) is rebuilt from the
