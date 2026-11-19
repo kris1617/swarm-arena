@@ -256,9 +256,9 @@ Add registrar- and app-level trust signals for the new domain beyond the bare cu
 - [x] 4.2 Lint passes: `npm run check`
 - [x] 4.3 Full suite still passes: `npm test`
 - [x] 4.4 robots.txt references the sitemap: `grep -q "Sitemap:" public/robots.txt`
-- [ ] 4.5 Sitemap route builds: `curl -s -o /dev/null -w "%{http_code}" https://swarmarena.fun/sitemap.xml` returns 200
+- [x] 4.5 Sitemap route builds: `curl -s -o /dev/null -w "%{http_code}" https://swarmarena.fun/sitemap.xml` returns 200
 
 #### Manual
 
-- [ ] 4.6 hstspreload.org submission for swarmarena.fun completed
-- [ ] 4.7 CAA DNS record added and visible via `dig CAA swarmarena.fun`
+- [x] 4.6 hstspreload.org submission for swarmarena.fun completed
+- [x] 4.7 CAA DNS record added and visible via `dig CAA swarmarena.fun`
