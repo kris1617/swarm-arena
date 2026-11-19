@@ -2250,6 +2250,88 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		activeRunIds.length = 0;
 	});
 
+	// simulation-entity-shape-color-differentiation Phase 2: same round-trip
+	// shape as `resumeServerRun reconstructs ticking that continues...` above,
+	// but asserting on `foodItems` specifically — the field Phase 1 added to
+	// `ServerRunSnapshot`/`snapshotServerRun`/`resumeServerRun` for this
+	// change. Overriding the snapshot's `foodItems`/`foodSpawnRemainder` after
+	// taking it (rather than waiting on probabilistic regen spawn to produce
+	// a nonzero array) pins the round-trip deterministically.
+	it("round-trips foodItems across a pause/resume cycle", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(23);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 23,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		const seededFoodItems = [
+			{ x: 12, y: -34, z: 0 },
+			{ x: 5, y: 6, z: 0 },
+		];
+		snapshot.foodItems = seededFoodItems;
+		snapshot.foodSpawnRemainder = 1.7;
+
+		resumeServerRun(runId, snapshot);
+
+		expect(getLiveRunState(runId)?.foodItems).toEqual(seededFoodItems);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
+	// Mirrors the populationDensitySamples/geneticDiversitySamples/
+	// hasWarnedDenseClustering legacy-snapshot tests above: a `savedState`
+	// row written before this field existed has no `foodItems` key, so
+	// `resumeServerRun` must fall back to an empty array rather than crash,
+	// and that empty array must also surface through `getLiveRunState`
+	// (Phase 2's live-push read site), not just stay correct internally.
+	it("resuming a snapshot missing foodItems (pre-change data) resumes with an empty array, not a crash", async () => {
+		vi.useFakeTimers();
+		const { runId } = await insertOwnedRunningRun(24);
+		activeRunIds.push(runId);
+
+		startServerRun({
+			runId,
+			seed: 24,
+			...BASE_PARAMS,
+			maxDurationSeconds: 600,
+		});
+		await vi.advanceTimersByTimeAsync(64);
+		const snapshot = snapshotServerRun(runId);
+		if (!snapshot) {
+			throw new Error("expected a snapshot");
+		}
+
+		// Simulate a pre-change saved row: strip the field entirely rather
+		// than setting it to `undefined`, matching what a real pre-change
+		// JSON blob actually looks like (the key is simply absent, not
+		// present-as-undefined).
+		const legacySnapshot = { ...snapshot } as Partial<ServerRunSnapshot>;
+		legacySnapshot.foodItems = undefined;
+		delete (legacySnapshot as Record<string, unknown>).foodItems;
+
+		resumeServerRun(runId, legacySnapshot as ServerRunSnapshot);
+		await vi.advanceTimersByTimeAsync(64);
+
+		// If the resumed tick had thrown, tick()'s catch block would have
+		// called finishRun and removed the run from the live registry.
+		expect(getLiveRunState(runId)).toBeDefined();
+		expect(getLiveRunState(runId)?.foodItems).toEqual([]);
+
+		await stopServerRun(runId);
+		activeRunIds.length = 0;
+	});
+
 	// The test above proves continuity when no rng-driven branch (reproduction)
 	// fires in the window — it would pass even if resumeServerRun forgot to
 	// restore the RNG's state, since plain movement never calls `rng()`. This

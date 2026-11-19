@@ -233,6 +233,11 @@ export type LiveRunSnapshot = {
 	// path, `applyLivePredatorTribeConfigs`), exposed so the new per-tribe
 	// live-edit panel can pre-fill predator tribes too.
 	predatorTribeConfigs: PredatorTribeConfig[];
+	// simulation-entity-shape-color-differentiation Phase 2: sibling of
+	// `foodStock` above — the live run's current food-item positions, so the
+	// live canvas can render them tick-over-tick the same way it already
+	// renders `boids`/`predators`.
+	foodItems: FoodState[];
 };
 
 export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
@@ -246,6 +251,12 @@ export function getLiveRunState(runId: number): LiveRunSnapshot | undefined {
 		elapsedSeconds: run.elapsedSeconds,
 		populationCapped: run.populationCapped,
 		foodStock: run.foodStock,
+		// simulation-entity-shape-color-differentiation Phase 2: same `?? []`
+		// fallback discipline this file applies at every other read site for a
+		// post-hoc-added array field — defensive here even though a live
+		// `LiveRun` always has `foodItems` initialized (Phase 1), for
+		// consistency with the rest of this file's convention.
+		foodItems: run.foodItems ?? [],
 		liveParams: {
 			foodRegenRate: run.params.foodRegenRate,
 			protectionThreshold: run.params.protectionThreshold,

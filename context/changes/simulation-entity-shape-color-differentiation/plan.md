@@ -248,19 +248,19 @@ No DB schema migration — `savedState` is an existing JSON blob column; `foodIt
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 New unit tests pass (regen-spawn threshold/backlog/cap, proximity-eating, starvation retrigger, boid-only scoping)
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 26b0afd
+- [x] 1.2 Lint passes: `npm run check` — 26b0afd
+- [x] 1.3 New unit tests pass (regen-spawn threshold/backlog/cap, proximity-eating, starvation retrigger, boid-only scoping) — 26b0afd
+- [x] 1.4 Full suite still passes: `npm test` — 26b0afd
 
 ### Phase 2: Persistence
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Save/resume round-trip test passes (including a pre-existing-savedState backward-compatibility case)
-- [ ] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.3 Save/resume round-trip test passes (including a pre-existing-savedState backward-compatibility case)
+- [x] 2.4 Full suite still passes: `npm test`
 
 ### Phase 3: Rendering
 
