@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 		httpOnly: true,
 		sameSite: "lax",
 		path: "/",
-		secure: false,
+		secure: env.NODE_ENV === "production",
 		expires,
 	});
 	return response;

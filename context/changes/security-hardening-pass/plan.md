@@ -412,23 +412,23 @@ generated migration, not a separate manual step.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 Migration generated and applies cleanly: `npm run db:migrate`
-- [x] 2.4 Full suite still passes: `npm test`
-- [x] 2.5 New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "21st client-mode start"`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — dd42c9a
+- [x] 2.2 Lint passes: `npm run check` — dd42c9a
+- [x] 2.3 Migration generated and applies cleanly: `npm run db:migrate` — dd42c9a
+- [x] 2.4 Full suite still passes: `npm test` — dd42c9a
+- [x] 2.5 New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "21st client-mode start"` — dd42c9a
 
 ### Phase 3: Test-auth cookie hygiene
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Lint passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck`
+- [x] 3.2 Lint passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Local E2E auth still works: `npx playwright test authenticated-simulation-run`
+- [x] 3.4 Local E2E auth still works: `npx playwright test authenticated-simulation-run`
 
 ### Phase 4: Manual CSP verification pass
 
