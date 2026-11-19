@@ -281,6 +281,6 @@ None — client-side-only fix, no schema/data change.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 Spec passes in isolation: `npx playwright test authenticated-simulation-run`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — c6911c8
+- [x] 2.2 Lint passes: `npm run check` — c6911c8
+- [x] 2.3 Spec passes in isolation: `npx playwright test authenticated-simulation-run` — c6911c8
