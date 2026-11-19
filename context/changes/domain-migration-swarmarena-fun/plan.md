@@ -158,9 +158,11 @@ Add registrar- and app-level trust signals for the new domain beyond the bare cu
 
 #### 1. HSTS preload submission (manual, registrar/browser-list action)
 
-**Intent**: `swarmarena.fun` already sends `Strict-Transport-Security: max-age=31536000; includeSubDomains` (from the earlier `security-hardening-pass`), which qualifies it for the browser-shipped HSTS preload list — a trust signal baked into Chrome/Firefox/Safari themselves, independent of any crawler reputation score.
+**Intent**: `swarmarena.fun` already sends `Strict-Transport-Security: max-age=31536000; includeSubDomains` (from the earlier `security-hardening-pass`), which was *assumed* to already qualify it for the browser-shipped HSTS preload list — a trust signal baked into Chrome/Firefox/Safari themselves, independent of any crawler reputation score.
 
-**Contract**: Submit `swarmarena.fun` at `hstspreload.org`. This is a one-time manual web-form submission outside this repo; no code change. The existing CSP/security-headers Automated Verification from `security-hardening-pass` already confirms the HSTS header's presence and value — this phase doesn't re-verify that, only performs the submission.
+**Contract**: Submit `swarmarena.fun` at `hstspreload.org`.
+
+**Correction (discovered mid-implementation)**: the assumption above was wrong — `hstspreload.org`'s submission form requires the literal `preload` directive in the header, not just `max-age` + `includeSubDomains`; the deployed header was missing it. Fixed in `src/lib/security-headers.js` (`"max-age=31536000; includeSubDomains; preload"`), a one-line addition to the single source of truth both `next.config.js` and `src/middleware.ts` already import. User explicitly confirmed this one-way-door tradeoff (hard to reverse once browsers ship it) before the fix landed. The submission itself remains a manual web-form action outside this repo.
 
 #### 2. CAA DNS record (manual, registrar/DNS action)
 
@@ -241,19 +243,19 @@ Add registrar- and app-level trust signals for the new domain beyond the bare cu
 
 #### Manual
 
-- [x] 3.1 Login + dashboard works on swarmarena.fun (re-confirmed post-docs-update)
-- [x] 3.2 One core simulation flow (start + live render) works end-to-end on the new domain
-- [x] 3.3 swarmarena.hopto.org confirmed not serving the app
-- [x] 3.4 New Google Search Console property for swarmarena.fun created and verified
+- [x] 3.1 Login + dashboard works on swarmarena.fun (re-confirmed post-docs-update) — 26819cc
+- [x] 3.2 One core simulation flow (start + live render) works end-to-end on the new domain — 26819cc
+- [x] 3.3 swarmarena.hopto.org confirmed not serving the app — 26819cc
+- [x] 3.4 New Google Search Console property for swarmarena.fun created and verified — 26819cc
 
 ### Phase 4: Domain-reputation hardening
 
 #### Automated
 
-- [ ] 4.1 Typecheck passes: `npm run typecheck`
-- [ ] 4.2 Lint passes: `npm run check`
-- [ ] 4.3 Full suite still passes: `npm test`
-- [ ] 4.4 robots.txt references the sitemap: `grep -q "Sitemap:" public/robots.txt`
+- [x] 4.1 Typecheck passes: `npm run typecheck`
+- [x] 4.2 Lint passes: `npm run check`
+- [x] 4.3 Full suite still passes: `npm test`
+- [x] 4.4 robots.txt references the sitemap: `grep -q "Sitemap:" public/robots.txt`
 - [ ] 4.5 Sitemap route builds: `curl -s -o /dev/null -w "%{http_code}" https://swarmarena.fun/sitemap.xml` returns 200
 
 #### Manual

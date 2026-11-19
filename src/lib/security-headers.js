@@ -12,7 +12,12 @@ export const SECURITY_HEADERS = {
 	"X-Frame-Options": "DENY",
 	"X-Content-Type-Options": "nosniff",
 	"Referrer-Policy": "strict-origin-when-cross-origin",
-	"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+	// domain-migration-swarmarena-fun (phase 4): `preload` added so this
+	// domain can be submitted to hstspreload.org — the submission form
+	// requires the literal `preload` directive, not just max-age +
+	// includeSubDomains. This is a one-way door once browsers ship it:
+	// removal from the preload list can take months to propagate.
+	"Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
 	"Content-Security-Policy":
 		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' avatars.githubusercontent.com data:; font-src 'self'; connect-src 'self';",
 };
