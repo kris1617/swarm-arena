@@ -165,6 +165,17 @@ export type PredatorState = {
 // to some baked-in size.
 export type WorldSize = { x: number; y: number; z: number };
 
+// simulation-entity-shape-color-differentiation Phase 1: a food item is now
+// a positioned entity a boid can approach and eat, replacing the old
+// abstract-only `foodStock` number as the thing boids actually interact
+// with. No `id` field — tracked by array index, same bare-shape convention
+// `BoidState`/`PredatorState` already use.
+export type FoodState = {
+	x: number;
+	y: number;
+	z: number;
+};
+
 // Max magnitude of each initial velocity component.
 const INITIAL_SPEED = 2;
 // Boids within this radius influence alignment and cohesion. Sized relative
@@ -221,6 +232,19 @@ const FOOD_CONSUMPTION_PER_BOID = 0.5;
 // negative — FR-008 treats hunger as an accelerant on the existing death
 // mechanism, never a separate, independent death check.
 const HUNGER_EXTRA_DECAY_RATE = 1;
+// simulation-entity-shape-color-differentiation Phase 1: radius within which
+// a boid eats a nearby food item (applyHunger's proximity check below) —
+// similar order of magnitude to NEIGHBOR_RADIUS (70), well above
+// MIN_SEPARATION_DISTANCE's contact-only scale, so a boid doesn't have to
+// collide with a food item's exact position to eat it.
+const FOOD_EAT_RADIUS = 30;
+// Stock-per-item reference used ONLY to decide how many visible food items a
+// given amount of accumulated regen should produce — independent from
+// `foodConsumptionRate`/`FOOD_CONSUMPTION_PER_BOID` above, which is the
+// per-tribe value actually deducted from `foodStock` when a boid eats one
+// item (a different, per-eat-event quantity, not the per-item display
+// value).
+const FOOD_ITEM_DISPLAY_VALUE = 10;
 // Starting energy for a freshly spawned individual (initial population or,
 // from Phase 2 on, a newborn) — well under ENERGY_MAX so reproduction
 // eligibility (a future run-level energyThreshold param) isn't trivially
@@ -242,6 +266,10 @@ export const ENERGY_MAX = 100;
 // not yet wired) is reachable within a run without reproduction being either
 // instant or practically unreachable.
 export const ENERGY_GAIN_RATE = 10;
+// simulation-entity-shape-color-differentiation Phase 1: energy gained by a
+// boid that eats one food item — a meaningful lump relative to the passive
+// per-tick ENERGY_GAIN_RATE so eating visibly matters, not a trivial nudge.
+export const FOOD_ENERGY_BOOST = ENERGY_GAIN_RATE * 4;
 // per-tribe-behavior-weights Phase 4: a NEW per-tick energy drain, additive
 // to the gain above (net = clamp(0, ENERGY_MAX, energy + gain - drain)) —
 // ported from the Lua reference's Boid:update, which drains
@@ -1280,49 +1308,171 @@ export function reproducePopulation<T extends BoidState | PredatorState>(
 	return { population: [...population, ...offspring], capped };
 }
 
-// Maintains the single global food-stock number across ticks: depletes with
-// population size, regenerates by the caller-supplied rate (one of the
-// run's persisted parameters, not an engine constant), and — only when the
-// resulting stock goes negative — applies an *extra* lifespan decay on top
-// of stepBoids' unconditional per-tick decay. This is deliberately one
-// death mechanism with an accelerant, not two independent ones (FR-008).
+// simulation-entity-shape-color-differentiation Phase 1: replaces the old
+// whole-population rate-consumption formula (a flat per-tribe rate drained
+// from `foodStock` once per tick across the ENTIRE population, regardless of
+// any boid's actual position) with a positioned-entity model:
+//   1. `foodStock` still accumulates regen exactly as before (same
+//      magnitude, same `foodRegenRate` input) — the ambient
+//      `foodAvailabilityRatio` energy coupling (runTick's own call site)
+//      and the starvation safety net below both keep reading this one
+//      number, unchanged.
+//   2. That same regen also funds visible food ITEMS: `state.
+//      foodSpawnRemainder` accumulates regen that hasn't yet produced an
+//      item, and every time it crosses `FOOD_ITEM_DISPLAY_VALUE` a new item
+//      spawns at a random position — capped by `params.maxObjectCount`
+//      (the combined boids+predators+food entity ceiling). When capped, the
+//      remainder is left accumulated (never reset), so a backlog of
+//      unspawned regen is delayed, not lost.
+//   3. A boid only consumes food (and only decrements `foodStock`, by its
+//      own tribe's `foodConsumptionRate`) by actually reaching a food item
+//      within FOOD_EAT_RADIUS — at most one item per boid per tick, and an
+//      item already claimed by an earlier boid this tick can't also be
+//      claimed by a later one.
+// FR-008's hunger accelerant (HUNGER_EXTRA_DECAY_RATE) is preserved, but its
+// trigger condition changes from "the old rate formula pushed foodStock
+// negative" to "nothing is left to eat at all" (foodStock <= 0 AND no food
+// items remain) — still one death mechanism with an accelerant, not two
+// independent ones.
 export function applyHunger(
 	boids: BoidState[],
-	foodStock: number,
 	dtSeconds: number,
-	foodRegenRate: number,
-	// per-tribe-food-config Phase 3: one TribeConfig per flock, index =
-	// flockId — same convention as stepBoids' tribeConfigs parameter.
-	// Optional, defaulting to `[]` (which makes every per-boid lookup below
-	// `undefined` and falls back to the pre-Phase-3 flat
-	// FOOD_CONSUMPTION_PER_BOID constant) so every pre-existing call site in
-	// this file and its tests keeps compiling and behaving exactly as
-	// before; runTick (the real production composition point) always
-	// passes the run's actual tribeConfigs.
-	tribeConfigs: TribeConfig[] = [],
-): { boids: BoidState[]; foodStock: number } {
-	const totalConsumption = boids.reduce(
-		(sum, boid) =>
-			sum +
-			(tribeConfigs[boid.genes.flockId]?.foodConsumptionRate ??
-				FOOD_CONSUMPTION_PER_BOID),
-		0,
-	);
-	const depleted = foodStock - totalConsumption * dtSeconds;
-	const nextFoodStock = depleted + foodRegenRate * dtSeconds;
+	state: {
+		foodStock: number;
+		foodItems: FoodState[];
+		foodSpawnRemainder: number;
+	},
+	params: {
+		foodRegenRate: number;
+		worldSize: WorldSize;
+		rng: () => number;
+		// This tick's non-boid, non-food entity count (steeredPredators.length
+		// at runTick's call site) — combined with boids.length and the
+		// current food-item count against `maxObjectCount` below, same
+		// combined-cap convention `reproducePopulation`'s
+		// `totalOtherPopulationCount` already establishes.
+		otherEntityCount: number;
+		maxObjectCount: number;
+		// per-tribe-food-config Phase 3: one TribeConfig per flock, index =
+		// flockId — same convention as stepBoids' tribeConfigs parameter.
+		// Optional, defaulting to `[]` (which makes every per-boid lookup
+		// below `undefined` and falls back to the pre-Phase-3 flat
+		// FOOD_CONSUMPTION_PER_BOID constant) so every pre-existing call site
+		// in this file and its tests keeps compiling and behaving exactly as
+		// before; runTick (the real production composition point) always
+		// passes the run's actual tribeConfigs.
+		tribeConfigs?: TribeConfig[];
+	},
+): {
+	boids: BoidState[];
+	foodStock: number;
+	foodItems: FoodState[];
+	foodSpawnRemainder: number;
+} {
+	const tribeConfigs = params.tribeConfigs ?? [];
 
-	if (nextFoodStock >= 0) {
-		return { boids, foodStock: nextFoodStock };
+	// --- 1 & 2: regen accumulation + threshold-based item spawning ---
+	const regenThisTick = params.foodRegenRate * dtSeconds;
+	let nextFoodStock = state.foodStock + regenThisTick;
+	let remainder = state.foodSpawnRemainder + regenThisTick;
+	const spawnedItems: FoodState[] = [...state.foodItems];
+	while (remainder >= FOOD_ITEM_DISPLAY_VALUE) {
+		if (
+			boids.length + params.otherEntityCount + spawnedItems.length >=
+			params.maxObjectCount
+		) {
+			// At the combined cap — leave the remainder accumulated (not
+			// reset) so a later tick with room resumes spawning immediately.
+			break;
+		}
+		spawnedItems.push({
+			x: params.rng() * params.worldSize.x,
+			y: params.rng() * params.worldSize.y,
+			z: params.rng() * params.worldSize.z,
+		});
+		remainder -= FOOD_ITEM_DISPLAY_VALUE;
 	}
 
-	const hungryBoids = boids
+	// --- 3: proximity-based eating, at most one item per boid per tick ---
+	// No items exist to query — skip the grid build/per-boid scan entirely
+	// (common case: a fresh run before regen has produced its first item,
+	// or any tick where every existing item was already eaten). Behaviorally
+	// identical to running the scan below against an empty array; this is
+	// purely a cost shortcut for the common/empty case.
+	const eaten = new Set<number>();
+	let fedBoids = boids;
+	if (spawnedItems.length > 0) {
+		const foodGrid = buildSpatialGrid(
+			spawnedItems,
+			(item) => ({ x: item.x, y: item.y, z: item.z }),
+			FOOD_EAT_RADIUS,
+			params.worldSize,
+		);
+		fedBoids = boids.map((boid) => {
+			let nearestIndex = -1;
+			let nearestDist = Infinity;
+			for (const itemIndex of foodGrid.queryRadius(
+				{ x: boid.x, y: boid.y, z: boid.z },
+				FOOD_EAT_RADIUS,
+			)) {
+				if (eaten.has(itemIndex)) {
+					continue;
+				}
+				const item = spawnedItems[itemIndex];
+				if (!item) {
+					continue;
+				}
+				const dx = wrappedDelta(boid.x - item.x, params.worldSize.x);
+				const dy = wrappedDelta(boid.y - item.y, params.worldSize.y);
+				const dz = wrappedDelta(boid.z - item.z, params.worldSize.z);
+				const dist = Math.hypot(dx, dy, dz);
+				if (dist <= FOOD_EAT_RADIUS && dist < nearestDist) {
+					nearestDist = dist;
+					nearestIndex = itemIndex;
+				}
+			}
+			if (nearestIndex === -1) {
+				return boid;
+			}
+			eaten.add(nearestIndex);
+			nextFoodStock -=
+				tribeConfigs[boid.genes.flockId]?.foodConsumptionRate ??
+				FOOD_CONSUMPTION_PER_BOID;
+			return {
+				...boid,
+				energy: Math.min(ENERGY_MAX, boid.energy + FOOD_ENERGY_BOOST),
+			};
+		});
+	}
+
+	const remainingItems =
+		eaten.size === 0
+			? spawnedItems
+			: spawnedItems.filter((_, index) => !eaten.has(index));
+
+	// --- Starvation safety net: only when nothing is left to eat at all ---
+	if (nextFoodStock > 0 || remainingItems.length > 0) {
+		return {
+			boids: fedBoids,
+			foodStock: nextFoodStock,
+			foodItems: remainingItems,
+			foodSpawnRemainder: remainder,
+		};
+	}
+
+	const hungryBoids = fedBoids
 		.map((boid) => ({
 			...boid,
 			lifespan: boid.lifespan - HUNGER_EXTRA_DECAY_RATE * dtSeconds,
 		}))
 		.filter((boid) => boid.lifespan > 0);
 
-	return { boids: hungryBoids, foodStock: nextFoodStock };
+	return {
+		boids: hungryBoids,
+		foodStock: nextFoodStock,
+		foodItems: remainingItems,
+		foodSpawnRemainder: remainder,
+	};
 }
 
 // The PRD's named US-01 acceptance criterion: a flock at or below the
@@ -1513,7 +1663,26 @@ export function applyPredation(
 // already dead weight here; Phase 2 is this function's first real signature
 // revision since then, so it's cleaned up now rather than carried further.
 export function runTick(
-	state: { boids: BoidState[]; predators: PredatorState[]; foodStock: number },
+	state: {
+		boids: BoidState[];
+		predators: PredatorState[];
+		foodStock: number;
+		// simulation-entity-shape-color-differentiation Phase 1: positioned
+		// food items, threaded alongside `foodStock` through the same tick
+		// core — see `applyHunger`'s own comment for how the two now relate.
+		// Optional, defaulting to `[]` (same "build up gradually from empty"
+		// decision this phase's plan documents for a freshly-created run) so
+		// every pre-existing caller/test in this file's wider blast radius
+		// that constructs this state object without the two new fields keeps
+		// compiling and behaving exactly as before (no visible food items
+		// ever, same as today).
+		foodItems?: FoodState[];
+		// Running total of regen accumulated but not yet spawned as a visible
+		// item — see `applyHunger`'s own comment for why this is tracked
+		// separately from `foodStock` itself. Same optional/`?? 0` fallback
+		// convention as `foodItems` above.
+		foodSpawnRemainder?: number;
+	},
 	params: {
 		dtSeconds: number;
 		// per-tribe-food-config Phase 2: kept on this type so every existing
@@ -1554,6 +1723,11 @@ export function runTick(
 	boids: BoidState[];
 	predators: PredatorState[];
 	foodStock: number;
+	// simulation-entity-shape-color-differentiation Phase 1: this tick's
+	// resulting positioned food items — threaded back out alongside
+	// `foodStock` so callers persist both.
+	foodItems: FoodState[];
+	foodSpawnRemainder: number;
 	populationCapped: boolean;
 	// S-04 (FR-010 full): exposed for the "resource management" scoring
 	// factor — this value was already computed below, just never returned.
@@ -1612,12 +1786,27 @@ export function runTick(
 		params.tribeConfigs,
 		steeredBoids,
 	);
-	const { boids: fedBoids, foodStock: nextFoodStock } = applyHunger(
+	const {
+		boids: fedBoids,
+		foodStock: nextFoodStock,
+		foodItems: nextFoodItems,
+		foodSpawnRemainder: nextFoodSpawnRemainder,
+	} = applyHunger(
 		steeredBoids,
-		state.foodStock,
 		params.dtSeconds,
-		totalFoodRegenRate,
-		params.tribeConfigs,
+		{
+			foodStock: state.foodStock,
+			foodItems: state.foodItems ?? [],
+			foodSpawnRemainder: state.foodSpawnRemainder ?? 0,
+		},
+		{
+			foodRegenRate: totalFoodRegenRate,
+			worldSize: params.worldSize,
+			rng: params.rng,
+			otherEntityCount: steeredPredators.length,
+			maxObjectCount: params.populationCap,
+			tribeConfigs: params.tribeConfigs,
+		},
 	);
 	const { boids: predatedBoids, predators: predatedPredators } = applyPredation(
 		fedBoids,
@@ -1737,6 +1926,8 @@ export function runTick(
 		boids: reproducedBoids,
 		predators: reproducedPredators,
 		foodStock: nextFoodStock,
+		foodItems: nextFoodItems,
+		foodSpawnRemainder: nextFoodSpawnRemainder,
 		populationCapped: boidsCapped || predatorsCapped,
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: warnSink.triggered,

@@ -2355,6 +2355,16 @@ describe("snapshotServerRun / resumeServerRun", () => {
 	}
 
 	it("restores the exact RNG sequence across a pause, producing bit-identical reproduction outcomes", async () => {
+		// simulation-entity-shape-color-differentiation Phase 1: this fixture's
+		// 6000ms window is pinned to MATURITY_AGE_SECONDS=5 (the tracked pair
+		// must age past 5s before it's mate-eligible) plus margin for the
+		// mating tick itself — it can't be shrunk without breaking the
+		// maturity trigger the test depends on. FOOD_ENERGY_BOOST now lets
+		// boids reach the reproduction energy threshold sooner, growing the
+		// decoy/tracked population faster and raising this fixture's ~750-tick
+		// per-tick cost well past vitest's default 5000ms timeout — unrelated
+		// to the RNG-sequence fidelity this test actually verifies, so widen
+		// only this test's timeout rather than the global default.
 		vi.useFakeTimers();
 		const runIdA = 900_001;
 		const runIdB = 900_002;
@@ -2388,7 +2398,7 @@ describe("snapshotServerRun / resumeServerRun", () => {
 		await stopServerRun(runIdA);
 		await stopServerRun(runIdB);
 		activeRunIds.length = 0;
-	});
+	}, 15_000);
 
 	it("resumeServerRun throws if the runId is already registered", async () => {
 		vi.useFakeTimers();

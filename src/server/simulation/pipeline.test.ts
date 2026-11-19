@@ -277,12 +277,15 @@ describe("applyPredation contested capture", () => {
 describe("hunger-before-predation order is load-bearing", () => {
 	it("produces a measurably different outcome depending on which step runs first", () => {
 		// `target` is constructed to reach lifespan exactly 0 from
-		// applyHunger's extra decay this tick (HUNGER_EXTRA_DECAY_RATE=1,
-		// dtSeconds=1, starting lifespan=1) while also sitting within
-		// CAPTURE_RADIUS of `predator` (distance 3 <= 6), which is above the
-		// protection threshold. `bystander` is far from the predator and has
-		// a long lifespan, so it survives either order and only dilutes the
-		// flock size past the protection threshold.
+		// applyHunger's starvation accelerant this tick
+		// (HUNGER_EXTRA_DECAY_RATE=1, dtSeconds=1, starting lifespan=1) while
+		// also sitting within CAPTURE_RADIUS of `predator` (distance 3 <= 6),
+		// which is above the protection threshold. `bystander` is far from
+		// the predator and has a long lifespan, so it survives either order
+		// and only dilutes the flock size past the protection threshold.
+		// `foodStock=0` and no food items means the starvation condition
+		// (foodStock<=0 AND foodItems.length===0) holds unconditionally this
+		// tick, regardless of order.
 		const buildTarget = (): BoidState =>
 			makeBoid({
 				x: 3,
@@ -312,17 +315,22 @@ describe("hunger-before-predation order is load-bearing", () => {
 			vz: 0,
 			lifespan: 1000,
 		});
-		const foodStock = -10;
 		const dtSeconds = 1;
-		const foodRegenRate = 0;
 		const protectionThreshold = 1;
+		const hungerParams = {
+			foodRegenRate: 0,
+			worldSize: WORLD_SIZE,
+			rng: createRng(1),
+			otherEntityCount: 0,
+			maxObjectCount: 500,
+		};
 
 		// Documented order: applyHunger then applyPredation.
 		const hungerFirst = applyHunger(
 			[buildTarget(), buildBystander()],
-			foodStock,
 			dtSeconds,
-			foodRegenRate,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			hungerParams,
 		);
 		// The target is already gone right after the hunger step — its
 		// lifespan hit exactly 0 here, before predation ever ran. This is
@@ -357,22 +365,23 @@ describe("hunger-before-predation order is load-bearing", () => {
 
 		const afterSwappedOrder = applyHunger(
 			predationFirst,
-			foodStock,
 			dtSeconds,
-			foodRegenRate,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			hungerParams,
 		);
 		expect(afterSwappedOrder.boids).toHaveLength(1);
 		expect(afterSwappedOrder.boids[0]?.x).toBe(100);
 
-		// The order genuinely changes more than just which function removed
-		// the target: foodStock after the documented order reflects hunger
-		// depleting against a flock of 2 (target still present), while the
-		// swapped order's hunger step depletes against a flock of 1 (target
-		// already captured) — a measurably different result for the same
-		// input.
-		expect(hungerFirst.foodStock).not.toBe(afterSwappedOrder.foodStock);
-		expect(hungerFirst.foodStock).toBe(-11);
-		expect(afterSwappedOrder.foodStock).toBe(-10.5);
+		// The order genuinely changes WHICH mechanism removes the target,
+		// not merely that it's removed: under the documented order,
+		// applyHunger's starvation accelerant alone already brings the
+		// population down to 1 (the target never reaches applyPredation
+		// alive); under the swapped order, applyPredation's CAPTURE_RADIUS
+		// check alone does (the target never reaches applyHunger alive). A
+		// bug that swapped the two steps inside runTick would still remove
+		// the same final set here, but would route the removal through the
+		// wrong mechanism — which the per-step assertions above already
+		// pin down (starvation above only, capture via distance below only).
 	});
 });
 
@@ -444,7 +453,16 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 		});
 
 		const result = runTick(
-			{ boids: [target, bystander], predators: [predator], foodStock: -1 },
+			{
+				boids: [target, bystander],
+				predators: [predator],
+				foodStock: -1,
+				// No food items — starvation (foodStock<=0 AND
+				// foodItems.length===0) holds unconditionally this tick,
+				// same as the direct-call test above.
+				foodItems: [],
+				foodSpawnRemainder: 0,
+			},
 			{
 				dtSeconds: 0.01,
 				foodRegenRate: 0,
@@ -475,13 +493,14 @@ describe("runTick itself honors the hunger-before-predation order", () => {
 
 		// Under the documented order, hunger removes the target before
 		// predation ever sees it — only the bystander (lifespan ~999.98)
-		// survives. If runTick's internal order were ever swapped, predation
-		// would capture the target while its lifespan was still > 0, and
-		// foodStock below would reflect hunger depleting against 1 boid
-		// instead of 2 (-1.005 instead of -1.01) — this assertion would fail
-		// either way.
+		// survives. With no food items present, foodStock only ever moves
+		// via regen (0 here), never via eating — so it stays at -1
+		// regardless of order; the load-bearing oracle for "order matters"
+		// is the surviving population/lifespan, asserted below (same
+		// starvation-vs-capture distinction the direct-call test above
+		// pins down).
 		expect(result.boids).toHaveLength(1);
 		expect(result.boids[0]?.lifespan).toBeCloseTo(999.98, 2);
-		expect(result.foodStock).toBeCloseTo(-1.01, 5);
+		expect(result.foodStock).toBeCloseTo(-1, 5);
 	});
 });

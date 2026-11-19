@@ -14,6 +14,7 @@ import {
 	computeScore,
 	createInitialPopulation,
 	createInitialPredators,
+	type FoodState,
 	type PopulationPhase,
 	type PredatorState,
 	type PredatorTribeConfig,
@@ -124,6 +125,16 @@ type LiveRun = {
 	boids: BoidState[];
 	predators: PredatorState[];
 	foodStock: number;
+	// simulation-entity-shape-color-differentiation Phase 1: positioned food
+	// items, threaded alongside `foodStock` the same way through `tick()`
+	// below. Persistence across pause/resume (ServerRunSnapshot) is Phase
+	// 2's job — `resumeServerRun` re-initializes both to empty/zero for now
+	// (see its own comment).
+	foodItems: FoodState[];
+	// Running total of regen accumulated but not yet spawned as a visible
+	// item — see boids.ts's `applyHunger` comment for why this is tracked
+	// separately from `foodStock`.
+	foodSpawnRemainder: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	// per-tribe-food-config Phase 5: one per-tick imbalance sample, threaded
@@ -721,6 +732,8 @@ function tick(runId: number): void {
 				boids: run.boids,
 				predators: run.predators,
 				foodStock: run.foodStock,
+				foodItems: run.foodItems,
+				foodSpawnRemainder: run.foodSpawnRemainder,
 				cohesionSamples: run.cohesionSamples,
 				foodRatioSamples: run.foodRatioSamples,
 				tribeFoodImbalanceSamples: run.tribeFoodImbalanceSamples,
@@ -844,6 +857,8 @@ function tick(runId: number): void {
 		run.boids = result.boids;
 		run.predators = result.predators;
 		run.foodStock = result.foodStock;
+		run.foodItems = result.foodItems;
+		run.foodSpawnRemainder = result.foodSpawnRemainder;
 		run.cohesionSamples = result.cohesionSamples;
 		run.foodRatioSamples = result.foodRatioSamples;
 		run.tribeFoodImbalanceSamples = result.tribeFoodImbalanceSamples;
@@ -928,6 +943,13 @@ export function startServerRun(params: ServerRunParams): void {
 		boids,
 		predators,
 		foodStock: foodStockSeed,
+		// simulation-entity-shape-color-differentiation Phase 1: a fresh run
+		// starts with no visible food items — they build up gradually as
+		// regen accumulates past FOOD_ITEM_DISPLAY_VALUE (see applyHunger),
+		// a deliberate scalar/visible discrepancy for the opening stretch of
+		// a run, not a bug.
+		foodItems: [],
+		foodSpawnRemainder: 0,
 		cohesionSamples: [],
 		foodRatioSamples: [],
 		tribeFoodImbalanceSamples: [],
@@ -983,6 +1005,21 @@ export type ServerRunSnapshot = {
 	boids: BoidState[];
 	predators: PredatorState[];
 	foodStock: number;
+	// simulation-entity-shape-color-differentiation Phase 1: persisted
+	// alongside foodStock — without this, a pause/resume cycle would lose
+	// in-flight food items AND reset the regen-spawn remainder to 0,
+	// changing how many `rng()` draws later ticks consume (one spawn event
+	// draws 3) relative to an unpaused run, breaking RNG-sequence parity
+	// across pause/resume (this file's own "restores the exact RNG
+	// sequence across a pause" test). Same `?? []`/`?? 0` pause/resume
+	// treatment as the other post-hoc-added fields below for a
+	// `savedState` row written before this field existed — optional (not
+	// required like its sibling fields below) because, unlike those, a
+	// snapshot can also be constructed as a plain object literal outside
+	// this module (test fixtures), where TypeScript enforces the type
+	// strictly rather than via an unsafe `as ServerRunSnapshot` cast.
+	foodItems?: FoodState[];
+	foodSpawnRemainder?: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	// per-tribe-food-config Phase 5: same pause/resume treatment as
@@ -1026,6 +1063,8 @@ export function snapshotServerRun(
 		boids: run.boids,
 		predators: run.predators,
 		foodStock: run.foodStock,
+		foodItems: run.foodItems,
+		foodSpawnRemainder: run.foodSpawnRemainder,
 		cohesionSamples: run.cohesionSamples,
 		foodRatioSamples: run.foodRatioSamples,
 		tribeFoodImbalanceSamples: run.tribeFoodImbalanceSamples,
@@ -1069,6 +1108,16 @@ export function resumeServerRun(
 		boids: snapshot.boids,
 		predators: snapshot.predators,
 		foodStock: snapshot.foodStock,
+		// simulation-entity-shape-color-differentiation Phase 1: same `?? []`/
+		// `?? 0` fallback as the other post-hoc-added fields below — a
+		// `savedState` row written before this field existed has no
+		// `foodItems`/`foodSpawnRemainder` key despite `ServerRunSnapshot`'s
+		// type claiming otherwise. Carrying these through (not
+		// re-initializing to empty/zero unconditionally) is required for
+		// RNG-sequence parity across pause/resume — see `ServerRunSnapshot`'s
+		// own comment on `foodItems`.
+		foodItems: snapshot.foodItems ?? [],
+		foodSpawnRemainder: snapshot.foodSpawnRemainder ?? 0,
 		cohesionSamples: snapshot.cohesionSamples,
 		foodRatioSamples: snapshot.foodRatioSamples,
 		// per-tribe-food-config Phase 5: same `?? []` fallback as the other

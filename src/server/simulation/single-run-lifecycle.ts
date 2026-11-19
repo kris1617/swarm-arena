@@ -4,6 +4,7 @@ import {
 	computeCohesion,
 	computeGeneticDiversity,
 	FOOD_IMBALANCE_EPSILON,
+	type FoodState,
 	PHASE_WINDOW_SIZE,
 	type PopulationPhase,
 	PREDATOR_TRIBE_IMBALANCE_THRESHOLD,
@@ -29,6 +30,18 @@ export function computeSingleRunTick(
 		boids: BoidState[];
 		predators: PredatorState[];
 		foodStock: number;
+		// simulation-entity-shape-color-differentiation Phase 1: positioned
+		// food items, threaded alongside `foodStock` into runTick below.
+		// Optional, defaulting to `[]` (`?? []` at the read site below) so a
+		// caller/test constructed before this phase keeps compiling and
+		// behaving exactly as before (no visible food items ever) — same
+		// convention runTick's own state param now follows.
+		foodItems?: FoodState[];
+		// Running total of regen accumulated but not yet spawned as a
+		// visible item — see boids.ts's `applyHunger` comment for why this
+		// is tracked separately from `foodStock`. Same optional/`?? 0`
+		// fallback convention as `foodItems` above.
+		foodSpawnRemainder?: number;
 		cohesionSamples: number[];
 		// S-04 (FR-010 full, FR-019): threaded once here so both the
 		// client-staged and server-owned paths (which both call this one
@@ -113,6 +126,11 @@ export function computeSingleRunTick(
 	boids: BoidState[];
 	predators: PredatorState[];
 	foodStock: number;
+	// simulation-entity-shape-color-differentiation Phase 1: this tick's
+	// resulting positioned food items — threaded back out alongside
+	// `foodStock` so both execution paths persist both.
+	foodItems: FoodState[];
+	foodSpawnRemainder: number;
 	cohesionSamples: number[];
 	foodRatioSamples: number[];
 	tribeFoodImbalanceSamples: number[];
@@ -168,6 +186,8 @@ export function computeSingleRunTick(
 		boids: nextBoids,
 		predators: nextPredators,
 		foodStock: nextFoodStock,
+		foodItems: nextFoodItems,
+		foodSpawnRemainder: nextFoodSpawnRemainder,
 		populationCapped,
 		foodAvailabilityRatio,
 		hasWarnedDenseClustering: tickHasWarnedDenseClustering,
@@ -178,6 +198,8 @@ export function computeSingleRunTick(
 			boids: state.boids,
 			predators: state.predators,
 			foodStock: state.foodStock,
+			foodItems: state.foodItems ?? [],
+			foodSpawnRemainder: state.foodSpawnRemainder ?? 0,
 		},
 		{
 			dtSeconds,
@@ -285,6 +307,8 @@ export function computeSingleRunTick(
 		boids: nextBoids,
 		predators: nextPredators,
 		foodStock: nextFoodStock,
+		foodItems: nextFoodItems,
+		foodSpawnRemainder: nextFoodSpawnRemainder,
 		cohesionSamples: nextCohesionSamples,
 		foodRatioSamples: nextFoodRatioSamples,
 		tribeFoodImbalanceSamples: nextTribeFoodImbalanceSamples,

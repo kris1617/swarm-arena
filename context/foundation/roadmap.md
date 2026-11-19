@@ -97,7 +97,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | done |
 | S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning, with independently-evolving genetics, the way boid tribes already can | S-39, F-10     | MS-04                                                  | done |
 | S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | done |
-| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | planning |
+| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | in-progress |
 | S-45 | lifecycle-stage-color-fade | User sees boid, predator, and food colors fade/shift according to lifecycle stage (energy/decay), matching the Lua reference's pattern | S-44           | MS-03                                                  | proposed |
 
 ## Streams
@@ -827,7 +827,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (resolved 2026-11-19: food gets real, positioned, discrete spatial entities — matching the Lua reference's `Food` objects — not a non-spatial pool visualization. No longer blocking.)
 - **Risk:** High, scope expanded further during planning (2026-11-19, user's explicit choice): consumption becomes spatially-gated foraging (boids must reach a food item to eat it), replacing the old rate-based consumption formula entirely — not just adding positioned food, but changing how/when the pool actually drains, plus a new direct per-item energy boost. A real balance risk to population dynamics tuned across 10 prior milestones, consciously accepted — see plan.md's Key Decisions and Open Risks.
-- **Status:** planning
+- **Status:** in-progress
 
 ### S-45: Lifecycle-stage color fade
 

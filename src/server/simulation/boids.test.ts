@@ -1634,39 +1634,85 @@ describe("predator-prey dynamics", () => {
 		expect(pursued.vz).toBeCloseTo(0, 9);
 	});
 
-	it("applyHunger applies extra decay only when foodStock goes negative", () => {
+	it("applyHunger applies extra decay only when BOTH foodStock<=0 AND no food items remain", () => {
 		const boids: BoidState[] = [
 			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
 		];
+		const baseParams = {
+			foodRegenRate: 0,
+			worldSize: WORLD_SIZE,
+			rng: createRng(1),
+			otherEntityCount: 0,
+			maxObjectCount: 500,
+		};
 
-		const starved = applyHunger(boids, -5, 1, 0);
-		const fed = applyHunger(boids, 1000, 1, 0);
+		// Both conditions hold: stock is negative AND no food items exist.
+		const starved = applyHunger(
+			boids,
+			1,
+			{ foodStock: -5, foodItems: [], foodSpawnRemainder: 0 },
+			baseParams,
+		);
+		// Stock alone is positive — no starvation regardless of food items.
+		const fedByStock = applyHunger(
+			boids,
+			1,
+			{ foodStock: 1000, foodItems: [], foodSpawnRemainder: 0 },
+			baseParams,
+		);
+		// Stock is negative, but a food item still exists (out of this
+		// boid's FOOD_EAT_RADIUS, so it isn't eaten away either) — the
+		// accelerant must NOT fire: both conditions are required, not either
+		// alone.
+		const fedByItem = applyHunger(
+			boids,
+			1,
+			{
+				foodStock: -5,
+				foodItems: [{ x: 100, y: 100, z: 100 }],
+				foodSpawnRemainder: 0,
+			},
+			baseParams,
+		);
 
-		expect(starved.foodStock).toBeLessThan(0);
+		expect(starved.foodStock).toBeLessThanOrEqual(0);
+		expect(starved.foodItems).toHaveLength(0);
 		expect(starved.boids[0]?.lifespan).toBeLessThan(10);
-		expect(fed.foodStock).toBeGreaterThanOrEqual(0);
-		expect(fed.boids[0]?.lifespan).toBe(10);
+		expect(fedByStock.boids[0]?.lifespan).toBe(10);
+		expect(fedByItem.boids[0]?.lifespan).toBe(10);
 	});
 
-	// per-tribe-food-config Phase 3: applyHunger's optional 5th `tribeConfigs`
-	// param — same convention as stepBoids' tribeConfigs and
-	// computeGeneticDiversity's tribeConfigs: per-boid lookup keyed by
-	// genes.flockId, falling back to the flat constant when a boid's tribe
-	// has no entry.
-	it("sums each boid's own tribe's foodConsumptionRate, so two equal-headcount tribes with different rates deplete the shared pool at different rates", () => {
-		function buildSubject(flockId: number): BoidState {
+	// per-tribe-food-config Phase 3 / simulation-entity-shape-color-
+	// differentiation Phase 1: applyHunger's optional `tribeConfigs` param —
+	// same convention as stepBoids' tribeConfigs and computeGeneticDiversity's
+	// tribeConfigs: per-boid lookup keyed by genes.flockId, falling back to
+	// the flat constant when a boid's tribe has no entry. Consumption is now
+	// a per-eat-event decrement (each boid reaching its own nearby food item
+	// once), not a whole-population-per-tick drain.
+	it("decrements foodStock by each eating boid's own tribe's foodConsumptionRate, once per boid that reaches a food item", () => {
+		function buildSubjectAndItem(x: number): {
+			boid: BoidState;
+			item: { x: number; y: number; z: number };
+		} {
 			return {
-				x: 0,
-				y: 0,
-				z: 0,
-				vx: 0,
-				vy: 0,
-				vz: 0,
-				lifespan: 100,
-				genes: makeGenes(WEIGHTS, { flockId }),
-				energy: 0,
-				age: 0,
-				gender: "a",
+				boid: {
+					x,
+					y: 0,
+					z: 0,
+					vx: 0,
+					vy: 0,
+					vz: 0,
+					lifespan: 100,
+					genes: makeGenes(WEIGHTS, { flockId: 0 }),
+					energy: 0,
+					age: 0,
+					gender: "a",
+				},
+				// Same position as its boid (distance 0) — unambiguously
+				// within FOOD_EAT_RADIUS, and the 40-unit spacing between
+				// boids keeps each boid from also reaching its neighbors'
+				// items.
+				item: { x, y: 0, z: 0 },
 			};
 		}
 		const lowRateConfigs: TribeConfig[] = [
@@ -1675,41 +1721,80 @@ describe("predator-prey dynamics", () => {
 		const highRateConfigs: TribeConfig[] = [
 			{ ...TRIBE_CONFIG, foodConsumptionRate: 2 },
 		];
-		const lowRateBoids = [buildSubject(0), buildSubject(0), buildSubject(0)];
-		const highRateBoids = [buildSubject(0), buildSubject(0), buildSubject(0)];
+		const lowPairs = [0, 40, 80].map(buildSubjectAndItem);
+		const highPairs = [0, 40, 80].map(buildSubjectAndItem);
+		const baseParams = {
+			foodRegenRate: 0,
+			worldSize: WORLD_SIZE,
+			rng: createRng(1),
+			otherEntityCount: 0,
+			maxObjectCount: 500,
+		};
 
-		const lowRateResult = applyHunger(lowRateBoids, 100, 1, 0, lowRateConfigs);
-		const highRateResult = applyHunger(
-			highRateBoids,
-			100,
+		const lowRateResult = applyHunger(
+			lowPairs.map((p) => p.boid),
 			1,
-			0,
-			highRateConfigs,
+			{
+				foodStock: 100,
+				foodItems: lowPairs.map((p) => p.item),
+				foodSpawnRemainder: 0,
+			},
+			{ ...baseParams, tribeConfigs: lowRateConfigs },
+		);
+		const highRateResult = applyHunger(
+			highPairs.map((p) => p.boid),
+			1,
+			{
+				foodStock: 100,
+				foodItems: highPairs.map((p) => p.item),
+				foodSpawnRemainder: 0,
+			},
+			{ ...baseParams, tribeConfigs: highRateConfigs },
 		);
 
 		// Hand-computed from the oracle (the tribe's own configured rate), not
-		// mirrored from applyHunger's own implementation: 3 boids * rate * 1s.
+		// mirrored from applyHunger's own implementation: 3 boids each eat
+		// their own nearby item once.
 		expect(lowRateResult.foodStock).toBeCloseTo(100 - 3 * 0.2, 10);
 		expect(highRateResult.foodStock).toBeCloseTo(100 - 3 * 2, 10);
 		expect(highRateResult.foodStock).toBeLessThan(lowRateResult.foodStock);
+		expect(lowRateResult.foodItems).toHaveLength(0);
+		expect(highRateResult.foodItems).toHaveLength(0);
 	});
 
-	it("omitting tribeConfigs reproduces today's exact flat-rate behavior byte-for-byte", () => {
+	it("omitting tribeConfigs falls back to the flat FOOD_CONSUMPTION_PER_BOID per eaten item", () => {
 		const boids: BoidState[] = [
 			makeBoid({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
-			makeBoid({ x: 1, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
+			makeBoid({ x: 40, y: 0, z: 0, vx: 0, vy: 0, vz: 0, lifespan: 10 }),
+		];
+		const foodItems = [
+			{ x: 0, y: 0, z: 0 },
+			{ x: 40, y: 0, z: 0 },
 		];
 
-		const result = applyHunger(boids, 100, 2, 5);
+		const result = applyHunger(
+			boids,
+			1,
+			{ foodStock: 100, foodItems, foodSpawnRemainder: 0 },
+			{
+				foodRegenRate: 5,
+				worldSize: WORLD_SIZE,
+				rng: createRng(1),
+				otherEntityCount: 0,
+				maxObjectCount: 500,
+			},
+		);
 
 		// Hand-computed from the source constant documented in
 		// parameter-ranges.ts (foodConsumptionRate's default, 0.5, "matches
 		// the [pre-per-tribe] flat FOOD_CONSUMPTION_PER_BOID constant") —
-		// not captured from a prior run of this same code.
+		// not captured from a prior run of this same code: both boids eat
+		// their own nearby item, plus this tick's regen.
 		const FOOD_CONSUMPTION_PER_BOID = 0.5;
 		const expectedFoodStock =
-			100 - boids.length * FOOD_CONSUMPTION_PER_BOID * 2 + 5 * 2;
+			100 - boids.length * FOOD_CONSUMPTION_PER_BOID + 5;
 		expect(result.foodStock).toBe(expectedFoodStock);
+		expect(result.foodItems).toHaveLength(0);
 	});
 
 	it("protection threshold: a flock at or below the threshold is never attacked", () => {
@@ -3176,10 +3261,9 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 	// per-tribe-food-config Phase 2 success criterion: regen is the sum of
 	// the CURRENT per-tribe foodRegenShare values (4 + 6 = 10), matching the
 	// exact foodStock trajectory a pre-change run would get from a flat
-	// `foodRegenRate: 10` — asserted directly against applyHunger (the
-	// function runTick's regen math still delegates to, unchanged) rather
-	// than a hand-computed number, so this test tracks applyHunger's own
-	// math instead of duplicating it.
+	// `foodRegenRate: 10`. Hand-computed directly (no boids means no
+	// eating, so foodStock only ever moves via regen this tick) rather than
+	// cross-checked against a second applyHunger call.
 	it("runTick's regen is the sum of per-tribe foodRegenShare, not params.foodRegenRate", () => {
 		const tribeConfigs: TribeConfig[] = [
 			{ ...TRIBE_CONFIG, foodRegenShare: 4 },
@@ -3202,12 +3286,17 @@ describe("dense-cluster warn-sink (Phase 2)", () => {
 		};
 
 		const result = runTick(
-			{ boids: [], predators: [], foodStock: 100 },
+			{
+				boids: [],
+				predators: [],
+				foodStock: 100,
+				foodItems: [],
+				foodSpawnRemainder: 0,
+			},
 			params,
 		);
-		const expected = applyHunger([], 100, 1, 10);
 
-		expect(result.foodStock).toBe(expected.foodStock);
+		expect(result.foodStock).toBe(110);
 	});
 });
 

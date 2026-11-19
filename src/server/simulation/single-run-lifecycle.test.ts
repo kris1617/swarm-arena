@@ -514,7 +514,15 @@ describe("computeSingleRunTick client-staged live-param/crossbreeding behavioral
 		// round-tripped through storage.
 		expect(highFoodStock).toBeGreaterThan(lowFoodStock);
 		expect(highFoodStock).toBeGreaterThan(100);
-		expect(lowFoodStock).toBeLessThan(100);
+		// simulation-entity-shape-color-differentiation Phase 1: under the new
+		// positioned-entity model, foodStock only ever DECREASES via an actual
+		// eat event (a boid reaching a spawned food item) — it no longer drains
+		// continuously just because the population exists. This fixture's lone
+		// boid sits stationary at the origin in a 200-unit world and never
+		// reaches a spawned item, so a zero foodRegenShare run (no regen, no
+		// consumption) must leave foodStock exactly unchanged, not merely
+		// "less than its start" (that was the old flat-drain assumption).
+		expect(lowFoodStock).toBe(100);
 	});
 
 	it("raising protectionThreshold above the live boid count prevents predation on a subsequent tick, compared to a control where predation can occur", () => {
