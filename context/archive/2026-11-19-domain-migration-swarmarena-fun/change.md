@@ -1,10 +1,10 @@
 ---
 change_id: domain-migration-swarmarena-fun
 title: Migrate production from swarmarena.hopto.org to swarmarena.fun
-status: impl_reviewed
+status: archived
 created: 2026-11-19
 updated: 2026-11-19
-archived_at: null
+archived_at: 2026-11-19T20:09:06Z
 ---
 
 ## Notes
