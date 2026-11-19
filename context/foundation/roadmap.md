@@ -97,7 +97,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | done |
 | S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning, with independently-evolving genetics, the way boid tribes already can | S-39, F-10     | MS-04                                                  | done |
 | S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | done |
-| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | blocked  |
+| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | ready    |
 | S-45 | lifecycle-stage-color-fade | User sees boid, predator, and food colors fade/shift according to lifecycle stage (energy/decay), matching the Lua reference's pattern | S-44           | MS-03                                                  | proposed |
 
 ## Streams
@@ -122,7 +122,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
 | Q      | Roadmap-question resolution (M-9) | `S-36`, `S-37`, `S-38`           | All three are independent, no foundation prerequisite — each closes a different open roadmap question. `S-36` carries M-9's north star despite being `blocked` pending its own Unknown; `S-37`/`S-38` are quick, unblocked confirmations. |
 | R      | Per-tribe config & predator expansion (M-10) | `S-39` (done) → `F-09` → `S-40`; `S-39` → `S-41`; `F-10` → `S-42` → `S-43` | `S-39` shipped (north star done). All 4 design Unknowns resolved 2026-11-17 (full Lua parity for S-40, shared-pool for S-41, genetics-evolving for S-42, scored for S-43). `F-09`/`F-10`/`S-41` are all `ready` now and can run in parallel — `F-10` was discovered during sequencing: predators share boids' genetics machinery already but have no tribe/flock concept at all, so S-42/S-43 need it built first. `S-40` waits on `F-09`; `S-42` waits on `F-10`; `S-43` waits on both `S-42` and `F-10`. |
-| S      | Simulation legibility (M-11)  | `S-44` → `S-45`                         | Carries M-11's north star (`S-44`), currently `blocked` on the food spatial-vs-pool-visualization decision (see S-44's own Unknown). `S-45` depends on `S-44` landing first so the fade logic has a consistent rendering target to apply to. |
+| S      | Simulation legibility (M-11)  | `S-44` → `S-45`                         | Carries M-11's north star (`S-44`), now `ready` — the food spatial-vs-pool decision resolved 2026-11-19 (real spatial entities). `S-45` depends on `S-44` landing first so the fade logic has a consistent rendering target to apply to. |
 
 ## Baseline
 
@@ -825,10 +825,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Prerequisites:** —
 - **Parallel with:** —
 - **Blockers:** —
-- **Unknowns:**
-  - Does food need a real, positioned, discrete spatial entity (matching the Lua reference's `Food` objects, each with its own x/y/z and draw call) — a materially bigger change touching the simulation's data model and tick logic, not just rendering — or is a non-spatial visualization of the existing scalar food-pool value (e.g. a HUD meter/bar) acceptable? Today food is tracked only as a single depleting number, with no per-item identity or position anywhere in the codebase. — Owner: user. Block: yes.
-- **Risk:** The answer to the Unknown above swings this slice's scope significantly — from a rendering-only tweak (boid/predator shape or color adjustment plus a simple food-pool HUD element) to a simulation-model change (giving food spatial identity, which `/10x-plan`'s own research step would need to scope properly, possibly across multiple phases). The milestone's source description asked for shapes/colors "via shapes and colors" for all three entity kinds, which leans toward the spatial reading, but this hasn't been confirmed with the user.
-- **Status:** blocked
+- **Unknowns:** — (resolved 2026-11-19: food gets real, positioned, discrete spatial entities — matching the Lua reference's `Food` objects — not a non-spatial pool visualization. No longer blocking.)
+- **Risk:** Medium-high, now that the spatial reading is confirmed — this is a real simulation-model change (giving food its own position/identity in the tick loop and data model, not just a rendering tweak), likely needing `/10x-plan` to scope it across multiple phases (data model → tick/placement logic → rendering). No existing precedent for a food entity in this codebase (only boids/predators have positions today).
+- **Status:** ready
 
 ### S-45: Lifecycle-stage color fade
 
@@ -900,7 +899,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-41       | per-tribe-food-config             | User configures food stock/regen rate per boid tribe | yes                     | Run `/10x-plan per-tribe-food-config` |
 | S-42       | per-tribe-predator-config         | User configures a predator tribe's own behavior tuning, with genetics | no                      | Waiting on F-10 |
 | S-43       | second-predator-tribe-prey-target | User adds a second predator tribe with a boids-only or boids-and-predators prey target, scored | no                      | Waiting on S-42, F-10 |
-| S-44       | simulation-entity-shape-color-differentiation | Give boids, predators, and food distinct shapes/colors in the simulation view | no                      | Blocked on the food spatial-vs-pool Unknown — resolve with the user before planning |
+| S-44       | simulation-entity-shape-color-differentiation | Give boids, predators, and food distinct shapes/colors in the simulation view | yes                     | Run `/10x-plan simulation-entity-shape-color-differentiation` |
 | S-45       | lifecycle-stage-color-fade        | Fade entity colors by lifecycle stage (energy/decay), matching the Lua reference | no                      | Waiting on S-44 |
 
 ## Open Roadmap Questions
