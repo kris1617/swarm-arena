@@ -1,7 +1,7 @@
 ---
 change_id: test-plan-refresh-2026-11-18
 title: Refresh test-plan.md with a page-level smoke/regression-sweep risk
-status: implementing
+status: implemented
 created: 2026-11-18
 updated: 2026-11-18
 archived_at: null

@@ -399,5 +399,5 @@ None — test-only files; no schema or production code changes.
 
 #### Automated
 
-- [x] 4.1 Typecheck passes: `npm run typecheck`
-- [x] 4.2 Lint passes: `npm run check`
+- [x] 4.1 Typecheck passes: `npm run typecheck` — a39cd6d
+- [x] 4.2 Lint passes: `npm run check` — a39cd6d
