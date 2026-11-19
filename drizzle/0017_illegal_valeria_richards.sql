@@ -1,0 +1,1 @@
+ALTER TABLE `.bootstrap-scaffold_simulation_run` ADD `runMode` text DEFAULT 'client' NOT NULL;

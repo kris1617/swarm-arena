@@ -1190,6 +1190,56 @@ describe("simulationRouter.startServer", () => {
 		expect(row?.status).toBe("running");
 	});
 
+	// security-hardening-pass Phase 2: the two mutations' per-hour budgets
+	// are counted separately (by `runMode`), not shared — same
+	// DB-counted-window pattern as feedback.test.ts's own rate-limit test.
+	// Fixture rows use `status: "stopped"` (not "running") so they count
+	// toward the rate-limit window without also tripping the unrelated
+	// MAX_PARALLEL_RUNS concurrency cap (4), which filters on `status:
+	// "running"` regardless of `runMode`.
+	it("rejects the 21st client-mode start within an hour, but leaves startServer's separate budget untouched", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		for (let i = 0; i < 20; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: i,
+				...VALID_START_INPUT,
+				status: "stopped",
+				runMode: "client",
+				startedAt: new Date(),
+			});
+		}
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			caller.simulation.start(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		} satisfies Partial<TRPCError>);
+
+		// The 20 fixture rows above are all `runMode: "client"` — startServer's
+		// own, separate "server" budget is still untouched, proving the two
+		// budgets are genuinely independent rather than sharing one counter.
+		const result = await caller.simulation.startServer(VALID_START_INPUT);
+		trackedServerRunIds.push(result.runId);
+		expect(isServerRunActive(result.runId)).toBe(true);
+	});
+
 	it("rejects with UNAUTHORIZED when there is no session", async () => {
 		const caller = createCaller({
 			db,

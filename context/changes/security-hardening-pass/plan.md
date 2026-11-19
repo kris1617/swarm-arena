@@ -160,14 +160,36 @@ import type { NextRequest } from "next/server";
 import { auth } from "~/server/auth";
 import { SECURITY_HEADERS } from "~/lib/security-headers";
 
-export async function middleware(request: NextRequest) {
-	const response = (await auth(request as never)) ?? NextResponse.next();
+export default auth((req) => {
+	const isAuthorized = !!req.auth?.user;
+	let response: NextResponse;
+	if (!isAuthorized && req.nextUrl.pathname !== "/login") {
+		const signInUrl = req.nextUrl.clone();
+		signInUrl.pathname = "/login";
+		signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
+		response = NextResponse.redirect(signInUrl);
+	} else {
+		response = NextResponse.next();
+	}
 	for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
 		response.headers.set(key, value);
 	}
 	return response;
-}
+});
 ```
+
+**Implementation note (post-dispatch correction, landed in 37d5a83)**:
+the snippet above is the actual shipped shape, not the originally
+drafted one. NextAuth's `auth()` dispatch (`handleAuth` in
+`node_modules/next-auth/lib/index.js`) runs a custom middleware
+callback **instead of** its automatic unauthorized→signIn redirect,
+not after it — passing `request` directly (the originally drafted
+snippet) doesn't type-check and wouldn't preserve the redirect
+behavior either way. The callback above replicates that default
+redirect logic inline (mirroring `authConfig`'s `authorized` callback
+and NextAuth's own default redirect exactly), verified live:
+signed-out `/dashboard` still 307s to `/login`, signed-in `/dashboard`
+still 200s, `/login` itself unaffected.
 
 Keep `runtime = "nodejs"` and the existing `config.matcher` untouched
 — this only wraps what the existing gate already returns, it does not
@@ -252,7 +274,7 @@ compute per call, client-ticked runs don't). Set `runMode` on the
 - Lint passes: `npm run check`
 - Migration generated and applies cleanly: `npm run db:migrate`
 - Full suite still passes: `npm test`
-- New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "rate limit"`
+- New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "21st client-mode start"` (the test's actual title, landed in p2 — "rate limit" doesn't literally appear in it)
 
 #### Manual Verification:
 
@@ -378,23 +400,23 @@ generated migration, not a separate manual step.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 37d5a83
+- [x] 1.2 Lint passes: `npm run check` — 37d5a83
+- [x] 1.3 Full suite still passes: `npm test` — 37d5a83
 
 #### Manual
 
-- [x] 1.4 Auth gate still works after wrapping middleware.ts (protected-page redirect still happens)
+- [x] 1.4 Auth gate still works after wrapping middleware.ts (protected-page redirect still happens) — 37d5a83
 
 ### Phase 2: Rate limit simulation.start/startServer
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Migration generated and applies cleanly: `npm run db:migrate`
-- [ ] 2.4 Full suite still passes: `npm test`
-- [ ] 2.5 New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "rate limit"`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.3 Migration generated and applies cleanly: `npm run db:migrate`
+- [x] 2.4 Full suite still passes: `npm test`
+- [x] 2.5 New rate-limit test passes: `npx vitest run src/server/api/routers/simulation.test.ts -t "21st client-mode start"`
 
 ### Phase 3: Test-auth cookie hygiene
 

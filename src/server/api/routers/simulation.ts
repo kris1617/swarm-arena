@@ -1,5 +1,5 @@
 import { TRPCError, tracked } from "@trpc/server";
-import { and, count, desc, eq, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -426,6 +426,18 @@ function checkAgainstAdminRanges(
 	}
 }
 
+// security-hardening-pass Phase 2: separate per-hour budgets for the two
+// mutations that create a `simulationRuns` row — `start`'s client-ticked
+// path (cheap, client-owned ticking) gets a much higher budget than
+// `startServer`'s server-owned path (ticks on the server's own CPU/memory
+// budget, so each one is relatively expensive). Same DB-counted-window
+// pattern as `feedback.ts`'s `MAX_REPORTS_PER_HOUR`/`RATE_LIMIT_WINDOW_MS` —
+// counted directly off `simulation_run` rather than a separate counter
+// table.
+const MAX_CLIENT_RUNS_PER_HOUR = 20;
+const MAX_SERVER_RUNS_PER_HOUR = 5;
+const RATE_LIMIT_WINDOW_MS = 60 * 60_000;
+
 // Shared by `start` and `startServer` — both need identical validation,
 // capacity-check, and insert behavior; only what ticks the row afterward
 // differs (the client's RAF loop vs. startServerRun). Extracted here so the
@@ -440,9 +452,37 @@ async function insertRunningSimulation(
 	db: typeof dbSingleton,
 	userId: string,
 	input: z.infer<typeof startInputSchema>,
+	runMode: "client" | "server",
 ): Promise<{ runId: number; seed: number }> {
 	const { parameterRanges, maxObjectCount } = await getOrSeedAdminSettings(db);
 	checkAgainstAdminRanges(input, parameterRanges, maxObjectCount);
+
+	// security-hardening-pass Phase 2: per-mutation rate limit, checked
+	// before the MAX_PARALLEL_RUNS concurrency check below — mirrors
+	// feedback.ts's check-then-insert order exactly.
+	const rateLimitWindowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+	const [recentRunCountRow] = await db
+		.select({ recentCount: count() })
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.runMode, runMode),
+				gt(simulationRuns.startedAt, rateLimitWindowStart),
+			),
+		);
+	const recentRunCount = recentRunCountRow?.recentCount ?? 0;
+	const maxRunsPerHour =
+		runMode === "client" ? MAX_CLIENT_RUNS_PER_HOUR : MAX_SERVER_RUNS_PER_HOUR;
+	if (recentRunCount >= maxRunsPerHour) {
+		throw new TRPCError({
+			code: "TOO_MANY_REQUESTS",
+			message:
+				runMode === "client"
+					? "You've started too many client-ticked simulations in the last hour — try again later."
+					: "You've started too many server-owned simulations in the last hour — try again later.",
+		});
+	}
 
 	const [runningCountRow] = await db
 		.select({ runningCount: count() })
@@ -487,6 +527,7 @@ async function insertRunningSimulation(
 			predatorFlockCount: input.predatorFlockCount,
 			predatorTribeConfigs: input.predatorTribeConfigs,
 			status: "running",
+			runMode,
 		})
 		.returning({ id: simulationRuns.id });
 
@@ -529,7 +570,7 @@ export const simulationRouter = createTRPCRouter({
 			if (!userId) {
 				throw new TRPCError({ code: "UNAUTHORIZED" });
 			}
-			return insertRunningSimulation(ctx.db, userId, input);
+			return insertRunningSimulation(ctx.db, userId, input, "client");
 		}),
 
 	// S-06: starts a real (non-staging) simulation whose execution is owned
@@ -546,6 +587,7 @@ export const simulationRouter = createTRPCRouter({
 				ctx.db,
 				userId,
 				input,
+				"server",
 			);
 			try {
 				await assertWithinConcurrentObjectCeiling(

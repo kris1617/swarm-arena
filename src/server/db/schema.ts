@@ -182,6 +182,20 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 	// pre-existing row/run that doesn't explicitly configure more.
 	predatorFlockCount: d.integer().notNull().default(1),
 	predatorTribeConfigs: d.text({ mode: "json" }),
+	// security-hardening-pass Phase 2: records which mutation created this
+	// row (`start`'s client-ticked path vs. `startServer`'s server-owned
+	// path), so a per-hour rate-limit count can be scoped per-mutation
+	// instead of sharing one combined budget. Same notNull-with-default
+	// treatment as `flockCount`/`xyArea` above, so `drizzle-kit
+	// push`/`migrate` can apply this against a populated table without an
+	// interactive prompt — every INSERT from `insertRunningSimulation` still
+	// always supplies a real value explicitly. Existing rows backfill to
+	// "client" (the lower-risk, higher-threshold mode) since they predate
+	// this column and their true origin is unknown.
+	runMode: d
+		.text("runMode", { enum: ["client", "server"] })
+		.notNull()
+		.default("client"),
 }));
 
 // S-04 (FR-002 full, FR-018 full): the one global, admin-editable config
