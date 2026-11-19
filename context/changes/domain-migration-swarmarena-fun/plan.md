@@ -231,20 +231,20 @@ Add registrar- and app-level trust signals for the new domain beyond the bare cu
 
 #### Automated
 
-- [x] 2.1 No remaining `hopto.org` references in infrastructure.md/deploy-plan.md: `grep -rn "hopto.org" context/foundation/infrastructure.md context/deployment/deploy-plan.md` (3 hits, all explicitly-historical "migrated from hopto.org on 2026-11-19" notes — matches the criterion's allowance)
+- [x] 2.1 No remaining `hopto.org` references in infrastructure.md/deploy-plan.md: `grep -rn "hopto.org" context/foundation/infrastructure.md context/deployment/deploy-plan.md` (3 hits, all explicitly-historical "migrated from hopto.org on 2026-11-19" notes — matches the criterion's allowance) — 51a440d
 
 #### Manual
 
-- [x] 2.2 Both docs read correctly end-to-end with no leftover old-domain assumption
+- [x] 2.2 Both docs read correctly end-to-end with no leftover old-domain assumption — 51a440d
 
 ### Phase 3: Manual verification & close-out
 
 #### Manual
 
-- [ ] 3.1 Login + dashboard works on swarmarena.fun (re-confirmed post-docs-update)
-- [ ] 3.2 One core simulation flow (start + live render) works end-to-end on the new domain
-- [ ] 3.3 swarmarena.hopto.org confirmed not serving the app
-- [ ] 3.4 New Google Search Console property for swarmarena.fun created and verified
+- [x] 3.1 Login + dashboard works on swarmarena.fun (re-confirmed post-docs-update)
+- [x] 3.2 One core simulation flow (start + live render) works end-to-end on the new domain
+- [x] 3.3 swarmarena.hopto.org confirmed not serving the app
+- [x] 3.4 New Google Search Console property for swarmarena.fun created and verified
 
 ### Phase 4: Domain-reputation hardening
 
