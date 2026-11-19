@@ -422,18 +422,18 @@ generated migration, not a separate manual step.
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `npm run typecheck`
-- [x] 3.2 Lint passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — f7249a5
+- [x] 3.2 Lint passes: `npm run check` — f7249a5
+- [x] 3.3 Full suite still passes: `npm test` — f7249a5
 
 #### Manual
 
-- [x] 3.4 Local E2E auth still works: `npx playwright test authenticated-simulation-run`
+- [x] 3.4 Local E2E auth still works: `npx playwright test authenticated-simulation-run` — f7249a5
 
 ### Phase 4: Manual CSP verification pass
 
 #### Manual
 
-- [ ] 4.1 Zero CSP violations across dashboard/simulation/admin-settings/login
-- [ ] 4.2 GitHub avatar renders correctly
-- [ ] 4.3 Dropdown/popover positioning works correctly
+- [x] 4.1 Zero CSP violations across dashboard/simulation/admin-settings/login
+- [x] 4.2 GitHub avatar renders correctly
+- [x] 4.3 Dropdown/popover positioning works correctly
