@@ -434,6 +434,6 @@ generated migration, not a separate manual step.
 
 #### Manual
 
-- [x] 4.1 Zero CSP violations across dashboard/simulation/admin-settings/login
-- [x] 4.2 GitHub avatar renders correctly
-- [x] 4.3 Dropdown/popover positioning works correctly
+- [x] 4.1 Zero CSP violations across dashboard/simulation/admin-settings/login — 574ad68
+- [x] 4.2 GitHub avatar renders correctly — 574ad68
+- [x] 4.3 Dropdown/popover positioning works correctly — 574ad68

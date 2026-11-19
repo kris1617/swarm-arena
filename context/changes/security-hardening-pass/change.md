@@ -1,7 +1,7 @@
 ---
 change_id: security-hardening-pass
 title: General security/hardening audit following this session's incidents
-status: implementing
+status: implemented
 created: 2026-11-19
 updated: 2026-11-19
 archived_at: null
