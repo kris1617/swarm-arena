@@ -216,16 +216,16 @@ Add registrar- and app-level trust signals for the new domain beyond the bare cu
 
 #### Automated
 
-- [ ] 1.1 Caddyfile syntax confirmed valid (recreated caddy container started and served the new site blocks without error)
-- [ ] 1.2 deploy.sh's --force-recreate caddy line runs without error in the deploy log
-- [ ] 1.7 caddy container's live Caddyfile view matches the host file after deploy
+- [x] 1.1 Caddyfile syntax confirmed valid (recreated caddy container started and served the new site blocks without error)
+- [x] 1.2 deploy.sh's --force-recreate caddy line runs without error in the deploy log
+- [x] 1.7 caddy container's live Caddyfile view matches the host file after deploy
 
 #### Manual
 
-- [ ] 1.3 `https://swarmarena.fun/` returns 200 with a valid Let's Encrypt cert
-- [ ] 1.4 `https://www.swarmarena.fun/` redirects to `https://swarmarena.fun/`
-- [ ] 1.5 `https://swarmarena.hopto.org/` no longer serves the app
-- [ ] 1.6 GitHub OAuth login completes successfully on `https://swarmarena.fun/login`
+- [x] 1.3 `https://swarmarena.fun/` serves with a valid Let's Encrypt cert (returns `307` to `/login` for an unauthenticated request — the correct auth-gate behavior, not a bug; confirmed cert: Let's Encrypt, valid through 2027-02-17)
+- [x] 1.4 `https://www.swarmarena.fun/` redirects to `https://swarmarena.fun/`
+- [x] 1.5 `https://swarmarena.hopto.org/` no longer serves the app
+- [x] 1.6 GitHub OAuth login completes successfully on `https://swarmarena.fun/login`
 
 ### Phase 2: Update canonical docs
 
