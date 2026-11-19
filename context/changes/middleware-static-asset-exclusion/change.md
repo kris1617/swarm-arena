@@ -36,6 +36,12 @@ the file content, and fail the ownership check — and will silently break
 any other static asset dropped into `public/` the same way (robots.txt,
 sitemap.xml, etc.) going forward, not just this one file.
 
+(Note, added 2026-11-19: `swarmarena.hopto.org` was the production domain
+at the time of this test; production has since migrated to
+`swarmarena.fun` — see `domain-migration-swarmarena-fun`. The command and
+output above are an accurate historical log and are left as originally
+tested, not rewritten to the new domain.)
+
 ## Fix shape (not yet implemented — pending /10x-plan)
 
 Exclude any path whose last segment has a file extension (a dot), the

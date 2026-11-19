@@ -11,7 +11,7 @@ instead of served.
 ## Current State Analysis
 
 - `src/middleware.ts:13` — `matcher: ["/((?!login|api/auth|api/test-auth|_next/static|_next/image|favicon.ico).*)"]` excludes exactly 5 named paths plus `favicon.ico` by exact string. Any other file dropped into `public/` (verification files, `robots.txt`, `sitemap.xml`, etc.) is NOT excluded and gets caught by the gate.
-- Confirmed live in production (2026-11-18): `curl https://swarmarena.hopto.org/google09b7bdc2b7ba546d.html` returned a 307 redirect to `/login?callbackUrl=...` instead of the file content — this would make Google's Search Console verification crawler see a redirect, not the file, and fail the ownership check.
+- Confirmed live in production (2026-11-18): `curl https://swarmarena.hopto.org/google09b7bdc2b7ba546d.html` returned a 307 redirect to `/login?callbackUrl=...` instead of the file content — this would make Google's Search Console verification crawler see a redirect, not the file, and fail the ownership check. (Note, added 2026-11-19: `swarmarena.hopto.org` was the production domain at the time this was tested; production has since migrated to `swarmarena.fun` — see `domain-migration-swarmarena-fun`. This command and its recorded output are an accurate historical log and are left as originally tested, not rewritten to the new domain.)
 - No existing test coverage for `middleware.ts`'s matcher at all (confirmed via grep — zero references in any `*.test.ts`).
 
 ### Key Discoveries:
@@ -101,7 +101,7 @@ still gated (`/dashboard`, `/simulation`, `/admin/settings`, `/runs/42`,
 
 #### Manual Verification:
 
-- After deploy, `curl -s https://swarmarena.hopto.org/google09b7bdc2b7ba546d.html` returns the literal verification string (200), not a redirect to `/login`
+- After deploy, `curl -s https://swarmarena.hopto.org/google09b7bdc2b7ba546d.html` returns the literal verification string (200), not a redirect to `/login` (verified against `swarmarena.hopto.org`, the production domain at the time — see note above; production has since migrated to `swarmarena.fun`, where this behavior was independently re-confirmed as part of `domain-migration-swarmarena-fun`)
 - `curl -s -o /dev/null -w "%{http_code}"` against `/dashboard` while signed out still returns a redirect to `/login` (confirms the gate still works for real routes)
 
 ## Testing Strategy
