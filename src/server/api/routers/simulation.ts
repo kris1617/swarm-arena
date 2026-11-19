@@ -535,6 +535,41 @@ async function insertRunningSimulation(
 		throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 	}
 
+	// impl-review F3: the identical race the MAX_PARALLEL_RUNS check below
+	// guards against (a concurrent call passing the pre-insert count check
+	// before either insert lands) applies equally to the rate-limit check
+	// above — mirror the same post-insert recheck here, for consistency.
+	// Unlike MAX_PARALLEL_RUNS's own recheck, the rate-limit count has no
+	// `status` filter (a stopped run still counts as an "attempt" within
+	// the window), so flipping this row to "stopped" doesn't remove it
+	// from the count the way it does there — it still rejects the
+	// over-threshold request and leaves a real history row, matching this
+	// file's own "mark stopped, never delete" convention for a
+	// post-insert failure (e.g. `startServer`'s own catch blocks below).
+	const [rateLimitRecheckRow] = await db
+		.select({ recentCount: count() })
+		.from(simulationRuns)
+		.where(
+			and(
+				eq(simulationRuns.userId, userId),
+				eq(simulationRuns.runMode, runMode),
+				gt(simulationRuns.startedAt, rateLimitWindowStart),
+			),
+		);
+	if ((rateLimitRecheckRow?.recentCount ?? 0) > maxRunsPerHour) {
+		await db
+			.update(simulationRuns)
+			.set({ status: "stopped" })
+			.where(eq(simulationRuns.id, run.id));
+		throw new TRPCError({
+			code: "TOO_MANY_REQUESTS",
+			message:
+				runMode === "client"
+					? "You've started too many client-ticked simulations in the last hour — try again later."
+					: "You've started too many server-owned simulations in the last hour — try again later.",
+		});
+	}
+
 	// Race-safety net: a concurrent `start`/`startServer` call can pass the
 	// count check above before either insert lands, breaching the cap. Catch
 	// it immediately after this insert and invalidate the row this call just

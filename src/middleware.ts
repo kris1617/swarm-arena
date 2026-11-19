@@ -12,13 +12,22 @@ import { SECURITY_HEADERS } from "~/lib/security-headers";
 // protected page stays identical to the plain `export { auth as
 // middleware }` this replaces — only the headers are new.
 import { auth } from "~/server/auth";
+import { authConfig } from "~/server/auth/config";
+
+// impl-review F2: read from authConfig.pages.signIn rather than a second
+// "/login" literal, so this logic site and authConfig's own signIn page
+// can't silently drift apart (the matcher's negative-lookahead below
+// stays a plain string literal — Next.js needs config.matcher statically
+// analyzable, and it's practically unreachable anyway since `/login`
+// itself never enters this middleware function).
+const SIGN_IN_PATH = authConfig.pages?.signIn ?? "/login";
 
 export default auth((req) => {
 	const isAuthorized = !!req.auth?.user;
 	let response: NextResponse;
-	if (!isAuthorized && req.nextUrl.pathname !== "/login") {
+	if (!isAuthorized && req.nextUrl.pathname !== SIGN_IN_PATH) {
 		const signInUrl = req.nextUrl.clone();
-		signInUrl.pathname = "/login";
+		signInUrl.pathname = SIGN_IN_PATH;
 		signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
 		response = NextResponse.redirect(signInUrl);
 	} else {

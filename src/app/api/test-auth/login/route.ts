@@ -93,6 +93,14 @@ export async function POST(request: NextRequest) {
 		httpOnly: true,
 		sameSite: "lax",
 		path: "/",
+		// impl-review F5: this only round-trips in local E2E because
+		// playwright.config.ts's webServer runs the production build
+		// (NODE_ENV=production) against plain http://localhost, and only
+		// configures a `chromium` project — Chromium treats localhost as
+		// a secure context and still sends a `Secure` cookie there.
+		// Firefox/WebKit don't extend that exception the same way; adding
+		// either as a Playwright project would silently break this cookie
+		// in E2E with a confusing symptom (set, never sent back).
 		secure: env.NODE_ENV === "production",
 		expires,
 	});

@@ -124,10 +124,15 @@ export const authConfig: NextAuthConfig = {
 				},
 			};
 		},
-		// Without this, next-auth's bare `auth` middleware defaults
-		// `authorized = true` for every request — it only attaches session
-		// info, it does not gate anything on its own. This is what actually
-		// enforces the redirect-to-/login behavior the middleware exists for.
+		// security-hardening-pass (impl-review F1): src/middleware.ts now
+		// wraps `auth` with its own custom callback (needed to attach
+		// security headers to the redirect response), which means this
+		// boolean is inert for that path — NextAuth's dispatch only
+		// consults it when no custom middleware callback is passed, per
+		// node_modules/next-auth/lib/index.js's `handleAuth`. Kept here
+		// (and middleware.ts's own `isAuthorized` check reimplements the
+		// same logic) for any future `auth()` call shaped as a bare
+		// request, where this would again be the active gate.
 		authorized: ({ auth }) => !!auth?.user,
 	},
 };
