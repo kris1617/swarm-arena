@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-11-17 (Phase 10 shipped — wall-clock-aware optimization guardrail; §5 Quality Gate added. All 10 rollout phases now complete.)
+> Last updated: 2026-11-18 (Phase 11 shipped — page-level smoke & regression sweep; Risk #10 added. All 11 rollout phases now complete.)
 
 ## 1. Strategy
 
@@ -48,6 +48,7 @@ research's job, see §1 principle #3).
 | 7 | A future performance "optimization" passes the existing structural big-O/call-count guard (Risk #3) while making real wall-clock latency worse for this project's actual radius/world-size ratios — this already happened once and was kept anyway | High | Medium | `archive/2026-11-15-spatial-hash-performance-optimization/plan.md` (measured `stepBoids`'s boid-boid loop got slower after the optimization — `NEIGHBOR_RADIUS=70` already covers ~18% of world volume — kept for consistency, not reverted); hot-spot dir `src/server/simulation` (172 commits/30d) |
 | 8 | No repeatable, regression-tracked wall-clock performance baseline exists across the now much-wider parameter space (area up to 1000 units, a new concurrent-run object-count ceiling) — every performance number on record is a one-time ad hoc measurement, not a tracked benchmark the team can compare future changes against | High | High | user interview (M-9 kickoff, 2026-11-16): "introduce non-functional testing to see that we have reference for further performance optimization"; `archive/2026-11-15-vps-resource-capacity-limits/plan.md` (one-time curve measurement: 100→~4.0ms … 500→~50.6ms per tick against a 16ms budget); `archive/2026-11-15-configurable-area-and-camera-view/plan.md` ("not re-benchmarked exactly at area=1000") |
 | 9 | Aggregate concurrent-run load — multiple server-owned simulations competing for one CPU core, bounded only by the documented `maxConcurrentObjectCount` ceiling — is never exercised by any automated test; a regression surfaces only in production under real multi-user load | High | Medium | `archive/2026-11-15-vps-resource-capacity-limits/plan.md` (confirmed single-core bottleneck, no `worker_threads`, despite 4 vCPUs available); roadmap F-07 (`vps-resource-capacity-limits`) Unlocks note |
+| 10 | A page/route renders a broken, crashed, or stale/unintended state to a signed-in user (unhandled client-side exception, un-replaced scaffold content, non-functional UI element) — invisible to server logs and the existing unit/integration suite, since both confirmed incidents this session were client-side-only failures that returned HTTP 200 | High | High | user interview Q1–Q4 (2026-11-18); `archive/2026-11-18-root-page-scaffold-redirect/plan.md`; `archive/2026-11-18-admin-settings-range-backfill/plan.md`; `archive/2026-11-18-google-style-auth-ux/plan.md`; hot-spot dirs `src/app/simulation` (41+31 commits/30d), `src/app/login`+`src/server/auth` (12 commits/30d combined) |
 
 ### Risk Response Guidance
 
@@ -62,6 +63,7 @@ research's job, see §1 principle #3).
 | #7 | A hot-path algorithm change (further spatial-hash tuning, neighbor-radius changes) shows its effect on BOTH call-count/big-O shape AND measured wall-clock time for this project's actual radius/world-size ratios — not just one or the other | Assuming "fewer `Math.hypot` calls" or "better big-O" automatically means faster wall-clock — already disproven once for `stepBoids` | Current benchmark harness/tooling (if any exists beyond the corpus-generation one); how to run a reproducible wall-clock measurement given environment variance (local vs. CI); exact locations of the `NEIGHBOR_RADIUS`-bound hot paths | a benchmark script (not a CI-blocking test — wall-clock is inherently noisy), results saved for manual comparison on PRs touching simulation internals | Making wall-clock timing a hard-fail CI gate (flaky); relying on operation-count asserts alone as proof of a real speedup |
 | #8 | A reproducible benchmark suite measures real tick cost (ms/tick) across a representative grid of object counts, area sizes, and concurrent-run counts, with results saved to compare over time — not a one-time number | Assuming the last measured curve (100→~4ms … 500→~50.6ms at area=200) still holds at the expanded ranges (area up to 1000, the new concurrent-run cap) — only the *direction* was confirmed at area=400, never an exact curve at 1000 | `/10x-research` (rollout Phase 8, 2026-11-17) resolved: `scripts/corpus/harness.ts` must NOT be extended for this — it is a DB/tRPC/admin-settings-widening/mutex-laden fixture generator built for a different purpose and never drives ticks itself; a plain script calling `computeSingleRunTick` directly (zero DB/router, matching `pipeline-perf.test.ts`'s existing population-construction pattern) is correct instead. That measurement must still run single-process (per `lessons.md`'s cross-process-contamination lesson) to avoid a confounded result | a benchmark script calling `computeSingleRunTick` directly, run manually/on-demand (not every commit, given wall-clock noise); results written to a tracked baseline file | Treating a single run as the baseline (per `lessons.md`: "a single green run proves nothing" applies equally to perf — need N≥5-10 repeated samples per config); measuring under cross-process contamination (concurrent `npm test` processes, or this repo's own Stop hook) and treating the skewed numbers as real; extending `scripts/corpus/harness.ts`, which research confirmed is the wrong tool |
 | #9 | Running N concurrent server-owned simulations up to the documented `maxConcurrentObjectCount` ceiling does not cause a tick-processing backlog, memory growth, or dropped simulations under sustained load for a measured duration | Assuming the single-run perf curve composes linearly for N concurrent runs — single-core contention may degrade worse than linearly | How `server-run-registry.ts` schedules/ticks multiple concurrent runs today (shared timer vs. per-run timer); whether there's already a backlog/queue mechanism or runs silently fall behind real time | an integration test driving multiple real server-owned runs concurrently via `createCaller` for a bounded simulated duration, asserting completion within a tolerance and no dropped/errored runs — not a full load-test tool | Asserting an exact wall-clock number (environment-dependent) instead of a relative/structural bound (e.g. "N concurrent runs complete within Nx the single-run time, not N²x") |
+| #10 | Every one of the product's routes, visited by an authenticated session (plus the unauthenticated-redirect case for protected routes), renders with no client-side console error/exception and no stale placeholder/demo content — verified as observable page state | Assuming "HTTP 200" or "no server error in logs" proves a page works — both confirmed incidents returned 200 with a rendered shell before failing client-side; the existing unit/integration suite structurally cannot see this | Full route list + which are protected/public; whether `tests/e2e/seed.spec.ts`'s auth/storageState setup is reusable for a sweep; whether Playwright console-error/pageerror listeners are already wired anywhere; how to keep the sweep from going silently stale as routes are added | e2e (Playwright) — the only layer that observes real client-side exceptions and rendered DOM state | Asserting only HTTP status code; full-page content snapshots (brittle on routine copy changes) instead of structural landmarks + zero-console-error assertions |
 
 ## 3. Phased Rollout
 
@@ -81,6 +83,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 8 | Reproducible performance baseline | Build a repeatable wall-clock benchmark harness (object count × area × concurrent-run grid), run single-process, with results tracked for comparison — the reference optimization work needs | #8 | benchmark (non-CI-gating) | complete | `context/changes/testing-perf-baseline/` |
 | 9 | Concurrent-load capacity test | Extend `server-run-registry.test.ts`'s existing fake-timer-driven concurrent-tick pattern to 4 simultaneous server-owned runs (matching `MAX_PARALLEL_RUNS`); prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling — Phase 8's single-process-interleaved harness structurally cannot observe this risk (research.md, 2026-11-17) | #9 | integration | complete | `context/changes/testing-concurrent-load-capacity/` |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | complete | `context/changes/testing-wallclock-optimization-guardrail/` |
+| 11 | Page-level smoke & regression sweep | Walk every route with an authenticated session, asserting no console/render error and no stale/placeholder content, extending the existing Playwright e2e suite (`tests/e2e/seed.spec.ts`'s auth pattern) rather than a new tool | #10 | e2e | complete | `context/changes/test-plan-refresh-2026-11-18/` |
 
 **Status vocabulary** (fixed — parser literals):
 
@@ -483,6 +486,55 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
   re-validating (see `git log` for `unwatched-run-tick-throttling` Phase 4
   if the exact script is needed as a starting point — it was a scratch
   file, not committed).
+
+### 6.11 Adding a route to the page-smoke sweep
+
+- Location: `tests/e2e/page-smoke-sweep.spec.ts`.
+- Pattern: this file installs a `page.on("console", ...)`/`page.on("pageerror", ...)`
+  listener via a local `trackConsoleErrors(page)` helper (defined at the top
+  of the file) and asserts `tracked.errors` is empty at the end of every
+  test — this is the only place in the repo that checks for client-side
+  exceptions/console errors, which is exactly the class of failure this
+  sweep exists to catch (both confirmed incidents behind Risk #10 returned
+  HTTP 200 with a client-side-only failure). To add a new route, add one
+  `test(...)` block following the existing pattern: call
+  `trackConsoleErrors(page)` first, `page.goto()` the route, assert a
+  route-specific structural landmark (a heading via `getByRole`, or —
+  for a route with no stable happy-path heading, like `/runs/compare`
+  without its `ids` query param — the specific empty/error state it's
+  expected to render) is visible, then assert `tracked.errors` is `[]`.
+  Never assert full-page content snapshots — those are brittle on routine
+  copy changes; a structural landmark plus the zero-console-error
+  assertion is the signal this sweep is for.
+- Session choice: most routes are gated only by `src/middleware.ts` (any
+  signed-in session) and belong in the `"page smoke sweep — shared
+  session"` describe block, reusing the file's default `storageState`
+  (no extra sign-in call needed). A route needing a *different* identity
+  gets its own test in the `"page smoke sweep — gated routes"` describe
+  block, which resets `storageState` via `test.use({ storageState: {
+  cookies: [], origins: [] } })` so it doesn't mutate the shared session
+  other tests depend on:
+  - **Admin-role route** (e.g. `/admin/settings`): use
+    `signInAsAdminTestUser` from `tests/e2e/admin-fixture.ts`, which
+    promotes a fresh bypass-created user to `role: "admin"` directly via
+    Drizzle (`ADMIN_EMAILS`'s allowlist never fires for a
+    bypass-created user, since that mechanism only runs on the adapter's
+    `createUser` event during a real OAuth sign-in).
+  - **Dynamic-id route with no seed/fixture** (e.g. `/runs/[runId]`):
+    there is no direct-insert fixture for this resource; sign in a fresh
+    user (the file's own local `signInAsFreshTestUser` helper — a
+    duplicate of `auth-ux.spec.ts`'s helper, since no cross-file import
+    precedent exists for Playwright specs here) and drive a real UI flow
+    to produce the row (start/stop a cheap run on `/simulation`, then
+    follow the dashboard's own link to it) rather than hardcoding an id.
+  - A route needing neither (reachable by any signed-in user, no
+    server-side redirect to defend against) stays in the shared-session
+    block, same as `/admin/elevation`.
+- Reference test(s): `"/dashboard" renders without error` (shared
+  session, simplest case); `"/admin/settings" renders without error for
+  a real admin` and `"/runs/[runId] renders without error for a real
+  run"` (gated-routes block, admin fixture vs. driven-UI-flow fixture).
+- Run command: `npx playwright test tests/e2e/page-smoke-sweep.spec.ts`.
 
 ## 7. What We Deliberately Don't Test
 

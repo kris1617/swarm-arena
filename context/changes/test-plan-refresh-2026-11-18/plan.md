@@ -387,17 +387,17 @@ None — test-only files; no schema or production code changes.
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `npm run typecheck`
-- [x] 3.2 Lint passes: `npm run check`
-- [x] 3.3 Full spec passes: `npx playwright test page-smoke-sweep`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — 0f0bc84
+- [x] 3.2 Lint passes: `npm run check` — 0f0bc84
+- [x] 3.3 Full spec passes: `npx playwright test page-smoke-sweep` — 0f0bc84
 
 #### Manual
 
-- [x] 3.4 Deliberate-break check: reintroduced client-side throw turns the sweep red, then reverted
+- [x] 3.4 Deliberate-break check: reintroduced client-side throw turns the sweep red, then reverted — 0f0bc84
 
 ### Phase 4: Cookbook update
 
 #### Automated
 
-- [ ] 4.1 Typecheck passes: `npm run typecheck`
-- [ ] 4.2 Lint passes: `npm run check`
+- [x] 4.1 Typecheck passes: `npm run typecheck`
+- [x] 4.2 Lint passes: `npm run check`
