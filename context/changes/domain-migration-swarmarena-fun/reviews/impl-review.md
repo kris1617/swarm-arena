@@ -28,4 +28,4 @@
 - **Location**: context/changes/middleware-static-asset-exclusion/plan.md, change.md
 - **Detail**: A different, unrelated, currently-open change folder (`middleware-static-asset-exclusion`, last touched 2026-11-18 — predates this migration) has curl verification examples referencing `swarmarena.hopto.org`. These are planning artifacts, not live config, and out of scope for this change — flagged only in case that other change is ever re-opened.
 - **Fix**: None needed now — note it for whoever next touches `middleware-static-asset-exclusion`, if that happens.
-- **Decision**: PENDING
+- **Decision**: FIXED (differently than proposed) — the historical curl commands/output were left unchanged, since rewriting them to `swarmarena.fun` would have made the record inaccurate (that test was run on 2026-11-18, before the new domain existed). Instead added explanatory notes pointing to this migration, in `middleware-static-asset-exclusion/plan.md` and `change.md` — commits `ca490a4` (this change's own impl-review stamp) and `70a7c30` (the other change's note).
