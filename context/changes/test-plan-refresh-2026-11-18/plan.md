@@ -379,9 +379,9 @@ None — test-only files; no schema or production code changes.
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 New spec passes: `npx playwright test page-smoke-sweep`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 35c3f92
+- [x] 2.2 Lint passes: `npm run check` — 35c3f92
+- [x] 2.3 New spec passes: `npx playwright test page-smoke-sweep` — 35c3f92
 
 ### Phase 3: Gated-route sweep — `/admin/settings` and `/runs/[runId]`
 

@@ -56,3 +56,29 @@ test("signed-in user starts a run, sees it running, and stops it to a scored sum
 	await startNewRunButton.click();
 	await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
 });
+
+// risk: a numeric field's HTML `min` attribute can fall off the `step`
+// grid for the field's actual default value (e.g. min={2.5} with step="1"
+// and a default of 20), which makes the browser treat the form as
+// invalid and silently block the native submit — the "Start" button
+// click does nothing, with no visible error. Unit/integration tests on
+// buildStartInput() can never see this, since the bug never reaches
+// React; only the real DOM's constraint validation surfaces it.
+test("simulation config form is valid at its own untouched default values", async ({
+	page,
+}) => {
+	await page.goto("/simulation");
+	await expect(
+		page.getByRole("heading", { name: "Flocking Simulation" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Start", exact: true }),
+	).toBeVisible();
+
+	// No field is touched — this proves the defaults themselves satisfy
+	// every field's min/max/step, which is exactly what a misaligned
+	// `min` (off the `step` grid) would violate.
+	expect(
+		await page.evaluate(() => document.querySelector("form")?.checkValidity()),
+	).toBe(true);
+});

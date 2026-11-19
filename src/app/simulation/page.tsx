@@ -1169,7 +1169,7 @@ export default function SimulationPage() {
 						id="energy-threshold"
 						label="Energy threshold"
 						max={ranges.energyThreshold.max}
-						min={ranges.energyThreshold.min}
+						min={0}
 						onChange={setEnergyThreshold}
 						step="1"
 						value={energyThreshold}
