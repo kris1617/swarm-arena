@@ -266,23 +266,23 @@ No DB schema migration — `savedState` is an existing JSON blob column; `foodIt
 
 #### Automated
 
-- [x] 3.1 Typecheck passes: `npm run typecheck`
-- [x] 3.2 Lint passes: `npm run check`
-- [x] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — e56aa02
+- [x] 3.2 Lint passes: `npm run check` — e56aa02
+- [x] 3.3 Full suite still passes: `npm test` — e56aa02
 
 #### Manual
 
-- [x] 3.4 Food items (green circles) appear gradually, scattered, visually distinct from boid/predator shapes
-- [x] 3.5 A boid visibly consumes a nearby food item on the live canvas
-- [x] 3.6 Minimap shows food items with no additional code
-- [x] 3.7 Server-run live view shows the same food visuals (confirms live-push wiring)
+- [x] 3.4 Food items (green circles) appear gradually, scattered, visually distinct from boid/predator shapes — e56aa02
+- [x] 3.5 A boid visibly consumes a nearby food item on the live canvas — e56aa02
+- [x] 3.6 Minimap shows food items with no additional code — e56aa02
+- [x] 3.7 Server-run live view shows the same food visuals (confirms live-push wiring) — e56aa02
 
 ### Phase 4: Manual verification & close-out
 
 #### Manual
 
-- [ ] 4.1 Food count visibly tracks stock level; population dynamics look reasonable (no instant explosion, starvation pressure still present when food runs out)
-- [ ] 4.2 Population-lifecycle-phase classification still reads sensibly (growth/overshoot/crash/recovery)
-- [ ] 4.3 Save/resume preserves food positions
-- [ ] 4.4 A pre-existing saved run (predating this change) resumes cleanly with zero food items
-- [ ] 4.5 Predators show no behavior change around food items
+- [x] 4.1 Food count visibly tracks stock level; population dynamics look reasonable (no instant explosion, starvation pressure still present when food runs out)
+- [x] 4.2 Population-lifecycle-phase classification still reads sensibly (growth/overshoot/crash/recovery)
+- [x] 4.3 Save/resume preserves food positions
+- [x] 4.4 A pre-existing saved run (predating this change) resumes cleanly with zero food items
+- [x] 4.5 Predators show no behavior change around food items
