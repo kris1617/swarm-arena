@@ -1,3 +1,7 @@
-swarmarena.hopto.org {
+swarmarena.fun {
 	reverse_proxy app:3000
+}
+
+www.swarmarena.fun {
+	redir https://swarmarena.fun{uri} permanent
 }

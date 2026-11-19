@@ -18,3 +18,4 @@ docker run --rm \
 	-e SKIP_ENV_VALIDATION=1 \
 	swarm-arena-migrator:latest npx drizzle-kit migrate
 docker compose up -d
+docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
