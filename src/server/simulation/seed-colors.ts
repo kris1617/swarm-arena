@@ -9,3 +9,8 @@
 // canvas renderer keeps a stable import.
 export const BOID_SEED_COLOR = "#38bdf8";
 export const PREDATOR_SEED_COLOR = "#f97316";
+// simulation-entity-shape-color-differentiation Phase 3: food has no `genes`
+// and is not tribe-tagged, so it gets one universal color constant (no
+// genetics/tribe drift) rather than a per-entity seed. Green, distinct from
+// the cyan-blue boid and orange predator seed colors above.
+export const FOOD_SEED_COLOR = "#22c55e";

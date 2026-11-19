@@ -142,6 +142,7 @@ function createFakeContext() {
 		beginPath: vi.fn(),
 		moveTo: vi.fn(),
 		lineTo: vi.fn(),
+		arc: vi.fn(),
 		closePath: vi.fn(),
 		fill: vi.fn(),
 		restore: vi.fn(),
@@ -226,6 +227,57 @@ describe("SimulationCanvas RAF scheduling shell", () => {
 		// The one tick just processed schedules exactly one more frame: two
 		// total, not three or more (which would indicate a double-step).
 		expect(rafMock).toHaveBeenCalledTimes(2);
+
+		act(() => {
+			root.unmount();
+		});
+		container.remove();
+	});
+
+	// simulation-entity-shape-color-differentiation regression: the client-
+	// staged tick loop must persist foodSpawnRemainder across ticks the same
+	// way it persists foodItems — a missing ref here silently resets the
+	// regen backlog to 0 every tick, so no food item ever crosses
+	// FOOD_ITEM_DISPLAY_VALUE (manual verification caught this; this test
+	// pins the fix).
+	it("carries foodSpawnRemainder forward across ticks instead of resetting it to 0", () => {
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+
+		act(() => {
+			root.render(<SimulationCanvas {...BASE_PROPS} />);
+		});
+
+		// First tick has dtSeconds=0 (no prior timestamp to diff against), so
+		// its own remainder stays 0 regardless of the bug — drive 2 more ticks
+		// with a real dt before asserting (3rd call's input vs. 2nd call's
+		// output).
+		act(() => {
+			capturedCallback?.(16);
+		});
+		act(() => {
+			capturedCallback?.(32);
+		});
+		act(() => {
+			capturedCallback?.(48);
+		});
+
+		const secondCallResult = vi
+			.mocked(computeSingleRunTick)
+			.mock.results.at(-2);
+		if (secondCallResult?.type !== "return") {
+			throw new Error("expected computeSingleRunTick's 2nd call to return");
+		}
+		const thirdCallArgs = vi.mocked(computeSingleRunTick).mock.calls.at(-1);
+		if (!thirdCallArgs) {
+			throw new Error("expected a 3rd computeSingleRunTick call");
+		}
+
+		expect(secondCallResult.value.foodSpawnRemainder).toBeGreaterThan(0);
+		expect(thirdCallArgs[0].foodSpawnRemainder).toBe(
+			secondCallResult.value.foodSpawnRemainder,
+		);
 
 		act(() => {
 			root.unmount();

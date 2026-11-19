@@ -21,6 +21,7 @@ import {
 	type BoidState,
 	createInitialPopulation,
 	createInitialPredators,
+	type FoodState,
 	type PopulationPhase,
 	type PredatorState,
 	type PredatorTribeConfig,
@@ -41,6 +42,7 @@ import {
 	CANVAS_BACKGROUND,
 	CANVAS_BORDER_COLOR,
 	CANVAS_HIGHLIGHT_COLOR,
+	FOOD_FILL_COLOR,
 } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
@@ -162,15 +164,27 @@ type SimulationCanvasProps = {
 	onFinished: () => void;
 };
 
-type DrawEntity = {
-	x: number;
-	y: number;
-	z: number;
-	vx: number;
-	vy: number;
-	genes: BoidGenes;
-	kind: "boid" | "predator";
-};
+// simulation-entity-shape-color-differentiation Phase 3: food is a
+// non-oriented kind — unlike boid/predator, it has no heading (no
+// vx/vy) and no `genes` (color comes from the single FOOD_FILL_COLOR
+// constant instead), so it's its own union member rather than widening the
+// boid/predator shape with optional fields.
+type DrawEntity =
+	| {
+			x: number;
+			y: number;
+			z: number;
+			vx: number;
+			vy: number;
+			genes: BoidGenes;
+			kind: "boid" | "predator";
+	  }
+	| {
+			x: number;
+			y: number;
+			z: number;
+			kind: "food";
+	  };
 
 // Closer entities (smaller z) render bigger; clamped so the inverse-linear
 // falloff can't blow up as z approaches 0 or vanish at range. Pure and
@@ -211,6 +225,7 @@ export function drawScene(
 	ctx: CanvasRenderingContext2D,
 	boids: BoidState[],
 	predators: PredatorState[],
+	food: FoodState[],
 	camera: Camera,
 	canvasWidth: number,
 	canvasHeight: number,
@@ -227,33 +242,43 @@ export function drawScene(
 				kind: "predator",
 			}),
 		),
+		...food.map((item): DrawEntity => ({ ...item, kind: "food" })),
 	];
 	const sorted = entities.sort(compareByDepth);
 	for (const entity of sorted) {
 		const x = worldToScreenX(entity.x, camera, canvasWidth);
 		const y = worldToScreenY(entity.y, camera, canvasHeight);
-		// Heading from current velocity; zero velocity (e.g. the very first
-		// frame) points along +x as a stable default.
-		const speed = Math.hypot(entity.vx, entity.vy);
-		const heading = speed > 0 ? Math.atan2(entity.vy, entity.vx) : 0;
 		const scale = computeDepthScale(entity.z);
 
 		ctx.save();
 		ctx.translate(x, y);
-		ctx.rotate(heading);
 		ctx.beginPath();
-		ctx.fillStyle = colorToCss(entity.genes.color);
-		if (entity.kind === "predator") {
-			// Diamond silhouette: nose, both wings, tail — visibly wider than
-			// the boid's narrow triangle at the same depth-scale factor.
-			ctx.moveTo(PREDATOR_LENGTH * scale, 0);
-			ctx.lineTo(0, PREDATOR_WIDTH * scale);
-			ctx.lineTo(-PREDATOR_LENGTH * scale, 0);
-			ctx.lineTo(0, -PREDATOR_WIDTH * scale);
+		if (entity.kind === "food") {
+			// Non-oriented: no heading/rotation, unlike boid/predator below —
+			// a plain filled circle scaled by depth, in the single universal
+			// food color (food has no `genes`).
+			ctx.fillStyle = FOOD_FILL_COLOR;
+			ctx.arc(0, 0, BOID_WIDTH * scale, 0, Math.PI * 2);
 		} else {
-			ctx.moveTo(BOID_LENGTH * scale, 0);
-			ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
-			ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);
+			// Heading from current velocity; zero velocity (e.g. the very
+			// first frame) points along +x as a stable default.
+			const speed = Math.hypot(entity.vx, entity.vy);
+			const heading = speed > 0 ? Math.atan2(entity.vy, entity.vx) : 0;
+			ctx.rotate(heading);
+			ctx.fillStyle = colorToCss(entity.genes.color);
+			if (entity.kind === "predator") {
+				// Diamond silhouette: nose, both wings, tail — visibly wider
+				// than the boid's narrow triangle at the same depth-scale
+				// factor.
+				ctx.moveTo(PREDATOR_LENGTH * scale, 0);
+				ctx.lineTo(0, PREDATOR_WIDTH * scale);
+				ctx.lineTo(-PREDATOR_LENGTH * scale, 0);
+				ctx.lineTo(0, -PREDATOR_WIDTH * scale);
+			} else {
+				ctx.moveTo(BOID_LENGTH * scale, 0);
+				ctx.lineTo(-BOID_LENGTH * scale, BOID_WIDTH * scale);
+				ctx.lineTo(-BOID_LENGTH * scale, -BOID_WIDTH * scale);
+			}
 		}
 		ctx.closePath();
 		ctx.fill();
@@ -297,6 +322,7 @@ export function drawMinimap(
 	minimapCtx: CanvasRenderingContext2D,
 	boids: BoidState[],
 	predators: PredatorState[],
+	food: FoodState[],
 	mainCamera: Camera,
 	mainCanvasWidth: number,
 	mainCanvasHeight: number,
@@ -313,6 +339,7 @@ export function drawMinimap(
 		minimapCtx,
 		boids,
 		predators,
+		food,
 		minimapCamera,
 		minimapWidth,
 		minimapHeight,
@@ -372,6 +399,16 @@ export function SimulationCanvas({
 	const boidsRef = useRef<BoidState[]>([]);
 	const predatorsRef = useRef<PredatorState[]>([]);
 	const foodStockRef = useRef(foodStockInitial);
+	// simulation-entity-shape-color-differentiation Phase 3: current tick's
+	// positioned food items, read by redraw() alongside boidsRef/
+	// predatorsRef — populated from computeSingleRunTick's result the same
+	// way the other per-tick refs below are.
+	const foodItemsRef = useRef<FoodState[]>([]);
+	// Regen accumulated but not yet spawned as a visible item — must persist
+	// across ticks the same way foodItemsRef does, or the backlog resets to 0
+	// every tick and no item ever crosses FOOD_ITEM_DISPLAY_VALUE (see
+	// boids.ts's applyHunger comment).
+	const foodSpawnRemainderRef = useRef(0);
 	const cohesionSamplesRef = useRef<number[]>([]);
 	// S-04 (FR-010 full, FR-019): threaded through the same shared tick core
 	// server-run-registry.ts uses — see single-run-lifecycle.ts.
@@ -618,6 +655,7 @@ export function SimulationCanvas({
 			ctx,
 			boidsRef.current,
 			predatorsRef.current,
+			foodItemsRef.current,
 			cameraRef.current,
 			sizeRef.current.width,
 			sizeRef.current.height,
@@ -638,6 +676,7 @@ export function SimulationCanvas({
 					minimapCtx,
 					boidsRef.current,
 					predatorsRef.current,
+					foodItemsRef.current,
 					cameraRef.current,
 					sizeRef.current.width,
 					sizeRef.current.height,
@@ -785,6 +824,8 @@ export function SimulationCanvas({
 						boids: boidsRef.current,
 						predators: predatorsRef.current,
 						foodStock: foodStockRef.current,
+						foodItems: foodItemsRef.current,
+						foodSpawnRemainder: foodSpawnRemainderRef.current,
 						cohesionSamples: cohesionSamplesRef.current,
 						foodRatioSamples: foodRatioSamplesRef.current,
 						tribeFoodImbalanceSamples: tribeFoodImbalanceSamplesRef.current,
@@ -816,6 +857,8 @@ export function SimulationCanvas({
 				boidsRef.current = result.boids;
 				predatorsRef.current = result.predators;
 				foodStockRef.current = result.foodStock;
+				foodItemsRef.current = result.foodItems;
+				foodSpawnRemainderRef.current = result.foodSpawnRemainder;
 				cohesionSamplesRef.current = result.cohesionSamples;
 				foodRatioSamplesRef.current = result.foodRatioSamples;
 				tribeFoodImbalanceSamplesRef.current = result.tribeFoodImbalanceSamples;

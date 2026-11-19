@@ -19,6 +19,9 @@ export const CANVAS_BACKGROUND = "#1e293b";
 // color alone) for robustness, including for colorblind users.
 export {
 	BOID_SEED_COLOR as BOID_FILL_COLOR,
+	// simulation-entity-shape-color-differentiation Phase 3: food's own
+	// universal seed color, re-exported the same way as the two below.
+	FOOD_SEED_COLOR as FOOD_FILL_COLOR,
 	PREDATOR_SEED_COLOR as PREDATOR_FILL_COLOR,
 } from "~/server/simulation/seed-colors";
 // S-24 Phase 3: canvas-readable mirror of --border (oklch(1 0 0 / 20%) —

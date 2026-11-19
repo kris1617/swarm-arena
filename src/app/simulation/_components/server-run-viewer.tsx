@@ -24,6 +24,7 @@ import { Select } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import type {
 	BoidState,
+	FoodState,
 	PredatorState,
 	PredatorTribeConfig,
 	TribeConfig,
@@ -277,6 +278,10 @@ export function ServerRunViewer({
 	const lastSnapshotRef = useRef<{
 		boids: BoidState[];
 		predators: PredatorState[];
+		// simulation-entity-shape-color-differentiation Phase 3: sibling of
+		// boids/predators above — LiveRunSnapshot (Phase 2) always carries
+		// this field, so it's required here too, not optional.
+		foodItems: FoodState[];
 	} | null>(null);
 	// live-boid-count-adjustment Phase 3: current boid/predator counts for the
 	// population step-button control, read off the same ~150ms subscription
@@ -967,6 +972,7 @@ export function ServerRunViewer({
 			ctx,
 			snapshot.boids,
 			snapshot.predators,
+			snapshot.foodItems,
 			cameraRef.current,
 			sizeRef.current.width,
 			sizeRef.current.height,
@@ -987,6 +993,7 @@ export function ServerRunViewer({
 					minimapCtx,
 					snapshot.boids,
 					snapshot.predators,
+					snapshot.foodItems,
 					cameraRef.current,
 					sizeRef.current.width,
 					sizeRef.current.height,

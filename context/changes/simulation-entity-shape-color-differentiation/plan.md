@@ -257,25 +257,25 @@ No DB schema migration — `savedState` is an existing JSON blob column; `foodIt
 
 #### Automated
 
-- [x] 2.1 Typecheck passes: `npm run typecheck`
-- [x] 2.2 Lint passes: `npm run check`
-- [x] 2.3 Save/resume round-trip test passes (including a pre-existing-savedState backward-compatibility case)
-- [x] 2.4 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 239566a
+- [x] 2.2 Lint passes: `npm run check` — 239566a
+- [x] 2.3 Save/resume round-trip test passes (including a pre-existing-savedState backward-compatibility case) — 239566a
+- [x] 2.4 Full suite still passes: `npm test` — 239566a
 
 ### Phase 3: Rendering
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Lint passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck`
+- [x] 3.2 Lint passes: `npm run check`
+- [x] 3.3 Full suite still passes: `npm test`
 
 #### Manual
 
-- [ ] 3.4 Food items (green circles) appear gradually, scattered, visually distinct from boid/predator shapes
-- [ ] 3.5 A boid visibly consumes a nearby food item on the live canvas
-- [ ] 3.6 Minimap shows food items with no additional code
-- [ ] 3.7 Server-run live view shows the same food visuals (confirms live-push wiring)
+- [x] 3.4 Food items (green circles) appear gradually, scattered, visually distinct from boid/predator shapes
+- [x] 3.5 A boid visibly consumes a nearby food item on the live canvas
+- [x] 3.6 Minimap shows food items with no additional code
+- [x] 3.7 Server-run live view shows the same food visuals (confirms live-push wiring)
 
 ### Phase 4: Manual verification & close-out
 
