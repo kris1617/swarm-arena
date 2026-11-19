@@ -372,16 +372,16 @@ None — test-only files; no schema or production code changes.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — db366f4
+- [x] 1.2 Lint passes: `npm run check` — db366f4
 
 ### Phase 2: Core sweep — 12 auth-only routes
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 New spec passes: `npx playwright test page-smoke-sweep`
+- [x] 2.1 Typecheck passes: `npm run typecheck`
+- [x] 2.2 Lint passes: `npm run check`
+- [x] 2.3 New spec passes: `npx playwright test page-smoke-sweep`
 
 ### Phase 3: Gated-route sweep — `/admin/settings` and `/runs/[runId]`
 
