@@ -39,7 +39,7 @@
   - Tradeoff: The identical silent-no-effect gap bites the next person who edits Caddyfile for any reason.
   - Confidence: HIGH that it unblocks this one deploy.
   - Blind spot: Doesn't fix the systemic issue — only defers it.
-- **Decision**: FIXED via Fix A
+- **Decision**: FIXED via Fix A, then corrected during implementation — `caddy reload` (Fix A's literal mechanism) turned out to be insufficient. Confirmed live via SSH that it exits 0 and logs no error while silently not applying the new config, because the long-running caddy container's single-file bind mount follows the old inode `git pull` replaced — `caddy reload` re-reads through that same stale handle. The real fix (also landed in Phase 1, see plan.md's "Implementation note") is `docker compose up -d --force-recreate caddy`, which re-establishes the bind mount every deploy. Fix A's underlying diagnosis (deploy.sh needs an explicit step, not a one-off manual command) was correct; its specific mechanism was not.
 
 ### F2 — OAuth App ordering within Phase 1 is correct but implicit
 

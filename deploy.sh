@@ -18,4 +18,16 @@ docker run --rm \
 	-e SKIP_ENV_VALIDATION=1 \
 	swarm-arena-migrator:latest npx drizzle-kit migrate
 docker compose up -d
-docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+# domain-migration-swarmarena-fun (correction to an earlier, insufficient
+# fix): `caddy reload` re-reads Caddyfile through the *already-running*
+# container's existing bind-mount handle. A single-file bind mount is tied
+# to the source's inode, not its path — `git pull` above replaces
+# Caddyfile via a new inode on every pull where its content changed, so a
+# long-running caddy container can keep following the OLD inode and
+# silently "successfully" reload stale content (confirmed live: `caddy
+# reload` exited 0 and logged no error while the running config stayed
+# unchanged). Force-recreating the caddy container re-establishes the
+# bind mount against the current file every deploy, which `caddy reload`
+# cannot guarantee. Costs a few seconds of caddy listening downtime
+# (not a graceful reload) in exchange for actually working.
+docker compose up -d --force-recreate caddy

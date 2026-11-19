@@ -68,14 +68,17 @@ Switch Caddy's routing and the GitHub OAuth App's URLs from the old domain to th
 
 **Intent**: `docker compose up -d` never recreates the `caddy` container just because the bind-mounted `Caddyfile`'s content changed on the host — Compose only reacts to service-definition changes (image/command/env/volumes), and the `caddy:2-alpine` image's default command has no `--watch` flag. Without an explicit reload, this plan's Caddyfile edit would silently not take effect after deploy. Fixing it in `deploy.sh` itself (not a one-off manual command) makes every future Caddyfile edit — not just this one — take effect automatically, matching this project's own precedent of fixing `deploy.sh` for structural CI/CD gaps (see `deploy-plan.md`'s documented history of the missing-migration-step fix).
 
-**Contract**: Append one line to the end of `deploy.sh`, after the existing `docker compose up -d`: `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`. This is Caddy's own documented zero-downtime graceful-reload mechanism (via its admin API, enabled by default here) — no dropped connections, no listen-socket gap.
+**Contract**: Append `docker compose up -d --force-recreate caddy` to the end of `deploy.sh`, after the existing `docker compose up -d`.
+
+**Implementation note (post-dispatch correction, landed in <SHA to be filled>)**: the originally planned `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile` was implemented and deployed first, and was insufficient — confirmed live via SSH (user-authorized access to the VPS mid-implementation): a single-file bind mount is tied to the source's inode, not its path, and `git pull` replaces `Caddyfile` via a new inode on every pull where its content changed. The long-running `caddy` container (up since well before this migration) kept following the OLD inode — `caddy reload` exited 0 and logged no error while the live config stayed unchanged, a silent no-op. `docker compose up -d --force-recreate caddy` re-establishes the bind mount against the current file every deploy, which `caddy reload` cannot guarantee. Costs a few seconds of caddy listening downtime (not a graceful reload) in exchange for actually working.
 
 ### Success Criteria:
 
 #### Automated Verification:
 
-- `Caddyfile` is valid Caddy syntax: `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` (run against the deployed container, not locally — this repo has no local Caddy binary)
-- `deploy.sh`'s new reload line runs without error as part of the normal deploy (confirmed via the GitHub Actions deploy log for this push)
+- `Caddyfile` is valid Caddy syntax — confirmed by the recreated `caddy` container starting and serving the new site blocks without error
+- `deploy.sh`'s `--force-recreate caddy` line runs without error as part of the normal deploy (confirmed via the GitHub Actions deploy log for this push)
+- The `caddy` container's own view of `/etc/caddy/Caddyfile` (`docker exec swarm-arena-caddy-1 cat /etc/caddy/Caddyfile`) matches the host file after deploy — the actual check this phase needed all along, not just "deploy succeeded"
 
 #### Manual Verification:
 
@@ -145,6 +148,51 @@ None — this phase is verification-only, no file changes.
 
 ---
 
+## Phase 4: Domain-reputation hardening
+
+### Overview
+
+Add registrar- and app-level trust signals for the new domain beyond the bare cutover — concrete steps the user can take now that `swarmarena.fun` is an owned domain, to avoid a repeat of the `hopto.org` reputation issue. Sequenced after the cutover (Phase 1-3) since these build on a working, verified domain rather than gating it.
+
+### Changes Required:
+
+#### 1. HSTS preload submission (manual, registrar/browser-list action)
+
+**Intent**: `swarmarena.fun` already sends `Strict-Transport-Security: max-age=31536000; includeSubDomains` (from the earlier `security-hardening-pass`), which qualifies it for the browser-shipped HSTS preload list — a trust signal baked into Chrome/Firefox/Safari themselves, independent of any crawler reputation score.
+
+**Contract**: Submit `swarmarena.fun` at `hstspreload.org`. This is a one-time manual web-form submission outside this repo; no code change. The existing CSP/security-headers Automated Verification from `security-hardening-pass` already confirms the HSTS header's presence and value — this phase doesn't re-verify that, only performs the submission.
+
+#### 2. CAA DNS record (manual, registrar/DNS action)
+
+**Intent**: Restrict which Certificate Authorities can issue TLS certificates for `swarmarena.fun`, so a compromised or misconfigured registrar session can't get a rogue cert issued elsewhere — an integrity signal independent of Safe Browsing's content-reputation scoring, but a sound practice for an owned domain.
+
+**Contract**: Add a `CAA` record at the DNS provider scoping issuance to Let's Encrypt (`0 issue "letsencrypt.org"`), matching the CA Caddy already uses. Manual DNS-provider action outside this repo; no code change.
+
+#### 3. `robots.txt` and `sitemap.xml`
+
+**File**: `public/robots.txt`, `src/app/sitemap.ts` (Next.js App Router's built-in sitemap route convention)
+
+**Intent**: Currently neither exists — Google's crawler discovers pages opportunistically rather than being told explicitly what to index. An explicit `robots.txt` + sitemap gives the crawler legitimate, intentional signals about the site's structure, rather than it inferring structure (or hitting login-redirect loops) on its own.
+
+**Contract** (corrected against the actual route surface — `src/middleware.ts`'s matcher gates every path except `login|api/auth|api/test-auth|_next/static|_next/image|*.ext`, and `/` itself just redirects to `/dashboard`, which is gated; `/login` is the *only* genuinely public, unauthenticated page in this app): `public/robots.txt` allows crawling of `/login` only, disallows every other path (`Disallow: /`, `Allow: /login`), and points to the sitemap (`Sitemap: https://swarmarena.fun/sitemap.xml`). `src/app/sitemap.ts` exports Next.js's `MetadataRoute.Sitemap` default function listing exactly `/login` — correctly minimal given this app's actual auth-gated surface, not an oversight.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- Typecheck passes: `npm run typecheck`
+- Lint passes: `npm run check`
+- Full suite still passes: `npm test`
+- `public/robots.txt` exists and references the sitemap: `grep -q "Sitemap:" public/robots.txt`
+- Sitemap route builds: `curl -s -o /dev/null -w "%{http_code}" https://swarmarena.fun/sitemap.xml` returns `200`
+
+#### Manual Verification:
+
+- `hstspreload.org` submission for `swarmarena.fun` completed (manual user action)
+- CAA DNS record added and visible via `dig CAA swarmarena.fun` (manual user action)
+
+---
+
 ## Testing Strategy
 
 ### Manual Testing Steps:
@@ -168,8 +216,9 @@ None — this phase is verification-only, no file changes.
 
 #### Automated
 
-- [ ] 1.1 Caddyfile syntax validates: `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
-- [ ] 1.2 deploy.sh's new caddy reload line runs without error in the deploy log
+- [ ] 1.1 Caddyfile syntax confirmed valid (recreated caddy container started and served the new site blocks without error)
+- [ ] 1.2 deploy.sh's --force-recreate caddy line runs without error in the deploy log
+- [ ] 1.7 caddy container's live Caddyfile view matches the host file after deploy
 
 #### Manual
 
@@ -196,3 +245,18 @@ None — this phase is verification-only, no file changes.
 - [ ] 3.2 One core simulation flow (start + live render) works end-to-end on the new domain
 - [ ] 3.3 swarmarena.hopto.org confirmed not serving the app
 - [ ] 3.4 New Google Search Console property for swarmarena.fun created and verified
+
+### Phase 4: Domain-reputation hardening
+
+#### Automated
+
+- [ ] 4.1 Typecheck passes: `npm run typecheck`
+- [ ] 4.2 Lint passes: `npm run check`
+- [ ] 4.3 Full suite still passes: `npm test`
+- [ ] 4.4 robots.txt references the sitemap: `grep -q "Sitemap:" public/robots.txt`
+- [ ] 4.5 Sitemap route builds: `curl -s -o /dev/null -w "%{http_code}" https://swarmarena.fun/sitemap.xml` returns 200
+
+#### Manual
+
+- [ ] 4.6 hstspreload.org submission for swarmarena.fun completed
+- [ ] 4.7 CAA DNS record added and visible via `dig CAA swarmarena.fun`

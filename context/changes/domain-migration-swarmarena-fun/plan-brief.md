@@ -26,6 +26,7 @@ Move production traffic from `swarmarena.hopto.org` (a free dynamic-DNS hostname
 | Doc cleanup scope | Canonical docs only (`infrastructure.md`, `deploy-plan.md`, roadmap) | Archived change folders are read-only by convention; README/repo metadata confirmed to have zero domain references |
 | Rollback | Fix forward, no formal rollback | Low-traffic personal project; diagnosing live is acceptable over flip-flopping DNS/OAuth config |
 | Verification depth | Login + homepage + one core simulation flow | Confirms auth and the core product didn't silently break, not just that pages load |
+| Domain-reputation hardening scope | HSTS preload + CAA record + minimal robots.txt/sitemap (Phase 4) | User-requested mid-implementation; `/login` is the only genuinely public route (middleware gates everything else, including `/` which just redirects to the gated `/dashboard`) |
 
 ## Scope
 
@@ -44,9 +45,10 @@ Single-deploy cutover: `Caddyfile` gains `swarmarena.fun`'s site block and a `ww
 | 1. Cutover | Caddy + OAuth App switched to the new domain in one deploy | Point-in-time OAuth App switch has no test window — any misconfiguration is discovered live |
 | 2. Docs update | `infrastructure.md`, `deploy-plan.md`, roadmap reflect the new domain | Low risk — doc-only, no functional impact |
 | 3. Manual verification & close-out | Confirms login + core flow work, old domain is dark, new Search Console property verified | Relies on the user completing the Search Console verification themselves (outside this repo) |
+| 4. Domain-reputation hardening | HSTS preload submission, a CAA DNS record, and a minimal `robots.txt`/sitemap scoped to the app's one genuinely public page (`/login`) | Added mid-stream at the user's request, once Phase 1's cert-provisioning delay surfaced the domain-reputation topic again — not part of the original interview |
 
-**Prerequisites:** DNS for `swarmarena.fun` already confirmed pointing at the VPS (done, prior to this plan). GitHub account access to edit the OAuth App's settings.
-**Estimated effort:** Single session, ~3 small phases — config/doc changes only, no code.
+**Prerequisites:** DNS for `swarmarena.fun` already confirmed pointing at the VPS (done, prior to this plan). GitHub account access to edit the OAuth App's settings. Registrar/DNS-provider access for the CAA record and HSTS preload submission (Phase 4).
+**Estimated effort:** Single session, ~4 small phases — mostly config/doc changes; Phase 4 adds two small new files (`public/robots.txt`, `src/app/sitemap.ts`).
 
 ## Open Risks & Assumptions
 
