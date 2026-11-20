@@ -1,10 +1,10 @@
 ---
 change_id: lifecycle-stage-color-fade
 title: Fade boid, predator, and food colors by lifecycle stage
-status: impl_reviewed
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T03:09:41Z
 ---
 
 ## Notes
