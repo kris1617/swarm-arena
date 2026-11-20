@@ -9,6 +9,7 @@ tags: [research, codebase, login, oauth, nextauth, ui]
 status: complete
 last_updated: 2026-11-20
 last_updated_by: Claude Sonnet 5
+last_updated_note: "Added the more directly relevant google-style-auth-ux (2026-11-18) prior change to Historical Context, found via broader git log search during impl-review — see lessons.md's 'Historical Context must be grounded in a broad git log search' entry."
 ---
 
 # Research: Login page OAuth polish
@@ -64,7 +65,8 @@ Separately, the current sign-in button is already partway toward a provider-logi
 
 ## Historical Context (from prior changes)
 
-- `context/archive/2026-11-14-branded-login-page/` (S-15) — the login page's branding (text, colors, favicon) was last touched here; no OAuth-flow or redirect-visibility work was done as part of that change.
+- `context/archive/2026-11-18-google-style-auth-ux/` — the most directly relevant prior change: its own Overview states "Replace the bare-bones `/login` page ... with a polished, Google-style sign-in/sign-out experience." It built the centered-card layout, `GitHubIcon` button, `useFormStatus` pending state, error banner, safe-redirect validation, and post-login user menu/sign-out confirmation that this change (S-53) builds on top of — specifically, it established the exact `<Button size="lg">` (no variant) baseline this change's "Current State Analysis" describes. This change's own scope (button color variant, spinner, card width) is additive polish on that baseline, not a redo of it.
+- `context/archive/2026-11-14-branded-login-page/` (S-15) — the login page's branding (text, colors, favicon) was last touched here, predating `google-style-auth-ux`; no OAuth-flow or redirect-visibility work was done as part of that change.
 - `context/archive/2026-11-19-security-hardening-pass/` — added `src/middleware.ts`'s security-header wrapping around `auth()`; confirmed (this research) that it does not affect `/login` or `/api/auth` traffic.
 
 ## Related Research

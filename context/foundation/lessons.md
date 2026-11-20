@@ -134,3 +134,10 @@
 **Problem**: A roadmap/research note claimed admin pages "never received the F-06 design-token restyle" based on commit-history inference alone (no commit matching the M-3 restyle pattern touched them). Direct code inspection during `admin-pages-ui-refresh`'s `/10x-ui` audit found tokens were already correctly in place — the real gaps were unrelated (a `<main>`-landmark bug, missing `NumberField` adoption).
 **Rule**: A "never touched"/"never restyled" claim inferred from commit history or git log alone must be re-verified against current code (e.g. a hardcoded-value scan, reading the actual file) before being treated as a settled fact in `research.md` or `roadmap.md` — commit history proves what commits touched, not what the code currently contains.
 **Applies to**: `/10x-research` and `/10x-plan` characterizing a view/component's current state — re-verify against current code, not just history, before writing it down as settled.
+
+## Historical Context must be grounded in a broad git log search, not a guessed named precedent
+
+**Context**: `/10x-research` building a Historical Context section for any file/area with meaningful prior git history (`login-page-oauth-polish`, 2026-11-20).
+**Problem**: `research.md` cited only one guessed prior change (`branded-login-page`, S-15, 2026-11-14) and missed a much more directly relevant, more recent one (`google-style-auth-ux`, 2026-11-18) that had already built the exact baseline this change modified — found only during impl-review via `git log`, not during research itself.
+**Rule**: When building a Historical Context section for a file/area with prior git history, run `git log --oneline -- <path>` (or search `context/archive/` broadly) before citing specific named prior changes — don't rely on guessing which earlier change-id might be relevant.
+**Applies to**: `/10x-research` building Historical Context for any file/area with meaningful git history.
