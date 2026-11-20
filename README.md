@@ -1,29 +1,43 @@
-# Create T3 App
+# Swarm Arena
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A boids + predator-prey simulation lab: configure a flocking/evasion simulation, run it, score the outcome against explicit criteria, and compare variants side by side. Built as a learning exercise in both swarm behavior and agentic development (10xDevs course project).
 
-## What's next? How do I make an app with this?
+## What it does
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- **Configure and run simulations** — boid count, predator count, per-tribe behavior weights (separation/alignment/cohesion), food/energy dynamics, world size, and more, run either client-side or as a server-owned process.
+- **Score and compare** — every finished run gets a score; the dashboard, leaderboard, and a bounded 2-4-run comparison view let you tell whether a parameter change actually helped.
+- **Pause and resume** — save a running simulation's full live state and pick it back up later instead of losing a long-running experiment.
+- **Live parameter tuning** — adjust weights, tribe configs, and population counts on a running simulation, with soft range warnings rather than hard rejection.
+- **Full lifecycle, including delete** — start, read, update, and delete your own runs (soft-delete for regular users; an admin can hard-delete, gated behind the app's self-elevation flow).
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Tech stack
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Next.js 16 (App Router, Turbopack) on the T3 stack — tRPC, Drizzle ORM over SQLite (libsql), NextAuth (GitHub OAuth), Tailwind + shadcn/ui, Biome for lint/format. See `AGENTS.md` for repo conventions and `context/foundation/tech-stack.md` for the full rationale.
 
-## Learn More
+## Getting started
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+```bash
+npm install
+npm run db:push     # apply the schema to a local db.sqlite
+npm run dev          # Next.js dev server with Turbopack
+```
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+See `.env.example` for required environment variables (GitHub OAuth app credentials, `AUTH_SECRET`, etc.) — the app refuses to start without them (validated in `src/env.js`).
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+One-time per clone: `git config core.hooksPath .githooks` enables a local pre-push gate (lint + typecheck + build) that mirrors deploy CI, so a break never reaches `origin/master`.
 
-## How do I deploy this?
+## Testing
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+- `npm test` — Vitest unit/integration suite (`src/**/*.test.ts`).
+- `npx playwright test` — Playwright E2E suite (`tests/e2e/`); `tests/e2e/visual-regression.spec.ts` is the deploy-blocking visual gate in CI.
+- `npm run typecheck` / `npm run check` — `tsc --noEmit` / Biome lint.
+
+See `context/foundation/test-plan.md` for the project's risk-first test strategy and `context/foundation/lessons.md` for recurring gotchas (including known test-flakiness patterns and their fixes).
+
+## Project context
+
+This repo uses the [10xDevs AI-toolkit](https://przeprogramowani.pl) skill chain for planning and implementing changes — see `CLAUDE.md` for the chain and `context/foundation/` for durable project docs (PRD, roadmap, infrastructure, test plan). `context/changes/` and `context/archive/` hold per-change plans and their history.
+
+## Deployment
+
+Deploys to a VPS via GitHub Actions (`.github/workflows/deploy.yml`) on every push to `master`, gated by lint, typecheck, the unit suite, and the visual-regression E2E check. See `context/foundation/infrastructure.md` for the platform choice and setup.
