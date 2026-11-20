@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { NumberField } from "~/components/ui/number-field";
 import { api } from "~/trpc/react";
 
 const DEFAULT_DURATION_MINUTES = 60;
@@ -46,18 +47,15 @@ export function ElevationForm({
 		<div className="flex w-full max-w-md flex-col gap-6">
 			<section className="bg-input text-foreground flex flex-col gap-3 rounded-2xl px-4 py-3">
 				<h2 className="font-semibold">Your account</h2>
-				<label className="flex flex-col gap-1" htmlFor="self-duration">
-					Duration (minutes)
-					<Input
-						className="bg-background text-foreground h-auto rounded-full border-0 px-4 py-2"
-						id="self-duration"
-						max={1440}
-						min={1}
-						onChange={(e) => setSelfDuration(Number(e.target.value))}
-						type="number"
-						value={selfDuration}
-					/>
-				</label>
+				<NumberField
+					className="bg-background"
+					id="self-duration"
+					label="Duration (minutes)"
+					max={1440}
+					min={1}
+					onChange={setSelfDuration}
+					value={selfDuration}
+				/>
 				<Button
 					className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
 					disabled={elevateSelfMutation.isPending}
@@ -100,18 +98,15 @@ export function ElevationForm({
 							value={targetEmail}
 						/>
 					</label>
-					<label className="flex flex-col gap-1" htmlFor="target-duration">
-						Duration (minutes)
-						<Input
-							className="bg-background text-foreground h-auto rounded-full border-0 px-4 py-2"
-							id="target-duration"
-							max={1440}
-							min={1}
-							onChange={(e) => setTargetDuration(Number(e.target.value))}
-							type="number"
-							value={targetDuration}
-						/>
-					</label>
+					<NumberField
+						className="bg-background"
+						id="target-duration"
+						label="Duration (minutes)"
+						max={1440}
+						min={1}
+						onChange={setTargetDuration}
+						value={targetDuration}
+					/>
 					<Button
 						className="bg-background text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
 						disabled={elevateAccountMutation.isPending || !targetEmail}

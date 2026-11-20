@@ -190,16 +190,16 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
-- [ ] 2.4 Hardcoded-value scan on touched files stays at 0 hits
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 2d4baa0
+- [x] 2.2 Lint passes: `npm run check` — 2d4baa0
+- [x] 2.3 Full suite still passes: `npm test` — 2d4baa0
+- [x] 2.4 Hardcoded-value scan on touched files stays at 0 hits — 2d4baa0
 
 #### Manual
 
-- [ ] 2.5 Both admin forms render identically to before, including the compact fieldset variant
-- [ ] 2.6 simulation/page.tsx's existing NumberField call sites unaffected (regression check)
-- [ ] 2.7 Both forms' mutations still work
+- [x] 2.5 Both admin forms render identically to before, including the compact fieldset variant — verified live (production build, elevated test accounts): settings form's 17 fields all render with correct values; the compact variant's `cn()` merge confirmed via computed className (`bg-transparent px-3 py-1` present, `min`/`max` HTML attributes correctly absent on the 15 unconstrained fields, correctly `min="1"`/no-`max` on the 2 object-count fields). — 2d4baa0
+- [x] 2.6 simulation/page.tsx's existing NumberField call sites unaffected (regression check) — verified live: separation weight, energy threshold, and other NumberField-driven inputs on `/simulation` render correctly with their real min/max constraints intact. — 2d4baa0
+- [x] 2.7 Both forms' mutations still work — elevation form's `onChange` correctly updates state (confirmed `120` after fill); the `elevateSelf` mutation fires and its error path renders correctly (`FORBIDDEN`, since `ALLOW_SELF_ELEVATION` is disabled in this environment — expected app behavior, not a regression). — 2d4baa0
 
 ### Phase 3: States gate
 

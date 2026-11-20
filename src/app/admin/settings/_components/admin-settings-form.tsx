@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { NumberField } from "~/components/ui/number-field";
 import {
 	type ParameterRanges,
 	RANGED_PARAMETER_NAMES,
@@ -68,82 +68,47 @@ export function AdminSettingsForm() {
 				>
 					<legend className="text-foreground font-semibold">{name}</legend>
 					<div className="flex gap-2">
-						<label
-							className="flex flex-1 flex-col gap-1"
-							htmlFor={`${name}-min`}
-						>
-							Min
-							<Input
-								className="text-foreground h-auto rounded-full border-0 bg-transparent px-3 py-1"
-								id={`${name}-min`}
-								onChange={(e) =>
-									updateRange(name, "min", Number(e.target.value))
-								}
-								step="any"
-								type="number"
-								value={ranges[name].min}
-							/>
-						</label>
-						<label
-							className="flex flex-1 flex-col gap-1"
-							htmlFor={`${name}-default`}
-						>
-							Default
-							<Input
-								className="text-foreground h-auto rounded-full border-0 bg-transparent px-3 py-1"
-								id={`${name}-default`}
-								onChange={(e) =>
-									updateRange(name, "default", Number(e.target.value))
-								}
-								step="any"
-								type="number"
-								value={ranges[name].default}
-							/>
-						</label>
-						<label
-							className="flex flex-1 flex-col gap-1"
-							htmlFor={`${name}-max`}
-						>
-							Max
-							<Input
-								className="text-foreground h-auto rounded-full border-0 bg-transparent px-3 py-1"
-								id={`${name}-max`}
-								onChange={(e) =>
-									updateRange(name, "max", Number(e.target.value))
-								}
-								step="any"
-								type="number"
-								value={ranges[name].max}
-							/>
-						</label>
+						<NumberField
+							className="bg-transparent px-3 py-1"
+							id={`${name}-min`}
+							label="Min"
+							onChange={(value) => updateRange(name, "min", value)}
+							step="any"
+							value={ranges[name].min}
+						/>
+						<NumberField
+							className="bg-transparent px-3 py-1"
+							id={`${name}-default`}
+							label="Default"
+							onChange={(value) => updateRange(name, "default", value)}
+							step="any"
+							value={ranges[name].default}
+						/>
+						<NumberField
+							className="bg-transparent px-3 py-1"
+							id={`${name}-max`}
+							label="Max"
+							onChange={(value) => updateRange(name, "max", value)}
+							step="any"
+							value={ranges[name].max}
+						/>
 					</div>
 				</fieldset>
 			))}
-			<label className="flex flex-col gap-1" htmlFor="max-object-count">
-				Global max object count (FR-018)
-				<Input
-					className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-					id="max-object-count"
-					min={1}
-					onChange={(e) => setMaxObjectCount(Number(e.target.value))}
-					type="number"
-					value={maxObjectCount}
-				/>
-			</label>
-			<label
-				className="flex flex-col gap-1"
-				htmlFor="max-concurrent-object-count"
-			>
-				Max combined object count across concurrent server runs (F-07)
-				<Input
-					className="bg-input text-foreground h-auto rounded-full border-0 px-4 py-2"
-					id="max-concurrent-object-count"
-					min={1}
-					onChange={(e) => setMaxConcurrentObjectCount(Number(e.target.value))}
-					type="number"
-					value={maxConcurrentObjectCount}
-				/>
-			</label>
+			<NumberField
+				id="max-object-count"
+				label="Global max object count (FR-018)"
+				min={1}
+				onChange={setMaxObjectCount}
+				value={maxObjectCount}
+			/>
+			<NumberField
+				id="max-concurrent-object-count"
+				label="Max combined object count across concurrent server runs (F-07)"
+				min={1}
+				onChange={setMaxConcurrentObjectCount}
+				value={maxConcurrentObjectCount}
+			/>
 			<Button
 				className="bg-input text-foreground hover:bg-foreground/35 h-auto rounded-full px-10 py-3 font-semibold"
 				disabled={updateMutation.isPending}
