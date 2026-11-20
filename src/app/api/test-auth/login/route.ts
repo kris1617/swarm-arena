@@ -22,8 +22,10 @@ import { sessions, users } from "~/server/db/schema";
 // runs — this project's deploy also points DATABASE_URL at a local sqlite
 // file, so NODE_ENV/DATABASE_URL give no reliable signal either way. The only
 // real boundary is operational: never set E2E_TEST_AUTH_SECRET outside your
-// local, gitignored .env. The deploy workflow's env (.github/workflows/deploy.yml,
-// the VPS's own env file) must never define it.
+// local, gitignored .env. Never set this in the `deploy` job's env or the
+// VPS's own env file — a step inside the `test` job, on an ephemeral CI
+// runner that never serves real traffic, is a different boundary and is
+// fine.
 
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // matches next-auth's default
 

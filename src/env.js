@@ -15,6 +15,9 @@ export const env = createEnv({
 		AUTH_GITHUB_ID: z.string().min(1),
 		AUTH_GITHUB_SECRET: z.string().min(1),
 		ADMIN_EMAILS: z.string().default(""),
+		// Local vision-review script (scripts/vision-review.ts) only — never
+		// used by the running app or CI.
+		ANTHROPIC_API_KEY: z.string().optional(),
 		// next-auth v5 refuses every session (logs "UntrustedHost") unless the
 		// request's host is explicitly trusted and no AUTH_URL is configured.
 		// Required for `next start` against localhost (E2E) and, separately,
@@ -65,6 +68,7 @@ export const env = createEnv({
 		AUTH_GITHUB_ID: process.env.AUTH_GITHUB_ID,
 		AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET,
 		ADMIN_EMAILS: process.env.ADMIN_EMAILS,
+		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
 		E2E_TEST_AUTH_SECRET: process.env.E2E_TEST_AUTH_SECRET,
 		ALLOW_SELF_ELEVATION: process.env.ALLOW_SELF_ELEVATION,

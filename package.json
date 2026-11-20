@@ -18,9 +18,11 @@
 		"preview": "next build && next start",
 		"start": "next start",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"visual:review": "tsx scripts/vision-review.ts"
 	},
 	"dependencies": {
+		"@anthropic-ai/sdk": "^1.11.0",
 		"@auth/drizzle-adapter": "^1.11.3",
 		"@libsql/client": "^0.14.0",
 		"@t3-oss/env-nextjs": "^0.13.11",
