@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RunRow } from "~/components/run-row";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
@@ -8,6 +9,9 @@ import { api } from "~/trpc/react";
 function formatDate(value: Date | string): string {
 	return new Date(value).toLocaleString();
 }
+
+const statusCardClassName =
+	"bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center";
 
 export default function LeaderboardPage() {
 	const leaderboardQuery = api.simulation.listLeaderboard.useQuery();
@@ -26,11 +30,11 @@ export default function LeaderboardPage() {
 					<Skeleton className="h-24 w-full rounded-2xl" />
 				</div>
 			) : isError ? (
-				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
+				<div className={statusCardClassName}>
 					<p>Couldn&apos;t load the leaderboard. Try reloading the page.</p>
 				</div>
 			) : isEmpty ? (
-				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
+				<div className={statusCardClassName}>
 					<p>No completed runs with a score yet.</p>
 					<Button
 						asChild
@@ -46,45 +50,42 @@ export default function LeaderboardPage() {
 							const rank = index + 1;
 							const isTopThree = rank <= 3;
 							return (
-								<div
-									className={
-										isTopThree
-											? "bg-background border-primary flex items-center justify-between gap-2 rounded-full border-2 px-4 py-2"
-											: "bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
-									}
+								<RunRow
+									actionHref={`/runs/${run.id}`}
+									actionLabel="View analysis"
+									className={isTopThree ? "border-primary border-2" : undefined}
 									key={run.id}
-								>
-									<span className="font-semibold">#{rank}</span>
-									<span>
-										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
-										predators — started {formatDate(run.startedAt)}
-									</span>
-									<span className="font-semibold">
-										Score: {run.score?.toFixed(2)}
-									</span>
-									{!run.scoredWithAreaFactor && (
-										<span
-											className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
-											title="Scored before the area-population-density factor existed"
-										>
-											4-factor score
+									label={
+										<span>
+											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
+											predators — started {formatDate(run.startedAt)}
 										</span>
-									)}
-									{!run.comparable && (
-										<span
-											className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
-											title={run.disclaimer ?? undefined}
-										>
-											Accelerated run
-										</span>
-									)}
-									<Button
-										asChild
-										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
-									>
-										<Link href={`/runs/${run.id}`}>View analysis</Link>
-									</Button>
-								</div>
+									}
+									leading={<span className="font-semibold">#{rank}</span>}
+									trailing={
+										<>
+											<span className="font-semibold">
+												Score: {run.score?.toFixed(2)}
+											</span>
+											{!run.scoredWithAreaFactor && (
+												<span
+													className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
+													title="Scored before the area-population-density factor existed"
+												>
+													4-factor score
+												</span>
+											)}
+											{!run.comparable && (
+												<span
+													className="bg-foreground/15 rounded-full px-2 py-0.5 text-xs font-semibold"
+													title={run.disclaimer ?? undefined}
+												>
+													Accelerated run
+												</span>
+											)}
+										</>
+									}
+								/>
 							);
 						})}
 					</section>

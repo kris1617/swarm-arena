@@ -1,14 +1,17 @@
+import { cn } from "cn";
 import Link from "next/link";
 import type * as React from "react";
 import { Button } from "~/components/ui/button";
 
 function RunRow({
+	className,
 	leading,
 	label,
 	trailing,
 	actionHref,
 	actionLabel,
 }: {
+	className?: string;
 	leading?: React.ReactNode;
 	label: React.ReactNode;
 	trailing?: React.ReactNode;
@@ -16,7 +19,12 @@ function RunRow({
 	actionLabel: string;
 }) {
 	return (
-		<div className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2">
+		<div
+			className={cn(
+				"bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2",
+				className,
+			)}
+		>
 			{leading}
 			{label}
 			{trailing}

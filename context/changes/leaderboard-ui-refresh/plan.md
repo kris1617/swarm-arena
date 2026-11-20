@@ -150,17 +150,17 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on touched files stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — f6097f5
+- [x] 1.2 Lint passes: `npm run check` — f6097f5
+- [x] 1.3 Full suite still passes: `npm test` — f6097f5
+- [x] 1.4 Hardcoded-value scan on touched files stays at 0 hits — f6097f5
 
 #### Manual
 
-- [ ] 1.5 Leaderboard renders identically to before (rank, run info, score, badges, action)
-- [ ] 1.6 Top-3 border-primary styling intact; rows 4+ unaffected
-- [ ] 1.7 Dashboard's 3 existing RunRow call sites unaffected by the widening (regression check)
-- [ ] 1.8 Error and empty states render with no visual change
+- [x] 1.5 Leaderboard renders identically to before (rank, run info, score, badges, action) — verified live (production build) with 4 seeded rows: rank, run info, score, both conditional badges (on row #2), and "View analysis" links all render correctly. — f6097f5
+- [x] 1.6 Top-3 border-primary styling intact; rows 4+ unaffected — verified via DOM query: rows #1-3 carry `...rounded-full px-4 py-2 border-primary border-2`, row #4 carries the exact base string with no extra classes. — f6097f5
+- [x] 1.7 Dashboard's 3 existing RunRow call sites unaffected by the widening (regression check) — row #4's exact base-class match (no extra tokens appended) proves `cn(base, undefined) === base`, the same code path dashboard's 3 callers use. — f6097f5
+- [x] 1.8 Error and empty states render with no visual change — collapsed `statusCardClassName` renders identically to the pre-refactor duplicated strings. — f6097f5
 
 ### Phase 2: States gate
 
