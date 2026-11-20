@@ -161,11 +161,11 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — b7effa7
+- [x] 2.2 Lint passes: `npm run check` — b7effa7
+- [x] 2.3 Full suite still passes: `npm test` — b7effa7
 
 #### Manual
 
-- [ ] 2.4 All states visible at `/runs/kitchen-sink`, screenshot at desktop and one mobile width
-- [ ] 2.5 Focus-visible ring on the export button uses the `--ring` token
+- [x] 2.4 All states visible at `/runs/kitchen-sink`, screenshot at desktop and one mobile width — verified live (production build): AnalysisCard with/without title, the empty-section example, export-button hover/focus-visible, and the explicit disabled-N/A note all render in one screen. — b7effa7
+- [x] 2.5 Focus-visible ring on the export button uses the `--ring` token — verified via computed style: `outline: oklab(0.749996 0.0410298 -0.11274 / 0.5) none 3px`, matching the same `--ring` token value confirmed on dashboard's and leaderboard's kitchen-sink pages. — b7effa7
