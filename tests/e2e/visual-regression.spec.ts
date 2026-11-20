@@ -19,7 +19,9 @@ test.describe("visual regression — critical screens", () => {
 		await expect(
 			page.getByRole("heading", { name: "Flocking Simulation", level: 1 }),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/simulation/kitchen-sink matches its baseline", async ({ page }) => {
@@ -27,7 +29,9 @@ test.describe("visual regression — critical screens", () => {
 		await expect(
 			page.getByRole("heading", { name: "Kitchen Sink", level: 1 }),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/dashboard/kitchen-sink matches its baseline", async ({ page }) => {
@@ -35,7 +39,9 @@ test.describe("visual regression — critical screens", () => {
 		await expect(
 			page.getByRole("heading", { name: "Dashboard Kitchen Sink", level: 1 }),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/leaderboard/kitchen-sink matches its baseline", async ({ page }) => {
@@ -46,7 +52,9 @@ test.describe("visual regression — critical screens", () => {
 				level: 1,
 			}),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/runs/kitchen-sink matches its baseline", async ({ page }) => {
@@ -57,7 +65,9 @@ test.describe("visual regression — critical screens", () => {
 				level: 1,
 			}),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/admin/kitchen-sink matches its baseline", async ({ page }) => {
@@ -65,7 +75,9 @@ test.describe("visual regression — critical screens", () => {
 		await expect(
 			page.getByRole("heading", { name: "Admin Kitchen Sink", level: 1 }),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 
 	test("/reference/kitchen-sink matches its baseline", async ({ page }) => {
@@ -73,6 +85,8 @@ test.describe("visual regression — critical screens", () => {
 		await expect(
 			page.getByRole("heading", { name: "Reference Kitchen Sink", level: 1 }),
 		).toBeVisible();
-		await expect(page).toHaveScreenshot();
+		await expect(page).toHaveScreenshot({
+			mask: [page.locator('[data-slot="sidebar-footer"]')],
+		});
 	});
 });

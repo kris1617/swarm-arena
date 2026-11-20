@@ -308,20 +308,20 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [x] 2.1 New spec passes against its freshly-generated baseline (Docker unavailable; generated via locally-installed Playwright chromium instead, per mismatch decision)
-- [x] 2.2 Full E2E suite still passes: `npx playwright test`
-- [x] 2.3 Typecheck/lint still pass
+- [x] 2.1 New spec passes against its freshly-generated baseline (Docker unavailable; generated via locally-installed Playwright chromium instead, per mismatch decision) — 5f49ef1
+- [x] 2.2 Full E2E suite still passes: `npx playwright test` — 5f49ef1
+- [x] 2.3 Typecheck/lint still pass — 5f49ef1
 
 #### Manual
 
-- [x] 2.4 Spot-check 2-3 generated baseline PNGs visually
+- [x] 2.4 Spot-check 2-3 generated baseline PNGs visually — 5f49ef1
 
 ### Phase 3: Wire the screenshot spec into CI (deploy-blocking)
 
 #### Automated
 
-- [ ] 3.1 A deliberately broken baseline fails the new spec locally
-- [ ] 3.2 Full CI `test` job steps run clean end-to-end locally in sequence
+- [x] 3.1 A deliberately broken baseline fails the new spec locally (re-run twice: once with the original full-page screenshots, which surfaced a real identity-leak issue; once after masking `[data-slot="sidebar-footer"]`, confirmed still catches regressions)
+- [x] 3.2 Full CI `test` job steps run clean end-to-end locally in sequence
 
 #### Manual
 
