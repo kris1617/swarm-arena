@@ -106,7 +106,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | done |
 | S-51 | color-palette-redesign | User sees a researched, higher-energy color palette applied across the whole app instead of today's low-energy dark-purple scheme | —              | FR-032, MS-01                                          | done |
 | S-52 | reference-pages-content-update | User reads reference-page content (storyline, parameters, population-lifecycle, scoring) that accurately reflects the per-tribe, predator-tribe, and area-aware mechanics shipped since M-10 | —              | FR-034, MS-02                                           | done |
-| S-53 | login-page-oauth-polish | User sees a modern provider-style login screen and, if the redirect gap is real, visible browser navigation during the GitHub OAuth flow | —              | FR-031, MS-03                                           | ready |
+| S-53 | login-page-oauth-polish | User sees a modern provider-style login screen and, if the redirect gap is real, visible browser navigation during the GitHub OAuth flow | —              | FR-031, MS-03                                           | planning |
 
 ## Streams
 
@@ -949,7 +949,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Why the browser address bar doesn't visibly show navigation during the OAuth redirect — is this expected NextAuth v5 behavior (e.g. a client-side transition masking a same-tab redirect) or a real UX gap — Owner: team (via `/10x-research` against `src/server/auth/config.ts` and the sign-in flow). Block: no — research can characterize the behavior without blocking planning.
 - **Risk:** Low — visual/UX polish on an existing, working auth flow; no provider change (still GitHub OAuth, not an actual switch to Google/Azure).
-- **Status:** ready
+- **Status:** planning
 
 ## Backlog Handoff
 
