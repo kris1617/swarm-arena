@@ -39,5 +39,5 @@
 		".next/types/**/*.ts",
 		".next/dev/types/**/*.ts"
 	],
-	"exclude": ["node_modules", "generated", "tools"]
+	"exclude": ["node_modules", "generated", "tools", "packages"]
 }
