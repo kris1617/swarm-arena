@@ -125,8 +125,8 @@ Give a user a real delete path for their own completed (`stopped`) or paused (`s
 
 #### Automated
 
-- [ ] 2.1 `npm run typecheck` passes
-- [ ] 2.2 `npm run check` passes
+- [x] 2.1 `npm run typecheck` passes
+- [x] 2.2 `npm run check` passes
 
 ### Phase 3: Dashboard UI
 

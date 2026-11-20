@@ -7,6 +7,7 @@ import {
 	createTRPCRouter,
 	protectedProcedure,
 } from "~/server/api/trpc";
+import { isEffectivelyAdmin } from "~/server/auth/elevation";
 import type { db as dbSingleton } from "~/server/db";
 import { adminSettings, simulationRuns } from "~/server/db/schema";
 import {
@@ -1882,6 +1883,50 @@ export const simulationRouter = createTRPCRouter({
 			}
 
 			return { ok: true };
+		}),
+
+	// simulation-run-delete Phase 2: lets the owning user remove their own
+	// completed (`stopped`) or paused (`saved`) run — hard-delete for an
+	// effective admin, soft-delete (marks `deletedAt`) for everyone else, so
+	// the row still counts toward `insertRunningSimulation`'s rate-limit
+	// recheck by design (see plan.md's Current State Analysis). Loaded via a
+	// plain `eq(id)` lookup, NOT filtered by `deletedAt`, so a repeat delete
+	// of an already soft-deleted row is a no-op success rather than a
+	// misleading "not found" — same idempotent-mutation posture as this
+	// file's other status-transition mutations guard against via their own
+	// status checks.
+	deleteRun: protectedProcedure
+		.input(z.object({ runId: z.number() }))
+		.mutation(async ({ ctx, input }) => {
+			const run = await ctx.db.query.simulationRuns.findFirst({
+				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+			});
+
+			if (!run) {
+				throw new TRPCError({ code: "BAD_REQUEST" });
+			}
+			if (run.userId !== ctx.session.user.id) {
+				throw new TRPCError({ code: "FORBIDDEN" });
+			}
+			if (run.status !== "stopped" && run.status !== "saved") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Only a stopped or saved run can be deleted",
+				});
+			}
+
+			if (isEffectivelyAdmin(ctx.session.user)) {
+				await ctx.db
+					.delete(simulationRuns)
+					.where(eq(simulationRuns.id, input.runId));
+			} else {
+				await ctx.db
+					.update(simulationRuns)
+					.set({ deletedAt: new Date() })
+					.where(eq(simulationRuns.id, input.runId));
+			}
+
+			return { success: true };
 		}),
 
 	// S-04 (FR-002 full): any logged-in user can read the current ranges
