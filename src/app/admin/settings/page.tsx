@@ -17,9 +17,9 @@ export default async function AdminSettingsPage() {
 	}
 
 	return (
-		<main className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
+		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Simulation Parameter Ranges</h1>
 			<AdminSettingsForm />
-		</main>
+		</div>
 	);
 }

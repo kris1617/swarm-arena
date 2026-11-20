@@ -177,14 +177,14 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — b8a7bea
+- [x] 1.2 Lint passes: `npm run check` — b8a7bea
+- [x] 1.3 Full suite still passes: `npm test` — b8a7bea
 
 #### Manual
 
-- [ ] 1.4 /admin/settings has exactly one `<main>` landmark
-- [ ] 1.5 No visual change
+- [x] 1.4 /admin/settings has exactly one `<main>` landmark — verified live (production build, test user elevated to admin): `document.querySelectorAll('main').length` returns 1 (was 2 before the fix). — b8a7bea
+- [x] 1.5 No visual change — page renders identically (heading, parameter fieldsets, inputs) at the same URL. — b8a7bea
 
 ### Phase 2: NumberField widening & adoption
 
