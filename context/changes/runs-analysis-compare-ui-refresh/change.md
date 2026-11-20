@@ -1,7 +1,7 @@
 ---
 change_id: runs-analysis-compare-ui-refresh
 title: Run-analysis and run-comparison views modernization pass
-status: preparing
+status: planned
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null
