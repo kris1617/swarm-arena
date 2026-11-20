@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "~/components/back-link";
 
 export default function StorylinePage() {
 	return (
@@ -37,12 +37,7 @@ export default function StorylinePage() {
 					behavior.
 				</p>
 
-				<Link
-					className="text-foreground hover:text-muted-foreground underline"
-					href="/reference"
-				>
-					← Back to Reference
-				</Link>
+				<BackLink />
 			</div>
 		</div>
 	);

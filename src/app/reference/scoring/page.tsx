@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BackLink } from "~/components/back-link";
+import { LabeledCard } from "~/components/labeled-card";
 
 const FACTORS = [
 	{
@@ -32,17 +34,11 @@ export default function ScoringPage() {
 
 				<div className="flex flex-col gap-3">
 					{FACTORS.map((factor) => (
-						<div
-							className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
-							key={factor.name}
-						>
-							<span className="text-foreground font-semibold">
-								{factor.name}
-							</span>
+						<LabeledCard key={factor.name} title={factor.name}>
 							<span className="text-foreground text-sm">
 								{factor.description}
 							</span>
-						</div>
+						</LabeledCard>
 					))}
 				</div>
 
@@ -67,12 +63,7 @@ export default function ScoringPage() {
 					animation.
 				</p>
 
-				<Link
-					className="text-foreground hover:text-muted-foreground underline"
-					href="/reference"
-				>
-					← Back to Reference
-				</Link>
+				<BackLink />
 			</div>
 		</div>
 	);

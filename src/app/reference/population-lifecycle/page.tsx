@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { BackLink } from "~/components/back-link";
+import { LabeledCard } from "~/components/labeled-card";
 
 const PHASES = [
 	{
@@ -51,26 +52,15 @@ export default function PopulationLifecyclePage() {
 
 				<div className="flex flex-col gap-3">
 					{PHASES.map((phase) => (
-						<div
-							className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
-							key={phase.name}
-						>
-							<span className="text-foreground font-semibold">
-								{phase.name}
-							</span>
+						<LabeledCard key={phase.name} title={phase.name}>
 							<span className="text-foreground text-sm">
 								{phase.description}
 							</span>
-						</div>
+						</LabeledCard>
 					))}
 				</div>
 
-				<Link
-					className="text-foreground hover:text-muted-foreground underline"
-					href="/reference"
-				>
-					← Back to Reference
-				</Link>
+				<BackLink />
 			</div>
 		</div>
 	);

@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { BackLink } from "~/components/back-link";
+import { LabeledCard } from "~/components/labeled-card";
 import {
 	DEFAULT_PARAMETER_RANGES,
 	TOP_LEVEL_RANGED_PARAMETER_NAMES,
@@ -79,30 +80,19 @@ export default function ParametersPage() {
 						const key = name;
 						const range = DEFAULT_PARAMETER_RANGES[key];
 						return (
-							<div
-								className="bg-input flex flex-col gap-1 rounded-2xl px-6 py-4"
-								key={name}
-							>
-								<span className="text-foreground font-semibold">
-									{PARAMETER_LABELS[key]}
-								</span>
+							<LabeledCard key={name} title={PARAMETER_LABELS[key]}>
 								<span className="text-foreground text-sm">
 									{PARAMETER_DESCRIPTIONS[key]}
 								</span>
 								<span className="text-muted-foreground text-xs">
 									Range: {range.min}–{range.max} · Default: {range.default}
 								</span>
-							</div>
+							</LabeledCard>
 						);
 					})}
 				</div>
 
-				<Link
-					className="text-foreground hover:text-muted-foreground underline"
-					href="/reference"
-				>
-					← Back to Reference
-				</Link>
+				<BackLink />
 			</div>
 		</div>
 	);

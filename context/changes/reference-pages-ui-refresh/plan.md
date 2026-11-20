@@ -173,14 +173,14 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on touched files stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 0493d3a
+- [x] 1.2 Lint passes: `npm run check` — 0493d3a
+- [x] 1.3 Full suite still passes: `npm test` — 0493d3a
+- [x] 1.4 Hardcoded-value scan on touched files stays at 0 hits — 0493d3a
 
 #### Manual
 
-- [ ] 1.5 All 4 pages render identically to before (cards and back-links)
+- [x] 1.5 All 4 pages render identically to before (cards and back-links) — verified live (production build): all 16 parameters cards (with range/default line), all 5 population-lifecycle phase cards (2-line variant), all 4 scoring factor cards, and all 4 BackLink instances render correctly with no visual change. — 0493d3a
 
 ### Phase 2: Scoring content fix
 
