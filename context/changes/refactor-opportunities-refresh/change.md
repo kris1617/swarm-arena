@@ -1,7 +1,7 @@
 ---
 change_id: refactor-opportunities-refresh
 title: Refactor opportunities refresh for sim-engine (10xArchitect M4L4 artifact)
-status: planned
+status: plan_reviewed
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null

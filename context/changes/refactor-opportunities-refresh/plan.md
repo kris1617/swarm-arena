@@ -17,7 +17,7 @@
 
 **`src/server/simulation/server-run-registry.test.ts`**
 - **Intent**: Prove the current (still-duplicated) retry-write behavior for all 3 branches before touching production code, per the "add a test before you touch" rule. Each test forces the DB write to fail once via the existing `sabotagingDb` pattern, confirms the `*Written` flag stays `false` after the failure (so the next qualifying tick will retry), then lets the write succeed and confirms the flag latches `true`.
-- **Contract**: 3 new test cases, one per branch (`wasEverThrottled`, `wasEverFoodImbalanced`, `wasEverPredatorTribeImbalanced`), each driving a real server-owned run through the registry's tick path with a condition that trips the branch (throttled tick / food-imbalanced tick / predator-tribe-imbalanced tick), using a `sabotagingDb` proxy that fails the specific `simulationRuns` update once, matching the existing fixture's shape in `simulation.test.ts:899-930`.
+- **Contract**: 3 new test cases, one per branch (`wasEverThrottled`, `wasEverFoodImbalanced`, `wasEverPredatorTribeImbalanced`). Trigger the target condition via `vi.spyOn(singleRunLifecycle, "computeSingleRunTick")` (an established pattern already used repeatedly in this same test file, e.g. lines 276, 402, 2614) mocked to return a result with the relevant `wasXThisTick` flag `true` — simpler and more deterministic than constructing simulation parameters that organically trigger each condition. Combine with a `sabotagingDb` proxy that fails the specific `simulationRuns` update once, matching the existing fixture's shape in `simulation.test.ts:899-930`.
 
 ### Success Criteria:
 
