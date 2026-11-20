@@ -166,11 +166,11 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — fc33cf9
+- [x] 2.2 Lint passes: `npm run check` — fc33cf9
+- [x] 2.3 Full suite still passes: `npm test` — fc33cf9
 
 #### Manual
 
-- [ ] 2.4 All states visible at `/leaderboard/kitchen-sink` (6 real + 1 explicit N/A), screenshot at desktop and one mobile width
-- [ ] 2.5 className-variant section shows top-3-bordered row next to plain row, confirming the override composes
+- [x] 2.4 All states visible at `/leaderboard/kitchen-sink` (6 real + 1 explicit N/A), screenshot at desktop and one mobile width — verified live (production build): default/hover RunRow, className-variant comparison, focus-visible button, explicit disabled-N/A note, error/empty cards, and loading Skeleton (2 skeleton elements confirmed) all render in one screen. — fc33cf9
+- [x] 2.5 className-variant section shows top-3-bordered row next to plain row, confirming the override composes — verified via DOM query: the 3rd row carries `...rounded-full px-4 py-2 border-primary border-2`, the adjacent row carries only the base string. Focus-visible ring on the action button also confirmed resolving to the `--ring` token (`oklab(0.749996 ...)`), matching dashboard's own confirmation. — fc33cf9
