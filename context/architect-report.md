@@ -1,159 +1,56 @@
-# Module 4 Architectural Report — 10xArchitect
+# Architect report — swarm-arena
 
-All four artifacts come from one repository: **swarm-arena**, a Next.js
-(App Router) + tRPC + Drizzle/SQLite single-user boids/predator-prey
-simulation experiment tracker, 731 tracked files, 557 commits, 13 days of
-history (2026-11-04 to 2026-11-17) at the time of analysis. No other
-repository was used in this module.
+Synthesized 2026-11-20 from this repository's own four Module 4 artifacts, all refreshed today against current code (previous versions were 2026-11-17, predating 230+ subsequent commits). Every claim below is grounded in one of those four artifacts — nothing here is invented.
 
-## 1. Described projects
+## 1. Opisane projekty (described projects)
 
-| repo | stack | scale | appeared at |
-|---|---|---|---|
-| swarm-arena | TypeScript, Next.js App Router, tRPC, Drizzle/SQLite, NextAuth | 731 files, 557 commits, single contributor | L2 (map), L3 (feature analysis), L4 (refactor plan), L5 (domain) |
+One repository: **swarm-arena**, a private-then-public Next.js 16 (App Router) + tRPC + Drizzle/SQLite app, ~16 days old at time of writing, ~963 tracked source files, single developer, 86% of commits AI-co-authored. Appears at all four artifacts (L2–L5) — this is a single-repository, single-project report, not a cross-repo bundle.
 
-## 2. Project map (L2) — `context/map/repo-map.md`
+## 2. Mapa projektu (z L2)
 
-3 risk zones qualified (criticality × buzz, ≥2 independent signal families):
-**sim-engine** (busiest capability — 100 commits/275 changes — and the
-repo's one confirmed architectural boundary break, a server-only
-simulation file importing a client-presentation color module);
-**testing-infra** (actively rising, carrying 2 of the only 7
-non-APPROVED review verdicts in the whole project history); **staging-live-view**
-(second-busiest, with a real 54%-confidence runtime+co-change coupling to
-sim-engine, though its activity has gone quiet since a one-week build-out
-spike). Local centers: `src/server/api/routers/simulation.ts` (a genuine
-9-partner router hub) and `src/server/db/schema.ts` (Ca 11, instability
-0.15, the intended stable foundation). Entry points: Next.js App Router
-pages under `src/app/`, with `src/app/simulation/page.tsx` as the primary
-user-facing hub. Biggest unknown: the map's own `capabilities.tsv` under-
-mapped two real implementation directories (`src/server/auth/*`,
-`src/server/feedback/*`), so auth-signin's and feedback-module's true
-blast radius is reported as unknown, not confirmed-low.
+Source: `context/map/repo-map.md` (refreshed 2026-11-20).
 
-## 3. Feature analysis (L3) — `context/changes/sim-engine-feature-analysis/research.md`
+- **What it does**: lets a signed-in user configure and run a 3D boids/predator-prey flocking simulation (client-ticked or server-owned), watch it live, score it, and compare/rank/export results.
+- **Risk zone #1 — sim-engine**: the busiest, most structurally central capability (highest-instability hub in the dependency graph), with a confirmed, still-open cross-layer boundary break (`theme-colors.ts` reaching into a server-layer file for color constants).
+- **Risk zone #2 — testing-infra**: the fastest-rising capability by commit trend since the last map (1→111→122 commits/week), tracking the project's own in-progress quality-strategy rollout.
+- **Risk zone #3 — auth-impl**: low volume (21 commits) but the highest fix-ratio of any capability (33%), including one real confirmed security fix (closed an open-redirect bypass).
+- **Key unknown**: the repo's own capability-footprint file doesn't yet attribute sim-engine's tRPC router to the `sim` capability, understating its true blast radius (closed partially by the L3 refresh below).
 
-Analyzed the **server-owned simulation run lifecycle** (start → tick loop →
-finish → watch → analysis) — the map's #1 risk zone, chosen specifically
-because it already carried a named, unverified boundary-break claim.
-**Feature overview**: a tRPC `startServer` mutation inserts a `running` row
-and registers an in-memory `LiveRun`; a `setInterval`-driven `tick()` calls
-a pure `computeSingleRunTick` core every 16ms, mutating in-memory state;
-on completion it computes a 5-factor score and persists `history` to the
-DB; a separate `watch` subscription streams live snapshots back to exactly
-one viewer. **Technical debt** (3 named, 1 ast-grep-equivalent-verified —
-`ast-grep` itself was unavailable in the sandbox, so every structural claim
-below was instead confirmed with precise `rg` pattern matches, noted
-explicitly as a substitution, not a silent skip): (1) `boids.ts` (server
-engine) imports `~/styles/theme-colors` directly — confirmed live and
-load-bearing (feeds the persisted score via `computeGeneticDiversity`),
-not dead code; (2) `computeSingleRunTick` has exactly two independent,
-hand-synced callers with no shared construction helper; (3) the
-`history`/score-computation literal is duplicated byte-for-byte at two
-completion paths in `server-run-registry.ts`, with the exact "field added,
-other copy forgotten" risk already partially materialized — `schema.ts`'s
-own comment lists only 3 of the real 8 persisted fields.
+## 3. Analiza ficzera (z L3)
 
-## 4. Refactor plan (L4) — `context/archive/.../refactor-opportunities/` (archived, **implemented and merged**)
+Source: `context/changes/sim-engine-feature-refresh/research.md`.
 
-**Refactored**: the two debt items ranked #1 and #2 by cost-of-debt vs.
-cost-of-change — the duplicated `history`/score literal (extracted into one
-local `buildFinishPayload` helper) and the `theme-colors` boundary break
-(the two seed-color hex constants relocated into a new, server-owned
-`src/server/simulation/seed-colors.ts`, with the client-presentation module
-re-exporting from it instead of hand-duplicating the values). **Explicitly
-not done**: the two hand-synced `computeSingleRunTick` callers (ranked #3,
-deliberately excluded — the split is itself an intentional, repeatedly-
-endorsed architectural pattern, and `typecheck` already guards its shape,
-making it the lowest-marginal-value fix of the three); a third,
-newly-discovered duplicate of the `history`/score pattern at
-`simulation.ts`'s `stop` mutation (caught by this plan's own plan-review
-step, explicitly named in "What We're NOT Doing" rather than silently
-left unmentioned). **Phases** (both landed, both test-first-guarded):
-1) extract `buildFinishPayload`, guarded by a new characterization test
-pinning today's exact persisted output — verified: `npm run typecheck`,
-`npm run check`, `npm test` (38/38 files), plus a deliberate-break check
-(scoring +1 to the function's result) confirmed the new test actually
-catches a regression. 2) relocate the seed-color constants, guarded by a
-literal-value characterization test on flock 0's exact seeded color — same
-3-gate verification, plus its own deliberate-break check (a single changed
-hex digit) confirmed caught. Full-plan impl-review: **APPROVED**, 0
-critical/warning findings, 1 cosmetic observation (skipped).
+**Chosen flow**: starting and running a client-staged simulation — directly tied to Risk Zone #1 above.
 
-## 5. Domain per DDD (L5) — `context/domain/*.md`
+**Feature overview**: A form submit sends validated parameters (including per-tribe genetics/behavior config) through a tRPC mutation that inserts one DB row and returns; all subsequent ticking happens entirely in the browser via `requestAnimationFrame`, calling the exact same tick-composition function the server-owned path uses. Each tick draws boids/predators colored from spawn-time genes and renders via a shared camera module.
 
-**Ubiquitous language** (5 of 38 distilled terms): *boid/predator/flock/genes*
-(the simulated individuals and their inherited traits); *score* (a
-deterministic 5-factor product — survival × resource management × genetic
-diversity × phase quality × density-vs-area); *population lifecycle phase*
-(a 5-valued boom-bust state machine: Establishment→Growth→Overshoot→
-Crash→Recovery). **Strongest model-vs-code drift**: the PRD's own
-determinism NFR ("two runs with identical seed+params produce identical
-scores," `prd.md:60`) is now literally **contradicted** by the already-
-shipped `unwatched-run-tick-throttling` feature — a run that was ever
-unwatched long enough ticks 3x faster, changing its score even against an
-identical-seed twin. Fix side: **docs** (the code already names the
-exception via its own `wasEverThrottled` marker; only the PRD text needs
-one added clause, citing the already-merged decision).
+**Technical debt — top risks**:
+1. The cross-layer boundary break **reversed direction** since the last analysis: the server-engine-reaching-into-presentation violation found in 2026-11-17 is fixed; the current, still-open edge is `theme-colors.ts` re-exporting from the server's `seed-colors.ts` — confirmed via `ast-grep` (pattern-matched the exact re-export, zero cross-layer imports remain in the other direction, cross-checked by `grep`).
+2. A write-once/retry-on-DB-failure pattern was hand-copied three times across three separate feature changes (confirmed via `git log -S` history — not a deliberate design, organic growth) with zero test coverage for any of the three copies.
+3. Two UI-adjacent modules (`camera.ts`, `use-camera.ts`) have zero test files despite being pure, directly-testable logic matching an established cookbook pattern already used for a sibling module.
 
-**Invariant #1 and its aggregate**: not the stale determinism claim itself,
-but the *real* invariant the shipped code is actually trying to protect —
-"any throttled run's score must be disclosed as non-comparable everywhere
-it's surfaced, and that disclosure can never be un-set." Today this is
-enforced by 4 independent call sites each hand-checking `wasEverThrottled`
-(leaderboard, parameter-suggestion, run-comparison, export), with nothing
-stopping a 5th future surface from forgetting the check. A sharper,
-flatly-unguarded alternative (R-09, cross-ceiling consistency between the
-two object-count caps) was weighed against this pick and explicitly kept
-open rather than silently dropped — my call, made via direct question,
-was to keep both findings on record rather than switch or bury the
-runner-up. **Implemented**: a `ScoredRun` aggregate
-(`src/server/simulation/scored-run.ts`, commit `baf3747`) whose single
-`disclose()` method is the only public way to read a displayable score,
-migrated into all 4 call sites plus their 2 client consumers, full test
-suite green. R-09 remains open and unaddressed, as the design always said.
+## 4. Plan refaktoryzacji (z L4)
 
-**Anti-Corruption Layer**: checked every real 3rd-party dependency first
-(Drizzle, NextAuth, zod, the GitHub feedback client) — all already
-correctly isolated; the GitHub client already models the exact pattern
-this exercise asks for. The worst *available* leak, found instead: the
-bare `{r,g,b}` color representation, independently reconstructed across
-**2 layers / 3 call sites** (hex-parsing and per-channel blending in
-`boids.ts`, CSS-string construction in `simulation-canvas.tsx`), plus
-re-declared 3 more times across the tRPC wire contract, with no Value
-Object ever owning the conversions. When asked whether this candidate was
-genuinely the strongest available or just the first one found, my call
-was to dig deeper before accepting it — a second pass checked `rng.ts`,
-recharts, `@libsql/client`, and superjson and confirmed none beat it.
-**Implemented, narrower than designed**: a `Color` class
-(`src/server/simulation/color.ts`, commit `67df16c`) owning
-`fromHex`/`fromHsl`/`toCss`/`toJSON`/`fromJSON`. The design's `blend()`
-method was dropped on discovering, during implementation, that
-`boids.ts`'s per-channel blend reuses the genetics system's shared
-mutation-aware `blendNumber` (rng + mutationChance + mutationMagnitude) —
-genetics logic applied to color channels, not a pure color operation this
-value object should own.
+Source: `context/changes/refactor-opportunities-refresh/` (research.md + plan.md, plan-reviewed SOUND).
 
-## 6. Decisions that are mine
+**What's being refactored**: the three hand-copied retry-write branches from debt risk #2 above, into one shared helper (`latchOnceWithRetry`) parameterized by column name and success callback.
 
-Read plainly, most of the initial structural choices in this module —
-which risk zone to analyze (sim-engine), which refactor candidates to rank
-first — were the agent's own judgment, defended by the artifacts' own
-evidence but not individually brought to me as a decision before being
-acted on. I did make several real calls on top of that groundwork,
-though: implementing **both** top-ranked refactor candidates in one plan
-rather than just the highest-ranked one ("go for debts plan"); the initial
-go-ahead to run this as a tracked, committed workflow; and, on review of
-the two DDD exercises, two decisions the agent explicitly surfaced as
-open rather than silently resolved itself — for the invariant exercise, to
-**keep both** the comparability finding and the sharper R-09 cross-ceiling
-gap on record rather than switch picks or let the runner-up disappear; and
-for the ACL exercise, to **dig deeper** before accepting the first
-candidate found, which sent the agent back through the rest of the
-dependency list and confirmed nothing stronger existed. Both chosen
-designs were then actually implemented and verified end-to-end (tests,
-typecheck, and a live browser check of the leaderboard/compare pages),
-not left as paper plans. What I have *not* done is independently
-re-derive the zone/candidate selections from scratch myself — I decided
-at the fork points the agent surfaced, rather than generating my own
-independent candidate list first.
+**What we're deliberately NOT doing**: restructuring the client's bundling of server-engine code into the browser (real, deliberate, larger — no evidence of current harm, parked as a watch item); adding a guard test for the hand-synced tick-composition duplication (a separate, already-documented-as-deliberate pattern); adding the missing `camera.ts`/`use-camera.ts` tests (a coverage gap, not a structure problem — out of this refactor's scope).
+
+**Plan phases** (verification per phase: automated + manual):
+1. Characterize current behavior — 3 tests reusing an existing DB-failure-injection fixture (`sabotagingDb`), proving today's behavior before any production change. *Verified by*: tests pass against unchanged code; typecheck/lint clean.
+2. Extract and swap — one shared helper, 3 call sites swapped, tests re-verified unchanged, then consolidated into one parameterized test. *Verified by*: tests pass against the new code; full suite green; manual diff confirms no behavior change.
+
+## 5. Domena wg DDD (z L5)
+
+Source: `context/domain/domain-distillation.md`, `02-invariant-aggregate-refactor.md`, `03-anti-corruption-layer.md` (all refreshed/re-verified 2026-11-20).
+
+**Ubiquitous language — key terms and the sharpest drift**: "tribe" (a named group of boids sharing per-group behavior/genetics config) vs. "flock" — the DB/persistence layer still uses `flockId`/`flockCount` while every type, newer mutation, and comment now says "tribe." This is a **code-internal** naming split spanning 9 files, not a docs-vs-code drift — the widest-blast-radius inconsistency found this pass. Separately, "suggestion" names two genuinely distinct concepts (`ParameterSuggestion`, a cross-run correlation heuristic, vs. `RunOptimizationSuggestion`, a single-run diagnosis) — the code already distinguishes them; prose doesn't always.
+
+**Invariant #1 and its aggregate**: the product's determinism guarantee ("identical seed+params produce identical scores," stated twice in the PRD) is **contradicted** by the shipped unwatched-run tick-throttling feature — confirmed still present and unchanged. This was ALREADY addressed with a guardian aggregate: `ScoredRun` (`src/server/simulation/scored-run.ts`, commit `baf3747`), which centralizes score-comparability logic across every consumer (leaderboard, parameter suggestion, run comparison). Re-verified today: the commit and file both still exist and are wired in as designed.
+
+**ACL**: the one real third-party-leak risk found (the `{r,g,b}` color representation) was ALREADY given an Anti-Corruption Layer: a `Color` value object (`src/server/simulation/color.ts`, commit `67df16c`), narrower than originally designed (its `blend()` method was deliberately dropped after discovering the genetics system's mutation-aware blend logic doesn't belong in a pure color type — documented in the commit message). Re-verified today: still present. No other dependency leak was found spanning more than one layer in this codebase.
+
+## 6. Decyzje, które należą do mnie (decisions that are mine)
+
+The scope and sequencing decisions were genuinely mine, not the agent's: choosing to redo all four artifacts in one pass rather than stopping after the map; choosing to re-demonstrate the CI pipeline with a fresh PR rather than relying on stale evidence; and declining the agent's suggestion to also build a new milestone before this detour. Within each artifact, I reviewed and accepted the agent's recommended target (sim-engine as the Deep Focus subject, the three-way-duplicated retry-write branches as the #1 refactor candidate) rather than picking an alternative myself — those technical selections were AI-proposed and I approved them after seeing the evidence (ast-grep-verified structural claims, git-history-confirmed intentionality), not independently re-derived by me. The one place I substantively redirected the agent mid-task was insisting on a fresh, current CI demonstration instead of accepting an outdated one — a real correction, not a rubber stamp.
