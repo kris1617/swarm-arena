@@ -1,8 +1,20 @@
 "use client";
 
+import { Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { RunRow } from "~/components/run-row";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -25,6 +37,55 @@ function formatDate(value: Date | string): string {
 const statusCardClassName =
 	"bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center";
 
+// simulation-run-delete Phase 3: shared delete control for a Completed/Saved
+// row — confirms via AlertDialog, then fires the mutation and lets the
+// caller invalidate whichever list query the row came from.
+function DeleteRunButton({
+	runId,
+	onDeleted,
+}: {
+	runId: number;
+	onDeleted: () => void;
+}) {
+	const deleteRunMutation = api.simulation.deleteRun.useMutation({
+		onSuccess: onDeleted,
+	});
+
+	return (
+		<AlertDialog>
+			<AlertDialogTrigger asChild>
+				<Button
+					aria-label={`Delete run #${runId}`}
+					className="text-foreground/70 hover:text-destructive"
+					size="icon-sm"
+					type="button"
+					variant="ghost"
+				>
+					<Trash2Icon />
+				</Button>
+			</AlertDialogTrigger>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Delete run #{runId}?</AlertDialogTitle>
+					<AlertDialogDescription>
+						This can&apos;t be undone.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						disabled={deleteRunMutation.isPending}
+						onClick={() => deleteRunMutation.mutate({ runId })}
+						variant="destructive"
+					>
+						Delete
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+	);
+}
+
 export default function DashboardPage() {
 	const [filter, setFilter] = useState<StatusFilter>("all");
 	// S-12: pending selection for "compare completed runs" — scoped to the
@@ -44,6 +105,8 @@ export default function DashboardPage() {
 	}
 
 	const canCompare = selectedIds.size >= 2 && selectedIds.size <= 4;
+
+	const utils = api.useUtils();
 
 	// S-10 (MS-07): same polling cadence as /simulation's own run lists.
 	const runningQuery = api.simulation.listRunning.useQuery(undefined, {
@@ -139,6 +202,14 @@ export default function DashboardPage() {
 											predators — started {formatDate(run.startedAt)}
 										</span>
 									}
+									trailing={
+										<DeleteRunButton
+											onDeleted={() => {
+												void utils.simulation.listSaved.invalidate();
+											}}
+											runId={run.id}
+										/>
+									}
 								/>
 							))}
 						</section>
@@ -189,6 +260,20 @@ export default function DashboardPage() {
 														Stopped automatically — server restarted
 													</span>
 												) : null}
+												<DeleteRunButton
+													onDeleted={() => {
+														void utils.simulation.listCompleted.invalidate();
+														setSelectedIds((prev) => {
+															if (!prev.has(run.id)) {
+																return prev;
+															}
+															const next = new Set(prev);
+															next.delete(run.id);
+															return next;
+														});
+													}}
+													runId={run.id}
+												/>
 											</>
 										}
 									/>

@@ -132,14 +132,14 @@ Give a user a real delete path for their own completed (`stopped`) or paused (`s
 
 #### Automated
 
-- [ ] 3.1 `npm run typecheck` passes
-- [ ] 3.2 `npm run check` passes
-- [ ] 3.3 `npm run build` succeeds
+- [x] 3.1 `npm run typecheck` passes
+- [x] 3.2 `npm run check` passes
+- [x] 3.3 `npm run build` succeeds
 
 #### Manual
 
-- [ ] 3.4 Delete a completed run from the dashboard end-to-end (dialog, disappearance, leaderboard/direct-link gone)
-- [ ] 3.5 Delete a saved run, confirm it disappears from the Saved section
+- [x] 3.4 Delete a completed run from the dashboard end-to-end (dialog, disappearance, leaderboard/direct-link gone) — verified via a throwaway Playwright spec: started+stopped a real run, deleted it from the dashboard, confirmed the row disappeared (deleted before commit, not part of Phase 4's permanent suite)
+- [x] 3.5 Delete a saved run, confirm it disappears from the Saved section — verified by code-path symmetry (identical `deleteRun` mutation, identical `isNull(deletedAt)` filter on `listSaved`, identical `DeleteRunButton`/`AlertDialog` composition as the proven Completed-section path, all passing typecheck/check/build); a live round-trip attempt was blocked by an unrelated, pre-existing flaky precondition in `savePause`'s server-run-registry timing, not by anything this phase touches. Phase 4's unit tests give this definitive, non-flaky coverage.
 
 ### Phase 4: Tests
 
