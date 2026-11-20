@@ -179,15 +179,15 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on the touched file stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 6eaa4db
+- [x] 1.2 Lint passes: `npm run check` — 6eaa4db
+- [x] 1.3 Full suite still passes: `npm test` — 6eaa4db
+- [x] 1.4 Hardcoded-value scan on the touched file stays at 0 hits — 6eaa4db
 
 #### Manual
 
-- [ ] 1.5 /reference/parameters renders 3 sections plus toggles, no regression on existing 16 cards
-- [ ] 1.6 Spot-checked range/default values match the plan's table
+- [x] 1.5 /reference/parameters renders 3 sections plus toggles, no regression on existing 16 cards — verified live (production build): all 16 top-level cards unchanged, new "Per-tribe boid parameters" (9 cards), "Per-tribe predator parameters" (5 cards), and "Per-tribe toggles" (2 cards) sections all render correctly. — 6eaa4db
+- [x] 1.6 Spot-checked range/default values match the plan's table — verified all 14 ranged cards' Range/Default lines exactly match the plan's table (e.g. neighborRadius 1–500/70, matePreference 0–1/0.5 in both sections, maxSpeed 1–300/55). — 6eaa4db
 
 ### Phase 2: Scoring page genetic-diversity caveat
 
