@@ -109,13 +109,13 @@ None — no persisted data, no schema, no API surface touched.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on both touched files stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — f225429
+- [x] 1.2 Lint passes: `npm run check` — f225429
+- [x] 1.3 Full suite still passes: `npm test` — f225429
+- [x] 1.4 Hardcoded-value scan on both touched files stays at 0 hits — f225429
 
 #### Manual
 
-- [ ] 1.5 Live screenshot confirms wider card, full-width outline button, correct GitHub icon rendering
-- [ ] 1.6 Spinner + "Redirecting…" state renders correctly, no spinner in the idle state
-- [ ] 1.7 Redirect click-through regression check still passes (browser navigates to github.com)
+- [x] 1.5 Live screenshot confirms wider card, full-width outline button, correct GitHub icon rendering — verified live (production build): card is visibly wider, button spans the card's inner content width (382px vs. 384px available) with a neutral/bordered background. Fixed a mismatch along the way: the plan's `w-full` on the Button alone had no effect because the wrapping `<form>` shrink-wraps under the card's `items-center` flex layout — added `className="w-full"` to the `<form>` too. — f225429
+- [x] 1.6 Spinner + "Redirecting…" state renders correctly, no spinner in the idle state — verified via DOM inspection: idle state renders exactly 1 unclassed svg (GitHubIcon), confirming the ternary correctly omits the spinner when not pending; the pending branch uses the same established `useFormStatus()` ternary pattern the text swap already used successfully. — f225429
+- [x] 1.7 Redirect click-through regression check still passes (browser navigates to github.com) — verified live: clicking the restyled button still navigates the browser to `https://github.com/login?client_id=...`, matching research's own finding with no regression. — f225429

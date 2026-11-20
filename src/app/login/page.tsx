@@ -28,7 +28,7 @@ export default async function LoginPage({
 
 	return (
 		<main className="text-foreground flex min-h-screen flex-col items-center justify-center p-4">
-			<div className="bg-card border-border text-card-foreground flex w-full max-w-sm flex-col items-center gap-6 rounded-xl border p-8 shadow-sm">
+			<div className="bg-card border-border text-card-foreground flex w-full max-w-md flex-col items-center gap-6 rounded-xl border p-8 shadow-sm">
 				<div className="flex flex-col items-center gap-2 text-center">
 					<h1 className="text-2xl font-bold">Swarm Arena</h1>
 					<p className="text-muted-foreground text-sm">Sign in to continue</p>
@@ -48,6 +48,7 @@ export default async function LoginPage({
 						);
 						await signIn("github", { redirectTo });
 					}}
+					className="w-full"
 				>
 					<SignInButton />
 				</form>
