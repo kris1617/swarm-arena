@@ -19,6 +19,7 @@ import {
 	createInitialPredators,
 	ENERGY_MAX,
 	type FlockWeights,
+	type FoodState,
 	inheritGenes,
 	MATE_DISTANCE_RADIUS,
 	MATURITY_AGE_SECONDS,
@@ -1891,6 +1892,91 @@ describe("predator-prey dynamics", () => {
 			12 - FOOD_ITEM_DISPLAY_VALUE,
 			10,
 		);
+	});
+
+	// lifecycle-stage-color-fade Phase 1: a surviving food item's age is the
+	// fade signal the rendering layer consumes — these three tests drive
+	// applyHunger across real-dt ticks rather than checking a single-call
+	// shape, per this phase's own cross-tick-persistence lesson.
+	it("ages a surviving food item by exactly dtSeconds per tick, across multiple real-dt ticks", () => {
+		const dtSeconds = 0.25;
+		const baseParams = {
+			foodRegenRate: 0,
+			worldSize: WORLD_SIZE,
+			rng: createRng(1),
+			otherEntityCount: 0,
+			maxObjectCount: 500,
+		};
+		// Far from any boid (none exist here) so it's never eaten — isolates
+		// the age increment from the eating path.
+		const firstTick = applyHunger(
+			[],
+			dtSeconds,
+			{
+				foodStock: 0,
+				foodItems: [{ x: 0, y: 0, z: 0, age: 0 }],
+				foodSpawnRemainder: 0,
+			},
+			baseParams,
+		);
+		expect(firstTick.foodItems[0]?.age).toBeCloseTo(dtSeconds, 10);
+
+		const secondTick = applyHunger(
+			[],
+			dtSeconds,
+			{
+				foodStock: firstTick.foodStock,
+				foodItems: firstTick.foodItems,
+				foodSpawnRemainder: firstTick.foodSpawnRemainder,
+			},
+			baseParams,
+		);
+		// Hand-computed from the oracle (dtSeconds accumulated across 2
+		// ticks), not mirrored from applyHunger's own running total.
+		expect(secondTick.foodItems[0]?.age).toBeCloseTo(dtSeconds + dtSeconds, 10);
+	});
+
+	it("a newly spawned item starts at age: 0 in the same tick it spawns, never pre-aged", () => {
+		const result = applyHunger(
+			[],
+			1,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			{
+				foodRegenRate: 12,
+				worldSize: WORLD_SIZE,
+				rng: createRng(9),
+				otherEntityCount: 0,
+				maxObjectCount: 500,
+			},
+		);
+
+		expect(result.foodItems).toHaveLength(1);
+		expect(result.foodItems[0]?.age).toBe(0);
+	});
+
+	it("a food item with no age key at all (legacy-shaped fixture) ages from 0 without NaN or throwing", () => {
+		const dtSeconds = 0.5;
+		// Deliberately constructed without `age` — a pre-change saved run's
+		// shape, which TypeScript's optional field permits and the `?? 0`
+		// fallback must handle at runtime.
+		const legacyItem = { x: 0, y: 0, z: 0 } as FoodState;
+
+		expect(() => {
+			const result = applyHunger(
+				[],
+				dtSeconds,
+				{ foodStock: 0, foodItems: [legacyItem], foodSpawnRemainder: 0 },
+				{
+					foodRegenRate: 0,
+					worldSize: WORLD_SIZE,
+					rng: createRng(1),
+					otherEntityCount: 0,
+					maxObjectCount: 500,
+				},
+			);
+			expect(result.foodItems[0]?.age).toBe(dtSeconds);
+			expect(result.foodItems[0]?.age).not.toBeNaN();
+		}).not.toThrow();
 	});
 
 	// impl-review F2: FOOD_ENERGY_BOOST's clamp to ENERGY_MAX had no pinning

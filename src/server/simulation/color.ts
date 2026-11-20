@@ -22,6 +22,12 @@
 
 export type ColorJSON = { r: number; g: number; b: number };
 
+// lifecycle-stage-color-fade Phase 1: the oracle's gray floor a fully-aged
+// food item fades toward — private, not exported, per the plan's contract
+// (no new exported constant). 0.3 (not 0) keeps a fully-faded item faintly
+// visible rather than invisible against a black background.
+const FADE_GRAY_FLOOR = 0.3;
+
 export class Color {
 	private constructor(
 		readonly r: number,
@@ -103,5 +109,26 @@ export class Color {
 		const dg = a.g - b.g;
 		const db = a.b - b.b;
 		return dr * dr + dg * dg + db * db;
+	}
+
+	// lifecycle-stage-color-fade Phase 1: the ONE shared implementation of
+	// the oracle's lerp(grayFloor, baseColor, ratio) fade formula — all
+	// three draw-call branches (boid/predator/food) fade through this
+	// instead of each replicating the math. Takes/returns plain ColorJSON
+	// (not a Color instance) so a call site that already passes a bare
+	// {r,g,b} straight into colorToCss needs no restructuring beyond
+	// wrapping it through this call first.
+	static fadeTowardGray(base: ColorJSON, ratio: number): ColorJSON {
+		// Defensive clamp, same style as toCss's own channel clamp above —
+		// ratio=1 must return base unchanged, ratio=0 the exact gray floor,
+		// even if a caller passes something out of [0, 1].
+		const clampedRatio = Math.min(1, Math.max(0, ratio));
+		const lerp = (floor: number, channel: number) =>
+			floor + (channel - floor) * clampedRatio;
+		return {
+			r: lerp(FADE_GRAY_FLOOR, base.r),
+			g: lerp(FADE_GRAY_FLOOR, base.g),
+			b: lerp(FADE_GRAY_FLOOR, base.b),
+		};
 	}
 }

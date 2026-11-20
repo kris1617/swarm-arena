@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Color } from "~/server/simulation/color";
+import { Color, type ColorJSON } from "~/server/simulation/color";
 
 describe("Color.fromHex", () => {
 	it("parses a hex string into unit-interval [0,1] RGB", () => {
@@ -50,5 +50,37 @@ describe("Color.toJSON / fromJSON", () => {
 		const json = original.toJSON();
 		const restored = Color.fromJSON(json);
 		expect(restored.toJSON()).toEqual(json);
+	});
+});
+
+describe("Color.fadeTowardGray", () => {
+	// Hand-computed from the oracle's lerp(grayFloor=0.3, base, ratio)
+	// formula, not mirrored from fadeTowardGray's own implementation.
+	const base: ColorJSON = { r: 1, g: 0.5, b: 0 };
+
+	it("returns the base color unchanged at ratio=1", () => {
+		expect(Color.fadeTowardGray(base, 1)).toEqual(base);
+	});
+
+	it("returns the exact {r:0.3,g:0.3,b:0.3} gray floor at ratio=0", () => {
+		expect(Color.fadeTowardGray(base, 0)).toEqual({ r: 0.3, g: 0.3, b: 0.3 });
+	});
+
+	it("returns the exact per-channel midpoint at ratio=0.5", () => {
+		// lerp(0.3, r, 0.5) = 0.3 + (r - 0.3) * 0.5
+		expect(Color.fadeTowardGray(base, 0.5)).toEqual({
+			r: 0.3 + (1 - 0.3) * 0.5,
+			g: 0.3 + (0.5 - 0.3) * 0.5,
+			b: 0.3 + (0 - 0.3) * 0.5,
+		});
+	});
+
+	it("clamps ratio defensively outside [0, 1]", () => {
+		expect(Color.fadeTowardGray(base, 2)).toEqual(base);
+		expect(Color.fadeTowardGray(base, -1)).toEqual({
+			r: 0.3,
+			g: 0.3,
+			b: 0.3,
+		});
 	});
 });

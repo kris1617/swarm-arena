@@ -174,6 +174,13 @@ export type FoodState = {
 	x: number;
 	y: number;
 	z: number;
+	// lifecycle-stage-color-fade Phase 1: age-since-spawn, aged every tick in
+	// applyHunger (fade-only signal — never drives despawn). Optional, same
+	// "pre-change saved run has no such key" backward-compat convention as
+	// applyHunger's own foodItems?/foodSpawnRemainder? params above — a
+	// resumed legacy run's items have no `age` key at all and must age from
+	// a clean baseline via `?? 0`, not throw or produce NaN.
+	age?: number;
 };
 
 // Max magnitude of each initial velocity component.
@@ -1375,7 +1382,15 @@ export function applyHunger(
 	const regenThisTick = params.foodRegenRate * dtSeconds;
 	let nextFoodStock = state.foodStock + regenThisTick;
 	let remainder = state.foodSpawnRemainder + regenThisTick;
-	const spawnedItems: FoodState[] = [...state.foodItems];
+	// lifecycle-stage-color-fade Phase 1: age every surviving item carried
+	// forward from last tick BEFORE this tick's new spawns are appended
+	// below, so a brand-new item never appears pre-aged. `?? 0` is what
+	// lets a pre-change saved run (whose foodItems entries have no `age`
+	// key at all) resume and age from a clean baseline instead of NaN.
+	const spawnedItems: FoodState[] = state.foodItems.map((item) => ({
+		...item,
+		age: (item.age ?? 0) + dtSeconds,
+	}));
 	while (remainder >= FOOD_ITEM_DISPLAY_VALUE) {
 		if (
 			boids.length + params.otherEntityCount + spawnedItems.length >=
@@ -1389,6 +1404,7 @@ export function applyHunger(
 			x: params.rng() * params.worldSize.x,
 			y: params.rng() * params.worldSize.y,
 			z: params.rng() * params.worldSize.z,
+			age: 0,
 		});
 		remainder -= FOOD_ITEM_DISPLAY_VALUE;
 	}
