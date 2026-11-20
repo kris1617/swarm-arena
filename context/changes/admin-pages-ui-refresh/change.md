@@ -1,7 +1,7 @@
 ---
 change_id: admin-pages-ui-refresh
 title: Admin pages modernization pass
-status: implementing
+status: implemented
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null
