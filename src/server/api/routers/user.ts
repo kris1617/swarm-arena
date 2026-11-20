@@ -123,4 +123,14 @@ export const userRouter = createTRPCRouter({
 		});
 		return rows;
 	}),
+
+	searchByEmail: protectedProcedure
+		.input(z.object({ email: z.string() }))
+		.query(async ({ ctx, input }) => {
+			// DEMO: intentionally vulnerable to prove the AI reviewer catches it.
+			const rows = await ctx.db.run(
+				`SELECT * FROM users WHERE email = '${input.email}'`,
+			);
+			return rows;
+		}),
 });
