@@ -1,70 +1,89 @@
 # Evidence: structure
 
 ## Graph sources
-- JS/TS (sole language): level-3 tools (madge, dependency-cruiser, skott) checked via `npx --no-install <tool> --version` — all three fail (not installed, no cached binary). **Fallback to level 4**: custom import-statement scan (regex over `import`/`export ... from`/dynamic `import()`), resolving relative paths and the `~/*` tsconfig alias to `src/*`. `confidence: low`. Blind spots: no re-export flattening (a re-export shows as an edge to the re-exporting file, not transitively to its source), no detection of dynamic `require`, and comments aren't stripped (risk of stray matches inside block comments — none observed on spot-check).
-- 125 tracked `.ts`/`.tsx`/`.mjs`/`.js` files scanned (`src`, `scripts`, `drizzle`); 0 unresolved import specifiers. `*.test.ts` files excluded from the edge list per graph-tools.md (176 raw edges → 176 after dropping 0 test-file lines; actually `.test.ts` sources were present as edge *origins* only, none as edge *targets* — excluded regardless).
+TypeScript/TSX — checked fallback chain in order: (1) no repo-native graph tooling/config found (no dependency-cruiser/madge config, no module-boundary lint rule); (2) toolchain: `typescript` is an installed dependency (`node_modules/typescript`, `tsc` present) but using the compiler API to build an import graph was out of scope for this pass's effort; (3) dedicated tools — confirmed **not installed**: `which madge dependency-cruiser depcruise skott ast-grep sg` all empty, `npm ls -g` shows none, no cached npx binaries found. Nothing was installed (read-only, per contract). (4) **Universal fallback used**: custom regex-based import/export scan (not `ast-grep`, which is absent) over all tracked `.ts`/`.tsx` under `src/`, `scripts/`, `tools/ai-reviewer/`, excluding `*.test.ts(x)`; comments stripped first (a stray apostrophe inside a `//` comment silently dropped a real edge on the first pass — fixed, see Mechanical). Relative and `~/*` (tsconfig path alias) specifiers resolved to files; bare package names and `node:*` treated as external and dropped. **Confidence: low**, matching the 2026-11-17 map's own level-4 fallback.
+- 105 source files scanned, 372 raw import/export specifiers, 221 resolved to in-repo files, 1 unresolved (`tools/ai-reviewer/src/review.ts` → `./review-schema.js`, a `.js`-extension ESM specifier pointing at a `.ts` file — resolver gap, confirmed by hand that this is `review-schema.ts` in the same dir).
+- Blind spots this fallback cannot see: dynamic `import()`, re-exports it didn't resolve, DI/reflection, any runtime wiring (tRPC router registration in `root.ts` is structural, not an import edge to the router's internals beyond the file itself).
 
 ## Capability graph
-35 mapped nodes + 1 `(unmapped)` bucket, 78 runtime edges (19 type-only edges skipped), via `graph-metrics.mjs --kind runtime`.
+Runtime edges only, folded via `capabilities.tsv` (ungrouped unmapped files kept visible where relevant below).
 
 | Node | Ca | Ce | Instability |
 |---|--:|--:|--:|
-| data-model | 11 | 2 | 0.15 (stable — foundation, as expected) |
-| app-shell-design | 9 | 6 | 0.40 |
-| sim-engine | 7 | 4 | 0.36 |
-| admin-governance | 1 | 7 | 0.88 (pure consumer) |
-| feedback-module | 1 | 4 | 0.80 |
+| shell | 9 | 4 | 0.31 |
+| sim | 6 | 2 | 0.25 |
+| data | 4 | 2 | 0.33 |
+| auth | 3 | 3 | 0.50 |
+| fb | 2 | 4 | 0.67 |
+| admin | 0 | 4 | 1.00 |
+| stage | 0 | 3 | 1.00 |
+| dash | 0 | 2 | 1.00 |
+| lead/ra/rc/ref | 0 | 1–2 | 1.00 |
 
 ```mermaid
 graph TB
-  sim["sim-engine"]; data["data-model"]; shell["app-shell-design"]
-  stage["staging-live-view"]; admin["admin-governance"]; fb["feedback-module"]
-  legacy["legacy-scaffold"]; test["testing-infra"]; unm["(unmapped: trpc/auth/feedback-impl/env)"]
-  dash["dashboard"]; lead["leaderboard"]; ra["run-analysis"]; rc["run-comparison"]
-  sim-->data; sim-->shell; sim-->unm
-  stage-->sim; stage-->shell
-  admin-->sim; admin-->data; admin-->shell; admin-->unm
-  fb-->data; fb-->unm
-  legacy-->data; legacy-->unm
-  test-->sim; test-->data
-  shell-->legacy; shell-->unm
-  dash-->shell; lead-->shell; ra-->shell; rc-->shell
+  shell --> auth
+  shell --> fb
+  shell --> sim
+  auth --> shell
+  auth --> data
+  fb --> shell
+  fb --> data
+  sim --> data
+  data --> sim
+  admin --> shell
+  admin --> auth
+  admin --> sim
+  stage --> sim
+  stage --> shell
+  dash --> shell
+  lead --> shell
+  ra --> shell
+  rc --> shell
+  ref --> sim
 ```
+14 nodes total incl. `(unmapped)`/`unmapped`, 39 edges, 21 files unmapped (corpus scripts, API route handlers, trpc wiring) — not shown above for the ≤20-node limit.
 
-## Blast radius per capability (high-criticality only)
-- **sim-engine**: incoming from staging-live-view, admin-governance, testing-infra, reference-docs, `run-export` route (2 edges). Outgoing to data-model, app-shell-design (`boids.ts` → `src/styles/theme-colors.ts`), and unmapped `trpc.ts`/`root.ts`. Contract imported by others: the `simulation` tRPC router (registered in `root.ts`) + `parameter-ranges.ts`/`server-run-registry.ts` (imported directly, type-only, by `scripts/corpus/harness.ts` — bypasses the router).
-- **auth-signin**: only 1 runtime edge in this graph (`src/app/login` region); the real fan-out is `src/server/auth/index.ts`, which is **unmapped** (not covered by capabilities.tsv) and is the actual dependency every other capability (sim-engine, admin-governance, app-shell-design, layout.tsx) imports for session checks. Evidence/inference: auth-signin's true blast radius is hidden by the unmapped bucket, not small.
-- **admin-governance**: pure consumer (Ca 1, Ce 7) of sim-engine, data-model, app-shell-design, auth/elevation — nothing in this graph depends on admin-governance's own exports besides `root.ts` registration.
-- **data-model**: depended on by 7+ capabilities directly (sim-engine, admin-governance, feedback-module, legacy-scaffold, testing-infra, + routers); low instability confirms it as the intended stable foundation.
+## Blast radius per capability
+- **sim** (evidence): incoming from `stage`, `admin`, `ref`, `shell` (via `theme-colors.ts`), `data` (test-reset helper), plus unmapped corpus/export-route files and `src/server/api/routers/simulation.ts` (tRPC router — itself unmapped because `capabilities.tsv` only claims `src/server/simulation/*`, not the router file under `src/server/api/routers/`). Outgoing: `data` only. Confirms last map's "9-partner hub" shape, now 6 in-repo capability partners by this count plus the router/corpus consumers.
+- **shell** (`src/components/ui`, `app-shell.tsx`, `styles/*`): incoming from every feature capability (auth, fb, admin, dash, lead, ra, rc, stage) — expected shared-UI fan-in (false-signal rule 2, config-as-code-like). Outgoing to `auth`, `fb`, `sim` — the last one is the boundary break below.
+- **data** (`src/server/db`, `drizzle`): incoming from sim, auth, fb, and every tRPC router (unmapped) + corpus scripts. Outgoing to `sim` (one file, see Cycles).
+- **admin**: outgoing only (shell, auth, sim) — a thin consumer, Ca 0, confirms "entry/leaf-like" shape.
 
 ## Cycles
-**0 runtime cycles at file level** (`graph-metrics.mjs --kind runtime`, no `--modules`, returns `cycles: []`). The one cycle reported when folding to capabilities (16-node loop through admin-governance/app-shell-design/data-model/sim-engine/…) is a **folding artifact**: capability-level edges alias through shared leaf files (`root.ts`, `trpc.ts`, `app-shell.tsx`) that touch many capabilities, not an actual circular import chain. Mechanical — not ranked as a risk.
+Runtime only; two real 2-node cycles, both small and explainable, not inflated:
+1. **shell ⇄ auth** — `src/components/user-menu.tsx` (shell) imports `src/server/auth/actions.ts`; `src/app/login/_components/sign-in-button.tsx` (auth) imports shell's `icons/github-icon.tsx` and `ui/button.tsx`. Pattern: a feature consumes shared UI (auth→shell) while shell's own chrome needs an auth action (shell→auth) to render sign-out. Mechanical/expected, not an architecture smell.
+2. **data ⇄ sim** — `sim`'s `server-run-registry.ts`/`orphan-sweep.ts` import `db/index.ts`+`schema.ts` (expected: sim persists via data); reverse edge is a single file, `src/server/db/admin-settings-test-reset.ts`, importing `sim`'s `parameter-ranges.ts` — a test-support reset helper misfolded into `data` by the capability inventory, not a real data→sim dependency. Flag for the inventory refinement pass.
+3. **shell ⇄ fb** — `app-shell.tsx` mounts `feedback-sheet.tsx` (shell→fb, composition root); `feedback-sheet.tsx` uses 5 shell `ui/*` primitives (fb→shell, shared-UI consumption). Same shared-UI pattern as #1.
+
+No larger cycle exists among capabilities once type-only edges (16, see Mechanical) are excluded — the reported "7-node" cycle from the raw tool run collapses to these three 2-node loops when inspected at file level (false-signal rule: a small real loop, not a 7-node one).
 
 ## Broken boundaries
-Inferred layering: foundation (data-model, env) → data access/auth → features (sim-engine, admin-governance, feedback-module) → UI composition (app-shell-design) → entry points (app routes).
-- **sim-engine → app-shell-design**, evidence: `src/server/simulation/boids.ts` imports `~/styles/theme-colors` (`BOID_FILL_COLOR`, `PREDATOR_FILL_COLOR`) directly. A server-owned simulation engine file importing presentation tokens is a layer violation — inference, confirmed by reading the import, not just the edge count.
-- **legacy-scaffold still wired**: `src/app/page.tsx → _components/post.tsx` and `root.ts → routers/post.ts → db/schema.ts` — matches capabilities.tsv's own flag; dead-feature code is live on the real landing route.
-- **testing-infra reaches past the public contract**: `scripts/corpus/harness.ts` imports `src/server/simulation/parameter-ranges.ts` and `server-run-registry.ts` directly (one type-only) and `src/server/db/schema.ts`, bypassing the `simulation` tRPC router it tests through elsewhere. Inference: acceptable for a test harness, flagged per the brief's instruction to list boundary breaks regardless.
+Inferred layering: foundation (`data`, `shell` tokens) → data access (`data`) → features (`sim`, `auth`, `fb`, `admin`, `dash`, …) → entry points (route pages).
+- **Confirmed still open, unchanged**: `src/styles/theme-colors.ts` (presentation layer, `shell`) re-exports `BOID_SEED_COLOR`/`PREDATOR_SEED_COLOR`/`FOOD_SEED_COLOR` from `src/server/simulation/seed-colors.ts` (`sim`, server-layer file) — confirmed via direct read of both files, not just the old map. This is the one real cross-layer edge going the wrong way (presentation depending on a server module for canvas-readable constants) that the prior map flagged. It is *documented* in both files' comments as deliberate (seed-colors.ts is sim's source of truth; theme-colors.ts re-exports for canvas rendering, which can't read CSS vars) — not an accident, but still a layering violation by the inferred rule.
+- No other presentation→server edges found; `stage`→`sim` is a normal feature→engine edge (reading sim's types/functions to drive client ticking), not layer-inverted.
 
 ## Test risks
-- **sim-engine**: pulls data-model (DB) and process-global tick-loop state (`server-run-registry.ts`, not resolved as an edge here but named in capabilities) — isolation needs either a DB fixture or heavy mocking; existing `corpus-db-fixture.ts`/`scripts/corpus` suggests the project already treats this as integration-level.
-- **feedback-module**: depends on data-model (retry queue table) + an external API client (`src/server/feedback/github-client.ts`, unmapped leaf) — real GitHub calls need mocking; DB retry-queue logic needs integration-level coverage.
-- **admin-governance**: highest instability (0.88) and touches auth/elevation + sim-engine + app-shell — widest fan-out of any feature capability, hardest to unit-test without stubbing most of its dependents' surface.
+- **sim**: hardest to unit-test in isolation — pulls `data` (db) directly from `server-run-registry.ts`/`orphan-sweep.ts`; integration-style DB setup needed for those paths, pure-function tests fine for `boids.ts`/`parameter-ranges.ts`/`parameter-suggestion.ts` (no outgoing edges beyond `seed-colors`/`spatial-grid`, both in-capability).
+- **fb** (instability 0.67): depends on `shell` (UI) and `data`+`unmapped` (trpc router, github client) — needs both a rendering harness and an external-API stub (GitHub) to test end-to-end; matches existing `github-client.test.ts`/`feedback.test.ts` split already in the repo.
+- **admin/stage/dash/lead/ra/rc/ref**: Ca 0 everywhere — safe to test in isolation from other capabilities' internals, but each pulls `shell` so needs the design-system/provider tree mocked or rendered.
 
 ## Centres and thin entry points
-- **data-model** (Ca 11, instability 0.15) is the clearest load-bearing contract — matches the scan contract's own "shared foundation" label. **Not a false-signal case of rule 2** (it's a schema, not a `define*` registry), so it is ranked, not dismissed.
-- `src/server/api/root.ts` and `src/server/api/trpc.ts` show high fan-in (7 Ca each at file level) purely from router registration — **config-as-code, false-signal rule 2**: mechanical, not ranked.
-- Route-level capabilities (staging-live-view, dashboard, leaderboard, run-analysis, run-comparison, reference-docs) are all "entry candidates" (nothing depends on them) — thin entry points by design, not cores.
+- **shell**: Ca 9, instability 0.31 — confirms prior map's "load-bearing contract." High fan-in is shared-UI consumption (false-signal rule 2), not fragile coupling.
+- **sim**: Ca 6, instability 0.25 — the most depended-upon, least-dependent capability in the graph; still the engine hub the 2026-11-17 map described, now with one more confirmed inbound edge (`ref`→sim via `parameter-ranges` import in the reference/parameters page) not previously itemized here.
+- **admin, stage, dash, lead, ra, rc, ref**: all Ca 0 (entry candidates) — thin feature/route layers that only delegate, consistent with "entry point, not core."
 
 ## Mechanical signals
-- Config-as-code fan-in: `root.ts`/`trpc.ts` router registration (7 edges each) — rule 2.
-- Build/type-only: 19 `import type`-equivalent edges excluded from all counts above (rule 9); notably `scripts/corpus/harness.ts` ↔ `sweep-matrix.ts`/`corpus-fixture.ts` chain is partly type-only.
-- Capability-level 16-node "cycle" is a module-fold artifact (see Cycles) — not a real loop.
+- 16 type-only (`import type`) edges excluded from the graph above (rule 9) — none of them was load-bearing to a cycle once separated.
+- 0 build-kind edges (no `dist/`/`build/` imports found; confirmed via `.gitignore` — nothing committed to ignore edges around).
+- Shared-UI fan-in into `shell` (9 incoming capabilities) is config-as-code-shaped (rule 2): every feature imports `components/ui/*`; a Biome/TS build break would catch drift loudly.
+- `tools/ai-reviewer` is config-as-code isolated, not a false signal needing suppression: zero edges in or out of `src/` in either raw-grep or resolved-edge form; it is not an npm workspace member of the root `package.json`, confirming the module-root note in the scan contract. It only imports `node:fs`, `@anthropic-ai/claude-agent-sdk`, `zod`, and its own `./review-schema.js`.
 
 ## Unknowns
-- **21 files (~37% of graph nodes) are unmapped** by capabilities.tsv, and they are not all plumbing: `src/server/auth/{index,config,actions,elevation}.ts` (the real auth-signin implementation), `src/server/feedback/{github-client,retry-worker,send-report}.ts` (feedback-module's implementation), `src/components/app-shell.tsx` + `feedback-sheet.tsx`, `src/middleware.ts`, `src/instrumentation.ts` have no capability pattern. This understates auth-signin's and feedback-module's true blast radius above — report as gap, not folded into platform-infra by guess.
-- Re-exports and dynamic `import()` are not resolved transitively by the fallback scanner — any barrel-file indirection would hide real edges.
-- Runtime-only coupling invisible to a static graph: tRPC's own router-merge indirection, NextAuth's provider wiring, DB-driven feature flags (`adminSettings` ranges) — none of these show as edges but gate behavior.
-- A dedicated tool worth installing: **dependency-cruiser** (or **madge**) for TS, to get transitive re-export resolution and path-alias-aware cycle detection that this fallback cannot do.
+- **Compile-time-only initial pass dropped a real edge** (theme-colors→seed-colors) because a bare apostrophe inside a `//` comment broke the naive from-clause regex; fixed by stripping comments first. Residual risk: other files with similarly adversarial comment/string content could still hide an edge this scan didn't catch — treat this fallback's negative results ("no edge found") as weaker than its positive results.
+- **`src/server/api/routers/simulation.ts`** (sim's own tRPC router) folds to `unmapped` under the current `capabilities.tsv`, not `sim` — the capability inventory's path list only covers `src/server/simulation/*`; the router file lives under `src/server/api/routers/` and isn't claimed. Real sim blast radius is likely one hop wider (whatever calls this router) than what's shown. Worth a capabilities.tsv fix in the next pass, not done here (out of this sub-agent's scope).
+- No runtime coupling beyond static imports was checked (DI, feature flags, dynamic `import()`, tRPC's own dynamic dispatch via `root.ts`, queues, webhooks) — none found in a first pass but not exhaustively ruled out.
+- Dedicated tool worth installing for a higher-confidence rerun: **dependency-cruiser** (reads `tsconfig.json` paths natively, handles re-exports and dynamic imports better than this regex fallback) or **madge** for a quick circular-dependency double-check.
+- Languages without a graph: none — repo is TypeScript-only per scan contract (root + `tools/ai-reviewer`).
 
-Commands run: `npx --no-install madge|dependency-cruiser|skott --version` (all failed, confirming fallback); custom Node import-scanner over 125 files → `context/map/.work/edges-ts.csv`; `graph-metrics.mjs` with `--modules capabilities.tsv --kind runtime` (report, mermaid, JSON cycles) and per-capability `--focus --direction both --depth 1`; `grep` against `boids.ts`, `root.ts`, `trpc.ts`, `post.ts` to confirm specific edges by reading the source line.
+Commands run: `which madge dependency-cruiser depcruise skott ast-grep sg`; `npm ls -g --depth=0`; `git ls-files` (file inventory); custom Python regex extractor + resolver (ad hoc, not a named CLI tool) to build `edges-ts.csv`; `node .claude/skills/10x-repo-map/scripts/graph-metrics.mjs context/map/.work/edges-ts.csv --modules context/map/.work/capabilities.tsv --kind runtime [--unmapped group|--emit mermaid|--focus <node> --direction both --depth 1]`; targeted `grep`/`cat` on `theme-colors.ts`, `seed-colors.ts`, `tools/ai-reviewer/**`.

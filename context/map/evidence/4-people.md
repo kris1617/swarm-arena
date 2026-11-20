@@ -1,89 +1,68 @@
 # Evidence: people
 
-2 human author identities in the window (`kris1617`, `Krzysztof Tatarczyk`) — baseline per
-false-signals rule 6, not a finding. `kris1617` appears only on 2 commits total (both
-2026-11-11, both squash-merge PRs: #1 "Predator-prey dynamics (S-02)", #2 "Parallel
-simulation switching (S-05)"), each touching many files/capabilities at once. All other 540
-commits (2026-11-04 .. 2026-11-17) are `Krzysztof Tatarczyk`. Evidence: the two identities
-are almost certainly the same person using a GitHub squash-merge PR flow early, then direct
-commits for all later (agent-assisted) work — not two work contexts. 0 commits cross-cutting
-dropped (none touched >half of all capabilities).
-
-## Areas (high/medium criticality + top-5 by counted changes)
-- docs-planning (511 commits) — not in the inventory's business-capability ranking, but by
-  far the largest churn source (toolkit/context prose); confirms scan-contract's §Coverage note.
-- sim-engine (100) — high criticality, core engine; largest *code* capability.
-- staging-live-view (52) — high criticality, primary user-facing entry to sim-engine.
-- testing-infra (21) — shared foundation.
-- data-model (17) — shared foundation, high dependency fan-in.
-- admin-governance (6), auth-signin (4) — high criticality but low volume (identity/access
-  gating built once, touched rarely since).
+1 distinct human in window: Krzysztof Tatarczyk (798 commits, ktatar1@wp.pl) +
+kris1617 (2 commits, GitHub UI identity) — confirmed same person per contract.
+688/800 commits carry `Co-authored-by: Claude` (AI-assisted, still human-authored).
+Baseline: single-person repo — every "who owns X" answer is the same person;
+no bus-factor/concentration risk exists to find.
 
 ## People per capability
-All work (99%+ per capability) is `Krzysztof Tatarczyk`. One person, by topic group and period:
+- All high/medium capabilities (sim, stage, data, admin, fb, auth, shell,
+  dash, lead, ra/rc, test, rev, infra) are authored entirely by Krzysztof
+  Tatarczyk. No second author anywhere in window. Topic groups come from
+  commit-subject vocabulary already in capabilities.tsv (per-tribe-*,
+  admin-ranges-*, test-plan-*, etc.) — same person across all of them,
+  active continuously 2026-11-04..2026-11-20 (whole window).
 
-- **sim-engine** (98 commits, 2026-11-10..11-17): throttling/tick-loop mechanics
-  (`unwatched-run-tick-throttling`), concurrent-load capacity scenarios
-  (`testing-concurrent-load-capacity`), live-parameter adjustment, predator-prey/genetics rules.
-- **staging-live-view** (50, 11-11..11-16): staged-vs-server-owned run controls (live boid
-  count, crossbreeding toggle, area/camera view), per-tick genetics sampling.
-- **data-model** (16, 11-04..11-17): schema migrations for nearly every new feature
-  (admin elevation column, feedback table, world-size threading, capacity ceilings) — one
-  person owns every migration.
-- **app-shell-design** (14, 11-04..11-15): design-token/shadcn restyles across dashboard,
-  analysis, comparison, login views; AppShell mount.
-- **platform-infra** (12, 11-09..11-15): deploy/CI fixes (forwarded-host header,
-  AUTH_TRUST_HOST, CI DB migration, build-env fixes), feedback rate-limiting.
-- **run-analysis** (11, 11-14..11-17): corpus-correctness tests, null-history guards,
-  genetic-diversity chart, changelog overlay.
-- **admin-governance** (6, 11-14..11-15): temporary self-elevation feature end-to-end
-  (schema → mutations → UI), parameter-range admin settings.
-- Smaller capabilities (run-comparison 7, leaderboard 5, dashboard 5, legacy-scaffold 4,
-  auth-signin 4, reference-docs 3, feedback-module 1): same person, single-sitting features.
-
-`kris1617`'s 2 commits land in docs-planning, sim-engine, staging-live-view, data-model and
-app-shell-design simultaneously (squash-merged PR content) — not a distinct topic group, just
-the bootstrap-era PR flow before the agent-commit convention started.
+## Recency check (evidence, last touch per path, window=2026-11-04..HEAD)
+- Actively churning right now (commits dated 2026-11-20, i.e. today):
+  sim, stage, admin, login/auth-ux, shell (ui), dash, lead, ra, tests, infra.
+- Cooling but not cold: data-model (2026-11-19), auth core (2026-11-19).
+- Coldest capability: feedback-module — last touch 2026-11-16 17:53, 6
+  commits total in-window, none since. In a 16-day-old repo a 4-day gap is
+  not evidence of abandonment, just lower churn than the rest; flag as the
+  one capability with no recent activity, not as a risk.
+- `tools/ai-reviewer` (new module): exactly 2 commits, 2026-11-17 14:32 and
+  2026-11-18 03:42 — built as one concentrated ~13-hour burst (feat then a
+  same-day-ish fix for security/robustness: prompt injection, job timeout,
+  stale plan text), not spread over the window. Same single author.
 
 ## Concentration — against the baseline
-2 humans in window → baseline per false-signals rule 6: "small team — concentration is the
-baseline," no bus-factor language. Every capability listed above has in practice been
-touched by exactly one person end-to-end (the `kris1617` commits are incidental/squashed, not
-a second contributor's independent work). So: **every capability in this repo has only ever
-been touched by one person** — stated as the baseline fact, not a risk.
+Team size = 1 (false-signals rule 6: ≤3 humans → concentration is the
+baseline, not a finding). Every capability is "only one person has ever
+touched" — that is the whole team, not a gap. No capability is more or less
+concentrated than any other; skip bus-factor language entirely.
 
-## Agent co-authorship (context, not a filter)
-High and fairly uniform across capabilities — most capabilities sit at 90-100% agent-coauthored
-commits (sim-engine 94/100, staging-live-view 50/52, testing-infra 21/21, data-model 16/17,
-app-shell-design 15/15, platform-infra 12/12, run-comparison 7/7, run-analysis 10/11,
-leaderboard 5/5, legacy-scaffold 4/4, admin-governance 6/6, reference-docs 3/3,
-feedback-module 1/1). docs-planning is 463/511 (~91%). dashboard is the outlier at 3/5 (60%)
-— its early commits (post-login dashboard, run-analysis link) predate consistent
-`Co-authored-by` trailer use. auth-signin is 3/4 (75%). Per the brief's rule, all of this
-stays as human commits — the human steered every one.
+## Agent co-authorship
+688/800 commits (86%) repo-wide carry a Claude co-author trailer. No
+capability-level split was computed (would require per-path trailer
+grep beyond this budget) — treat 86% as a repo-wide baseline applying
+roughly evenly; no capability stood out as human-only or agent-only in the
+commit subjects sampled (sim, admin, test, infra, auth, ai-reviewer all show
+the trailer pattern in recent subjects).
 
 ## Implications
-- Whom to ask before any change: one person, `Krzysztof Tatarczyk` (git identity), for every
-  capability — there is no second human source to triangulate with.
-- Read the per-change-id commit trail (`type(change-id): ...`) and the matching
-  `context/changes/` or `context/archive/<change-id>/` folder rather than asking a person —
-  that's the de facto design-doc trail this project already produces per change.
-- `kris1617`'s two early squash-merge PRs (#1, #2) are the only GitHub PR-review surface in
-  this repo's history; everything since is direct-to-`master` commits with no PR/review step.
+- There is exactly one person to ask about any capability: Krzysztof
+  Tatarczyk. "Whom to ask" reduces to "what has this person already tried" —
+  read their own change folders in `context/changes/` and `context/archive/`
+  for the relevant capability before proposing a change, since they are both
+  author and institutional memory.
+- For `tools/ai-reviewer`, read both of its two commits (feat + fix) — the
+  whole module's history fits in one sitting.
+- `feedback-module` is the one area with no very-recent commit; worth a
+  freshness check (does it still match the current GitHub API, token scopes)
+  before extending it, precisely because nothing has touched it in 4 days.
 
 ## Unknowns
-- No `CONTRIBUTING.md` or `CODEOWNERS` file exists (checked: absent at repo root and
-  `.github/`). `gh api repos/kris1617/swarm-arena/collaborators` returns exactly one
-  collaborator (`kris1617`, role `admin`), and `gh repo view` confirms the repo is private,
-  owned by `kris1617`. So there is currently no formal ownership surface and no second team
-  member to onboard — if a team forms later, both are needed from scratch (no existing
-  convention to extend).
-- Cannot confirm from git alone whether `kris1617` and `Krzysztof Tatarczyk` are literally the
-  same person (git/GitHub identity only, no out-of-band confirmation) — treated as "almost
-  certainly" per the scan contract's own framing, not verified identity.
+- No formal ownership doc exists (CODEOWNERS, team roster) — team size and
+  "who's still on the project" inferred from git authorship only, not from
+  any HR/roster source.
+- Per-capability agent-co-authorship percentage not computed (only repo-wide
+  86%); if the synthesis needs a precise per-capability split, re-run with a
+  per-path `--grep` pass.
 
-Commands run: `python3 -I` parse of `.work/git-log.txt` against `.work/capabilities.tsv`
-(per-capability author/date/subject aggregation, agent-coauthor share, cross-cutting-commit
-check); `ls CONTRIBUTING.md CODEOWNERS .github/CODEOWNERS`; `gh api
-repos/kris1617/swarm-arena/collaborators`; `gh repo view kris1617/swarm-arena --json
-isPrivate,owner`.
+Commands run:
+- `git log --since=2026-11-04 -1 --format=%ad --date=format:%Y-%m-%d\ %H:%M -- <path>` per capability path
+- `git log --since=2026-11-04 --format=%ad --date=format:%Y-%m-%d\ %H:%M -- tools/ai-reviewer`
+- `git log --since=2026-11-04 --oneline -- src/server/feedback src/components/feedback-sheet.tsx | wc -l`
+- read `context/map/.work/{scan-contract.md,capabilities.tsv,git-log.txt}`

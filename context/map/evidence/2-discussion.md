@@ -1,42 +1,52 @@
 # Evidence: discussion
-Sources: gh usable (kris1617/swarm-arena, PRIVATE) but near-empty; primary source is git-only + this project's own planning-artifact convention (`context/changes/`, `context/archive/`). Window: whole history (13 days, 542 commits, 2 author identities = same person).
+Sources: gh usable (kris1617/swarm-arena, public) + git-only. Window 2026-11-04..HEAD (whole 16-day history). No limits hit (3 PRs, 0 issues total — small enough to read whole).
 
 ## Buzz per capability
-| capability | plans (archive dirs) | impl-review verdicts | plan-review verdicts | debt markers (TODO/FIXME/HACK/XXX) |
-|---|---|---|---|---|
-| sim-engine | ~9 (flocking-loop, predator-prey, parallel-sim-switching, genetic-inheritance, spatial-hash-perf, spatial-grid-dense-clustering, phase-quality-scoring, server-side-sim-engine, admin-ranges-and-hook-flakes) | 9 approved, 2 NEEDS ATTENTION (parallel-sim-switching, genetic-inheritance) | mostly approved | 2 (only non-zero capability checked) |
-| staging-live-view | ~6 (staging-live-view-restyle, live-parameter-adjustment, live-crossbreeding-toggle, live-boid-count-adjustment, client-staged-live-parameter-parity, correct-live-parameter-field-set) | all approved | approved | 0 |
-| run-analysis / run-comparison / leaderboard | ~5 combined (run-analysis-view, compare-runs-side-by-side, leaderboard, area-aware-population-insight, genetic-diversity-trend) | area-aware-population-insight = REJECTED (impl-review); rest approved | approved | 0 |
-| admin-governance | ~4 (temporary-admin-elevation, admin-ranges-and-hook-test-flakes, pre-existing-admin-settings-flakes, confirm-admin-elevation-mechanism-resolved) | approved, but 2 follow-on "flake"/"confirm resolved" changes opened against it | approved | 0 |
-| testing-infra | ~9 (corpus-generation-harness [REJECTED], parameter-sweep-corpus-generation, testing-full-lifecycle-regression, analytics-correctness-corpus-tests [NEEDS ATTENTION], suggestion-quality-corpus-test, vitest-parallel-flakiness, testing-concurrent-load-capacity [NEEDS ATTENTION], testing-perf-baseline, testing-wallclock-optimization-guardrail) | 2 REJECTED/NEEDS-ATTENTION-heavy clusters here | mixed | n/a (fixtures, not scanned) |
-| full-score-save-resume (persist-run-history / run-export area) | 1 (full-score-save-resume) | NEEDS ATTENTION | approved | 0 |
-| docs-planning (toolkit itself) | dominant by commit count: `archive` 57, `roadmap` 42, `test-plan` 16, `epilogue` 46, `p1/p2/p3/p4` (plan-phase commits) 60/41/31/14 | n/a — this is process, not product | n/a | n/a |
+| cap | PRs | human review | reverts | 2nd-attempt scopes (git) | plans (archive) | TODO/FIXME |
+|---|---|---|---|---|---|---|
+| test | 0 forge PRs | n/a | 0 | parameter-sweep-corpus-generation(14), vitest-parallel-flakiness(14), analytics-correctness-corpus-tests(14), ci-quality-gates fix×2, test-plan-refresh×4 | ~10+ change folders | 0 |
+| sim | 1 forge PR (#2, merged, 0 reviews) | none | 0 | genetic-inheritance-crossbreeding(14, fix×2), per-tribe-behavior-weights(11) | several | 2 |
+| stage | 0 | n/a | 0 | unwatched-run-tick-throttling(13), simulation-start-button-not-submitting fix×2 | several | 0 |
+| infra | 0 | n/a | 0 | fix(deploy)×6, fix(security-hardening-pass)×2, fix(middleware-static-asset-exclusion)×2, fix(ci)×2 | — | 0 |
+| admin | 0 | n/a | 0 | pre-existing-admin-settings-flakes(12), fix(admin-settings-range-backfill)×2 | several | 0 |
+| data | 0 | n/a | 0 | full-score-save-resume(11) | several | 0 |
+| fb | 0 | n/a | 0 | in-app-feedback-module(10) | several | 0 |
+| auth | 0 | n/a | 0 | google-style-auth-ux impl-review 4+plan-review 3 verdicts | several | 0 |
+| rev | 1 forge PR (#10, closed-unmerged, deliberate fail demo) | github-actions bot only | 0 | n/a | ci-cd-code-review impl-review: 5 verdict hits | 0 |
+
+Forge is near-silent: 3 PRs total, 0 issues. PR #1 (predator-prey, merged, 9342/141 lines, 0 reviews) and PR #2 (parallel-sim-switching, merged, 959/24 lines, 0 reviews) are large, unreviewed, self-merged landings — not evidence of review, just a record of what landed. PR #10 is a deliberately-failing demo of `tools/ai-reviewer` itself (closed, not merged) — its "fail" comment is the tool under test reviewing itself, not product review.
 
 ## Friction
-- **7 of 68 total review verdicts are not clean APPROVED**: 5 NEEDS ATTENTION, 2 REJECTED. REJECTED verdicts land on `area-aware-population-insight` (run-analysis/leaderboard cluster) and `corpus-generation-harness` (testing-infra) — both had to be redone after rejection (evidence: archived successfully, meaning a later pass passed review).
-- **Second attempts, by naming convention, not reverts**: no literal `git revert` commits exist (0 in 542). Instead this repo's "second attempt" signal is a fresh change folder that explicitly targets a prior one: `2026-11-16-pre-existing-admin-settings-flakes` and `2026-11-16-admin-ranges-and-hook-test-flakes` (both against admin-governance/sim-engine), `2026-11-16-vitest-parallel-flakiness` (testing-infra), `2026-11-16-spatial-grid-dense-clustering-fallback` (sim-engine), and `2026-11-17-confirm-admin-elevation-mechanism-resolved` / `2026-11-17-confirm-run-history-retroactive-scope` (confirmation-only follow-ups, admin-governance / persist-run-history). That is 6 follow-on/retry change folders concentrated in **sim-engine + admin-governance + testing-infra**.
-- `fix-production-trpc-error-logging` (2026-11-13) is the one phase-heavy remediation change: 6 separate `impl-review-phase-N.md` files for one change-id — unusually fragmented verification, suggesting this fix went through 6 distinct phases/attempts rather than one pass.
-- Fix-commit share: 45 commits with a `fix` subject token across 542 total (~8%) — in line with normal iteration, not flagged as anomalous per false-signal rule 5 (not CI/deploy-only).
-- No forge friction signal available: only 2 PRs exist total (`#1` predator-prey, `#2` parallel-sim-switching), both merged in the same minute window on 2026-11-11, almost certainly a one-time branch-protection experiment, not ongoing workflow. No open/closed-unmerged PRs, no issues (`gh issue list` returned empty).
+- **No reverts, no hotfix-labeled commits anywhere in 800 commits** (grep for `revert`/`fixup`/`hotfix` subjects: 0 hits). Team-size baseline: 1 human author (two git identities, same person) — a solo project; "no revert" here reads as small-batch fix-forward discipline, not absence of problems (false-signal rule 6: report relative to team of 1).
+- **Second-attempt friction concentrates in `test` and `sim`**: `parameter-sweep-corpus-generation`, `vitest-parallel-flakiness`, `analytics-correctness-corpus-tests` each touched 14 times; `genetic-inheritance-crossbreeding` 14 times with 2 explicit `fix(...)` commits. `lessons.md` independently confirms both as *recurring* (not one-off): a named flaky test in `simulation.test.ts` (`adjustLivePopulation` off-by-one) and CI-runner timing variance hitting throttle-window tests across multiple unrelated phases.
+- **`infra`/deploy drew 6 separate `fix(deploy)` commits** — per false-signal rule 5 (trial-and-error fix ratio), iterative deploy-pipeline fixing is how that work is normally done; not ranked as a broken capability on fix-count alone, but still the single largest same-scope fix cluster.
+- **`admin` flakiness is pre-existing and acknowledged in its own commit scope name** (`pre-existing-admin-settings-flakes`, 12 touches) — admin-settings range backfill needed 2 explicit fixes plus a dedicated flake-cleanup pass.
+- **Closed-unmerged PR**: #10, by design (deliberate "do not merge" demo) — not product friction, counted as mechanical.
 
 ## Planning attention
-- `docs-planning` (the `context/` + `.claude/` toolkit) is the single largest discussion surface by raw commit-subject-token count — `archive` (57), `roadmap` (42), plan-phase tokens `p1`/`p2`/`p3`/`p4` (60/41/31/14), `epilogue` (46), `test-plan` (16). This is process bookkeeping (closing/archiving changes, roadmap maintenance), not code debate — reported per false-signal rule 8, not ranked as a hot *code* area.
-- Two `test-plan-refresh-*` changes exist (2026-11-12, 2026-11-16) — the test strategy itself was revisited twice in 13 days, both closed/archived.
-- Product capabilities with the most dedicated change folders: sim-engine and testing-infra (~9 each), staging-live-view (~6) — matches the "core value + its test harness" criticality already assigned in capabilities.tsv.
-- `legacy-scaffold`, `reference-docs`, `run-export`, `feedback-module` have zero planning-attention follow-ups beyond their single initial change — consistent with their low/low-medium criticality rating; no discussion signal contradicts that.
+`context/archive/` holds 95 closed change folders, each with its own `plan.md`/`change.md`, and most carry both a `plan-review.md` and an `impl-review.md` — this is where real review lives (per the brief's substitution rule). Verdict-marker density (REJECTED/NEEDS ATTENTION/CRITICAL hits) ranks review attention, independent of commit-count:
+- `ci-cd-code-review` (rev) — 5 hits in impl-review, the single highest.
+- `google-style-auth-ux` (auth) — 4 (plan-review) + 3 (impl-review) = 7.
+- `per-tribe-behavior-weights` (sim) — 4 + 3 = 7.
+- `analytics-correctness-corpus-tests` (test) — 4 + 3 = 7.
+- `in-app-feedback-module` (fb), `corpus-generation-harness` (test), `parameter-sweep-corpus-generation` (test), `genetic-diversity-trend` — 3–4 each.
+- The 2026-11-20 UI-refresh batch (leaderboard, dashboard, admin-pages, reference-pages, runs-analysis-compare, login-page-oauth-polish) each carry 2 impl-review hits — a late, uniform restyle pass across nearly every user-facing capability, same day, same cause (the `/10x-ui` chain run repeatedly) — count once as a single restyle initiative, not per-capability signal (false-signal rule 4, shared cause).
+
+`lessons.md` (143 lines, append-only) has independently recorded 2 confirmed-recurring entries so far: (1) bare `setInterval` jobs missing try/catch, caught twice (feedback retry-worker, then sim's orphan-sweep) — a cross-capability pattern, not one capability's debt; (2) CI-runner timing variance in `simulation.test.ts`/throttle-window tests, confirmed recurring same-day across two different phases.
 
 ## Debt markers
-- Only `src/server/simulation` carries any TODO/FIXME/HACK/XXX markers at HEAD (2 total). Every other sampled capability (staging-live-view, run-analysis/runs, leaderboard, admin, routers, UI, dashboard) has zero. Too sparse to normalize meaningfully per 1000 lines — reported as raw counts; absence elsewhere is itself a (weak) finding, not proof of cleanliness, since debt can also hide as an unflagged shortcut.
+`rg -c 'TODO|FIXME|HACK|XXX'` over each capability's tracked source dirs: effectively zero everywhere — only `src/server/simulation` has any (2 hits), every other scanned capability (`stage`, `data`, `admin`, `fb`, `auth`, `shell`, `dash`, `lead`, `ra`, `ref`, `test`, `rev`) returned 0. Debt is not marked inline in this codebase; it lives in `lessons.md` and change-folder reviews instead (prose, per false-signal rule 8).
 
 ## Mechanical signals
-- `archive`/`roadmap`/`epilogue`/`p1`-`p4`/`test-plan` commit-subject volume (false-signal rule 8: prose/planning churn, not code activity) — excluded from "hot capability" ranking, attributed instead to docs-planning's own process overhead.
-- The 2 merged PRs on 2026-11-11 are a one-time tooling trial (both same minute), not sustained forge-based review workflow — treated as a non-finding, per rule 4 (shared cause: branch-protection test, not ongoing practice).
-- 0 reverts is expected given 0 bot/mass-commit exclusions and a single contributor with full history edit control (no shared-branch pressure forcing revert-over-amend) — not evidence of unusual stability.
+- PR #1 and #2's "0 reviews" is not evidence of low scrutiny — this project's real review step is `/10x-impl-review`/`/10x-plan-review` writing to `context/changes/.../reviews/`, which both PRs' underlying change folders have; GitHub review count under-counts on principle here.
+- PR #10's "fail" verdict and comment are from `github-actions` (the project's own `tools/ai-reviewer` bot being demoed) — excluded as non-human per false-signal rule 7.
+- The 2026-11-20 same-day UI-refresh review cluster (6 capabilities, 2 hits each) is one initiative run across capabilities, not 6 independent friction signals (rule 4).
+- `fix(deploy)` ×6 is iterative CI/deploy fixing, the normal shape for that work (rule 5), not demoted to risk.
+- Change-id scope labels in commits (`p1`..`p5`, `epilogue`, `roadmap`, `archive`, `test-plan`) are this project's own 10x-toolkit phase/ritual vocabulary, not capability names — excluded from the friction ranking above even though they have very high raw counts (91, 86, 66, 64, 63...).
 
 ## Unknowns
-- No GitHub Issues used for dev tracking at all (`gh issue list --state all` empty) — bug/debt tracking lives entirely in `context/changes/`→`context/archive/` planning artifacts and `lessons.md`, not the forge.
-- No production error tracker visible in this evidence pass (one archived change is literally titled `fix-production-trpc-error-logging`, implying a prior gap in production error visibility — but confirming whether a tracker now exists requires reading that change's body, out of scope here).
-- Whether the 6 "flake"/"confirm resolved" follow-up changes fully closed their underlying issue, or just reduced the trigger (per `lessons.md`: "admin-ranges cross-process race is mitigated, not eliminated"), is not verifiable from headings alone.
-- `lessons.md` has 13 recorded recurring-mistake entries project-wide (not one scanned per capability here) — several (tRPC subscriptions via createCaller, SQLite busy_timeout, ctx.db vs module singleton) imply sim-engine/testing-infra friction beyond what review-verdict counts alone show.
+- No production error tracker evidence found in this scan (Sentry/etc. not referenced in commits, PRs, or `context/foundation/*` read here) — out of scope per the brief, flagged per instruction.
+- Issue tracking: `gh issue list` returned 0 — unknown whether bugs are tracked at all outside `lessons.md`/change folders, or simply not yet needed at this project age (16 days).
+- Did not open any `plan.md`/`impl-review.md` file bodies beyond grep counts (per contract: counts only, no reading) — verdict density is a proxy, not a read of actual severity text.
 
-Commands run: `gh pr list --state all --limit 5`, `gh issue list --state all --limit 5`, `git log --oneline --all | grep -iE 'revert|hotfix'`, `git log --oneline | grep -icE 'revert'`, `git log --oneline | grep -icE '^[a-f0-9]+ fix'`, `git log --format='%s' | grep -oE '\([a-z0-9-]+\)' | sort | uniq -c | sort -rn`, `ls context/changes/`, `ls context/archive/`, loop over `context/archive/*/reviews/*.md` + `context/changes/*/reviews/*.md` with `grep -m 1 -oE 'APPROVED...|NEEDS ATTENTION|REJECTED'`, `grep -c '^## ' context/foundation/lessons.md`, `ls -d context/archive/*test-plan-refresh*`, `ls context/archive | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' | sort | uniq -c`, `git ls-files <dir> | xargs grep -c 'TODO\|FIXME\|HACK\|XXX'` per capability sample.
+Commands run: `gh pr list --state all --json ...`; `gh issue list --state all --json ...`; `git log --format=%s` greps for revert/fixup/hotfix and `fix(scope)` and `(scope)` frequency; `grep -rlE/-icE 'REJECTED|NEEDS ATTENTION|CRITICAL'` over `context/{archive,changes}/*/reviews/*.md`; `rg -c 'TODO|FIXME|HACK|XXX'` per capability dir; `wc -l`/`grep -n`/`sed -n` on `context/foundation/lessons.md`; `ls context/archive | wc -l`.

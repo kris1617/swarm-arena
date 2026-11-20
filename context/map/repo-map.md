@@ -1,10 +1,10 @@
 ---
 artifact: repo-map
-generated: 2026-11-17
+generated: 2026-11-20
 repo_root: .
-history_window: since first commit (2026-11-04) .. HEAD @ 25debd0 (whole history — repo is ~13 days old, shorter than the default 12-month window)
-evidence_sources: git + gh (kris1617/swarm-arena, private, near-empty forge usage)
-graph_coverage: "TypeScript/TSX: custom level-4 import-scan fallback (madge/dependency-cruiser/skott unavailable), confidence low"
+history_window: 2026-11-04..HEAD @ 296d9c3 (whole history — repo is 16 days old, shorter than the default 12-month window)
+evidence_sources: git + gh (kris1617/swarm-arena, now PUBLIC — was private at the 2026-11-17 map)
+graph_coverage: "TypeScript/TSX: custom regex import-scan fallback (madge/dependency-cruiser/skott/ast-grep all confirmed unavailable, nothing installed), confidence low — same level as the prior map"
 evidence: context/map/evidence/
 ---
 
@@ -12,105 +12,91 @@ evidence: context/map/evidence/
 
 ## TL;DR
 
-swarm-arena is a Next.js/T3 app that lets a signed-in user configure and run a 3D boids/predator-prey flocking simulation, either client-ticked ("staging") or server-owned, watch it live, score it on four-to-five factors, and compare/rank/export the results. The simulation engine (`sim-engine`) is by far the busiest and most structurally central capability — 100 commits, 275 file-changes, a genuine 9-partner hub router, and the only real cross-layer boundary break in the repo. Its primary consumer, `staging-live-view`, had a sharp one-week build-out spike that has since gone quiet. `testing-infra` is the capability actually rising right now (it carries two REJECTED/NEEDS-ATTENTION review clusters), tracking the project's own in-progress quality-strategy rollout. The repo is effectively single-person (one git identity under two names) with a 91%-agent-coauthored commit history and almost no forge-based review (2 one-off PRs, 0 issues) — "whom to ask" resolves to "read `context/changes/`/`context/archive/<id>/` and `lessons.md`", not a person.
+swarm-arena is a Next.js/T3 app that lets a signed-in user configure and run a 3D boids/predator-prey flocking simulation — client-ticked ("staging") or server-owned — watch it live, score it, and compare/rank/export results. Since the 2026-11-17 map, the project nearly doubled its commit count (396→800) and genuinely grew: a full per-tribe/predator-tribe configuration system, a milestone-scale UI/design-token overhaul across every user-facing page, a from-scratch test-plan quality program (unit/integration/E2E/visual-regression/perf-baseline), and a brand-new standalone module, `tools/ai-reviewer` — an AI-powered diff-review CI tool, built in one ~13-hour burst and so far fully isolated from the main app. `sim-engine` remains the busiest, most structurally central capability and the one with a confirmed, still-open cross-layer boundary break (`theme-colors.ts` reaching into server code); `testing-infra` is now the fastest-rising capability by a wide margin, tracking the project's own in-progress quality rollout. The repo is still effectively single-person (one git identity under two names, 86% of commits carrying an AI co-author trailer) with near-zero forge-based review — "whom to ask" resolves to "read `context/changes/`/`context/archive/<id>/reviews/` and `lessons.md`," not a person, same as before.
 
 ```mermaid
 graph TB
   sim["sim-engine"]; data["data-model"]; shell["app-shell-design"]
   stage["staging-live-view"]; admin["admin-governance"]; fb["feedback-module"]
-  legacy["legacy-scaffold"]; test["testing-infra"]; unm["(unmapped: auth-impl/feedback-impl/trpc/env)"]
+  auth["auth-impl"]; test["testing-infra"]; rev["ai-code-review"]
   dash["dashboard"]; lead["leaderboard"]; ra["run-analysis"]; rc["run-comparison"]
-  sim-->data; sim-->shell; sim-->unm
+  shell-->auth; shell-->fb; shell-->sim
+  auth-->shell; auth-->data
+  fb-->shell; fb-->data
+  sim-->data; data-->sim
+  admin-->shell; admin-->auth; admin-->sim
   stage-->sim; stage-->shell
-  admin-->sim; admin-->data; admin-->shell; admin-->unm
-  fb-->data; fb-->unm
-  legacy-->data; legacy-->unm
-  test-->sim; test-->data
-  shell-->legacy; shell-->unm
   dash-->shell; lead-->shell; ra-->shell; rc-->shell
+  rev["ai-code-review (isolated)"]
 ```
 
 ## Terrain
 
-| Capability | What it does | Criticality | Change | Fix pressure | Friction | Attention | Reach | Trend | Lives in |
+| Capability | What it does | Criticality | Buzz: change | Buzz: fix pressure | Buzz: friction | Buzz: attention | Buzz: reach | Trend | Lives in |
 |---|---|---|---|---|---|---|---|---|---|
-| sim-engine | Flocking/predator-prey physics, scoring, server-owned tick loop, live-parameter adjustment | high (core value; other capabilities depend on it at runtime) | high (100/275) | medium (22%, real logic fixes) | medium (2 NEEDS ATTENTION reviews) | high (~9 change folders, tied for most) | high (9-partner router hub; 1 confirmed boundary break) | fading off a build-out spike (low confidence, 3-pt series) | `src/server/simulation/*`, `simulation.ts` router |
-| staging-live-view | Client-staged + server-owned run configuration, live canvas/viewer | high (primary entry to sim-engine) | high (52/106) | medium (19%, UI-state bugs) | low (all reviews approved) | medium-high (~6 folders) | medium (thin entry point, but 54%-confidence co-change with sim-engine) | fading sharply (W46=51 → W47=1) | `src/app/simulation/*` |
-| testing-infra | Synthetic test corpus + wall-clock perf harness, supporting the risk-first test-plan | medium (shared foundation; no single high criterion) | rising (W46=2 → W47=19) | medium (38%, iteration pattern) | high (2 REJECTED/NEEDS-ATTENTION clusters) | high (~9 folders, tied for most) | medium (feeds sim-engine, reaches past the public router) | rising, matches the live M3 test-plan rollout | `corpus-db-fixture.ts`, `scripts/corpus/*`, `scripts/perf-baseline*` |
-| admin-governance | Parameter-range admin settings, temporary self-service admin elevation | high (access/permission gating) | low (6/10) | low (small base) | **high** (2 real follow-on "flake"/"confirm-resolved" changes) | medium (~4 folders) | low as a dependency (Ca 1), but highest instability (0.88) — widest fan-out, hardest to isolate in tests | front-loaded, quiet since | `src/app/admin/*`, `user.ts` elevation procedures, `adminSettings` |
-| auth-signin | GitHub OAuth login, session handling | high (identity/access gating for the whole app) | low (4/4) | n/a | none observed | none beyond initial | **unknown — hidden**, see below | front-loaded, quiet since | `src/app/login`, `src/app/api/auth`; real implementation in unmapped `src/server/auth/*` |
-| run-analysis | Per-run population/genetics/phase chart | medium | low-medium (11/12) | medium (27%) | none | low | thin entry point | front-loaded | `src/app/runs/[runId]`, `getRunAnalysis` |
-| run-comparison | 2–4 run score/factor comparison | medium | low (7/7) | n/a | none | low | thin entry point, co-change with sim-engine (57%) | front-loaded | `src/app/runs/compare` |
-| leaderboard | Ranked score list | medium | low (5/5) | n/a | none | low | thin entry point, co-change with sim-engine/run-comparison (60%) | front-loaded | `src/app/leaderboard` |
-| dashboard | Post-login landing (run lists) | medium | low (5/5) | medium (40%, small base) | none | low | thin entry point | front-loaded | `src/app/dashboard` |
-| run-export | JSON/CSV run export | low-medium | n/a (folded into feature work) | — | — | low | thin entry point | — | `src/app/api/runs/[runId]/export`, `run-export.ts` |
-| feedback-module | In-app feedback → GitHub Issues, DB retry queue | low | **undercounted** — true footprint higher than the 1/2 reported (retry-worker/send-report/elevation unmapped) | — | — | none | medium (instability 0.80, external API + DB retry queue) | — | `feedback.ts`, `feedbackReports`; real implementation in unmapped `src/server/feedback/*` |
-| reference-docs | In-app static docs | low | low (3/7) | — | — | none | thin entry point | — | `src/app/reference/*` |
-| legacy-scaffold | create-t3-app's demo "post" feature | low | low (4/6) | — | — | none | confirmed **still wired** into the real landing route | — | `src/app/_components/post.tsx`, `post.ts` router |
+| **sim-engine** | Boids/predator-prey tick logic, genetics, per-tribe config, scoring | High (core value; others depend on it at runtime) | High | Medium (20%, mostly review follow-ups) | **High** (crossbreeding/per-tribe work: 14+11 second-attempt touches) | Medium (7 verdict hits on `per-tribe-behavior-weights`) | **High** (Ca=6, hub, confirmed boundary break) | Constant-high (~50 commits/wk) | `src/server/simulation/*` |
+| **testing-infra** | Unit/integration/E2E/visual-regression/perf-baseline suites, quality gates | High (gates every deploy) | **High**, rising fastest of any real capability | Medium (25%) | **High** (3 scopes at 14 touches each; 2 lessons.md-confirmed recurring flakes) | Medium-high | Unknown (not graphed — tests don't carry runtime edges) | Rising sharply (1→111→122/wk) | `tests/**`, `**/*.test.ts(x)`, `.github/workflows/*` |
+| **auth-impl** | NextAuth/OAuth sign-in, session, test-auth bypass | High (identity/access) | Low (21 commits, constant) | **High** (33% fix ratio — highest of any capability, though low volume) | Medium (1 real confirmed security fix: open-redirect bypass) | Medium-high (tied-highest verdict density, 7) | Medium (Ca=3/Ce=3, in one mechanical cycle) | Constant | `src/server/auth/*`, `src/app/login/*`, `src/middleware.ts` |
+| app-shell-design | Shared design system: sidebar/AppShell, tokens, shadcn `ui/` | Medium-High (shared foundation) | Low-medium (24, constant) | Low (mechanical polish) | Low (UI-refresh friction is one shared initiative, not independent) | Medium (restyle review cluster) | **High** (Ca=9 — every feature depends on it) | Constant | `src/components/ui/*`, `app-shell.tsx`, `src/styles/*` |
+| admin-governance | Admin parameter ranges, self-elevation, admin pages | High (identity/access-adjacent, repo-wide effect) | Low (8) | Low-medium | Medium (pre-existing, lessons.md-confirmed flakiness) | Low | Low (Ca=0, thin/leaf) | Flat | `src/app/admin/*`, schema (`adminSettings`) |
+| data-model | Persisted runs/scores/history | High (data created/changed/deleted; others depend on it) | Low-medium (25, constant) | Low | Low | Low | Medium (Ca=4/Ce=2; one misfolded test-helper cycle, see Real couplings) | Constant | `src/server/db/*`, `drizzle/*` |
+| feedback-module | In-app feedback → GitHub Issues | Medium (external integration, non-core) | Low (5) | Low | Low | Low-medium | Medium (Ce=4, instability 0.67) | **Coldest** — no commits since 2026-11-16 | `src/server/feedback/*`, schema (`feedbackReports`) |
+| ai-code-review | Standalone AI diff-review CI tool | Medium (security-review intent, not in runtime path) | Too new (2 commits) | Unknown | Unknown | Medium (own impl-review: 5 verdict hits, highest of any) | **Isolated** — 0 edges to/from `src/` | New (built in one ~13h burst, 2026-11-17/18) | `tools/ai-reviewer/*` |
+| dashboard / leaderboard / run-analysis / run-comparison / reference-docs / kitchen-sink-showcase | Feature route pages (own-runs list, rankings, run detail/compare, in-app docs, design-token showcases) | Medium / Medium / Medium / Medium / Low-Medium / Low | Low, flat across all six | Low (mechanical UI polish) | Low (same shared restyle initiative) | Low | Low (all Ca=0 — thin entry points) | Flat | `src/app/{dashboard,leaderboard,runs,reference}/*`, `*/kitchen-sink/*` |
 
-**Infrastructure, shared foundations, docs** (not ranked as business capabilities):
-- **data-model** — Drizzle schema + migrations. Ca 11 / Ce 2, instability 0.15 — the real stable foundation it's meant to be, confirmed by the structure graph, not just by convention.
-- **platform-infra** — GitHub Actions deploy pipeline, Docker, Caddy. 12/16 changes, 58% fix share — mechanical (deploy/CI "make it green" iteration, not product defects).
-- **app-shell-design** — shared layout, design tokens, shadcn/ui. Ca 9 / Ce 6, instability 0.40 — every route-level capability depends on it visually.
-- **docs-planning** — `context/`, `.claude/`, root `AGENTS.md`/`CLAUDE.md`. 511 of 542 commits (94%) — mechanical workflow lockstep (every `/10x-*` step writes progress to `plan.md`/`roadmap.md`), excluded from the ranking above but reported for completeness.
+**Non-business buckets**: platform & infrastructure (`.github/workflows`, `Dockerfile`, `Caddyfile`, `deploy.sh`, `.claude/*`) — 26 commits/200 file-changes (heavy toolkit-manifest churn), fix ratio 23% but mechanical (iteration-to-green on deploy); docs & planning (`context/foundation`, `context/changes`, `context/archive`, `context/domain`) — 723 commits/1705 changes, by far the largest raw count but **mechanical**: this project's own toolkit convention co-commits code with its change-folder prose, so one cause explains near-universal co-change with every other capability, not 18 separate relationships.
 
-**Coverage**: history — 93.3% of file-changes mapped to a business/foundation capability (6.7% unmapped, under the 10% fold-in threshold, mostly plumbing plus a real feedback-module gap — see Limitations). Structure graph — 63% of the 56 scanned graph nodes mapped (37% unmapped, including the *real* implementations of auth-signin and feedback-module — a gap, not noise; see Limitations).
+**Coverage**: unmapped file-changes 8.4% (262/3106) — under the 10% refine threshold, no refinement needed this pass. One known gap: `src/server/api/routers/simulation.ts` (sim's own tRPC router) currently folds to `unmapped` in `capabilities.tsv` rather than `sim` — a footprint-file fix for the next pass, not done here; real `sim` blast radius is likely one hop wider than shown.
 
 ## Real couplings
 
-| Pair | Direction | Evidence | Mechanical? |
-|---|---|---|---|
-| sim-engine ↔ staging-live-view | bidirectional | runtime (shared router + canvas/live-param wiring) + co-change support=28, 54% confidence | no — hand-kept, real |
-| sim-engine ↔ data-model | bidirectional | co-change support=10, 59% confidence; runtime edge confirmed in structure graph | no |
-| sim-engine → app-shell-design | one-way | runtime: `src/server/simulation/boids.ts` imports `~/styles/theme-colors` directly | no — this is the one real **boundary break** (see Risk zones) |
-| admin-governance → {sim-engine, data-model, app-shell-design} | one-way (pure consumer, Ca 1) | runtime graph | no |
-| testing-infra → sim-engine | one-way, bypasses the public contract | `scripts/corpus/harness.ts` imports `parameter-ranges.ts`/`server-run-registry.ts` directly instead of through the `simulation` tRPC router | acceptable-for-test-harness, but a real boundary note |
-| legacy-scaffold → data-model | one-way | runtime: `root.ts → routers/post.ts → db/schema.ts`, and `page.tsx → _components/post.tsx` | no — confirms dead-feature code is still live on the real landing route |
-| run-comparison / leaderboard / run-analysis → sim-engine | one-way | co-change, 57–60% confidence each | no |
-| docs-planning ↔ everything | — | 511/542 commits touch `context/` alongside product work | **yes** — every `/10x-*` skill step writes progress; excluded from risk ranking |
-| `root.ts`/`trpc.ts` fan-in (7 edges each) | — | router-registration config-as-code | **yes** |
+- **sim ↔ test, confidence 0.92 (history, evidence)** — sim code and its tests move together in the same commit almost every time; the strongest real signal in the repo. Direction-only: sim commits almost always include tests, test commits only 39% include sim changes — consistent with, but not proof of, TDD discipline.
+- **shell → sim via `theme-colors.ts` → `seed-colors.ts` (structure, evidence, hand-kept)** — confirmed still open by direct file read: the presentation-layer color file re-exports boid/predator/food seed colors from a server-layer file, because canvas rendering can't read CSS custom properties. Documented as deliberate in both files' own comments — not an accident, but still a cross-layer edge pointing the wrong way by the inferred layering rule. Too low-volume for co-change evidence either way; AGENTS.md itself already flags this as a manual-sync risk nothing enforces.
+- **shell ⇄ auth, shell ⇄ fb (structure, evidence, mechanical)** — two small, real 2-node cycles: shared UI consumed by a feature, which in turn needs one auth action (sign-out) or one GitHub-feedback component mounted into the shell's own chrome. Normal shared-UI composition, not an architecture smell.
+- **data ⇄ sim (structure, evidence, misfolded — not a real coupling)** — the reverse edge is one file, `src/server/db/admin-settings-test-reset.ts`, a test-support helper that imports sim's `parameter-ranges.ts`. It is capability-inventory noise (should fold into `test`, not `data`), not a real data→sim dependency.
+- **Router/schema/package.json hub fan-in (history, evidence, mechanical)** — `simulation.ts` router (14 partners), `schema.ts`+migration snapshot (10/8 partners), `package.json` (6) are config/schema/dependency fan-in, not fragile coupling (routers and schemas are expected to be touched by everything that uses them).
+- **`tools/ai-reviewer` is fully isolated (structure, evidence)** — zero import edges to or from `src/` in either direction, not an npm workspace member; only depends on `node:fs`, `@anthropic-ai/claude-agent-sdk`, `zod`, and its own schema file. A real monorepo-boundary question was worth checking given it's new; the answer is clean.
 
 ## Risk zones
 
-1. **sim-engine** — criticality high, buzz high in 3 independent families (change, attention, reach). It's the busiest real capability (100 commits/275 changes), tied for the most dedicated change folders (~9), and structure evidence confirms it as a genuine 9-partner hub (`simulation.ts` router) with the repo's one real layer violation: `boids.ts` (server-owned engine) imports presentation tokens (`~/styles/theme-colors`) directly. Files: `src/server/api/routers/simulation.ts`, `src/server/simulation/{boids,server-run-registry}.ts`.
-2. **testing-infra** — criticality medium (shared foundation, no single high criterion), buzz high in 3 families (change is actively rising W46→W47, matching the live test-plan rollout; friction is high — 2 of its change folders carry REJECTED/NEEDS-ATTENTION review verdicts; attention is tied for highest at ~9 folders). This is where quality work is happening *right now*, not a legacy concern. Files: `scripts/corpus/harness.ts`, `src/server/api/routers/corpus-db-fixture.ts`.
-3. **staging-live-view** — criticality high, buzz high in 2 families (change — second-highest raw volume at 52/106 — and a confirmed, non-mechanical 54%-confidence co-change coupling to the sim-engine hub). Caveat: its change signal is **fading sharply** (51 commits in W46, 1 in W47) — list this as a zone that already had its hot period rather than one still heating up; worth confirming on return whether that's "feature-complete" or "between pushes."
+1. **sim-engine** — High criticality, three independent high-buzz signals: change (constant-high, the busiest real capability besides mechanical docs), friction (two features — crossbreeding, per-tribe config — each needed 11-14 touches including explicit fixes before landing), and reach (the graph's highest-instability hub, plus the one confirmed cross-layer boundary break). Files: `src/server/simulation/boids.ts`, `server-run-registry.ts`, `parameter-ranges.ts`, `seed-colors.ts`.
+2. **testing-infra** — High criticality (gates every deploy via `deploy.yml`'s `needs: test`), two independent high-buzz signals: change (by far the fastest-rising real capability, 1→111→122 commits/week) and friction (`lessons.md` independently confirms two specific, cross-phase recurring flakes — a named off-by-one test and CI-runner timing variance in throttle-window tests — not demoted, since they're confirmed recurring in a durable project record, not just a raw commit count). Files: `tests/e2e/*.spec.ts`, `context/foundation/test-plan.md`, `context/foundation/lessons.md`.
+3. **auth-impl** — High criticality (identity/access), with a caveat this report states plainly: volume is low (21 commits), so this call rests more on severity than frequency. Two signals: fix pressure (33% fix ratio, the highest of any capability, including one real, confirmed security fix — "close open-redirect bypass") and attention (verdict density tied-highest in review history). Files: `src/server/auth/config.ts`, `src/middleware.ts`, `src/app/login/*`.
 
-**Watch** (named, not promoted — each misses the two-independent-family bar on raw volume but carries a real signal worth tracking):
-- **admin-governance** — high criticality (permission gating), and friction is genuinely high: two follow-on change folders (`pre-existing-admin-settings-flakes`, `admin-ranges-and-hook-test-flakes`) were opened specifically to re-fix issues in this capability, plus a `confirm-admin-elevation-mechanism-resolved` closure pass. `lessons.md` itself states the underlying race is "mitigated, not eliminated." Separately, structure flags it as the highest-instability capability in the graph (0.88, Ca 1 / Ce 7) — hardest to unit-test in isolation, a design-quality risk distinct from blast radius.
-- **auth-signin** (open question, not a demonstrated risk) — high criticality by definition (identity/access gating for the entire app), but its real implementation (`src/server/auth/*`) sits in capabilities.tsv's unmapped bucket, so its true blast radius is invisible to this scan rather than confirmed low. Per the verification rule for contradictions: this is a critical capability the evidence can't currently speak to — refine the capability map before trusting any "low reach" reading of auth-signin.
+**Watch** (narrowly missed the two-family bar, listed separately per the method):
 
-**Looks hot, is not** (demoted — mechanical per false-signals.md):
-- `docs-planning`'s 94%-of-all-commits share — every `/10x-*` skill writes progress to `context/`; it's workflow lockstep, not code churn.
-- `platform-infra`'s 58% fix share — deploy/CI "make the pipeline green" iteration (forwarded-host headers, auth-secret plumbing), not product defects.
-- `drizzle/meta/_journal.json` churn — drizzle-kit regenerates this snapshot on every migration; build-guarded.
-- `root.ts`/`trpc.ts` apparent 7-edge fan-in — router-registration config-as-code.
-- `.env.example`/`src/env.js`/`root.ts`/`src/server/auth/config.ts` looking like structural hubs — an artifact of being unmapped in capabilities.tsv, not real architectural fan-in.
-- The capability-level 16-node "cycle" — a module-folding artifact through shared leaf files (`root.ts`, `trpc.ts`, `app-shell.tsx`), not a real circular import (0 real file-level cycles confirmed).
-- 2 git author identities — same person (bootstrap-era squash-merge PRs, then direct commits); not a concentration risk, it's the baseline for a 1-person repo.
+- **app-shell-design** — the single highest-reach node in the graph (Ca=9, every feature capability depends on it), but its only clean high-buzz signal is reach itself; the apparent friction signal (a same-day review cluster across 6 capabilities) is one shared restyle initiative, not independent friction, and is demoted below. Worth watching precisely because a regression here is repo-wide, not because current buzz says so.
+- **admin-governance** — `lessons.md` documents a specific, partially-mitigated cross-process race condition (`pre-existing-admin-settings-flakes`) that is real and still only a mitigation, not a full fix, by the lesson's own words. Only one independent buzz family clears (friction), so it stays a watch item, not a full risk zone.
+
+**Looks hot, is not** (mechanical signals that would otherwise look like risk):
+
+- docs & planning's near-universal 90%+ co-change with every capability — the toolkit's own convention of committing code with its change-folder prose, one cause, not 18 relationships.
+- `infra`'s 23% fix ratio / 6× `fix(deploy)` commits — iteration-to-green on a deploy pipeline, the normal shape for that work.
+- The 2026-11-20 same-day UI-refresh review cluster (6 capabilities, 2 verdict hits each) — one initiative (the `/10x-ui` chain run repeatedly across pages), not 6 independent friction signals.
+- Router/schema/`package.json` fan-in — config-as-code, expected to be touched by everything that uses it.
+- PR #1/#2's "0 human reviews" — not evidence of low scrutiny; this project's real review step writes to `context/changes/.../reviews/`, which both underlying change folders have. PR #10's "fail" verdict is `tools/ai-reviewer` (the project's own bot) demoing itself against a deliberately bad diff, not a human or product signal.
 
 ## Whom to ask
 
-There is effectively one person behind every capability: git identity `Krzysztof Tatarczyk` (with 2 early commits under a second identity, `kris1617`, almost certainly the same person's bootstrap-era squash-merge PRs). No second collaborator exists (`gh api .../collaborators` returns exactly one, `kris1617`, role admin), and no `CONTRIBUTING.md`/`CODEOWNERS` exists to extend if a team forms.
-
-In place of a second person to triangulate with, this project already produces a design-doc trail per change: read `context/changes/<id>/` (active) or `context/archive/<date>-<id>/` (closed) for the research/plan/review history behind any capability, and `context/foundation/lessons.md` (13 entries) for recorded recurring mistakes — several (tRPC subscriptions via `createCaller`, SQLite `busy_timeout`, `ctx.db` vs. module singleton) are sim-engine/testing-infra-adjacent and worth reading before touching those areas.
+Single-person repo (false-signals rule 6: with ≤3 humans, concentration is the baseline, not a finding) — there is exactly one person, Krzysztof Tatarczyk, for every capability, so "whom to ask" reduces to "what has this person already tried": read their own `context/changes/<id>/` or `context/archive/<id>/` folder for the relevant capability (plan, research, reviews) before proposing a change — they are both sole author and the project's own institutional memory. For `tools/ai-reviewer` specifically, its entire history is 2 commits (feat + fix) — read both before touching it, the whole module's history fits in one sitting.
 
 ## First day
 
-1. `src/server/api/routers/simulation.ts` — the sim-engine contract; every other capability that touches simulation data goes through this router.
-2. `src/server/simulation/server-run-registry.ts` — the server-owned tick loop/registry; where a run actually lives while active.
-3. `src/server/simulation/boids.ts` — the core physics; note the presentation-token import flagged above before changing it.
-4. `src/app/simulation/_components/simulation-canvas.tsx` — staging-live-view's largest file (31 commits); the client-ticked rendering loop.
-5. `src/app/simulation/page.tsx` — staging-live-view's entry route (run configuration form, start/startServer mutations).
-6. `src/server/db/schema.ts` — the data-model foundation; every feature's migration lands here first.
-7. `src/server/simulation/parameter-ranges.ts` — the shared validation/ranges contract admin settings feed and every surface displaying parameters reads.
-8. `context/foundation/lessons.md` + `context/foundation/roadmap.md` — this project's own memory; read before relying on "ask a teammate," because there isn't one.
+1. `context/foundation/roadmap.md` — current milestone state and what's planned next (the busiest single file in the repo by partner count).
+2. `src/server/simulation/boids.ts` + `parameter-ranges.ts` — the simulation engine's core tick logic and its per-tribe/predator-tribe configuration surface; read before touching anything sim-adjacent.
+3. `src/server/simulation/server-run-registry.ts` — server-owned run lifecycle; the other half of sim-engine, pulls in `data` directly.
+4. `src/app/simulation/_components/simulation-canvas.tsx` + `src/styles/theme-colors.ts` — the client-staged live view and the one confirmed cross-layer boundary break (reads `seed-colors.ts` from the server layer).
+5. `src/components/ui/*` + `src/components/app-shell.tsx` — the shared design system every feature capability depends on; a regression here is repo-wide.
+6. `src/server/auth/config.ts` + `src/middleware.ts` — auth/session wiring and the route gate; low volume but highest fix-ratio and one real confirmed security fix.
+7. `context/foundation/test-plan.md` + `context/foundation/lessons.md` — the quality-gate strategy (now the fastest-rising capability) and the durable, cross-phase-confirmed recurring-bug log.
+8. `src/server/db/schema.ts` — the full data model (7 tables); everything server-side eventually reads or writes through here.
 
 ## Limitations
 
-- **Window**: whole history (13 days, 542 commits) — shorter than the skill's default 12-month window by construction, not a truncation. Trend evidence rests on only 3 weekly buckets (W45 birth, W46 build-out, W47 partial-to-date); every "rising"/"fading" call above is explicitly low-confidence, not a mature trend.
-- **Evidence sources**: git is exhaustive and reliable. The forge (`gh`) is usable but near-empty — 2 merged PRs (same minute, 2026-11-11, a one-time branch-protection trial) and 0 issues. All review/friction signal instead comes from this project's own `context/changes/`→`context/archive/` convention (68 review files read by heading/verdict only, not full bodies).
-- **Graph coverage**: TypeScript/TSX only language in this repo. `madge`, `dependency-cruiser` and `skott` were all checked and unavailable without installing something new (not installed, per the skill's own read-only constraint) — the structure evidence rests on a custom level-4 import-scan fallback with explicitly **low confidence**: no re-export flattening, no dynamic-`import()` resolution. Installing `dependency-cruiser` or `madge` is recommended before trusting any "0 cycles" claim at full rigor.
-- **Capability coverage**: 93.3% of history-based file-changes mapped; 6.7% unmapped (mostly plumbing, but including a real feedback-module gap). The structure graph is worse: only 63% of scanned nodes are mapped — critically, the **actual implementations** of auth-signin (`src/server/auth/*`) and feedback-module (`src/server/feedback/*`) are unmapped, which is why both capabilities' "reach" readings above are marked unknown/undercounted rather than confirmed low. Refining `capabilities.tsv` to include these paths before any deeper auth- or feedback-focused investigation would sharpen this map materially.
-- **What this map does not say**: it has no visibility into purely runtime-only coupling — tRPC's router-merge indirection, NextAuth's provider wiring, or the `adminSettings`-driven parameter-range feature-flag behavior that gates `sim-engine`/`staging-live-view` without showing as a static edge.
-- **Unknowns worth a focused investigation**: (1) feedback-module's true activity/footprint, currently undercounted; (2) auth-signin's true blast radius, currently hidden by the capability-map gap; (3) whether the admin-ranges cross-process race that `lessons.md` calls "mitigated, not eliminated" is actually closed, or still open; (4) whether a production error tracker exists today (one archived change is literally titled `fix-production-trpc-error-logging`, implying a past gap in production error visibility that this pass couldn't confirm is now closed).
+- **Window**: whole history, 2026-11-04..HEAD (16 days, 800 non-merge commits) — shorter than the default 12-month window because the repo is that young; no older history exists to miss.
+- **Sources**: git + gh (now usable; the repo is public, was private at the last map). Forge signal is near-silent by this project's own design — real review lives in `context/changes/`/`context/archive/<id>/reviews/`, not GitHub PRs.
+- **Graph coverage**: TypeScript/TSX only (the whole repo), confidence **low** — no dependency-graph tool (madge/dependency-cruiser/skott/ast-grep) is installed or was installed for this pass; evidence comes from a custom regex import/export scan (105 files, 372 specifiers, 221 resolved). One real edge (`theme-colors.ts`→`seed-colors.ts`) was initially missed by this fallback because a stray apostrophe inside a comment broke the naive regex — fixed by stripping comments first, but **treat this fallback's negative results ("no edge found") as weaker than its positive results**; other adversarial comment/string content could still hide an edge undetected. A dependency-cruiser or madge rerun would raise confidence.
+- **Capability coverage**: 8.4% unmapped (under the 10% refine threshold). One specific, known gap: `src/server/api/routers/simulation.ts` folds to `unmapped`, not `sim` — a `capabilities.tsv` footprint fix for next time, not done in this pass.
+- **What this map does NOT say**: it does not read source files for logic/correctness, does not run tests, does not assess code quality beyond structural/history signals, and does not check runtime coupling beyond static imports (dynamic `import()`, DI, tRPC's own dynamic dispatch via `root.ts`, queues, webhooks were not checked — none found in a first pass, not exhaustively ruled out).
+- **Unknowns worth a focused investigation**: whether `theme-colors.ts`/`globals.css` actually drift in practice (too low-volume for co-change evidence either way); no production error-tracker evidence found in this scan (out of scope, not investigated); whether bugs are tracked at all outside `lessons.md`/change folders, or simply not yet needed at 16 days old (`gh issue list` returned 0); verdict-marker density (REJECTED/NEEDS ATTENTION/CRITICAL counts) is a proxy for review attention, not a read of actual severity text — review-file bodies were not opened, only grepped; no formal ownership doc exists, so team-size and "who's still on the project" are inferred from git authorship alone; per-capability agent-co-authorship percentage was not computed (only the repo-wide 86% baseline); `ai-code-review` (`tools/ai-reviewer`) is too new (2 commits) to trend or assess fix pressure — revisit once it has more history.
+- **Failed/partial agents**: none — all four evidence sub-agents completed in full; coverage for all four evidence questions is complete for every high/medium-criticality capability.
