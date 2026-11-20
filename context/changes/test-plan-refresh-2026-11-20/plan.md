@@ -325,7 +325,7 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Manual
 
-- [ ] 3.3 Push/PR confirms the Actions run's new step passes, and a real deploy still succeeds (first push failed: locally-generated baselines differed from real ubuntu-latest rendering by ~1% pixels; fixed via a one-time workflow_dispatch job that generated true CI baselines, downloaded and committed here)
+- [x] 3.3 Push/PR confirms the Actions run's new step passes, and a real deploy still succeeds (first push failed: locally-generated baselines differed from real ubuntu-latest rendering by ~1% pixels; fixed via a one-time workflow_dispatch job that generated true CI baselines, downloaded and committed here; a second run hit lessons.md's known simulation.test.ts:3721 throttle-window flake, confirmed clean on retry) — c42a524
 
 ### Phase 4: Local vision-review script (non-blocking)
 
