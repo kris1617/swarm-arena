@@ -143,4 +143,17 @@
 	html {
 		@apply font-sans;
 	}
+	/* A native <select>'s closed trigger is themed by the `bg-input
+	 text-foreground` classes on the element itself (see ui/select.tsx), but
+	 its <option> popup is rendered by the browser/OS, outside the normal
+	 CSS cascade for backgrounds — left unstyled, options inherit
+	 text-foreground's light text color with a transparent background,
+	 rendering white-on-white (or on whatever light default the browser
+	 supplies) until the browser's own hover highlight makes a row visible
+	 by coincidence. --popover/--popover-foreground (the same tokens used
+	 for every other floating surface in this app) fix it. */
+	select option {
+		background-color: var(--popover);
+		color: var(--popover-foreground);
+	}
 }
