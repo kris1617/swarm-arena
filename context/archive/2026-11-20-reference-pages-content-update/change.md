@@ -1,10 +1,10 @@
 ---
 change_id: reference-pages-content-update
 title: Reference pages content accuracy update
-status: impl_reviewed
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T11:09:21Z
 ---
 
 ## Notes
