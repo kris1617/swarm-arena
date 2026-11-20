@@ -17,6 +17,7 @@ import {
 	computeTribeFoodImbalanceSample,
 	createInitialPopulation,
 	createInitialPredators,
+	ENERGY_MAX,
 	type FlockWeights,
 	inheritGenes,
 	MATE_DISTANCE_RADIUS,
@@ -1795,6 +1796,141 @@ describe("predator-prey dynamics", () => {
 			100 - boids.length * FOOD_CONSUMPTION_PER_BOID + 5;
 		expect(result.foodStock).toBe(expectedFoodStock);
 		expect(result.foodItems).toHaveLength(0);
+	});
+
+	// simulation-entity-shape-color-differentiation Phase 1 / impl-review F1:
+	// the three tests below exercise applyHunger's regen-accumulate-and-spawn
+	// loop itself (boids.ts's FOOD_ITEM_DISPLAY_VALUE threshold, the combined
+	// boids+predators+food maxObjectCount cap, and backlog preservation when
+	// capped) — every pre-existing food test only constructed `foodItems` as
+	// static fixture input and never drove this loop.
+	it("spawns one food item once accumulated regen crosses the display threshold, carrying the sub-threshold remainder forward", () => {
+		// Hand-derived from the oracle (boids.ts's own documented
+		// FOOD_ITEM_DISPLAY_VALUE = 10), not mirrored from applyHunger's
+		// implementation: regenThisTick=12 crosses 10 once, leaving a
+		// remainder of 2.
+		const FOOD_ITEM_DISPLAY_VALUE = 10;
+		const result = applyHunger(
+			[],
+			1,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			{
+				foodRegenRate: 12,
+				worldSize: WORLD_SIZE,
+				rng: createRng(9),
+				otherEntityCount: 0,
+				maxObjectCount: 500,
+			},
+		);
+
+		expect(result.foodItems).toHaveLength(1);
+		expect(result.foodSpawnRemainder).toBeCloseTo(
+			12 - FOOD_ITEM_DISPLAY_VALUE,
+			10,
+		);
+	});
+
+	it("at the combined object-count cap, withholds the new item and preserves the full backlog instead of resetting it", () => {
+		// boids.length (0) + otherEntityCount (0) + existing foodItems (0)
+		// already equals maxObjectCount (0) — the cap check must fire before
+		// any item is pushed, and the accumulated remainder must survive
+		// unchanged (not be reset to 0 just because it couldn't spawn).
+		const result = applyHunger(
+			[],
+			1,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			{
+				foodRegenRate: 12,
+				worldSize: WORLD_SIZE,
+				rng: createRng(9),
+				otherEntityCount: 0,
+				maxObjectCount: 0,
+			},
+		);
+
+		expect(result.foodItems).toHaveLength(0);
+		expect(result.foodSpawnRemainder).toBe(12);
+	});
+
+	it("once capacity frees up, a backlog preserved from an earlier capped tick spawns on the next eligible tick", () => {
+		const FOOD_ITEM_DISPLAY_VALUE = 10;
+		const cappedTick = applyHunger(
+			[],
+			1,
+			{ foodStock: 0, foodItems: [], foodSpawnRemainder: 0 },
+			{
+				foodRegenRate: 12,
+				worldSize: WORLD_SIZE,
+				rng: createRng(9),
+				otherEntityCount: 0,
+				maxObjectCount: 0,
+			},
+		);
+		expect(cappedTick.foodItems).toHaveLength(0);
+		expect(cappedTick.foodSpawnRemainder).toBe(12);
+
+		const freedTick = applyHunger(
+			[],
+			1,
+			{
+				foodStock: cappedTick.foodStock,
+				foodItems: cappedTick.foodItems,
+				foodSpawnRemainder: cappedTick.foodSpawnRemainder,
+			},
+			{
+				foodRegenRate: 0,
+				worldSize: WORLD_SIZE,
+				rng: createRng(9),
+				otherEntityCount: 0,
+				maxObjectCount: 500,
+			},
+		);
+
+		expect(freedTick.foodItems).toHaveLength(1);
+		expect(freedTick.foodSpawnRemainder).toBeCloseTo(
+			12 - FOOD_ITEM_DISPLAY_VALUE,
+			10,
+		);
+	});
+
+	// impl-review F2: FOOD_ENERGY_BOOST's clamp to ENERGY_MAX had no pinning
+	// test — a future refactor dropping the Math.min wrapper wouldn't be
+	// caught by any existing test.
+	it("clamps the food-energy boost to ENERGY_MAX rather than letting it overshoot", () => {
+		const nearFullBoid: BoidState = {
+			x: 0,
+			y: 0,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			lifespan: 100,
+			genes: makeGenes(WEIGHTS, { flockId: 0 }),
+			energy: 95,
+			age: 0,
+			gender: "a",
+		};
+
+		const result = applyHunger(
+			[nearFullBoid],
+			1,
+			{
+				foodStock: 100,
+				foodItems: [{ x: 0, y: 0, z: 0 }],
+				foodSpawnRemainder: 0,
+			},
+			{
+				foodRegenRate: 0,
+				worldSize: WORLD_SIZE,
+				rng: createRng(1),
+				otherEntityCount: 0,
+				maxObjectCount: 500,
+			},
+		);
+
+		// 95 + FOOD_ENERGY_BOOST (40) = 135, which must clamp to ENERGY_MAX
+		// (100) rather than being returned raw.
+		expect(result.boids[0]?.energy).toBe(ENERGY_MAX);
 	});
 
 	it("protection threshold: a flock at or below the threshold is never attacked", () => {
