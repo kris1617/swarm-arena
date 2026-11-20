@@ -1,10 +1,10 @@
 ---
 change_id: sim-engine-feature-analysis
 title: Sim-engine feature analysis (10xArchitect M4L3 artifact)
-status: preparing
+status: archived
 created: 2026-11-17
-updated: 2026-11-17
-archived_at: null
+updated: 2026-11-20
+archived_at: 2026-11-20T16:43:06Z
 ---
 
 ## Notes
