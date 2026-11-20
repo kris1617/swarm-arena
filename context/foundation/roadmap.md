@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: none
 milestone_id: visual-polish-and-content-accuracy
 milestone_seq: 13
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-13: Visual polish and content accuracy** — Status: open
+**M-13: Visual polish and content accuracy** — Status: done
 
 - **Intent:** Three user-reported gaps, independent of each other: the app's color scheme reads as low-energy/depressing and needs a deliberate, researched redesign at the design-token level (not a per-view fix); the reference pages' content has fallen behind the simulation mechanics shipped since M-10 (per-tribe boid behavior, predator tribes, area-aware scoring) and needs a content-accuracy pass, not just the token/component pass M-12's S-50 already did; and the login page should look like a modern OAuth-provider login screen, with the apparent lack of visible browser-address-bar navigation during the redirect investigated and fixed if it's a real gap.
 - **Source materials:** user description (2026-11-20) — anchors below.
@@ -1060,6 +1060,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-10: Per-tribe configuration and predator expansion** (`per-tribe-config-and-predator-expansion`) — closed 2026-11-18. Fixed the reported default-start failure (S-39), then extended per-tribe configuration to boid behavior (F-09, S-40), food (S-41), and predators (S-42), and finally added a second predator tribe with a configurable prey target — boids only, or boids and predators, scored via a new 6th factor (F-10, S-43) — a predation relationship new relative to both the Lua reference and the prior codebase. All 5 scope anchors (MS-01–MS-05) satisfied; F-09/F-10 and all 5 slices (S-39–S-43) done.
 - **M-11: Simulation legibility and frontend polish** (`simulation-legibility-and-frontend-polish`) — closed 2026-11-20. Gave food its first on-canvas representation and distinguished all three entity kinds by shape/color (S-44), then ported the Lua reference's energy/decay-driven lifecycle color fade — boid/predator dimming toward gray as energy drops, food fading and shrinking as it ages — behind one centralized `fadeTowardGray` helper instead of the reference's 3× duplication (S-45). MS-02 and MS-03 satisfied; MS-01 (a broader `/10x-ui` modernization pass across other views) stays open as Open Roadmap Question #11 — not blocking, carried forward for a future milestone to pick up.
 - **M-12: UI modernization pass** (`ui-modernization-pass`) — closed 2026-11-20. Resolved Open Roadmap Question #11 by giving each of the app's remaining views a `/10x-ui` pass: dashboard (S-46), leaderboard (S-47), run-analysis and run-comparison (S-48), admin pages — their first-ever restyle, confirmed as a true baseline gap rather than drift (S-49), and reference pages (S-50, which also fixed a scoring-content accuracy gap found during its audit). All 5 scope anchors (MS-01–MS-05) satisfied; no foundations this milestone.
+- **M-13: Visual polish and content accuracy** (`visual-polish-and-content-accuracy`) — closed 2026-11-20. Three independent, user-reported polish items: a researched color-palette redesign fixing a tonal-flatness defect found during research (S-51, north star), a reference-pages content-accuracy update covering 14 previously-undocumented per-tribe/predator-tribe fields (S-52), and a login-page restyle plus a redirect-visibility investigation that confirmed the OAuth flow already works correctly (S-53). All 3 scope anchors (MS-01–MS-03) satisfied; no foundations this milestone. S-53's impl-review surfaced a research-process lesson (recorded in `lessons.md`): Historical Context sections must be grounded in a broad `git log` search, not a guessed named precedent.
 
 ## Done
 
