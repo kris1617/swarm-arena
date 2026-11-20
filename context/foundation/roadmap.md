@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: decisions
 milestone_id: simulation-legibility-and-frontend-polish
 milestone_seq: 11
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-11: Simulation legibility and frontend polish** — Status: open
+**M-11: Simulation legibility and frontend polish** — Status: done
 
 - **Intent:** Make the simulation view's three entity kinds (boid, predator, food) clearly distinguishable at a glance via shape and color, add a lifecycle-stage color fade matching the energy/decay-driven pattern already proven in the user's own prior LÖVE2D/Lua reference implementation, and open the question of a broader modernization pass across the app's other views.
 - **Source materials:** user description (2026-11-19) + reference implementation at `/mnt/Kids/boids_final/game/src/Boid.lua`, `Predator.lua`, `Food.lua` (lifecycle-fade logic), anchors below
@@ -941,6 +941,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-7: Genetic-diversity trend** (`genetic-diversity-trend`) — closed 2026-11-15. Delivered a per-tick genetic-diversity sample series across both execution paths and a new trend chart in the analysis view (S-32, the milestone's sole slice), reversing the PRD's own "No diversity-index trend over time" Non-Goal per its own revisit clause. Plan-review caught 2 critical gaps before implementation — the server-owned pause/resume snapshot path (the exact S-25 lesson bug class) and the client-staged execution path, both missing from the initial draft despite the Overview claiming both paths.
 - **M-8: Parameter-suggestion & analytics validation corpus** (`parameter-suggestion-analytics-corpus`) — closed 2026-11-16. Delivered a reusable, persisted structured-parameter-sweep corpus (F-08, S-33) and two regression suites against it: parameter-suggestion-heuristic quality (S-34) and per-run analytics correctness across the corpus's full parameter range (S-35). Every scope anchor (MS-01–MS-06) satisfied.
 - **M-10: Per-tribe configuration and predator expansion** (`per-tribe-config-and-predator-expansion`) — closed 2026-11-18. Fixed the reported default-start failure (S-39), then extended per-tribe configuration to boid behavior (F-09, S-40), food (S-41), and predators (S-42), and finally added a second predator tribe with a configurable prey target — boids only, or boids and predators, scored via a new 6th factor (F-10, S-43) — a predation relationship new relative to both the Lua reference and the prior codebase. All 5 scope anchors (MS-01–MS-05) satisfied; F-09/F-10 and all 5 slices (S-39–S-43) done.
+- **M-11: Simulation legibility and frontend polish** (`simulation-legibility-and-frontend-polish`) — closed 2026-11-20. Gave food its first on-canvas representation and distinguished all three entity kinds by shape/color (S-44), then ported the Lua reference's energy/decay-driven lifecycle color fade — boid/predator dimming toward gray as energy drops, food fading and shrinking as it ages — behind one centralized `fadeTowardGray` helper instead of the reference's 3× duplication (S-45). MS-02 and MS-03 satisfied; MS-01 (a broader `/10x-ui` modernization pass across other views) stays open as Open Roadmap Question #11 — not blocking, carried forward for a future milestone to pick up.
 
 ## Done
 
