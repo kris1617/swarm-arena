@@ -105,7 +105,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-49 | admin-pages-ui-refresh | User (admin) sees the elevation and settings pages brought onto the design-token system for the first time | —              | FR-030, FR-032, FR-033, MS-04                          | done |
 | S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | done |
 | S-51 | color-palette-redesign | User sees a researched, higher-energy color palette applied across the whole app instead of today's low-energy dark-purple scheme | —              | FR-032, MS-01                                          | done |
-| S-52 | reference-pages-content-update | User reads reference-page content (storyline, parameters, population-lifecycle, scoring) that accurately reflects the per-tribe, predator-tribe, and area-aware mechanics shipped since M-10 | —              | FR-034, MS-02                                           | planning |
+| S-52 | reference-pages-content-update | User reads reference-page content (storyline, parameters, population-lifecycle, scoring) that accurately reflects the per-tribe, predator-tribe, and area-aware mechanics shipped since M-10 | —              | FR-034, MS-02                                           | done |
 | S-53 | login-page-oauth-polish | User sees a modern provider-style login screen and, if the redirect gap is real, visible browser navigation during the GitHub OAuth flow | —              | FR-031, MS-03                                           | ready |
 
 ## Streams
@@ -936,7 +936,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - Exactly which simulation mechanics are missing or inaccurate across the 4 pages (per-tribe boid behavior, predator tribes, area-aware scoring, and anything else shipped since) — Owner: team (via `/10x-research`, re-verified against current code per the "never touched" lesson in `lessons.md`, not inferred from commit history alone). Block: no.
 - **Risk:** Low — pure content correction, no shared-component or token work (M-12's S-50 already handled that layer); independent of S-51/S-53.
-- **Status:** planning
+- **Status:** done
 
 ### S-53: Login page OAuth polish
 
@@ -1063,6 +1063,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-52: User reads reference-page content that accurately describes the simulation's current mechanics, not the mechanics as they stood when the pages were last substantively written.** — Archived 2026-11-20 → `context/archive/2026-11-20-reference-pages-content-update/`. Lesson: —.
 - **S-51: User sees a deliberately researched color palette applied across the whole app — every page inherits the new tokens, not just one view.** — Archived 2026-11-20 → `context/archive/2026-11-20-color-palette-redesign/`. Lesson: —.
 - **S-50: User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system.** — Archived 2026-11-20 → `context/archive/2026-11-20-reference-pages-ui-refresh/`. Lesson: —.
 - **S-49: User (admin) sees the elevation and settings pages brought onto the design-token system for the first time.** — Archived 2026-11-20 → `context/archive/2026-11-20-admin-pages-ui-refresh/`. Lesson: a prior roadmap/research note claimed these pages "never received the F-06 restyle" based on commit history alone, but direct code inspection found tokens already correctly in place — the real gaps were a `<main>`-landmark bug and missing shared-component adoption. Recorded as a recurring rule via `/10x-lesson`.
