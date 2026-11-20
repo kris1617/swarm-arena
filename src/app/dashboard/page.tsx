@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { RunRow } from "~/components/run-row";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { api } from "~/trpc/react";
 
 type StatusFilter = "all" | "running" | "saved" | "completed";
@@ -19,6 +21,9 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 function formatDate(value: Date | string): string {
 	return new Date(value).toLocaleString();
 }
+
+const statusCardClassName =
+	"bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center";
 
 export default function DashboardPage() {
 	const [filter, setFilter] = useState<StatusFilter>("all");
@@ -70,22 +75,15 @@ export default function DashboardPage() {
 		<div className="from-primary to-background text-foreground flex min-h-screen flex-col items-center gap-8 bg-gradient-to-b p-8">
 			<h1 className="text-3xl font-bold">Your Simulations</h1>
 
-			<div className="flex flex-wrap justify-center gap-2">
-				{STATUS_FILTERS.map((f) => (
-					<Button
-						className={
-							f.value === filter
-								? "bg-foreground/35 text-foreground h-auto rounded-full px-6 py-2 font-semibold"
-								: "bg-input text-foreground hover:bg-foreground/15 h-auto rounded-full px-6 py-2 font-semibold"
-						}
-						key={f.value}
-						onClick={() => setFilter(f.value)}
-						type="button"
-					>
-						{f.label}
-					</Button>
-				))}
-			</div>
+			<Tabs onValueChange={(v) => setFilter(v as StatusFilter)} value={filter}>
+				<TabsList>
+					{STATUS_FILTERS.map((f) => (
+						<TabsTrigger key={f.value} value={f.value}>
+							{f.label}
+						</TabsTrigger>
+					))}
+				</TabsList>
+			</Tabs>
 
 			{isLoading ? (
 				<div className="flex w-full max-w-2xl flex-col gap-6">
@@ -93,11 +91,11 @@ export default function DashboardPage() {
 					<Skeleton className="h-24 w-full rounded-2xl" />
 				</div>
 			) : isError ? (
-				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
+				<div className={statusCardClassName}>
 					<p>Couldn&apos;t load your simulations. Try reloading the page.</p>
 				</div>
 			) : isEmpty ? (
-				<div className="bg-input text-foreground flex w-full max-w-md flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center">
+				<div className={statusCardClassName}>
 					<p>You haven&apos;t started any simulations yet.</p>
 					<Button
 						asChild
@@ -112,21 +110,17 @@ export default function DashboardPage() {
 						<section className="bg-input text-foreground flex flex-col gap-2 rounded-2xl px-4 py-3">
 							<h2 className="font-semibold">Running</h2>
 							{runningQuery.data.map((run) => (
-								<div
-									className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
+								<RunRow
+									actionHref="/simulation"
+									actionLabel="View"
 									key={run.id}
-								>
-									<span>
-										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
-										predators — started {formatDate(run.startedAt)}
-									</span>
-									<Button
-										asChild
-										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
-									>
-										<Link href="/simulation">View</Link>
-									</Button>
-								</div>
+									label={
+										<span>
+											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
+											predators — started {formatDate(run.startedAt)}
+										</span>
+									}
+								/>
 							))}
 						</section>
 					) : null}
@@ -135,21 +129,17 @@ export default function DashboardPage() {
 						<section className="bg-input text-foreground flex flex-col gap-2 rounded-2xl px-4 py-3">
 							<h2 className="font-semibold">Saved</h2>
 							{savedQuery.data.map((run) => (
-								<div
-									className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
+								<RunRow
+									actionHref="/simulation"
+									actionLabel="View"
 									key={run.id}
-								>
-									<span>
-										Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
-										predators — started {formatDate(run.startedAt)}
-									</span>
-									<Button
-										asChild
-										className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
-									>
-										<Link href="/simulation">View</Link>
-									</Button>
-								</div>
+									label={
+										<span>
+											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
+											predators — started {formatDate(run.startedAt)}
+										</span>
+									}
+								/>
 							))}
 						</section>
 					) : null}
@@ -163,43 +153,45 @@ export default function DashboardPage() {
 								const isSelected = selectedIds.has(run.id);
 								const selectionDisabled = !isSelected && selectedIds.size >= 4;
 								return (
-									<div
-										className="bg-background flex items-center justify-between gap-2 rounded-full px-4 py-2"
+									<RunRow
+										actionHref={`/runs/${run.id}`}
+										actionLabel="View analysis"
 										key={run.id}
-									>
-										<Checkbox
-											aria-label={`Select run #${run.id} for comparison`}
-											checked={isSelected}
-											disabled={selectionDisabled}
-											onCheckedChange={() => toggleSelected(run.id)}
-										/>
-										<span>
-											Run #{run.id} — {run.boidCount} boids, {run.predatorCount}{" "}
-											predators — started {formatDate(run.startedAt)}
-										</span>
-										{/* plan-review F1: score is nullable — a run that failed
-										to start lands here with no score. */}
-										<span className="font-semibold">
-											{run.score === null
-												? "—"
-												: `Score: ${run.score.toFixed(2)}`}
-										</span>
-										{/* fix-default-start-failure Phase 3: distinguishes a
-										null-score row the reconciliation sweep stopped from
-										an unexplained one. */}
-										{run.wasAutoStopped ? (
-											<span className="text-foreground/70 text-sm">
-												Stopped automatically — server restarted
+										label={
+											<span>
+												Run #{run.id} — {run.boidCount} boids,{" "}
+												{run.predatorCount} predators — started{" "}
+												{formatDate(run.startedAt)}
 											</span>
-										) : null}
-										{/* S-11 (MS-08): closes the loop S-10 explicitly left open. */}
-										<Button
-											asChild
-											className="hover:bg-foreground/15 h-auto rounded-full px-4 py-1 font-semibold"
-										>
-											<Link href={`/runs/${run.id}`}>View analysis</Link>
-										</Button>
-									</div>
+										}
+										leading={
+											<Checkbox
+												aria-label={`Select run #${run.id} for comparison`}
+												checked={isSelected}
+												disabled={selectionDisabled}
+												onCheckedChange={() => toggleSelected(run.id)}
+											/>
+										}
+										trailing={
+											<>
+												{/* plan-review F1: score is nullable — a run that
+												failed to start lands here with no score. */}
+												<span className="font-semibold">
+													{run.score === null
+														? "—"
+														: `Score: ${run.score.toFixed(2)}`}
+												</span>
+												{/* fix-default-start-failure Phase 3: distinguishes
+												a null-score row the reconciliation sweep stopped
+												from an unexplained one. */}
+												{run.wasAutoStopped ? (
+													<span className="text-foreground/70 text-sm">
+														Stopped automatically — server restarted
+													</span>
+												) : null}
+											</>
+										}
+									/>
 								);
 							})}
 							{/* S-12: enabled only for 2–4 selected completed runs. */}

@@ -159,16 +159,16 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on touched files stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — cce2837
+- [x] 1.2 Lint passes: `npm run check` — cce2837
+- [x] 1.3 Full suite still passes: `npm test` — cce2837
+- [x] 1.4 Hardcoded-value scan on touched files stays at 0 hits — cce2837
 
 #### Manual
 
-- [ ] 1.5 Status filter looks unchanged and filters correctly, now arrow-key navigable
-- [ ] 1.6 Running/Saved/Completed rows render identically to before
-- [ ] 1.7 Error and empty states render with no visual change
+- [x] 1.5 Status filter looks unchanged and filters correctly, now arrow-key navigable — verified live (production build): clicking a tab filters to that section, `ArrowRight` moves selection/focus between tabs (real `role="tablist"`/`role="tab"` semantics via Radix, confirmed in the accessibility snapshot), each tab's `data-active` styling matches the old `bg-foreground/35`/`bg-input` look. — cce2837
+- [x] 1.6 Running/Saved/Completed rows render identically to before — verified live with 4 seeded rows (1 running, 1 saved, 2 completed: one scored, one null-score+auto-stopped): all labels, the checkbox, the score/auto-stopped text, and both action links (`/simulation` "View", `/runs/<id>` "View analysis") render exactly as before. Checking 2 completed rows correctly enabled "Compare selected" linking to `/runs/compare?ids=<id>,<id>`. — cce2837
+- [x] 1.7 Error and empty states render with no visual change — verified live: with 0 runs, the empty-state card ("You haven't started any simulations yet." + "Start a simulation" link) renders via the collapsed `statusCardClassName` helper with the same container styling as before. — cce2837
 
 ### Phase 2: States gate & guard
 
