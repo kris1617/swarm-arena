@@ -174,12 +174,12 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 9b0b71b
+- [x] 2.2 Lint passes: `npm run check` — 9b0b71b
+- [x] 2.3 Full suite still passes: `npm test` — 9b0b71b
 
 #### Manual
 
-- [ ] 2.4 All 7 states visible/triggerable at `/dashboard/kitchen-sink`, screenshot at desktop and one mobile width
-- [ ] 2.5 Focus-visible ring uses the `--ring` token, not a browser default
-- [ ] 2.6 `AGENTS.md` UI section gained the `RunRow`/`Tabs` guard note
+- [x] 2.4 All 7 states visible/triggerable at `/dashboard/kitchen-sink`, screenshot at desktop and one mobile width — verified live (production build): default/hover RunRow, focus-visible Tabs, disabled Button, error/empty status cards, and loading Skeleton (2 skeleton elements confirmed via DOM query) all render in one screen. — 9b0b71b
+- [x] 2.5 Focus-visible ring uses the `--ring` token, not a browser default — verified via computed style: focusing the `TabsTrigger` produces `outline: oklab(0.749996 0.0410298 -0.11274 / 0.5) solid 3px`, matching `--ring`'s token value (`lab(69.5677% 18.5122 -40.8856)`) at 50% opacity through the `focus-visible:ring-ring/50`/`focus-visible:outline-ring` classes — not a browser default outline. — 9b0b71b
+- [x] 2.6 `AGENTS.md` UI section gained the `RunRow`/`Tabs` guard note — confirmed in the diff. — 9b0b71b
