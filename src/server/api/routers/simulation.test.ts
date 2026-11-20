@@ -4511,6 +4511,241 @@ describe("simulationRouter.adjustLivePopulation", () => {
 	});
 });
 
+// simulation-run-delete Phase 4: covers deleteRun's ownership/status gates,
+// the hard/soft role branch, and the rate-limit regression this feature
+// could introduce (a soft delete must never shrink the rate-limit count —
+// see plan.md's Current State Analysis for why).
+describe("simulationRouter.deleteRun", () => {
+	it("rejects with FORBIDDEN when the caller does not own the run", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		// No real `users` row needed for the attacker — deleteRun's ownership
+		// check never writes anything keyed to it, same posture as `stop`'s
+		// own FORBIDDEN test.
+		const attackerCaller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: {
+					id: "attacker-user-id",
+					role: "member" as const,
+					elevatedUntil: null,
+				},
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(
+			attackerCaller.simulation.deleteRun({ runId: run.id }),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("rejects with BAD_REQUEST when the run is still running", async () => {
+		const { ownerId, runId } = await insertOwnedRunningRun();
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: ownerId, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		await expect(caller.simulation.deleteRun({ runId })).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		} satisfies Partial<TRPCError>);
+	});
+
+	it("a non-admin's delete sets deletedAt and leaves the row in place", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await caller.simulation.deleteRun({ runId: run.id });
+		expect(result).toEqual({ success: true });
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, run.id),
+		});
+		expect(row).toBeDefined();
+		expect(row?.deletedAt).not.toBeNull();
+	});
+
+	it("an admin's delete actually removes the row", async () => {
+		const [admin] = await db
+			.insert(users)
+			.values({
+				email: `admin-${crypto.randomUUID()}@example.com`,
+				role: "admin",
+			})
+			.returning({ id: users.id });
+		if (!admin) throw new Error("failed to insert fixture admin");
+		trackedOwnerIds.push(admin.id);
+
+		const [run] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: admin.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		if (!run) throw new Error("failed to insert fixture run");
+
+		const adminCaller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: admin.id, role: "admin" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		const result = await adminCaller.simulation.deleteRun({ runId: run.id });
+		expect(result).toEqual({ success: true });
+
+		const row = await db.query.simulationRuns.findFirst({
+			where: (t, { eq: eqFn }) => eqFn(t.id, run.id),
+		});
+		expect(row).toBeUndefined();
+	});
+
+	it("excludes a soft-deleted run from listCompleted/listSaved/listLeaderboard, but it still counts toward the rate-limit recheck", async () => {
+		const [owner] = await db
+			.insert(users)
+			.values({ email: `owner-${crypto.randomUUID()}@example.com` })
+			.returning({ id: users.id });
+		if (!owner) throw new Error("failed to insert fixture owner");
+		trackedOwnerIds.push(owner.id);
+
+		const caller = createCaller({
+			db,
+			headers: new Headers(),
+			allowSelfElevation: false,
+			session: {
+				user: { id: owner.id, role: "member" as const, elevatedUntil: null },
+				expires: new Date(Date.now() + 60_000).toISOString(),
+			},
+		});
+
+		// listCompleted / listLeaderboard exclusion.
+		const [completedRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 1,
+				...VALID_START_INPUT,
+				status: "stopped",
+				score: 0.5,
+				stoppedAt: new Date(),
+			})
+			.returning({ id: simulationRuns.id });
+		if (!completedRun) throw new Error("failed to insert fixture run");
+		await caller.simulation.deleteRun({ runId: completedRun.id });
+		expect(await caller.simulation.listCompleted()).toEqual([]);
+		expect(await caller.simulation.listLeaderboard()).toEqual([]);
+
+		// listSaved exclusion.
+		const [savedRun] = await db
+			.insert(simulationRuns)
+			.values({
+				userId: owner.id,
+				seed: 2,
+				...VALID_START_INPUT,
+				status: "saved",
+			})
+			.returning({ id: simulationRuns.id });
+		if (!savedRun) throw new Error("failed to insert fixture run");
+		await caller.simulation.deleteRun({ runId: savedRun.id });
+		expect(await caller.simulation.listSaved()).toEqual([]);
+
+		// Rate-limit recheck regression: fill the client-mode hourly budget
+		// (20, see MAX_CLIENT_RUNS_PER_HOUR in simulation.ts), soft-delete one
+		// of those 20 rows, then confirm the next `start` call still hits the
+		// limit — proving the soft-deleted row still counts, same posture as
+		// the sibling "rejects the 21st client-mode start" test above.
+		for (let i = 0; i < 20; i++) {
+			await db.insert(simulationRuns).values({
+				userId: owner.id,
+				seed: 100 + i,
+				...VALID_START_INPUT,
+				status: "stopped",
+				runMode: "client",
+				startedAt: new Date(),
+			});
+		}
+		const [rowToDelete] = await db
+			.select({ id: simulationRuns.id })
+			.from(simulationRuns)
+			.where(
+				and(
+					eq(simulationRuns.userId, owner.id),
+					eq(simulationRuns.runMode, "client"),
+					eq(simulationRuns.status, "stopped"),
+				),
+			)
+			.limit(1);
+		if (!rowToDelete) throw new Error("failed to locate fixture run to delete");
+		await caller.simulation.deleteRun({ runId: rowToDelete.id });
+
+		await expect(
+			caller.simulation.start(VALID_START_INPUT),
+		).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		} satisfies Partial<TRPCError>);
+	});
+});
+
 // testing-full-lifecycle-regression: drives the real cross-procedure user
 // journey described by the project owner — start, pause/resume, finish,
 // list, compare (FR-016's bounded 2-4-run comparison), delete the test

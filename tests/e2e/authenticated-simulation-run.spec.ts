@@ -9,9 +9,12 @@
 // routes every risk to unit/integration); picked ad-hoc to exercise the
 // authenticated path now that the local test-auth bypass makes it possible.
 //
-// No cleanup: src/server/api/routers/simulation.ts exposes only `start` and
-// `stop` — there is no delete procedure to remove the run/score rows this
-// test creates, the same way a real user's run would stay in the database.
+// simulation-run-delete Phase 4: `api.simulation.deleteRun` now exists — the
+// "delete a completed run from the dashboard" test below closes this file's
+// own stated cleanup gap for the run it creates. The two tests above/below
+// it still don't clean up after themselves (they don't need the deleted row
+// gone for their own assertions), same posture a real user's run would have
+// if they never deleted it.
 import { expect, test } from "@playwright/test";
 
 test("signed-in user starts a run, sees it running, and stops it to a scored summary", async ({
@@ -60,6 +63,66 @@ test("signed-in user starts a run, sees it running, and stops it to a scored sum
 	await expect(
 		page.getByRole("button", { name: "Start", exact: true }),
 	).toBeVisible();
+});
+
+// risk: a user deletes a completed run from the dashboard (the Builder
+// badge's last outstanding CRUD gap — simulation runs already had
+// create/read/update but no delete), but the row stays visible because the
+// confirm dialog never fires the mutation, or the list never refetches.
+test("signed-in user deletes a completed run from the dashboard", async ({
+	page,
+}) => {
+	// Setup: start and stop a run the same way the test above does, with a
+	// boid/predator combination distinct from every other fixture in this
+	// file so the dashboard row below can be found unambiguously.
+	await page.goto("/simulation");
+	await expect(
+		page.getByRole("heading", { name: "Flocking Simulation" }),
+	).toBeVisible();
+	const startButton = page.getByRole("button", {
+		name: "Start",
+		exact: true,
+	});
+	await expect(startButton).toBeVisible();
+
+	await page.getByRole("spinbutton", { name: "Boid count (1-500)" }).fill("4");
+	await page
+		.getByRole("spinbutton", { name: "Predator count (0-500)" })
+		.fill("1");
+
+	await startButton.click();
+	await expect(startButton).toBeHidden();
+	const stopButton = page.getByRole("button", { name: "Stop", exact: true });
+	await expect(stopButton).toBeVisible();
+	await stopButton.click();
+	await expect(stopButton).toBeHidden();
+	await expect(page.getByText(/^Score: /)).toBeVisible();
+
+	// Action: find this run in the dashboard's Completed section. The visible
+	// label and the delete button's accessible name share the same run id, so
+	// read it off the label first rather than assuming row order.
+	await page.goto("/dashboard");
+	const rowLabel = page.getByText(/Run #\d+ — 4 boids, 1 predators/).first();
+	await expect(rowLabel).toBeVisible();
+	const labelText = await rowLabel.textContent();
+	const runIdMatch = labelText?.match(/Run #(\d+)/);
+	if (!runIdMatch) {
+		throw new Error(
+			`could not read a run id out of the dashboard label: ${labelText}`,
+		);
+	}
+	const runId = runIdMatch[1];
+
+	await page.getByRole("button", { name: `Delete run #${runId}` }).click();
+	const confirmDialog = page.getByRole("alertdialog");
+	await expect(confirmDialog).toBeVisible();
+	await confirmDialog
+		.getByRole("button", { name: "Delete", exact: true })
+		.click();
+
+	// Assertion: the row is gone from the Completed list — not just the
+	// dialog closing.
+	await expect(rowLabel).toBeHidden();
 });
 
 // risk: a numeric field's HTML `min` attribute can fall off the `step`

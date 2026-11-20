@@ -145,6 +145,12 @@ Give a user a real delete path for their own completed (`stopped`) or paused (`s
 
 #### Automated
 
-- [ ] 4.1 `simulation.test.ts` passes including the 5 new `deleteRun` cases
-- [ ] 4.2 Full `npm test` suite passes
-- [ ] 4.3 New/extended E2E spec passes
+- [x] 4.1 `simulation.test.ts` passes including the 5 new `deleteRun` cases
+- [x] 4.2 Full `npm test` suite passes
+- [x] 4.3 New/extended E2E spec passes
+
+### Suite-impact audit (post-Phase-4)
+
+Checked whether this change's tests affect the pre-existing suite: the two touched specs (`simulation.test.ts`, `authenticated-simulation-run.spec.ts`) pass in isolation and the new E2E test uses a boid/predator combination (4/1) distinct from every other fixture in the file, avoiding collision under `fullyParallel`. The dashboard/kitchen-sink visual-regression baseline is unaffected — it renders `RunRow` with static mock props, not the real dashboard composition, so it never shows the new delete button.
+
+A full `npx playwright test` run shows 7 failing visual-regression snapshots (`/simulation`, every `*/kitchen-sink` page, `/admin/kitchen-sink`). Verified via a disposable worktree at the pre-Phase-1 commit (026a669) that this is **pre-existing, unrelated to this change** — identical 7 failures reproduce on code that never touched these files. Likely font/renderer drift from when the baselines were captured, not a regression from `simulation-run-delete`. Worth a separate change to refresh the baselines, but out of scope here.
