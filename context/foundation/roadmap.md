@@ -3,7 +3,7 @@ project: swarm-arena
 version: 1
 status: draft
 created: 2026-11-09
-updated: 2026-11-19
+updated: 2026-11-20
 prd_version: 5
 main_goal: quality
 top_blocker: decisions
@@ -97,7 +97,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-41 | per-tribe-food-config | User configures food stock and regeneration rate independently per boid tribe, instead of one shared pool/rate for the run | S-39           | MS-03                                                  | done |
 | S-42 | per-tribe-predator-config | User configures a predator tribe's own behavior tuning, with independently-evolving genetics, the way boid tribes already can | S-39, F-10     | MS-04                                                  | done |
 | S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | done |
-| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | in-progress |
+| S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | done |
 | S-45 | lifecycle-stage-color-fade | User sees boid, predator, and food colors fade/shift according to lifecycle stage (energy/decay), matching the Lua reference's pattern | S-44           | MS-03                                                  | proposed |
 
 ## Streams
@@ -827,7 +827,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (resolved 2026-11-19: food gets real, positioned, discrete spatial entities — matching the Lua reference's `Food` objects — not a non-spatial pool visualization. No longer blocking.)
 - **Risk:** High, scope expanded further during planning (2026-11-19, user's explicit choice): consumption becomes spatially-gated foraging (boids must reach a food item to eat it), replacing the old rate-based consumption formula entirely — not just adding positioned food, but changing how/when the pool actually drains, plus a new direct per-item energy boost. A real balance risk to population dynamics tuned across 10 prior milestones, consciously accepted — see plan.md's Key Decisions and Open Risks.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-45: Lifecycle-stage color fade
 
@@ -944,6 +944,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **S-44: User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view.** — Archived 2026-11-20 → `context/archive/2026-11-19-simulation-entity-shape-color-differentiation/`. Lesson: a client-staged tick-loop ref (`foodSpawnRemainderRef`) was omitted alongside its correctly-threaded sibling (`foodItemsRef`), silently resetting the regen backlog to 0 every tick so food could never spawn — a 100%-of-the-time failure invisible to typecheck/lint/every existing test, caught only by manual browser verification; see `context/foundation/lessons.md`'s "new per-tick ref" entry. Separately, impl-review caught a Progress checkbox claiming spawn-threshold/backlog/cap test coverage that didn't actually exist (every food test used fixture-constructed `foodItems`, none drove the spawn loop itself) — fixed with 3 targeted tests before archiving.
 - **F-10: (foundation) Predators can belong to a tribe (mirroring boids' existing `flockId`), with each predator tribe carrying its own independently-evolving genetics (reusing the already-existing `reproducePopulation`/`PredatorGenes` machinery) and its own behavior tuning.** — Archived 2026-11-18 → `context/archive/2026-11-18-predator-tribe-concept/`. Lesson: plan-review (before any code was written) caught 2 critical gaps a careful plan can still miss — no DB schema/persistence columns for the new per-tribe config (the plan's own claim that none was needed was factually wrong, since the sibling boid-side `tribeConfigs` field it was modeled on IS a real DB column), and the actual production thread-through path (`single-run-lifecycle.ts` + its 2 real callers) that gets a new per-tick config into the engine, which the plan's own internal `runTick` edit alone couldn't reach. Both were fixed before implementation started, not discovered mid-build. Separately, genuinely wiring previously-inert genes (`maxSpeed`/`minSpeed`) to real behavior exposed a stale test fixture whose values had accidentally erased predators' speed advantage the moment the field became real — the same "field inherited/stored but never behaviorally read" class this roadmap has already recorded more than once.
 - **S-41: User configures food stock and regeneration rate independently per boid tribe, instead of one shared food pool/rate for the whole run.** — Archived 2026-11-18 → `context/archive/2026-11-18-per-tribe-food-config/`. Lesson: scope grew well beyond the original "config-only" estimate during planning (per-tribe consumption rate, live stock delta-injection with no precedent in this codebase, and an actual resource-management score-formula change) per explicit product decisions — see plan.md. impl-review caught that the new scoring dimension and its disclosure marker were wired end-to-end for the server-owned run path but never threaded through the client-staged `stop` mutation's input schema, so client-staged runs silently kept the pre-change score formula — the same "new field reaches one execution path but not its sibling" pattern this roadmap's own S-25 entry already flags.
 - **S-39: User starts a simulation using the form's own default values, with no error and no unexplained failure.** — Archived 2026-11-17 → `context/archive/2026-11-17-fix-default-start-failure/`. Lesson: the reported symptom had two independent causes — the start mutations never surfaced a server rejection at all (silent revert, no error UI), and a process restart (every production deploy) permanently orphans any `running` row with nothing to ever stop it, silently consuming a per-user `MAX_PARALLEL_RUNS` slot. impl-review caught a CRITICAL in the fix itself: the new orphan-sweep's bare `setInterval` had no try/catch, risking a full server crash on any transient DB error — the second occurrence of this exact bug class in this codebase (see `context/foundation/lessons.md`), now a standing rule.

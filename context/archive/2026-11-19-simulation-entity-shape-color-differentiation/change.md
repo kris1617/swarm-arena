@@ -1,10 +1,10 @@
 ---
 change_id: simulation-entity-shape-color-differentiation
 title: Give boids, predators, and food distinct shapes and colors in the simulation view
-status: impl_reviewed
+status: archived
 created: 2026-11-19
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T02:05:26Z
 ---
 
 ## Notes
