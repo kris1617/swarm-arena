@@ -1,7 +1,7 @@
 ---
 change_id: kitchen-sink-smoke-coverage
 title: Kitchen-sink page smoke coverage
-status: implemented
+status: impl_reviewed
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null
