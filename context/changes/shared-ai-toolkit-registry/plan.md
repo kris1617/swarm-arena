@@ -94,8 +94,8 @@ Package this project's code-review conventions as a distributable npm package, `
 
 #### Automated
 
-- [ ] 2.1 YAML is syntactically valid
-- [ ] 2.2 Validate-job steps pass locally against real package content
+- [x] 2.1 YAML is syntactically valid
+- [x] 2.2 Validate-job steps pass locally against real package content
 
 #### Manual
 
