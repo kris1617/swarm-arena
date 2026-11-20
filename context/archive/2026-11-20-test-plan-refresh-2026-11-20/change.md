@@ -1,10 +1,10 @@
 ---
 change_id: test-plan-refresh-2026-11-20
 title: Add visual-regression risk and rollout phase to test-plan.md
-status: implemented
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T15:36:10Z
 ---
 
 ## Notes
