@@ -1,10 +1,10 @@
 ---
 change_id: color-palette-redesign
 title: Color palette redesign
-status: impl_reviewed
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T10:16:38Z
 ---
 
 ## Notes
