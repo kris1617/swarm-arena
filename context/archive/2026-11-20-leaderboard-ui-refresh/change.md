@@ -1,10 +1,10 @@
 ---
 change_id: leaderboard-ui-refresh
 title: Leaderboard view modernization pass
-status: impl_reviewed
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T04:17:01Z
 ---
 
 ## Notes
