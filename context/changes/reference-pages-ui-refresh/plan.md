@@ -199,11 +199,11 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Lint passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — f407bac
+- [x] 3.2 Lint passes: `npm run check` — f407bac
+- [x] 3.3 Full suite still passes: `npm test` — f407bac
 
 #### Manual
 
-- [ ] 3.4 All states/N-As visible at `/reference/kitchen-sink`, screenshot at desktop and one mobile width
-- [ ] 3.5 Focus-visible ring on BackLink uses the `--ring` token (or confirmed pre-existing gap, not a regression)
+- [x] 3.4 All states/N-As visible at `/reference/kitchen-sink`, screenshot at desktop and one mobile width — verified live (production build): screenshots at 1280×900 and 390×844 both render all sections correctly, no overflow. — f407bac
+- [x] 3.5 Focus-visible ring on BackLink uses the `--ring` token (or confirmed pre-existing gap, not a regression) — verified live via computed-style inspection: focused outlineColor resolves to oklab equivalent of `--ring: oklch(0.75 0.12 290)` at 50% alpha, matching the `ring-ring/50` token used elsewhere in this repo. — f407bac
