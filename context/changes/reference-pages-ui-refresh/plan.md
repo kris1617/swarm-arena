@@ -186,14 +186,14 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — a74d79a
+- [x] 2.2 Lint passes: `npm run check` — a74d79a
+- [x] 2.3 Full suite still passes: `npm test` — a74d79a
 
 #### Manual
 
-- [ ] 2.4 /reference/scoring lists 5 factor cards and says "five factors"
-- [ ] 2.5 Predator-tribe-balance sentence reads clearly, doesn't overstate the UI
+- [x] 2.4 /reference/scoring lists 5 factor cards and says "five factors" — verified live (production build): all 5 factor cards render including "Area population density"; body text says "product of five factors" and "five-part breakdown." — a74d79a
+- [x] 2.5 Predator-tribe-balance sentence reads clearly, doesn't overstate the UI — verified live: the new sentence renders correctly, explicitly noting it's "not broken out as its own line in the comparison view" so it doesn't claim UI that doesn't exist. — a74d79a
 
 ### Phase 3: States gate
 

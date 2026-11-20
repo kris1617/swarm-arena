@@ -20,6 +20,11 @@ const FACTORS = [
 		description:
 			"The quality of the population's lifecycle-phase history over the whole run — not just its end state.",
 	},
+	{
+		name: "Area population density",
+		description:
+			"How well-populated the simulation's configured area stayed relative to its size, averaged over the run.",
+	},
 ];
 
 export default function ScoringPage() {
@@ -29,7 +34,7 @@ export default function ScoringPage() {
 				<h1 className="text-3xl font-bold">Scoring</h1>
 
 				<p className="text-foreground">
-					Each simulation run is scored as the product of four factors:
+					Each simulation run is scored as the product of five factors:
 				</p>
 
 				<div className="flex flex-col gap-3">
@@ -56,8 +61,15 @@ export default function ScoringPage() {
 					for what each phase means.
 				</p>
 
+				<p className="text-foreground">
+					Runs with more than one predator tribe also factor in how balanced the
+					tribes&apos; populations stayed — scored as a neutral no-op for
+					single-tribe runs, and not broken out as its own line in the
+					comparison view above.
+				</p>
+
 				<p className="text-muted-foreground">
-					When you&apos;ve run several variants, the score and its four-part
+					When you&apos;ve run several variants, the score and its five-part
 					breakdown are what let you say one configuration genuinely
 					outperformed another, rather than guessing from watching the
 					animation.
