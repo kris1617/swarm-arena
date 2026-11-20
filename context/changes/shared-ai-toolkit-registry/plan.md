@@ -99,4 +99,4 @@ Package this project's code-review conventions as a distributable npm package, `
 
 #### Manual
 
-- [ ] 2.3 Live push confirms both jobs pass and the package appears in GitHub Packages
+- [x] 2.3 Live push confirms both jobs pass and the package appears in GitHub Packages — run 44782740907: `validate` and `publish` both green, `npm publish --ignore-scripts` succeeded (not skipped as already-published), confirming @kris1617/ai-toolkit@0.1.0 is now in the registry
