@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Pre-push gate: mirrors the deploy CI's build-relevant checks (typecheck + build)
+# so a break like the packages/ai-toolkit tsconfig sweep (2026-11-20, caught only
+# after two failed live deploy runs) never leaves this machine.
+#
+# Installed via: git config core.hooksPath .githooks
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: running typecheck..."
+if ! npm run typecheck; then
+	echo "pre-push: typecheck failed — push blocked. Fix the errors above, or 'git push --no-verify' to bypass (not recommended)." >&2
+	exit 1
+fi
+
+echo "pre-push: running build (mirrors deploy CI env)..."
+if ! SKIP_ENV_VALIDATION=1 \
+	DATABASE_URL=file:./db.sqlite \
+	AUTH_SECRET=test-secret \
+	AUTH_GITHUB_ID=test-github-id \
+	AUTH_GITHUB_SECRET=test-github-secret \
+	GITHUB_FEEDBACK_TOKEN=test-token \
+	npm run build; then
+	echo "pre-push: build failed — push blocked. Fix the errors above, or 'git push --no-verify' to bypass (not recommended)." >&2
+	exit 1
+fi
+
+echo "pre-push: typecheck + build passed."

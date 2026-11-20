@@ -25,6 +25,7 @@ swarm-arena is a Next.js 16 app on the T3 stack (tRPC, Drizzle ORM over SQLite v
 - `npm run typecheck` — `tsc --noEmit`.
 - `npm test` — Vitest (`vitest run`); test env sets `DATABASE_URL=file:./db.sqlite`, see @vitest.config.ts.
 - `npm run db:push` / `db:generate` / `db:migrate` / `db:studio` — Drizzle Kit against @drizzle.config.ts.
+- One-time per clone: `git config core.hooksPath .githooks` — enables the committed `.githooks/pre-push` gate (typecheck + build, mirroring deploy CI) so a break doesn't reach `origin/master`. `git push --no-verify` bypasses it when you mean to.
 
 ## Coding Style & Naming
 
