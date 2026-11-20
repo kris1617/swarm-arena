@@ -331,12 +331,12 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [x] 4.1 `npm run visual:review` exits 0 with and without `ANTHROPIC_API_KEY` set
-- [x] 4.2 Typecheck passes with the new script included
+- [x] 4.1 `npm run visual:review` exits 0 with and without `ANTHROPIC_API_KEY` set — c66ba7e
+- [x] 4.2 Typecheck passes with the new script included — c66ba7e
 
 #### Manual
 
-- [ ] 4.3 With a real API key set, one run prints a plausible verdict
+- [x] 4.3 With a real API key set, one run prints a plausible verdict (verified via a temporary workflow_dispatch job reusing the existing repo-level `ANTHROPIC_API_KEY` secret, never exposed locally — 5/7 OK, 2/7 ISSUE with specific, plausible findings: a sidebar background cutoff and a missing NumberField pill background on `/admin/kitchen-sink`; unstyled serif fonts and inconsistent nav padding on `/reference/kitchen-sink`)
 
 ### Phase 5: Cookbook & doc sync
 
