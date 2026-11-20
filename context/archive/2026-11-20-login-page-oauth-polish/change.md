@@ -1,10 +1,10 @@
 ---
 change_id: login-page-oauth-polish
 title: Login page OAuth polish
-status: impl_reviewed
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T12:09:51Z
 ---
 
 ## Notes
