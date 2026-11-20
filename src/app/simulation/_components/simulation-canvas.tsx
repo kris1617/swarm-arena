@@ -958,12 +958,12 @@ export function SimulationCanvas({
 	}
 
 	return (
-		<div className="flex flex-col items-center gap-4">
+		<div className="flex w-full max-w-4xl flex-col items-center gap-4">
 			{/* AGENTS.md disallows arbitrary Tailwind values (e.g. aspect-[3/2]) —
 			the 3:2 drawing-buffer ratio is expressed as an inline style instead,
 			same posture as any other non-token, non-color numeric layout value. */}
 			<div
-				className="relative w-full max-w-2xl"
+				className="relative w-full max-w-4xl"
 				style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
 			>
 				<canvas
@@ -988,7 +988,7 @@ export function SimulationCanvas({
 					/>
 				) : null}
 			</div>
-			<div className="flex w-full max-w-2xl items-center justify-center gap-6">
+			<div className="flex w-full max-w-4xl items-center justify-center gap-6">
 				<label
 					className="flex items-center gap-2 text-sm"
 					htmlFor="minimap-visible"
@@ -1012,7 +1012,7 @@ export function SimulationCanvas({
 					/>
 				</label>
 			</div>
-			<div className="bg-input/40 flex w-full max-w-2xl flex-col gap-2 rounded-2xl p-3">
+			<div className="bg-input/40 flex w-full max-w-4xl flex-col gap-2 rounded-2xl p-3">
 				<p className="text-foreground text-sm font-semibold">Live parameters</p>
 				<p className="text-foreground text-sm font-semibold">
 					Takes effect immediately
