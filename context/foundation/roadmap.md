@@ -6,10 +6,10 @@ created: 2026-11-09
 updated: 2026-11-20
 prd_version: 5
 main_goal: quality
-top_blocker: decisions
-milestone_id: simulation-legibility-and-frontend-polish
-milestone_seq: 11
-milestone_status: done
+top_blocker: none
+milestone_id: ui-modernization-pass
+milestone_seq: 12
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,23 +20,25 @@ milestone_status: done
 
 ## Milestone
 
-**M-11: Simulation legibility and frontend polish** — Status: done
+**M-12: UI modernization pass** — Status: open
 
-- **Intent:** Make the simulation view's three entity kinds (boid, predator, food) clearly distinguishable at a glance via shape and color, add a lifecycle-stage color fade matching the energy/decay-driven pattern already proven in the user's own prior LÖVE2D/Lua reference implementation, and open the question of a broader modernization pass across the app's other views.
-- **Source materials:** user description (2026-11-19) + reference implementation at `/mnt/Kids/boids_final/game/src/Boid.lua`, `Predator.lua`, `Food.lua` (lifecycle-fade logic), anchors below
-- **Done when:** S-44 and S-45 are both `done` (no foundations this milestone).
+- **Intent:** Resolve Open Roadmap Question #11 (left open by M-11) by giving each of the app's other views — dashboard, leaderboard, run-analysis/comparison, admin pages, and reference pages — a `/10x-ui` modernization pass: re-audit against the design-token system M-3 (F-06) established, close drift accumulated from feature-by-feature additions since, and bring the two admin pages onto the design-token system for the first time (they never received M-3's restyle at all).
+- **Source materials:** user description (2026-11-20), distilling Open Roadmap Question #11 — anchors below.
+- **Done when:** S-46 through S-50 are all `done` (no foundations this milestone — F-06's design-token system is already baseline).
 - **Scope anchors:**
-  - MS-01: General UI/frontend audit and modernization suggestions across the app's other views (beyond the simulation canvas), using `/10x-ui` and the 10x pipeline — scope not yet specific enough to decompose into a slice; tracked as Open Roadmap Question #11 below.
-  - MS-02: The simulation view's boids, predators, and food should be clearly visually distinguishable via distinct shapes and colors — confirmed via research: boids (triangle) and predators (diamond) already differ subtly in shape/color, but food currently has zero visual representation at all (tracked only as a scalar pool number, never drawn).
-  - MS-03: Entity colors should fade/shift according to lifecycle stage, matching the Lua reference's pattern — confirmed via research: an energy-ratio-driven (not age-driven) lerp toward dark gray for boids/predators, and an analogous decay-timer-driven fade-plus-shrink for food; duplicated per-entity-type in the Lua source with no shared helper.
+  - MS-01: Dashboard view gets a `/10x-ui` pass — 6 feature commits of drift since M-3's S-16 restyle, no re-audit since.
+  - MS-02: Leaderboard view gets a `/10x-ui` pass — 4 feature commits of drift since M-3's S-19 restyle.
+  - MS-03: Run-analysis (`runs/[runId]`) and run-comparison (`runs/compare`) views get a `/10x-ui` pass — highest accumulated drift of any view group (10 and 8 feature commits respectively since M-3's S-18 restyle: the diversity-trend chart (S-32), area-aware population insight (S-25), corpus annotations (S-33/S-35), and the `wasEverThrottled` comparability marker (S-36) were all added with no re-audit).
+  - MS-04: Admin pages (`/admin/elevation`, `/admin/settings`) get their first-ever `/10x-ui` pass — confirmed via research these never received M-3's F-06 restyle at all (a true baseline gap, not drift).
+  - MS-05: Reference pages get a `/10x-ui` pass — lowest accumulated drift (1 feature commit since M-3's S-20 restyle), included for completeness per Question #11's own named example list.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability. M-9 closed out the roadmap's own bookkeeping — confirming two already-resolved design questions and deciding a genuinely open one (unwatched-run tick throttling). M-10 turns toward the simulation's configuration model itself: every boid in a run shares one global behavior-weight set regardless of tribe, and every predator shares one global tuning — the user's own prior Lua/LÖVE2D implementation of this same simulation already proved a richer, per-tribe model works (distinct color, speed, force, and per-behavior perception/multipliers per tribe), so this milestone first fixes a reported start-up failure, then brings that per-tribe differentiation to boids, food, and predators, and finally introduces a predation relationship — predator-on-predator — that exists in neither the Lua reference nor the current codebase. M-11 turns from simulation *behavior* to simulation *legibility*: the view itself hasn't been revisited since M-3's modernization pass, and two concrete gaps surfaced — food has no on-canvas representation at all (it's a scalar pool, never drawn), and nothing visually signals an entity's lifecycle stage (age/energy/decay), even though the Lua reference already solved both with a proven, if duplicated, pattern.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability. M-9 closed out the roadmap's own bookkeeping — confirming two already-resolved design questions and deciding a genuinely open one (unwatched-run tick throttling). M-10 turns toward the simulation's configuration model itself: every boid in a run shares one global behavior-weight set regardless of tribe, and every predator shares one global tuning — the user's own prior Lua/LÖVE2D implementation of this same simulation already proved a richer, per-tribe model works (distinct color, speed, force, and per-behavior perception/multipliers per tribe), so this milestone first fixes a reported start-up failure, then brings that per-tribe differentiation to boids, food, and predators, and finally introduces a predation relationship — predator-on-predator — that exists in neither the Lua reference nor the current codebase. M-11 turns from simulation *behavior* to simulation *legibility*: the view itself hasn't been revisited since M-3's modernization pass, and two concrete gaps surfaced — food has no on-canvas representation at all (it's a scalar pool, never drawn), and nothing visually signals an entity's lifecycle stage (age/energy/decay), even though the Lua reference already solved both with a proven, if duplicated, pattern. M-12 turns outward from the simulation canvas (which M-11 just finished) to every other view: M-3's one-time restyle pass gave each view the design-token system once, but six milestones of feature work since have layered new cards, charts, and controls onto several of them with no re-audit, and two admin pages never received the pass at all.
 
 ## North star
 
-**S-44: Distinct shapes and colors for boids, predators, and food** — the concrete, most-detailed pain point from the milestone's own source description, confirmed real by research (food isn't drawn at all today); the lifecycle-fade work (S-45) builds directly on it, so it's the clear first validation point for this milestone.
+**S-46: Dashboard view modernization pass** — the view every user sees first post-login, with 6 feature commits of drift since M-3's restyle and no re-audit since; the smallest, lowest-risk validation of the `/10x-ui` chain for this milestone, independent of every other slice so it can start immediately.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -99,6 +101,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | done |
 | S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | done |
 | S-45 | lifecycle-stage-color-fade | User sees boid, predator, and food colors fade/shift according to lifecycle stage (energy/decay), matching the Lua reference's pattern | S-44           | MS-03                                                  | done |
+| S-46 | dashboard-ui-refresh | User sees the post-login dashboard re-audited and brought current with the design-token system after 6 feature commits of drift since M-3's restyle | —              | FR-032, FR-033, MS-01                                  | ready |
+| S-47 | leaderboard-ui-refresh | User sees the leaderboard re-audited and brought current with the design-token system after 4 feature commits of drift since M-3's restyle | —              | FR-026, FR-032, FR-033, MS-02                          | ready |
+| S-48 | runs-analysis-compare-ui-refresh | User sees the run-analysis and run-comparison pages re-audited and brought current with the design-token system, covering the highest accumulated drift of any view group since M-3's restyle | —              | FR-032, FR-033, MS-03                                  | ready |
+| S-49 | admin-pages-ui-refresh | User (admin) sees the elevation and settings pages brought onto the design-token system for the first time | —              | FR-030, FR-032, FR-033, MS-04                          | ready |
+| S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | ready |
 
 ## Streams
 
@@ -122,11 +129,12 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | P      | Suggestion & analytics validation (M-8) | `F-08` → `S-33` → `S-34`, `S-35` | Carries M-8's north star (`S-33`). `S-34`/`S-35` both depend only on `S-33`'s exported corpus, not on each other — they can run in parallel once it lands. |
 | Q      | Roadmap-question resolution (M-9) | `S-36`, `S-37`, `S-38`           | All three are independent, no foundation prerequisite — each closes a different open roadmap question. `S-36` carries M-9's north star despite being `blocked` pending its own Unknown; `S-37`/`S-38` are quick, unblocked confirmations. |
 | R      | Per-tribe config & predator expansion (M-10) | `S-39` (done) → `F-09` → `S-40`; `S-39` → `S-41`; `F-10` → `S-42` → `S-43` | `S-39` shipped (north star done). All 4 design Unknowns resolved 2026-11-17 (full Lua parity for S-40, shared-pool for S-41, genetics-evolving for S-42, scored for S-43). `F-09`/`F-10`/`S-41` are all `ready` now and can run in parallel — `F-10` was discovered during sequencing: predators share boids' genetics machinery already but have no tribe/flock concept at all, so S-42/S-43 need it built first. `S-40` waits on `F-09`; `S-42` waits on `F-10`; `S-43` waits on both `S-42` and `F-10`. |
-| S      | Simulation legibility (M-11)  | `S-44` → `S-45`                         | Carries M-11's north star (`S-44`), now `ready` — the food spatial-vs-pool decision resolved 2026-11-19 (real spatial entities). `S-45` depends on `S-44` landing first so the fade logic has a consistent rendering target to apply to. |
+| S      | Simulation legibility (M-11)  | `S-44` → `S-45`                         | Carries M-11's north star (`S-44`), now `ready` — the food spatial-vs-pool decision resolved 2026-11-19 (real spatial entities). `S-45` depends on `S-44` landing first so the fade logic has a consistent rendering target to apply to. Both done. |
+| T      | UI modernization pass (M-12)  | `S-46`, `S-47`, `S-48`, `S-49`, `S-50`  | Carries M-12's north star (`S-46`). All 5 are independent — different views, no shared prerequisite beyond the already-done F-06 design-token baseline — so they can run in any order or fully in parallel; sequenced here by accumulated drift and first-impression weight (dashboard → leaderboard → analysis/compare → admin → reference). |
 
 ## Baseline
 
-What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer); no baseline change for M-9 either (S-36 is a pure engine-level change to the already-existing server-owned tick scheduler; S-37/S-38 are documentation/verification-only against already-shipped code, no new layer touched); refreshed again `2026-11-17` for M-10 (per-tribe config, predator expansion) — confirmed `boidCount`/`predatorCount` and `flockId`/`flockCount` already exist (`src/server/simulation/boids.ts`, 33 references), so the tribe *concept* is already present at the boid level, but `separationWeight`/`alignmentWeight`/`cohesionWeight` and all food settings remain single global values shared by every boid in a run regardless of tribe (confirmed via `src/app/simulation/page.tsx`'s single `useState` per parameter and `startInputSchema` in `src/server/api/routers/simulation.ts`); no per-tribe predator concept exists at all, and `Predator:hunt()` in the Lua reference confirms the prior implementation never had one either — no new layer, but a real change to the per-tick flocking-force calculation every boid already runs through; refreshed again `2026-11-19` for M-11 (simulation legibility, frontend polish).
+What's already in place in the codebase as of `2026-11-09` (auto-researched + user-confirmed), refreshed `2026-11-14` for the server-side-execution extension (F-03, F-04, S-06–S-08), again `2026-11-14` for M-3 (UI modernization, leaderboard, post-run suggestion, temp-admin, spatial-hash perf), again `2026-11-15` for M-4 (area/camera, feedback module, VPS-bound limits), again `2026-11-15` for M-5 (live parameter adjustment), and again `2026-11-15` for M-6 (client-staged parity, crossbreeding toggle, boid count); no baseline change for M-7 (genetic-diversity trend — purely additive to an existing JSON blob, no new layer touched); no baseline change for M-8 either (test/validation infrastructure reusing the existing server-owned execution engine and analytics endpoints — the new layer is a generation/export script and its tests, not a product layer); no baseline change for M-9 either (S-36 is a pure engine-level change to the already-existing server-owned tick scheduler; S-37/S-38 are documentation/verification-only against already-shipped code, no new layer touched); refreshed again `2026-11-17` for M-10 (per-tribe config, predator expansion) — confirmed `boidCount`/`predatorCount` and `flockId`/`flockCount` already exist (`src/server/simulation/boids.ts`, 33 references), so the tribe *concept* is already present at the boid level, but `separationWeight`/`alignmentWeight`/`cohesionWeight` and all food settings remain single global values shared by every boid in a run regardless of tribe (confirmed via `src/app/simulation/page.tsx`'s single `useState` per parameter and `startInputSchema` in `src/server/api/routers/simulation.ts`); no per-tribe predator concept exists at all, and `Predator:hunt()` in the Lua reference confirms the prior implementation never had one either — no new layer, but a real change to the per-tick flocking-force calculation every boid already runs through; refreshed again `2026-11-19` for M-11 (simulation legibility, frontend polish); refreshed again `2026-11-20` for M-12 (UI modernization pass) — confirmed the two admin pages (`src/app/admin/elevation/page.tsx`, `src/app/admin/settings/page.tsx`) never received M-3's F-06 restyle at all (a true baseline gap, not drift), while dashboard/leaderboard/runs/reference pages did receive it but have since accumulated feature-by-feature additions (6/4/10+8/1 commits respectively) with no re-audit.
 Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Frontend:** partial — Next.js App Router scaffold only (`src/app/page.tsx`, `src/app/layout.tsx`); no swarm-arena-specific UI yet.
@@ -842,6 +850,66 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low-medium — the Lua reference gives an exact, already-proven formula (energy/decay ratio lerped toward `(0.3, 0.3, 0.3)`) to port; the only real design decision is centralizing vs. replicating it, which doesn't block planning.
 - **Status:** done
 
+### S-46: Dashboard view modernization pass
+
+- **Outcome:** User sees the post-login dashboard re-audited against the design-token system, closing drift from 6 feature commits since M-3's S-16 restyle.
+- **Change ID:** dashboard-ui-refresh
+- **PRD refs:** FR-032, FR-033, MS-01
+- **Prerequisites:** —
+- **Parallel with:** S-47, S-48, S-49, S-50
+- **Blockers:** —
+- **Unknowns:** — (the `/10x-ui` chain's own audit step names the specific charges per-view at plan time, not here)
+- **Risk:** Low — a re-audit of an already-restyled, stable view; main risk is scope creep if the audit's charge list grows beyond token/component drift.
+- **Status:** ready
+
+### S-47: Leaderboard view modernization pass
+
+- **Outcome:** User sees the leaderboard re-audited against the design-token system, closing drift from 4 feature commits since M-3's S-19 restyle.
+- **Change ID:** leaderboard-ui-refresh
+- **PRD refs:** FR-026, FR-032, FR-033, MS-02
+- **Prerequisites:** —
+- **Parallel with:** S-46, S-48, S-49, S-50
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — smallest view in this milestone, least accumulated drift of the four previously-restyled pages.
+- **Status:** ready
+
+### S-48: Run-analysis and run-comparison modernization pass
+
+- **Outcome:** User sees the run-analysis (`runs/[runId]`) and run-comparison (`runs/compare`) pages re-audited against the design-token system, closing the highest accumulated drift of any view group since M-3's S-18 restyle (the diversity-trend chart S-32, area-aware population insight S-25, corpus annotations S-33/S-35, and the `wasEverThrottled` comparability marker S-36 were all added with no re-audit since).
+- **Change ID:** runs-analysis-compare-ui-refresh
+- **PRD refs:** FR-032, FR-033, MS-03
+- **Prerequisites:** —
+- **Parallel with:** S-46, S-47, S-49, S-50
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Medium — most feature-dense view group in this milestone (10+8 commits of additions); the audit may surface more charges than the other four slices combined, but no new product behavior is in scope, only presentation.
+- **Status:** ready
+
+### S-49: Admin pages modernization pass
+
+- **Outcome:** User (admin) sees the elevation (`/admin/elevation`) and settings (`/admin/settings`) pages brought onto the design-token system for the first time.
+- **Change ID:** admin-pages-ui-refresh
+- **PRD refs:** FR-030, FR-032, FR-033, MS-04
+- **Prerequisites:** —
+- **Parallel with:** S-46, S-47, S-48, S-50
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — lowest-traffic view in this milestone (admin-only), but a genuine baseline gap rather than drift, since these pages never received any design-system pass.
+- **Status:** ready
+
+### S-50: Reference pages modernization pass
+
+- **Outcome:** User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited against the design-token system, closing the lowest accumulated drift (1 feature commit) since M-3's S-20 restyle.
+- **Change ID:** reference-pages-ui-refresh
+- **PRD refs:** FR-034, FR-032, FR-033, MS-05
+- **Prerequisites:** —
+- **Parallel with:** S-46, S-47, S-48, S-49
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — least-touched view group since M-3; included for completeness per Open Roadmap Question #11's own named example list.
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -901,6 +969,11 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-43       | second-predator-tribe-prey-target | User adds a second predator tribe with a boids-only or boids-and-predators prey target, scored | no                      | Waiting on S-42, F-10 |
 | S-44       | simulation-entity-shape-color-differentiation | Give boids, predators, and food distinct shapes/colors in the simulation view | yes                     | Run `/10x-plan simulation-entity-shape-color-differentiation` |
 | S-45       | lifecycle-stage-color-fade        | Fade entity colors by lifecycle stage (energy/decay), matching the Lua reference | no                      | Waiting on S-44 |
+| S-46       | dashboard-ui-refresh              | `/10x-ui` modernization pass: dashboard | yes                     | — |
+| S-47       | leaderboard-ui-refresh            | `/10x-ui` modernization pass: leaderboard | yes                     | — |
+| S-48       | runs-analysis-compare-ui-refresh  | `/10x-ui` modernization pass: run-analysis & run-comparison pages | yes                     | — |
+| S-49       | admin-pages-ui-refresh            | `/10x-ui` modernization pass: admin pages (elevation, settings) | yes                     | — |
+| S-50       | reference-pages-ui-refresh        | `/10x-ui` modernization pass: reference pages | yes                     | — |
 
 ## Open Roadmap Questions
 
@@ -914,7 +987,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 8. **Should unwatched server-owned runs be allowed to tick faster than real time (not throttled to the live-view's 16ms cadence), so background runs don't compete for CPU against the one the user is actively watching?** — Owner: user. Block: yes — **now tracked as M-9's S-36** (`unwatched-run-tick-throttling`, 2026-11-17), blocked on deciding the exact throttling mechanism and its effect on score comparability against pre-existing runs.
 9. ~~How far should per-tribe differentiation go — just behavior weights (separation/alignment/cohesion), or also independently-evolving genetics/mutation rates per tribe, extending the existing crossbreeding system?~~ — **Resolved 2026-11-17.** Full Lua-reference parity for boid tribes (S-40: per-tribe perception radii and behavior multipliers, not just the 3 weights) AND independently-evolving genetics per tribe for predators (S-42). No longer blocks S-40; S-42 now depends on F-10 (new — predators have no tribe concept at all today) instead of being blocked on this question.
 10. ~~Should inter-predator predation (S-43) affect the existing 5-factor score formula, or remain a purely simulation/visual mechanic with no scoring impact for v1?~~ — **Resolved 2026-11-17.** Yes, factor it into scoring. The exact scoring-rule shape (new factor vs. folded into an existing one) is a `/10x-plan`-level design decision, not a roadmap-level one — tracked as S-43's own Unknown below, no longer blocking at the roadmap level.
-11. **Beyond the simulation canvas (S-44/S-45), which specific other views should get a `/10x-ui` modernization pass, and in what order?** (e.g. dashboard, leaderboard, runs list/comparison, reference pages — all last touched in M-3.) Owner: user. Block: none of S-44/S-45; this question only gates whether/how M-11 grows further, or whether this scope becomes its own future milestone. Per the milestone's own MS-01 scope anchor.
+11. ~~Beyond the simulation canvas (S-44/S-45), which specific other views should get a `/10x-ui` modernization pass, and in what order?~~ — **Resolved 2026-11-20.** Became its own milestone, M-12: dashboard (S-46) → leaderboard (S-47) → run-analysis/comparison (S-48, highest accumulated drift) → admin pages (S-49, never restyled at all) → reference pages (S-50, lowest drift, included for completeness). All 5 are independent and can run in parallel; order above reflects accumulated drift and first-impression weight, not a hard dependency. No longer blocking.
 
 ## Parked
 
