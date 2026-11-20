@@ -308,13 +308,13 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [ ] 2.1 New spec passes against its freshly-generated baseline (Docker run)
-- [ ] 2.2 Full E2E suite still passes: `npx playwright test`
-- [ ] 2.3 Typecheck/lint still pass
+- [x] 2.1 New spec passes against its freshly-generated baseline (Docker unavailable; generated via locally-installed Playwright chromium instead, per mismatch decision)
+- [x] 2.2 Full E2E suite still passes: `npx playwright test`
+- [x] 2.3 Typecheck/lint still pass
 
 #### Manual
 
-- [ ] 2.4 Spot-check 2-3 generated baseline PNGs visually
+- [x] 2.4 Spot-check 2-3 generated baseline PNGs visually
 
 ### Phase 3: Wire the screenshot spec into CI (deploy-blocking)
 
