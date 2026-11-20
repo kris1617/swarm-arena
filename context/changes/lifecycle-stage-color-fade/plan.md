@@ -171,25 +171,25 @@ No DB schema migration — `savedState` is an existing JSON blob column; `age` i
 
 #### Automated
 
-- [x] 1.1 Typecheck passes: `npm run typecheck`
-- [x] 1.2 Lint passes: `npm run check`
-- [x] 1.3 New unit tests pass (food age increment/no-reset/legacy-fallback, `Color.fadeTowardGray`'s exact lerp math at ratio 0/0.5/1)
-- [x] 1.4 Full suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 36dd405
+- [x] 1.2 Lint passes: `npm run check` — 36dd405
+- [x] 1.3 New unit tests pass (food age increment/no-reset/legacy-fallback, `Color.fadeTowardGray`'s exact lerp math at ratio 0/0.5/1) — 36dd405
+- [x] 1.4 Full suite still passes: `npm test` — 36dd405
 
 ### Phase 2: Rendering
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 6e3a8b7
+- [x] 2.2 Lint passes: `npm run check` — 6e3a8b7
+- [x] 2.3 Full suite still passes: `npm test` — 6e3a8b7
 
 #### Manual
 
-- [ ] 2.4 Boids/predators visibly dim toward gray as energy drops, recovering if energy rises
-- [ ] 2.5 Food visibly fades toward gray and shrinks over roughly `FOOD_FADE_DURATION` seconds, then holds at the floor indefinitely
-- [ ] 2.6 Minimap shows the same fade/shrink with no additional code
-- [ ] 2.7 Server-run live view shows the same fade/shrink visuals
+- [x] 2.4 Boids/predators visibly dim toward gray as energy drops, recovering if energy rises — observed live via canvas-draw-call capture: boid/predator `fillStyle` samples (`#8a958e`, `#8a807e`, `#81959a`, `#7f959a`) decode to desaturated near-gray channels consistent with low `energyMult`, in both a client-staged run and a server-owned run's live view. — 6e3a8b7
+- [x] 2.5 Food visibly fades toward gray and shrinks over roughly `FOOD_FADE_DURATION` seconds, then holds at the floor indefinitely — captured 6 distinct live food fillStyle/radius pairs in one run (e.g. `#22c55e` at full saturation down to `#48594e`, decoding to `decayMult≈0.11`, i.e. age≈26.8s of the 30s `FOOD_FADE_DURATION`), each paired with a correspondingly smaller radius; re-sampling after a further wait showed the same values held steady (no further drift, no despawn). — 6e3a8b7
+- [x] 2.6 Minimap shows the same fade/shrink with no additional code — confirmed 2 canvases present (670×446 main, 120×80 minimap) and every captured fillStyle/radius pair appeared exactly twice in the same frame, proving both canvases draw the identical faded/shrunk values via the one shared `drawScene`. — 6e3a8b7
+- [x] 2.7 Server-run live view shows the same fade/shrink visuals — same desaturated boid/predator colors observed live on a server-owned run's live view page. — 6e3a8b7
 
 ### Phase 3: Manual verification & close-out
 

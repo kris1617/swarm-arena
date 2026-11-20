@@ -21,6 +21,7 @@ import {
 	type BoidState,
 	createInitialPopulation,
 	createInitialPredators,
+	ENERGY_MAX,
 	type FoodState,
 	type PopulationPhase,
 	type PredatorState,
@@ -33,6 +34,7 @@ import {
 	DEFAULT_PARAMETER_RANGES,
 } from "~/server/simulation/parameter-ranges";
 import { createRng } from "~/server/simulation/rng";
+import { FOOD_SEED_COLOR } from "~/server/simulation/seed-colors";
 import type {
 	LiveAdjustableParams,
 	ParameterChangeEntry,
@@ -42,7 +44,6 @@ import {
 	CANVAS_BACKGROUND,
 	CANVAS_BORDER_COLOR,
 	CANVAS_HIGHLIGHT_COLOR,
-	FOOD_FILL_COLOR,
 } from "~/styles/theme-colors";
 import { api } from "~/trpc/react";
 
@@ -131,6 +132,20 @@ const REFERENCE_DEPTH = 100;
 // from ballooning and very far ones from shrinking to nothing.
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.0;
+// lifecycle-stage-color-fade Phase 2: how long (in seconds) a food item
+// takes to fade/shrink from full freshness to its faded floor — a tuning
+// starting value (see this file's FOOD_FADE_DURATION usage below), not
+// derived from any other constant, matching S-44's FOOD_ENERGY_BOOST
+// precedent for a value the plan explicitly leaves to be picked and
+// verified empirically during manual check. 30s is long enough to read as
+// a gradual decay rather than a flicker, short enough to actually observe
+// within a typical run's duration.
+const FOOD_FADE_DURATION = 30;
+// lifecycle-stage-color-fade Phase 2: food's full-freshness base color,
+// computed once from the hex seed color (not the CSS-string
+// FOOD_FILL_COLOR re-export) so it can feed Color.fadeTowardGray, which
+// takes/returns the bare ColorJSON shape, not a CSS string.
+const FOOD_BASE_COLOR = Color.fromHex(FOOD_SEED_COLOR).toJSON();
 
 type SimulationCanvasProps = {
 	runId: number;
@@ -169,6 +184,12 @@ type SimulationCanvasProps = {
 // vx/vy) and no `genes` (color comes from the single FOOD_FILL_COLOR
 // constant instead), so it's its own union member rather than widening the
 // boid/predator shape with optional fields.
+// lifecycle-stage-color-fade Phase 2: widened to carry each kind's own fade
+// driver through to the draw loop — `energy` for boid/predator (already on
+// BoidState/PredatorState), `age` for food (added to FoodState in Phase 1).
+// Both already flow onto the runtime object via the existing
+// `{...boid, kind: "boid"}`/`{...item, kind: "food"}` spreads below, so this
+// is a type-only widening.
 type DrawEntity =
 	| {
 			x: number;
@@ -177,12 +198,14 @@ type DrawEntity =
 			vx: number;
 			vy: number;
 			genes: BoidGenes;
+			energy: number;
 			kind: "boid" | "predator";
 	  }
 	| {
 			x: number;
 			y: number;
 			z: number;
+			age?: number;
 			kind: "food";
 	  };
 
@@ -255,17 +278,40 @@ export function drawScene(
 		ctx.beginPath();
 		if (entity.kind === "food") {
 			// Non-oriented: no heading/rotation, unlike boid/predator below —
-			// a plain filled circle scaled by depth, in the single universal
-			// food color (food has no `genes`).
-			ctx.fillStyle = FOOD_FILL_COLOR;
-			ctx.arc(0, 0, BOID_WIDTH * scale, 0, Math.PI * 2);
+			// a plain filled circle scaled by depth, faded toward gray and
+			// shrunk as the item ages (lifecycle-stage-color-fade Phase 2).
+			// `?? 0` covers a legacy-resumed item rendered before its first
+			// tick (FoodState.age is optional for backward compat).
+			const decayMult = Math.min(
+				1,
+				Math.max(0, 1 - (entity.age ?? 0) / FOOD_FADE_DURATION),
+			);
+			ctx.fillStyle = colorToCss(
+				Color.fadeTowardGray(FOOD_BASE_COLOR, decayMult),
+			);
+			ctx.arc(
+				0,
+				0,
+				BOID_WIDTH * scale * (0.5 + 0.5 * decayMult),
+				0,
+				Math.PI * 2,
+			);
 		} else {
 			// Heading from current velocity; zero velocity (e.g. the very
 			// first frame) points along +x as a stable default.
 			const speed = Math.hypot(entity.vx, entity.vy);
 			const heading = speed > 0 ? Math.atan2(entity.vy, entity.vx) : 0;
 			ctx.rotate(heading);
-			ctx.fillStyle = colorToCss(entity.genes.color);
+			// Energy-driven fade toward gray (lifecycle-stage-color-fade
+			// Phase 2): dims as energy drops below 30% of ENERGY_MAX,
+			// recovering toward full color as energy rises again.
+			const energyMult = Math.min(
+				1,
+				Math.max(0, entity.energy / (ENERGY_MAX * 0.3)),
+			);
+			ctx.fillStyle = colorToCss(
+				Color.fadeTowardGray(entity.genes.color, energyMult),
+			);
 			if (entity.kind === "predator") {
 				// Diamond silhouette: nose, both wings, tail — visibly wider
 				// than the boid's narrow triangle at the same depth-scale
