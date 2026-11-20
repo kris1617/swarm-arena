@@ -295,14 +295,14 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 `npm install` resolves `@anthropic-ai/sdk` with no peer-dependency errors
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 9857705
+- [x] 1.2 Lint passes: `npm run check` — 9857705
+- [x] 1.3 `npm install` resolves `@anthropic-ai/sdk` with no peer-dependency errors — 9857705
 
 #### Manual
 
-- [ ] 1.4 `test-plan.md` §2/§3/§5/§8 edits read correctly against the accepted refresh brief
-- [ ] 1.5 `route.ts`'s rewritten comment still reads as a clear, correct security boundary
+- [x] 1.4 `test-plan.md` §2/§3/§5/§8 edits read correctly against the accepted refresh brief — 9857705
+- [x] 1.5 `route.ts`'s rewritten comment still reads as a clear, correct security boundary — 9857705
 
 ### Phase 2: Deterministic screenshot tests (local baseline)
 
