@@ -1,0 +1,49 @@
+name: Generate visual-regression baselines (temporary)
+
+# One-time helper, re-added after simulation-canvas's resize fix
+# (commit 4eceaa7) changed /simulation's rendered layout, invalidating its
+# committed baseline. Same procedure documented in test-plan.md §6.12: run
+# via workflow_dispatch, download the uploaded artifact, replace
+# tests/e2e/visual-regression.spec.ts-snapshots/*.png locally, commit, then
+# delete this file again.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Migrate test database
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+          GITHUB_FEEDBACK_TOKEN: "test-token"
+        run: npm run db:migrate
+      - name: Generate baselines
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+          GITHUB_FEEDBACK_TOKEN: "test-token"
+          AUTH_TRUST_HOST: "true"
+          E2E_TEST_AUTH_SECRET: "ci-only-test-secret"
+          E2E_USERNAME: "e2e-visual-ci@example.com"
+        run: npx playwright test tests/e2e/visual-regression.spec.ts --update-snapshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baselines
+          path: tests/e2e/visual-regression.spec.ts-snapshots/*.png
+          retention-days: 1
