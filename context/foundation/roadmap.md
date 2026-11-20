@@ -7,9 +7,9 @@ updated: 2026-11-20
 prd_version: 5
 main_goal: quality
 top_blocker: none
-milestone_id: ui-modernization-pass
-milestone_seq: 12
-milestone_status: done
+milestone_id: visual-polish-and-content-accuracy
+milestone_seq: 13
+milestone_status: open
 ---
 
 # Roadmap: swarm-arena
@@ -20,25 +20,23 @@ milestone_status: done
 
 ## Milestone
 
-**M-12: UI modernization pass** — Status: done
+**M-13: Visual polish and content accuracy** — Status: open
 
-- **Intent:** Resolve Open Roadmap Question #11 (left open by M-11) by giving each of the app's other views — dashboard, leaderboard, run-analysis/comparison, admin pages, and reference pages — a `/10x-ui` modernization pass: re-audit against the design-token system M-3 (F-06) established, close drift accumulated from feature-by-feature additions since, and bring the two admin pages onto the design-token system for the first time (they never received M-3's restyle at all).
-- **Source materials:** user description (2026-11-20), distilling Open Roadmap Question #11 — anchors below.
-- **Done when:** S-46 through S-50 are all `done` (no foundations this milestone — F-06's design-token system is already baseline).
+- **Intent:** Three user-reported gaps, independent of each other: the app's color scheme reads as low-energy/depressing and needs a deliberate, researched redesign at the design-token level (not a per-view fix); the reference pages' content has fallen behind the simulation mechanics shipped since M-10 (per-tribe boid behavior, predator tribes, area-aware scoring) and needs a content-accuracy pass, not just the token/component pass M-12's S-50 already did; and the login page should look like a modern OAuth-provider login screen, with the apparent lack of visible browser-address-bar navigation during the redirect investigated and fixed if it's a real gap.
+- **Source materials:** user description (2026-11-20) — anchors below.
+- **Done when:** S-51 through S-53 are all `done` (no foundations this milestone — every layer these touch is already present in the baseline).
 - **Scope anchors:**
-  - MS-01: Dashboard view gets a `/10x-ui` pass — 6 feature commits of drift since M-3's S-16 restyle, no re-audit since.
-  - MS-02: Leaderboard view gets a `/10x-ui` pass — 4 feature commits of drift since M-3's S-19 restyle.
-  - MS-03: Run-analysis (`runs/[runId]`) and run-comparison (`runs/compare`) views get a `/10x-ui` pass — highest accumulated drift of any view group (10 and 8 feature commits respectively since M-3's S-18 restyle: the diversity-trend chart (S-32), area-aware population insight (S-25), corpus annotations (S-33/S-35), and the `wasEverThrottled` comparability marker (S-36) were all added with no re-audit).
-  - MS-04: Admin pages (`/admin/elevation`, `/admin/settings`) get their first-ever `/10x-ui` pass — confirmed via research these never received M-3's F-06 restyle at all (a true baseline gap, not drift).
-  - MS-05: Reference pages get a `/10x-ui` pass — lowest accumulated drift (1 feature commit since M-3's S-20 restyle), included for completeness per Question #11's own named example list.
+  - MS-01: Color scheme redesign — study and apply a better palette for this kind of site (data/simulation dashboard); current scheme (dark purple gradient, muted tones) feels depressing/low-energy. Design-token-level change, not a single-view audit.
+  - MS-02: Reference pages content update — storyline/parameters/population-lifecycle/scoring pages need their content extended/corrected to reflect simulation mechanics added since they were last substantively updated (per-tribe boid behavior F-09/S-40, predator tribes F-10/S-43, area-aware scoring S-25). A content-accuracy pass, distinct from M-12's S-50 (which only handled token/component drift, not content).
+  - MS-03: Login UX improvement — restyle the GitHub OAuth login page to look like a modern provider-login screen (prominent provider branding/button, matching the "Continue with Google/Microsoft" visual pattern), and investigate/fix why the browser address bar doesn't visibly show navigation during the OAuth redirect flow.
 
 ## Vision recap
 
-A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability. M-9 closed out the roadmap's own bookkeeping — confirming two already-resolved design questions and deciding a genuinely open one (unwatched-run tick throttling). M-10 turns toward the simulation's configuration model itself: every boid in a run shares one global behavior-weight set regardless of tribe, and every predator shares one global tuning — the user's own prior Lua/LÖVE2D implementation of this same simulation already proved a richer, per-tribe model works (distinct color, speed, force, and per-behavior perception/multipliers per tribe), so this milestone first fixes a reported start-up failure, then brings that per-tribe differentiation to boids, food, and predators, and finally introduces a predation relationship — predator-on-predator — that exists in neither the Lua reference nor the current codebase. M-11 turns from simulation *behavior* to simulation *legibility*: the view itself hasn't been revisited since M-3's modernization pass, and two concrete gaps surfaced — food has no on-canvas representation at all (it's a scalar pool, never drawn), and nothing visually signals an entity's lifecycle stage (age/energy/decay), even though the Lua reference already solved both with a proven, if duplicated, pattern. M-12 turns outward from the simulation canvas (which M-11 just finished) to every other view: M-3's one-time restyle pass gave each view the design-token system once, but six milestones of feature work since have layered new cards, charts, and controls onto several of them with no re-audit, and two admin pages never received the pass at all.
+A hobbyist wants to tune boids/predator-prey simulations and know, objectively, whether a parameter change actually helped — not just eyeball the animation. The product's wedge (the one trait that, if removed, makes this just another flocking demo) is that every run ends in a deterministic, repeatable score combining survival time, resource management, and genetic diversity, so variants can be compared rather than guessed at. M-1 built the scoring and the per-run analysis view; M-2 made comparison and suggestion literal; M-3 modernized the UI, added a leaderboard and reference pages, and ported a spatial-hash performance optimization; M-4 made the simulation's own spatial scale a first-class, user-controlled dimension and added an area-aware score factor, an in-app feedback channel, and VPS-bound capacity limits. Today, once a run starts, its parameters are frozen until it stops — tuning means stop, reconfigure, restart, and lose the run in progress. M-5 closed that loop for the server-owned execution path: the user can nudge flocking weights, food regen, and the protection threshold while a run is actively ticking, and watch the live view respond on the very next tick. M-6 extended the same idea in the two directions M-5 explicitly parked: client-staged runs got the same live-tuning capability, and the server-owned path's live-adjustable set grew to cover the two population-shape parameters cheap enough to patch without restructuring the population itself (crossbreeding toggle, boid and predator count). M-7 was a smaller, independent move: the analysis view's genetic-diversity factor had only ever shown a single final number, even though every other score factor with a meaningful trajectory (population count, food availability) already gets its own chart — that milestone closed that one specific gap. M-8 turns inward: it validates two already-shipped features (the parameter-suggestion heuristic, FR-015; and the per-run analytics suite built across M-1/M-2/M-4/M-7) against a deliberately varied, reusable corpus of simulation runs, rather than adding new user-facing capability. M-9 closed out the roadmap's own bookkeeping — confirming two already-resolved design questions and deciding a genuinely open one (unwatched-run tick throttling). M-10 turns toward the simulation's configuration model itself: every boid in a run shares one global behavior-weight set regardless of tribe, and every predator shares one global tuning — the user's own prior Lua/LÖVE2D implementation of this same simulation already proved a richer, per-tribe model works (distinct color, speed, force, and per-behavior perception/multipliers per tribe), so this milestone first fixes a reported start-up failure, then brings that per-tribe differentiation to boids, food, and predators, and finally introduces a predation relationship — predator-on-predator — that exists in neither the Lua reference nor the current codebase. M-11 turns from simulation *behavior* to simulation *legibility*: the view itself hasn't been revisited since M-3's modernization pass, and two concrete gaps surfaced — food has no on-canvas representation at all (it's a scalar pool, never drawn), and nothing visually signals an entity's lifecycle stage (age/energy/decay), even though the Lua reference already solved both with a proven, if duplicated, pattern. M-12 turns outward from the simulation canvas (which M-11 just finished) to every other view: M-3's one-time restyle pass gave each view the design-token system once, but six milestones of feature work since have layered new cards, charts, and controls onto several of them with no re-audit, and two admin pages never received the pass at all. M-13 is three independent, user-reported polish items, none of them structural: the color scheme itself (not just token *adoption*, which M-3/M-12 already finished) needs a deliberate redesign because it reads as low-energy; the reference pages' *content* (not their markup, which M-12's S-50 just fixed) has fallen behind the per-tribe/predator-tribe/area-aware mechanics M-10 and earlier milestones shipped; and the login screen's first impression and redirect visibility need a closer look.
 
 ## North star
 
-**S-46: Dashboard view modernization pass** — the view every user sees first post-login, with 6 feature commits of drift since M-3's restyle and no re-audit since; the smallest, lowest-risk validation of the `/10x-ui` chain for this milestone, independent of every other slice so it can start immediately.
+**S-51: Color scheme redesign** — the most emotionally resonant of the three reported gaps ("feels depressing"), a design-token-level change the other two slices visually inherit once it lands; independent of every other slice so it can start immediately.
 
 > "North star" here means the smallest end-to-end slice whose successful delivery proves the core product hypothesis — placed as early as its Prerequisites allow.
 
@@ -106,6 +104,9 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-48 | runs-analysis-compare-ui-refresh | User sees the run-analysis and run-comparison pages re-audited and brought current with the design-token system, covering the highest accumulated drift of any view group since M-3's restyle | —              | FR-032, FR-033, MS-03                                  | done |
 | S-49 | admin-pages-ui-refresh | User (admin) sees the elevation and settings pages brought onto the design-token system for the first time | —              | FR-030, FR-032, FR-033, MS-04                          | done |
 | S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | done |
+| S-51 | color-palette-redesign | User sees a researched, higher-energy color palette applied across the whole app instead of today's low-energy dark-purple scheme | —              | FR-032, MS-01                                          | ready |
+| S-52 | reference-pages-content-update | User reads reference-page content (storyline, parameters, population-lifecycle, scoring) that accurately reflects the per-tribe, predator-tribe, and area-aware mechanics shipped since M-10 | —              | FR-034, MS-02                                           | ready |
+| S-53 | login-page-oauth-polish | User sees a modern provider-style login screen and, if the redirect gap is real, visible browser navigation during the GitHub OAuth flow | —              | FR-031, MS-03                                           | ready |
 
 ## Streams
 
@@ -131,6 +132,7 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | R      | Per-tribe config & predator expansion (M-10) | `S-39` (done) → `F-09` → `S-40`; `S-39` → `S-41`; `F-10` → `S-42` → `S-43` | `S-39` shipped (north star done). All 4 design Unknowns resolved 2026-11-17 (full Lua parity for S-40, shared-pool for S-41, genetics-evolving for S-42, scored for S-43). `F-09`/`F-10`/`S-41` are all `ready` now and can run in parallel — `F-10` was discovered during sequencing: predators share boids' genetics machinery already but have no tribe/flock concept at all, so S-42/S-43 need it built first. `S-40` waits on `F-09`; `S-42` waits on `F-10`; `S-43` waits on both `S-42` and `F-10`. |
 | S      | Simulation legibility (M-11)  | `S-44` → `S-45`                         | Carries M-11's north star (`S-44`), now `ready` — the food spatial-vs-pool decision resolved 2026-11-19 (real spatial entities). `S-45` depends on `S-44` landing first so the fade logic has a consistent rendering target to apply to. Both done. |
 | T      | UI modernization pass (M-12)  | `S-46`, `S-47`, `S-48`, `S-49`, `S-50`  | Carries M-12's north star (`S-46`). All 5 are independent — different views, no shared prerequisite beyond the already-done F-06 design-token baseline — so they can run in any order or fully in parallel; sequenced here by accumulated drift and first-impression weight (dashboard → leaderboard → analysis/compare → admin → reference). |
+| U      | Visual polish and content accuracy (M-13) | `S-51`, `S-52`, `S-53` | Carries M-13's north star (`S-51`). All 3 are independent — different concerns (palette, reference content, login screen) with no shared prerequisite — so they can run in any order or fully in parallel; sequenced here by emotional/visual weight (color scheme → reference content → login). |
 
 ## Baseline
 
@@ -910,6 +912,45 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Low — least-touched view group since M-3; included for completeness per Open Roadmap Question #11's own named example list.
 - **Status:** done
 
+### S-51: Color scheme redesign
+
+- **Outcome:** User sees a deliberately researched color palette applied across the whole app — every page inherits the new tokens, not just one view.
+- **Change ID:** color-palette-redesign
+- **PRD refs:** FR-032, MS-01
+- **Prerequisites:** —
+- **Parallel with:** S-52, S-53
+- **Blockers:** —
+- **Unknowns:**
+  - What color palette actually suits a data/simulation dashboard (balanced, energetic without sacrificing the dark-mode legibility the current scheme already has) — Owner: team (via `/10x-research`). Block: no — research can investigate and propose options without a separate pre-decision step.
+- **Risk:** Low-medium — touches `src/styles/globals.css` and `src/styles/theme-colors.ts` (kept in sync by hand per AGENTS.md), which every other view reads from; a hasty palette choice could require a second pass. Sequenced first (north star) precisely so S-52/S-53 inherit the final tokens instead of being restyled twice.
+- **Status:** ready
+
+### S-52: Reference pages content update
+
+- **Outcome:** User reads reference-page content that accurately describes the simulation's current mechanics, not the mechanics as they stood when the pages were last substantively written.
+- **Change ID:** reference-pages-content-update
+- **PRD refs:** FR-034, MS-02
+- **Prerequisites:** —
+- **Parallel with:** S-51, S-53
+- **Blockers:** —
+- **Unknowns:**
+  - Exactly which simulation mechanics are missing or inaccurate across the 4 pages (per-tribe boid behavior, predator tribes, area-aware scoring, and anything else shipped since) — Owner: team (via `/10x-research`, re-verified against current code per the "never touched" lesson in `lessons.md`, not inferred from commit history alone). Block: no.
+- **Risk:** Low — pure content correction, no shared-component or token work (M-12's S-50 already handled that layer); independent of S-51/S-53.
+- **Status:** ready
+
+### S-53: Login page OAuth polish
+
+- **Outcome:** User sees a modern provider-style login screen, and — if the reported gap is real — visible browser-address-bar navigation during the GitHub OAuth redirect.
+- **Change ID:** login-page-oauth-polish
+- **PRD refs:** FR-031, MS-03
+- **Prerequisites:** —
+- **Parallel with:** S-51, S-52
+- **Blockers:** —
+- **Unknowns:**
+  - Why the browser address bar doesn't visibly show navigation during the OAuth redirect — is this expected NextAuth v5 behavior (e.g. a client-side transition masking a same-tab redirect) or a real UX gap — Owner: team (via `/10x-research` against `src/server/auth/config.ts` and the sign-in flow). Block: no — research can characterize the behavior without blocking planning.
+- **Risk:** Low — visual/UX polish on an existing, working auth flow; no provider change (still GitHub OAuth, not an actual switch to Google/Azure).
+- **Status:** ready
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                              | Ready for `/10x-plan` | Notes                                                  |
@@ -974,6 +1015,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-48       | runs-analysis-compare-ui-refresh  | `/10x-ui` modernization pass: run-analysis & run-comparison pages | yes                     | — |
 | S-49       | admin-pages-ui-refresh            | `/10x-ui` modernization pass: admin pages (elevation, settings) | yes                     | — |
 | S-50       | reference-pages-ui-refresh        | `/10x-ui` modernization pass: reference pages | yes                     | — |
+| S-51       | color-palette-redesign            | Redesign the app's color palette (design-token level) | yes                     | Run `/10x-plan color-palette-redesign` |
+| S-52       | reference-pages-content-update    | Update reference-page content for current simulation mechanics | yes                     | Run `/10x-plan reference-pages-content-update` |
+| S-53       | login-page-oauth-polish           | Restyle login page; investigate OAuth redirect visibility | yes                     | Run `/10x-plan login-page-oauth-polish` |
 
 ## Open Roadmap Questions
 
