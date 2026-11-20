@@ -1,10 +1,10 @@
 ---
 change_id: simulation-ui-polish-fixes
 title: Fix dropdown contrast and simulation watch-window sizing
-status: implemented
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T16:09:42Z
 ---
 
 ## Notes
