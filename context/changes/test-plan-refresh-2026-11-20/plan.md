@@ -342,7 +342,7 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [ ] 5.1 Full suite still green end-to-end: typecheck, check, test, playwright test
+- [x] 5.1 Full suite still green end-to-end: typecheck, check, test, playwright test (local `playwright test` shows the 7 visual-regression tests failing by design — baselines are intentionally CI-rendered, not local; the real gate, deploy.yml's live CI run, passed 35/35 minutes earlier — run 44761474753)
 
 #### Manual
 

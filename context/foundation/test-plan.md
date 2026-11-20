@@ -86,7 +86,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 9 | Concurrent-load capacity test | Extend `server-run-registry.test.ts`'s existing fake-timer-driven concurrent-tick pattern to 4 simultaneous server-owned runs (matching `MAX_PARALLEL_RUNS`); prove no backlog/leak/drop up to the documented `maxConcurrentObjectCount` ceiling — Phase 8's single-process-interleaved harness structurally cannot observe this risk (research.md, 2026-11-17) | #9 | integration | complete | `context/changes/testing-concurrent-load-capacity/` |
 | 10 | Wall-clock-aware optimization guardrail | Require any future "this is faster" claim to prove it in both big-O (existing Risk #3 guard) and measured wall-clock terms (Phase 8's baseline) | #7 | benchmark + unit | complete | `context/changes/testing-wallclock-optimization-guardrail/` |
 | 11 | Page-level smoke & regression sweep | Walk every route with an authenticated session, asserting no console/render error and no stale/placeholder content, extending the existing Playwright e2e suite (`tests/e2e/seed.spec.ts`'s auth pattern) rather than a new tool | #10 | e2e | complete | `context/changes/test-plan-refresh-2026-11-18/` |
-| 12 | Visual-regression guard for critical/showcase screens | Prove visual/layout correctness on 7 critical screens without manual eyeballing | #11 | e2e (deterministic screenshot diff) + local vision-review script | implementing | context/changes/test-plan-refresh-2026-11-20/ |
+| 12 | Visual-regression guard for critical/showcase screens | Prove visual/layout correctness on 7 critical screens without manual eyeballing | #11 | e2e (deterministic screenshot diff) + local vision-review script | complete | context/changes/test-plan-refresh-2026-11-20/ |
 
 **Status vocabulary** (fixed — parser literals):
 
@@ -539,6 +539,102 @@ onto already-shipped, DOM-entangled logic is `/10x-implement` territory, not
   a real admin` and `"/runs/[runId] renders without error for a real
   run"` (gated-routes block, admin fixture vs. driven-UI-flow fixture).
 - Run command: `npx playwright test tests/e2e/page-smoke-sweep.spec.ts`.
+
+### 6.12 Adding a visual-regression baseline for a new critical screen
+
+- Location: `tests/e2e/visual-regression.spec.ts`, extending the existing
+  `test.describe("visual regression — critical screens", ...)` block (no new
+  file). Committed baseline PNGs live alongside it at
+  `tests/e2e/visual-regression.spec.ts-snapshots/*.png`.
+- Pattern: add one `test(...)` following the existing shape — `page.goto()`
+  the route, assert its `h1` heading is visible via `getByRole("heading", {
+  name: ..., level: 1 })` (the readiness signal, same as
+  `page-smoke-sweep.spec.ts`'s §6.11 pattern), then
+  `await expect(page).toHaveScreenshot({ mask: [...] })`. Always mask any
+  identity-dependent region — the account-identity email in
+  `[data-slot="sidebar-footer"]` differs between a local test user and the
+  CI test user, so every one of the 7 existing tests masks it with
+  `mask: [page.locator('[data-slot="sidebar-footer"]')]`; a new screen needs
+  the same mask (or an equivalent locator scoped to whatever other
+  identity-dependent region it renders), not a bare `toHaveScreenshot()` —
+  otherwise the baseline bakes in one environment's identity and fails
+  spuriously in the other.
+- **Baseline generation does not use Docker** (Docker is unavailable in this
+  environment) and a locally-generated baseline (via installed Playwright
+  chromium) does **not** reliably match real CI (`ubuntu-latest`) rendering —
+  confirmed during this rollout phase: a locally-generated baseline differed
+  from CI's actual rendering by ~1% of pixels, enough to fail
+  `toHaveScreenshot()`'s default threshold. The only method that produced a
+  baseline CI itself accepts is a one-time GitHub Actions `workflow_dispatch`
+  job that runs the spec with `--update-snapshots` on the real `ubuntu-latest`
+  runner, uploads the resulting PNGs as an `actions/upload-artifact@v4`
+  artifact, which are then downloaded locally and committed:
+  1. Add a temporary `workflow_dispatch`-triggered workflow that checks out
+     the branch, installs dependencies + Playwright browsers, builds/starts
+     the app the same way `playwright.config.ts`'s `webServer` does, runs
+     `npx playwright test tests/e2e/visual-regression.spec.ts
+     --update-snapshots`, and uploads
+     `tests/e2e/visual-regression.spec.ts-snapshots/` via
+     `actions/upload-artifact@v4`.
+  2. Trigger it (`gh workflow run <workflow> --ref <branch>`), wait for
+     completion, then pull the artifact down with `gh run download <run-id>`
+     and copy the PNGs into
+     `tests/e2e/visual-regression.spec.ts-snapshots/`, overwriting any
+     locally-generated ones.
+  3. Commit the CI-rendered PNGs, then delete the temporary workflow file —
+     it is a one-time generation tool, not a permanent part of CI (this
+     rollout phase's own temporary workflow was removed after use; see
+     `git log` around commit `c42a524` for the real baseline-replacement
+     commit and its preceding workflow-add/removal commits if the exact
+     mechanics are needed as a reference).
+  Re-run this same procedure whenever a baseline needs regenerating (a new
+  screen, or an intentional visual change to an existing one) — never hand-
+  edit or locally regenerate a committed PNG and assume it will hold on CI.
+- Reference tests: the 7 existing cases in
+  `tests/e2e/visual-regression.spec.ts` (`/simulation`,
+  `/simulation/kitchen-sink`, `/dashboard/kitchen-sink`,
+  `/leaderboard/kitchen-sink`, `/runs/kitchen-sink`, `/admin/kitchen-sink`,
+  `/reference/kitchen-sink`).
+- Run command: `npx playwright test tests/e2e/visual-regression.spec.ts`
+  (CI-wired, required gate — see §5); add `--update-snapshots` only when
+  regenerating via the CI procedure above, never to silently accept a local
+  diff.
+
+### 6.13 Running the local vision-review script
+
+- Location: `scripts/vision-review.ts`, wired via the `visual:review` npm
+  script.
+- Pattern: this is a **separate, informational-only** layer from §6.12's
+  deterministic diff — it covers judgment calls a pixel diff can't make
+  (e.g. overall color/hue coherence across many elements at once), never a
+  replacement for the deterministic baseline. It never throws and never
+  returns a non-zero exit code, even when every screen gets an "ISSUE"
+  verdict, so it is not and must not become a CI gate (see §5).
+- Operational requirements, both easy to miss:
+  - **A server must already be running** at the configured base URL before
+    invoking it — unlike the Playwright test runner, this script does not
+    use `webServer` auto-start; it launches its own short-lived Playwright
+    browser session only to sign in (via the same local-only test-auth
+    bypass `tests/e2e/auth.setup.ts` uses) and take screenshots. Start the
+    app first (`npm run build && npm start`, or `npm run dev` for a faster
+    loop), then run `npm run visual:review` in another terminal.
+  - **`ANTHROPIC_API_KEY` must be set in `.env`** (already declared as an
+    optional server var in `src/env.js` and documented in `.env.example`).
+    Without it, the script logs that every screen is skipped and still
+    exits 0 — it degrades gracefully rather than failing.
+  - It takes **fresh, unmasked** screenshots of its own (not the committed
+    masked baseline PNGs from §6.12) — reading the masked baselines directly
+    would send the vision model a screenshot containing a garish solid-color
+    mask block over the identity region, confusing the review.
+  - A separate GitHub Actions secret of the same name
+    (`ANTHROPIC_API_KEY`) exists at the repo level, left over from the
+    one-time CI baseline-generation job described in §6.12 — it is not
+    wired into any real CI workflow and must stay that way per this
+    section's non-blocking design.
+- Reference: `scripts/vision-review.ts`'s `main` (sign-in + per-screen
+  screenshot + verdict loop over the same 7 screens as §6.12).
+- Run command: `npm run visual:review` (requires a running server and
+  `ANTHROPIC_API_KEY`, per the operational requirements above).
 
 ## 7. What We Deliberately Don't Test
 
