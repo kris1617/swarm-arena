@@ -320,12 +320,12 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [x] 3.1 A deliberately broken baseline fails the new spec locally (re-run twice: once with the original full-page screenshots, which surfaced a real identity-leak issue; once after masking `[data-slot="sidebar-footer"]`, confirmed still catches regressions)
-- [x] 3.2 Full CI `test` job steps run clean end-to-end locally in sequence
+- [x] 3.1 A deliberately broken baseline fails the new spec locally (re-run twice: once with the original full-page screenshots, which surfaced a real identity-leak issue; once after masking `[data-slot="sidebar-footer"]`, confirmed still catches regressions) — c9e1bf3
+- [x] 3.2 Full CI `test` job steps run clean end-to-end locally in sequence — c9e1bf3
 
 #### Manual
 
-- [ ] 3.3 Push/PR confirms the Actions run's new step passes, and a real deploy still succeeds
+- [ ] 3.3 Push/PR confirms the Actions run's new step passes, and a real deploy still succeeds (first push failed: locally-generated baselines differed from real ubuntu-latest rendering by ~1% pixels; fixed via a one-time workflow_dispatch job that generated true CI baselines, downloaded and committed here)
 
 ### Phase 4: Local vision-review script (non-blocking)
 
