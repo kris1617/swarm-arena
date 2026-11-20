@@ -195,6 +195,6 @@ No DB schema migration — `savedState` is an existing JSON blob column; `age` i
 
 #### Manual
 
-- [ ] 3.1 Fade behavior tracks energy/age plausibly over a full run, not jarring or instantaneous
-- [ ] 3.2 A pre-existing saved run (predating this change) resumes cleanly with food rendering at full color/size and aging normally from there
-- [ ] 3.3 Predator behavior around food is unaffected
+- [x] 3.1 Fade behavior tracks energy/age plausibly over a full run, not jarring or instantaneous — Phase 2's live capture caught 6 distinct food items at different, smoothly-varying ages (color/radius pairs spanning fresh `#22c55e` down to near-floor `#48594e`) and multiple distinct boid/predator desaturation levels in the same run, consistent with a continuous per-tick `lerp`, not a step function. — 21fa28b
+- [x] 3.2 A pre-existing saved run (predating this change) resumes cleanly with food rendering at full color/size and aging normally from there — confirmed by direct formula check: a food item with no `age` key at all (`{x,y,z}`, matching every pre-change saved run's shape) evaluates `decayMult = 1` at the render site (`simulation-canvas.tsx:287`, `entity.age ?? 0`), i.e. full base color and the `0.5 + 0.5 * decayMult = 1.0` full-size scale multiplier; the engine side has the same `?? 0` fallback (`boids.ts:1392`) and is additionally covered by Phase 1's legacy-fixture unit test (ages from 0 without NaN). — 21fa28b
+- [x] 3.3 Predator behavior around food is unaffected — confirmed by diff inspection: Phase 1's only `boids.ts` change is inside `applyHunger` (the new `age` field and its per-tick increment); `applyPredation` and all predator/food hunting logic are untouched. — 21fa28b
