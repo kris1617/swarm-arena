@@ -193,10 +193,10 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes: `npm run typecheck`
-- [ ] 2.2 Lint passes: `npm run check`
-- [ ] 2.3 Full suite still passes: `npm test`
+- [x] 2.1 Typecheck passes: `npm run typecheck` — 1362cfc
+- [x] 2.2 Lint passes: `npm run check` — 1362cfc
+- [x] 2.3 Full suite still passes: `npm test` — 1362cfc
 
 #### Manual
 
-- [ ] 2.4 New sentence renders, reads clearly, doesn't overstate the comparison UI
+- [x] 2.4 New sentence renders, reads clearly, doesn't overstate the comparison UI — verified live (production build): the caveat sentence renders correctly appended to the Genetic diversity card, reads clearly, and doesn't claim any UI breakdown that doesn't exist. — 1362cfc

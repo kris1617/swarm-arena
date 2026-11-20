@@ -13,7 +13,8 @@ const FACTORS = [
 	},
 	{
 		name: "Genetic diversity",
-		description: "How genetically diverse the surviving population remained.",
+		description:
+			"How genetically diverse the surviving population remained. With multiple tribes, this number also reflects how separate the tribes' gene pools still are — enabling crossbreeding will tend to lower it over time as tribes blend, even if within-tribe variation hasn't changed.",
 	},
 	{
 		name: "Phase quality",
