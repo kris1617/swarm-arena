@@ -1,7 +1,7 @@
 ---
 change_id: dashboard-ui-refresh
 title: Dashboard view modernization pass
-status: preparing
+status: planned
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null
