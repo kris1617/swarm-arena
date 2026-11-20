@@ -331,8 +331,8 @@ same pattern `test-plan-refresh-2026-11-18` (Phase 11) used.
 
 #### Automated
 
-- [ ] 4.1 `npm run visual:review` exits 0 with and without `ANTHROPIC_API_KEY` set
-- [ ] 4.2 Typecheck passes with the new script included
+- [x] 4.1 `npm run visual:review` exits 0 with and without `ANTHROPIC_API_KEY` set
+- [x] 4.2 Typecheck passes with the new script included
 
 #### Manual
 
