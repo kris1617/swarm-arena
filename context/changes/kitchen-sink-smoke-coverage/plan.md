@@ -103,12 +103,12 @@ None — no persisted data, no schema, no production code changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 New spec tests pass: `npx playwright test tests/e2e/page-smoke-sweep.spec.ts`
-- [ ] 1.4 Full E2E suite still passes: `npx playwright test`
-- [ ] 1.5 Full unit/integration suite still passes: `npm test`
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 2d4bc16
+- [x] 1.2 Lint passes: `npm run check` — 2d4bc16
+- [x] 1.3 New spec tests pass: `npx playwright test tests/e2e/page-smoke-sweep.spec.ts` — 20/20 passed — 2d4bc16
+- [x] 1.4 Full E2E suite still passes: `npx playwright test` — 28/28 passed — 2d4bc16
+- [x] 1.5 Full unit/integration suite still passes: `npm test` — 559 passed, 1 skipped — 2d4bc16
 
 #### Manual
 
-- [ ] 1.6 5 new test blocks reviewed against this project's E2E conventions
+- [x] 1.6 5 new test blocks reviewed against this project's E2E conventions — verified: no CSS/XPath selectors, no `waitForTimeout`, exclusively `getByRole` locators, each test independent (own `trackConsoleErrors` call); also fixed a naming-convention deviation found during review — the implementer's test names used quoted route strings (`'"/dashboard/kitchen-sink" renders...'`) diverging from the file's existing unquoted convention (`"/simulation/kitchen-sink renders..."`) — corrected to match. — 2d4bc16

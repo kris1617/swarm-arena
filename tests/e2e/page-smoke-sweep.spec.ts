@@ -81,6 +81,57 @@ test.describe("page smoke sweep — shared session", () => {
 		expect(tracked.errors).toEqual([]);
 	});
 
+	test("/dashboard/kitchen-sink renders without error", async ({ page }) => {
+		const tracked = trackConsoleErrors(page);
+		await page.goto("/dashboard/kitchen-sink");
+		await expect(
+			page.getByRole("heading", { name: "Dashboard Kitchen Sink", level: 1 }),
+		).toBeVisible();
+		expect(tracked.errors).toEqual([]);
+	});
+
+	test("/leaderboard/kitchen-sink renders without error", async ({ page }) => {
+		const tracked = trackConsoleErrors(page);
+		await page.goto("/leaderboard/kitchen-sink");
+		await expect(
+			page.getByRole("heading", {
+				name: "Leaderboard Kitchen Sink",
+				level: 1,
+			}),
+		).toBeVisible();
+		expect(tracked.errors).toEqual([]);
+	});
+
+	test("/runs/kitchen-sink renders without error", async ({ page }) => {
+		const tracked = trackConsoleErrors(page);
+		await page.goto("/runs/kitchen-sink");
+		await expect(
+			page.getByRole("heading", {
+				name: "Runs Analysis Kitchen Sink",
+				level: 1,
+			}),
+		).toBeVisible();
+		expect(tracked.errors).toEqual([]);
+	});
+
+	test("/admin/kitchen-sink renders without error", async ({ page }) => {
+		const tracked = trackConsoleErrors(page);
+		await page.goto("/admin/kitchen-sink");
+		await expect(
+			page.getByRole("heading", { name: "Admin Kitchen Sink", level: 1 }),
+		).toBeVisible();
+		expect(tracked.errors).toEqual([]);
+	});
+
+	test("/reference/kitchen-sink renders without error", async ({ page }) => {
+		const tracked = trackConsoleErrors(page);
+		await page.goto("/reference/kitchen-sink");
+		await expect(
+			page.getByRole("heading", { name: "Reference Kitchen Sink", level: 1 }),
+		).toBeVisible();
+		expect(tracked.errors).toEqual([]);
+	});
+
 	test("/runs/compare renders without error", async ({ page }) => {
 		// Visited without the required `ids` query param, this route
 		// deliberately renders a graceful StatusMessage rather than its
