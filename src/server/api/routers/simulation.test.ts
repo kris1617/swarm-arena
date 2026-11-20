@@ -3531,6 +3531,14 @@ describe("simulationRouter.updateRunParams", () => {
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
 		trackedServerRunIds.push(runId);
 
+		// lessons.md "Known-flaky test" entry: this assertion depends on
+		// both calls landing within PARAM_UPDATE_THROTTLE_MS (500ms) of real
+		// wall-clock time, which a loaded CI runner can blow past. Fake only
+		// `Date` (not timers) so both calls read the same frozen `now` —
+		// real async scheduling (and this test's own DB I/O) is untouched,
+		// only `Date.now()`'s value is pinned.
+		vi.useFakeTimers({ toFake: ["Date"] });
+
 		await caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.3 });
 
 		await expect(
@@ -3705,6 +3713,11 @@ describe("simulationRouter.updatePredatorTribeConfigs", () => {
 		const { caller } = await insertOwnerAndCaller();
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
 		trackedServerRunIds.push(runId);
+
+		// lessons.md "Known-flaky test" entry — same fix as updateRunParams'
+		// own sibling throttle test above: fake only `Date`, not timers, so
+		// both calls read the same frozen `now` regardless of CI load.
+		vi.useFakeTimers({ toFake: ["Date"] });
 
 		await caller.simulation.updatePredatorTribeConfigs({
 			runId,
@@ -4496,6 +4509,12 @@ describe("simulationRouter.adjustLivePopulation", () => {
 		const { caller } = await insertOwnerAndCaller();
 		const { runId } = await caller.simulation.startServer(VALID_START_INPUT);
 		trackedServerRunIds.push(runId);
+
+		// lessons.md "Known-flaky test" entry — this is the exact test that
+		// entry names (CI run 44621692686, 2026-11-19) and the one that
+		// failed again in CI on this change (run 44794519509, 2026-11-20).
+		// Same fix as its two siblings above: fake only `Date`, not timers.
+		vi.useFakeTimers({ toFake: ["Date"] });
 
 		await caller.simulation.updateRunParams({ runId, mutationMagnitude: 0.3 });
 
