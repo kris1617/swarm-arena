@@ -9,7 +9,7 @@ main_goal: quality
 top_blocker: none
 milestone_id: ui-modernization-pass
 milestone_seq: 12
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: swarm-arena
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-12: UI modernization pass** — Status: open
+**M-12: UI modernization pass** — Status: done
 
 - **Intent:** Resolve Open Roadmap Question #11 (left open by M-11) by giving each of the app's other views — dashboard, leaderboard, run-analysis/comparison, admin pages, and reference pages — a `/10x-ui` modernization pass: re-audit against the design-token system M-3 (F-06) established, close drift accumulated from feature-by-feature additions since, and bring the two admin pages onto the design-token system for the first time (they never received M-3's restyle at all).
 - **Source materials:** user description (2026-11-20), distilling Open Roadmap Question #11 — anchors below.
@@ -101,11 +101,11 @@ A hobbyist wants to tune boids/predator-prey simulations and know, objectively, 
 | S-43 | second-predator-tribe-prey-target | User adds a second predator tribe to a run and chooses its prey target — boids only, or boids and predators — and inter-predator predation factors into scoring | S-42, F-10     | MS-05                                                  | done |
 | S-44 | simulation-entity-shape-color-differentiation | User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view | —              | MS-02                                                  | done |
 | S-45 | lifecycle-stage-color-fade | User sees boid, predator, and food colors fade/shift according to lifecycle stage (energy/decay), matching the Lua reference's pattern | S-44           | MS-03                                                  | done |
-| S-46 | dashboard-ui-refresh | User sees the post-login dashboard re-audited and brought current with the design-token system after 6 feature commits of drift since M-3's restyle | —              | FR-032, FR-033, MS-01                                  | ready |
-| S-47 | leaderboard-ui-refresh | User sees the leaderboard re-audited and brought current with the design-token system after 4 feature commits of drift since M-3's restyle | —              | FR-026, FR-032, FR-033, MS-02                          | ready |
-| S-48 | runs-analysis-compare-ui-refresh | User sees the run-analysis and run-comparison pages re-audited and brought current with the design-token system, covering the highest accumulated drift of any view group since M-3's restyle | —              | FR-032, FR-033, MS-03                                  | ready |
-| S-49 | admin-pages-ui-refresh | User (admin) sees the elevation and settings pages brought onto the design-token system for the first time | —              | FR-030, FR-032, FR-033, MS-04                          | ready |
-| S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | ready |
+| S-46 | dashboard-ui-refresh | User sees the post-login dashboard re-audited and brought current with the design-token system after 6 feature commits of drift since M-3's restyle | —              | FR-032, FR-033, MS-01                                  | done |
+| S-47 | leaderboard-ui-refresh | User sees the leaderboard re-audited and brought current with the design-token system after 4 feature commits of drift since M-3's restyle | —              | FR-026, FR-032, FR-033, MS-02                          | done |
+| S-48 | runs-analysis-compare-ui-refresh | User sees the run-analysis and run-comparison pages re-audited and brought current with the design-token system, covering the highest accumulated drift of any view group since M-3's restyle | —              | FR-032, FR-033, MS-03                                  | done |
+| S-49 | admin-pages-ui-refresh | User (admin) sees the elevation and settings pages brought onto the design-token system for the first time | —              | FR-030, FR-032, FR-033, MS-04                          | done |
+| S-50 | reference-pages-ui-refresh | User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system | —              | FR-034, FR-032, FR-033, MS-05                          | done |
 
 ## Streams
 
@@ -860,7 +860,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** — (the `/10x-ui` chain's own audit step names the specific charges per-view at plan time, not here)
 - **Risk:** Low — a re-audit of an already-restyled, stable view; main risk is scope creep if the audit's charge list grows beyond token/component drift.
-- **Status:** ready
+- **Status:** done
 
 ### S-47: Leaderboard view modernization pass
 
@@ -872,7 +872,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — smallest view in this milestone, least accumulated drift of the four previously-restyled pages.
-- **Status:** ready
+- **Status:** done
 
 ### S-48: Run-analysis and run-comparison modernization pass
 
@@ -884,7 +884,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Medium — most feature-dense view group in this milestone (10+8 commits of additions); the audit may surface more charges than the other four slices combined, but no new product behavior is in scope, only presentation.
-- **Status:** ready
+- **Status:** done
 
 ### S-49: Admin pages modernization pass
 
@@ -895,8 +895,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-46, S-47, S-48, S-50
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Low — lowest-traffic view in this milestone (admin-only), but a genuine baseline gap rather than drift, since these pages never received any design-system pass.
-- **Status:** ready
+- **Risk:** Low — lowest-traffic view in this milestone (admin-only). Correction (research, 2026-11-20): tokens were already in place; the real gaps were a `<main>`-landmark bug and missing `NumberField` adoption, not a missing design-system pass.
+- **Status:** done
 
 ### S-50: Reference pages modernization pass
 
@@ -908,7 +908,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — least-touched view group since M-3; included for completeness per Open Roadmap Question #11's own named example list.
-- **Status:** ready
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -1015,9 +1015,15 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **M-8: Parameter-suggestion & analytics validation corpus** (`parameter-suggestion-analytics-corpus`) — closed 2026-11-16. Delivered a reusable, persisted structured-parameter-sweep corpus (F-08, S-33) and two regression suites against it: parameter-suggestion-heuristic quality (S-34) and per-run analytics correctness across the corpus's full parameter range (S-35). Every scope anchor (MS-01–MS-06) satisfied.
 - **M-10: Per-tribe configuration and predator expansion** (`per-tribe-config-and-predator-expansion`) — closed 2026-11-18. Fixed the reported default-start failure (S-39), then extended per-tribe configuration to boid behavior (F-09, S-40), food (S-41), and predators (S-42), and finally added a second predator tribe with a configurable prey target — boids only, or boids and predators, scored via a new 6th factor (F-10, S-43) — a predation relationship new relative to both the Lua reference and the prior codebase. All 5 scope anchors (MS-01–MS-05) satisfied; F-09/F-10 and all 5 slices (S-39–S-43) done.
 - **M-11: Simulation legibility and frontend polish** (`simulation-legibility-and-frontend-polish`) — closed 2026-11-20. Gave food its first on-canvas representation and distinguished all three entity kinds by shape/color (S-44), then ported the Lua reference's energy/decay-driven lifecycle color fade — boid/predator dimming toward gray as energy drops, food fading and shrinking as it ages — behind one centralized `fadeTowardGray` helper instead of the reference's 3× duplication (S-45). MS-02 and MS-03 satisfied; MS-01 (a broader `/10x-ui` modernization pass across other views) stays open as Open Roadmap Question #11 — not blocking, carried forward for a future milestone to pick up.
+- **M-12: UI modernization pass** (`ui-modernization-pass`) — closed 2026-11-20. Resolved Open Roadmap Question #11 by giving each of the app's remaining views a `/10x-ui` pass: dashboard (S-46), leaderboard (S-47), run-analysis and run-comparison (S-48), admin pages — their first-ever restyle, confirmed as a true baseline gap rather than drift (S-49), and reference pages (S-50, which also fixed a scoring-content accuracy gap found during its audit). All 5 scope anchors (MS-01–MS-05) satisfied; no foundations this milestone.
 
 ## Done
 
+- **S-50: User sees the reference pages (storyline, parameters, population-lifecycle, scoring) re-audited and brought current with the design-token system.** — Archived 2026-11-20 → `context/archive/2026-11-20-reference-pages-ui-refresh/`. Lesson: —.
+- **S-49: User (admin) sees the elevation and settings pages brought onto the design-token system for the first time.** — Archived 2026-11-20 → `context/archive/2026-11-20-admin-pages-ui-refresh/`. Lesson: a prior roadmap/research note claimed these pages "never received the F-06 restyle" based on commit history alone, but direct code inspection found tokens already correctly in place — the real gaps were a `<main>`-landmark bug and missing shared-component adoption. Recorded as a recurring rule via `/10x-lesson`.
+- **S-48: User sees the run-analysis and run-comparison pages re-audited and brought current with the design-token system, covering the highest accumulated drift of any view group since M-3's restyle.** — Archived 2026-11-20 → `context/archive/2026-11-20-runs-analysis-compare-ui-refresh/`. Lesson: —.
+- **S-47: User sees the leaderboard re-audited and brought current with the design-token system after 4 feature commits of drift since M-3's restyle.** — Archived 2026-11-20 → `context/archive/2026-11-20-leaderboard-ui-refresh/`. Lesson: —.
+- **S-46: User sees the post-login dashboard re-audited and brought current with the design-token system after 6 feature commits of drift since M-3's restyle.** — Archived 2026-11-20 → `context/archive/2026-11-20-dashboard-ui-refresh/`. Lesson: —.
 - **S-45: User sees boid, predator, and food colors fade/shift according to lifecycle stage — energy for boids/predators, decay for food — matching the Lua reference's proven pattern.** — Archived 2026-11-20 → `context/archive/2026-11-20-lifecycle-stage-color-fade/`. Lesson: —.
 - **S-44: User sees boids, predators, and food rendered with clearly distinct shapes and colors in the simulation view.** — Archived 2026-11-20 → `context/archive/2026-11-19-simulation-entity-shape-color-differentiation/`. Lesson: a client-staged tick-loop ref (`foodSpawnRemainderRef`) was omitted alongside its correctly-threaded sibling (`foodItemsRef`), silently resetting the regen backlog to 0 every tick so food could never spawn — a 100%-of-the-time failure invisible to typecheck/lint/every existing test, caught only by manual browser verification; see `context/foundation/lessons.md`'s "new per-tick ref" entry. Separately, impl-review caught a Progress checkbox claiming spawn-threshold/backlog/cap test coverage that didn't actually exist (every food test used fixture-constructed `foodItems`, none drove the spawn loop itself) — fixed with 3 targeted tests before archiving.
 - **F-10: (foundation) Predators can belong to a tribe (mirroring boids' existing `flockId`), with each predator tribe carrying its own independently-evolving genetics (reusing the already-existing `reproducePopulation`/`PredatorGenes` machinery) and its own behavior tuning.** — Archived 2026-11-18 → `context/archive/2026-11-18-predator-tribe-concept/`. Lesson: plan-review (before any code was written) caught 2 critical gaps a careful plan can still miss — no DB schema/persistence columns for the new per-tribe config (the plan's own claim that none was needed was factually wrong, since the sibling boid-side `tribeConfigs` field it was modeled on IS a real DB column), and the actual production thread-through path (`single-run-lifecycle.ts` + its 2 real callers) that gets a new per-tick config into the engine, which the plan's own internal `runTick` edit alone couldn't reach. Both were fixed before implementation started, not discovered mid-build. Separately, genuinely wiring previously-inert genes (`maxSpeed`/`minSpeed`) to real behavior exposed a stale test fixture whose values had accidentally erased predators' speed advantage the moment the field became real — the same "field inherited/stored but never behaviorally read" class this roadmap has already recorded more than once.
