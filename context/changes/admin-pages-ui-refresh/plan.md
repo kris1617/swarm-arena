@@ -205,11 +205,11 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 3.1 Typecheck passes: `npm run typecheck`
-- [ ] 3.2 Lint passes: `npm run check`
-- [ ] 3.3 Full suite still passes: `npm test`
+- [x] 3.1 Typecheck passes: `npm run typecheck` — a047d5f
+- [x] 3.2 Lint passes: `npm run check` — a047d5f
+- [x] 3.3 Full suite still passes: `npm test` — a047d5f
 
 #### Manual
 
-- [ ] 3.4 All states visible at `/admin/kitchen-sink`, screenshot at desktop and one mobile width
-- [ ] 3.5 Focus-visible ring uses the `--ring` token
+- [x] 3.4 All states visible at `/admin/kitchen-sink`, screenshot at desktop and one mobile width — verified live (production build): NumberField default/hover/focus-visible/className-variant, disabled Button, error paragraph, and the email text input all render in one screen. — a047d5f
+- [x] 3.5 Focus-visible ring uses the `--ring` token — verified via computed style: `outline: oklab(0.749996 0.0410298 -0.11274 / 0.5) none 1px`, matching the same `--ring` token value confirmed on every other kitchen-sink page in this milestone. The className-variant composition was also confirmed directly (both the default and compact classes present on their respective fields). — a047d5f
