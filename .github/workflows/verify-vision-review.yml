@@ -1,0 +1,68 @@
+name: Verify vision-review script (temporary)
+
+# One-time helper for test-plan-refresh-2026-11-20 Phase 4's manual
+# verification criterion 4.3: confirm scripts/vision-review.ts produces a
+# plausible verdict with a real ANTHROPIC_API_KEY. No local key exists in
+# this environment's .env, but a repo-level secret already does (added
+# 2026-11-17, predates this change) -- this job reuses it without ever
+# exposing its value locally. Only the script's own stdout (verdicts, no
+# secret) is visible in the run log. Delete this file once 4.3 is closed.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+          GITHUB_FEEDBACK_TOKEN: "test-token"
+        run: npm run build
+      - name: Migrate test database
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+          GITHUB_FEEDBACK_TOKEN: "test-token"
+        run: npm run db:migrate
+      - run: npx playwright install --with-deps chromium
+      - name: Start server
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: "file:./db.sqlite"
+          AUTH_SECRET: "test-secret"
+          AUTH_GITHUB_ID: "test-github-id"
+          AUTH_GITHUB_SECRET: "test-github-secret"
+          GITHUB_FEEDBACK_TOKEN: "test-token"
+          AUTH_TRUST_HOST: "true"
+          E2E_TEST_AUTH_SECRET: "ci-only-test-secret"
+        run: |
+          rm -rf .next/standalone/public .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+          DATABASE_URL="file:$(pwd)/db.sqlite" PORT=3000 HOSTNAME=localhost \
+            node .next/standalone/server.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000 > /dev/null && break
+            sleep 1
+          done
+      - name: Run vision review
+        env:
+          E2E_USERNAME: "e2e-visual-ci@example.com"
+          E2E_TEST_AUTH_SECRET: "ci-only-test-secret"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run visual:review
