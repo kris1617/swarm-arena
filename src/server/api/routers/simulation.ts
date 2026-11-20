@@ -1,5 +1,5 @@
 import { TRPCError, tracked } from "@trpc/server";
-import { and, count, desc, eq, gt, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -987,6 +987,9 @@ export const simulationRouter = createTRPCRouter({
 				and(
 					eq(simulationRuns.userId, userId),
 					eq(simulationRuns.status, "saved"),
+					// simulation-run-delete Phase 1: a soft-deleted run disappears
+					// from every user-facing read.
+					isNull(simulationRuns.deletedAt),
 				),
 			)
 			.orderBy(desc(simulationRuns.startedAt));
@@ -1019,6 +1022,9 @@ export const simulationRouter = createTRPCRouter({
 				and(
 					eq(simulationRuns.userId, userId),
 					eq(simulationRuns.status, "stopped"),
+					// simulation-run-delete Phase 1: a soft-deleted run disappears
+					// from every user-facing read.
+					isNull(simulationRuns.deletedAt),
 				),
 			)
 			.orderBy(desc(simulationRuns.startedAt))
@@ -1067,6 +1073,9 @@ export const simulationRouter = createTRPCRouter({
 					eq(simulationRuns.userId, userId),
 					eq(simulationRuns.status, "stopped"),
 					isNotNull(simulationRuns.score),
+					// simulation-run-delete Phase 1: a soft-deleted run disappears
+					// from every user-facing read.
+					isNull(simulationRuns.deletedAt),
 				),
 			)
 			.orderBy(desc(simulationRuns.score), desc(simulationRuns.startedAt))
@@ -1205,7 +1214,10 @@ export const simulationRouter = createTRPCRouter({
 		.input(z.object({ runId: z.number() }))
 		.query(async ({ ctx, input }) => {
 			const run = await ctx.db.query.simulationRuns.findFirst({
-				where: (t, { eq: eqFn }) => eqFn(t.id, input.runId),
+				// simulation-run-delete Phase 1: a soft-deleted run disappears
+				// from every user-facing read — treated the same as "not found".
+				where: (t, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+					andFn(eqFn(t.id, input.runId), isNullFn(t.deletedAt)),
 			});
 
 			if (!run) {
@@ -1336,7 +1348,11 @@ export const simulationRouter = createTRPCRouter({
 
 			for (const runId of input.runIds) {
 				const run = await ctx.db.query.simulationRuns.findFirst({
-					where: (t, { eq: eqFn }) => eqFn(t.id, runId),
+					// simulation-run-delete Phase 1: a soft-deleted run disappears
+					// from every user-facing read — treated the same as
+					// "not-found" (the per-row error marker below).
+					where: (t, { eq: eqFn, and: andFn, isNull: isNullFn }) =>
+						andFn(eqFn(t.id, runId), isNullFn(t.deletedAt)),
 				});
 
 				if (!run) {

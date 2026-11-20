@@ -127,6 +127,13 @@
       "when": 1795103616155,
       "tag": "0017_illegal_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1795197831706,
+      "tag": "0018_serious_spirit",
+      "breakpoints": true
     }
   ]
 }

@@ -122,6 +122,12 @@ export const simulationRuns = createTable("simulation_run", (d) => ({
 		.default(sql`(unixepoch())`)
 		.notNull(),
 	stoppedAt: d.integer({ mode: "timestamp" }),
+	// simulation-run-delete Phase 1: soft-delete marker — null means "not
+	// deleted" (every existing row, unchanged); a timestamp means the user
+	// deleted this run via the delete mutation. Nullable, no default, no
+	// backfill: every read query added in this phase filters it out, and
+	// the row itself is never physically removed.
+	deletedAt: d.integer({ mode: "timestamp" }),
 	// S-04 Phase 4 (FR-012): the full live-state snapshot for a
 	// server-owned run paused via "Save & Pause" — null except while
 	// `status: "saved"`. Shape matches `ServerRunSnapshot` in
