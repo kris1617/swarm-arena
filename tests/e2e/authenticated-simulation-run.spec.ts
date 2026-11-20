@@ -125,6 +125,95 @@ test("signed-in user deletes a completed run from the dashboard", async ({
 	await expect(rowLabel).toBeHidden();
 });
 
+// risk: a signed-in user starts a server-run simulation, saves & pauses it,
+// then deletes it from the dashboard — but the save-and-pause mutation
+// targets the wrong run (a stale "running" DB row left over from an earlier,
+// separate `npx playwright test` invocation — db.sqlite persists across
+// webServer restarts even though the in-memory server-run-registry.ts
+// doesn't), or the Saved-section delete (proven live only for Completed rows
+// so far) never actually removes the row. Self-contained: this test starts
+// the run itself and interacts with it entirely within its own lifetime,
+// rather than relying on `.last()`/`.first()` over a list that could still
+// contain another leftover row.
+test("signed-in user starts a run on the server, saves & pauses it, then deletes it from the dashboard", async ({
+	page,
+}) => {
+	await page.goto("/simulation");
+	await expect(
+		page.getByRole("heading", { name: "Flocking Simulation" }),
+	).toBeVisible();
+
+	// Distinct from every other fixture in this file, so the dashboard row
+	// below is unambiguous even under `fullyParallel`.
+	await page.getByRole("spinbutton", { name: "Boid count (1-500)" }).fill("6");
+	await page
+		.getByRole("spinbutton", { name: "Predator count (0-500)" })
+		.fill("2");
+
+	// Snapshot the server-run rows that exist before this test starts its
+	// own, so the row this test just created can be told apart from any
+	// stale leftover row rather than assumed to be the only one.
+	const existingRunLabels = new Set(
+		await page.getByRole("button", { name: /^Run #\d+$/ }).allTextContents(),
+	);
+
+	// Action: start a run on the server.
+	await page.getByRole("button", { name: "Start on server" }).click();
+
+	let newRunLabel: string | undefined;
+	await expect
+		.poll(async () => {
+			const labels = await page
+				.getByRole("button", { name: /^Run #\d+$/ })
+				.allTextContents();
+			newRunLabel = labels.find((label) => !existingRunLabels.has(label));
+			return newRunLabel;
+		})
+		.toBeTruthy();
+	if (!newRunLabel) {
+		throw new Error("no new server run appeared after Start on server");
+	}
+	const runIdMatch = newRunLabel.match(/\d+/);
+	if (!runIdMatch) {
+		throw new Error(`could not read a run id out of: ${newRunLabel}`);
+	}
+	const runId = runIdMatch[0];
+
+	// Action: save & pause it — scoped to this run's own row (its button's
+	// immediate container), never `.first()`/`.last()` on the shared
+	// running-runs list.
+	const newRunRow = page
+		.getByRole("button", { name: newRunLabel, exact: true })
+		.locator("xpath=..");
+	const savePauseButton = newRunRow.getByRole("button", {
+		name: "Save & Pause",
+	});
+	await expect(savePauseButton).toBeVisible();
+	await savePauseButton.click();
+
+	// The mutation landed — same pattern as "Delete run #N" button
+	// disappearance elsewhere in this file.
+	await expect(savePauseButton).toBeHidden();
+
+	// Action: find this run in the dashboard's Saved section and delete it.
+	await page.goto("/dashboard");
+	const rowLabel = page.getByText(
+		new RegExp(`Run #${runId} — 6 boids, 2 predators`),
+	);
+	await expect(rowLabel).toBeVisible();
+
+	await page.getByRole("button", { name: `Delete run #${runId}` }).click();
+	const confirmDialog = page.getByRole("alertdialog");
+	await expect(confirmDialog).toBeVisible();
+	await confirmDialog
+		.getByRole("button", { name: "Delete", exact: true })
+		.click();
+
+	// Assertion: the row is gone from the Saved list — not just the dialog
+	// closing.
+	await expect(rowLabel).toBeHidden();
+});
+
 // risk: a numeric field's HTML `min` attribute can fall off the `step`
 // grid for the field's actual default value (e.g. min={2.5} with step="1"
 // and a default of 20), which makes the browser treat the form as
