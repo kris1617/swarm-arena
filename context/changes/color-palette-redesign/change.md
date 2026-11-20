@@ -1,7 +1,7 @@
 ---
 change_id: color-palette-redesign
 title: Color palette redesign
-status: planned
+status: implementing
 created: 2026-11-20
 updated: 2026-11-20
 archived_at: null

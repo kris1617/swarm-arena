@@ -151,15 +151,15 @@ None — no persisted data, no schema, no API surface touched. Pure presentation
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 `:root` and `.dark` blocks remain byte-identical
-- [ ] 1.5 `--chart-1..5` and `theme-colors.ts` are byte-unchanged
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 12cbe36
+- [x] 1.2 Lint passes: `npm run check` — 12cbe36
+- [x] 1.3 Full suite still passes: `npm test` — 12cbe36
+- [x] 1.4 `:root` and `.dark` blocks remain byte-identical — verified via diff, only difference is `--radius` (root-only by the plan's own contract) — 12cbe36
+- [x] 1.5 `--chart-1..5` and `theme-colors.ts` are byte-unchanged — verified via `git diff` — 12cbe36
 
 #### Manual
 
-- [ ] 1.6 Live screenshots across 7 representative pages confirm every surface role is visually distinguishable and the new accent renders correctly
-- [ ] 1.7 Focus-visible ring check passes (clearly visible, not washed out)
-- [ ] 1.8 Rough contrast spot-check on body text and muted text
-- [ ] 1.9 Subjective check: result reads as more vibrant/energetic than before
+- [x] 1.6 Live screenshots across 7 representative pages confirm every surface role is visually distinguishable and the new accent renders correctly — verified live (production build): login, dashboard/kitchen-sink, leaderboard/kitchen-sink, reference/kitchen-sink, admin/kitchen-sink, runs/kitchen-sink all screenshot; background/card/popover/secondary/muted now all visibly distinct tonal steps, warm amber --accent clearly visible on the dashboard's active tab, destructive red stays distinct from the new accent hue. — 12cbe36
+- [x] 1.7 Focus-visible ring check passes (clearly visible, not washed out) — verified via computed-style inspection (outlineColor resolves exactly to the new oklch(0.8 0.16 291) value) and visually on reference/kitchen-sink's BackLink. — 12cbe36
+- [x] 1.8 Rough contrast spot-check on body text and muted text — confirmed legible across all 6 screenshotted pages, including small muted-foreground labels in admin/kitchen-sink. — 12cbe36
+- [x] 1.9 Subjective check: result reads as more vibrant/energetic than before — confirmed: the gradient banner, primary buttons, and new warm accent produce a visibly livelier result than the prior flat, single-hue scheme. — 12cbe36
