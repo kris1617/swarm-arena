@@ -9,6 +9,8 @@ implemented: 2026-11-17 (67df16c)
 
 **Scope**: planning only — no production code is modified by this document.
 
+**Re-verified 2026-11-20**: `src/server/simulation/color.ts` and commit `67df16c` both confirmed still present in current history — this artifact remains accurate, no redo needed as part of this session's L5 refresh.
+
 **Status: implemented, narrower than designed** in commit `67df16c` —
 `Color` at `src/server/simulation/color.ts`, owning `fromHex`/`fromHsl`/
 `toCss`/`toJSON`/`fromJSON`. The design's `blend()` method was dropped on

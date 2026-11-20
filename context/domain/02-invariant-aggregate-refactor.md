@@ -9,6 +9,8 @@ implemented: 2026-11-17 (baf3747)
 
 **Scope**: planning only — no production code is modified by this document.
 
+**Re-verified 2026-11-20**: `src/server/simulation/scored-run.ts` and commit `baf3747` both confirmed still present in current history — this artifact remains accurate, no redo needed as part of this session's L5 refresh.
+
 **Status: implemented** in commit `baf3747` — `ScoredRun` at
 `src/server/simulation/scored-run.ts`, migrated into `listLeaderboard`,
 `getParameterSuggestion`, and `getRunsComparison` plus their two client
