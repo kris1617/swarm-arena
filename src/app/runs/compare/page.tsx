@@ -11,6 +11,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { AnalysisCard } from "~/components/analysis-card";
 import { StatusMessage } from "~/components/ui/status-message";
 import { api } from "~/trpc/react";
 
@@ -178,8 +179,7 @@ export default function RunsComparePage() {
 				<p>Could not load this comparison.</p>
 			) : (
 				<>
-					<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-						<h2 className="font-semibold">Parameters</h2>
+					<AnalysisCard title="Parameters">
 						<div className="flex flex-col gap-2">
 							{okRows.map((row) => (
 								<div key={row.runId}>
@@ -194,10 +194,9 @@ export default function RunsComparePage() {
 								</div>
 							))}
 						</div>
-					</section>
+					</AnalysisCard>
 
-					<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-						<h2 className="font-semibold">Score &amp; factors</h2>
+					<AnalysisCard title="Score & factors">
 						<table className="w-full text-left">
 							<thead>
 								<tr>
@@ -240,10 +239,9 @@ export default function RunsComparePage() {
 								))}
 							</tbody>
 						</table>
-					</section>
+					</AnalysisCard>
 
-					<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-						<h2 className="font-semibold">Factor breakdown</h2>
+					<AnalysisCard title="Factor breakdown">
 						<ResponsiveContainer height={300} width="100%">
 							<BarChart data={chartData}>
 								<CartesianGrid strokeDasharray="3 3" />
@@ -260,7 +258,7 @@ export default function RunsComparePage() {
 								))}
 							</BarChart>
 						</ResponsiveContainer>
-					</section>
+					</AnalysisCard>
 				</>
 			)}
 		</div>

@@ -146,16 +146,16 @@ None — no persisted data shape changes.
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes: `npm run typecheck`
-- [ ] 1.2 Lint passes: `npm run check`
-- [ ] 1.3 Full suite still passes: `npm test`
-- [ ] 1.4 Hardcoded-value scan on touched files stays at 0 hits
+- [x] 1.1 Typecheck passes: `npm run typecheck` — 384c4db
+- [x] 1.2 Lint passes: `npm run check` — 384c4db
+- [x] 1.3 Full suite still passes: `npm test` — 384c4db
+- [x] 1.4 Hardcoded-value scan on touched files stays at 0 hits — 384c4db
 
 #### Manual
 
-- [ ] 1.5 runs/[runId] renders identically to before (all 6 sections + conditional notice)
-- [ ] 1.6 runs/compare renders identically to before (3 sections + 4 untouched notices)
-- [ ] 1.7 Export links and charts still work on both pages
+- [x] 1.5 runs/[runId] renders identically to before (all 6 sections + conditional notice) — verified live (production build) with a seeded run with real history data: both charts (population, genetic diversity), phase tally, resilience cycle, and final diversity all render correctly through AnalysisCard, matching titles exactly. — 384c4db
+- [x] 1.6 runs/compare renders identically to before (3 sections + 4 untouched notices) — verified live with 2 seeded runs: Parameters, Score & factors (table), and Factor breakdown (bar chart + legend) all render correctly through AnalysisCard; the "Score & factors" title's `&amp;`→`&` adaptation renders correctly as "Score & factors". — 384c4db
+- [x] 1.7 Export links and charts still work on both pages — Export JSON/CSV links present with correct hrefs; both chart types (line charts on runs/[runId], bar chart on runs/compare) render with real data. — 384c4db
 
 ### Phase 2: States gate
 

@@ -12,6 +12,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { AnalysisCard } from "~/components/analysis-card";
 import { Button } from "~/components/ui/button";
 import { StatusMessage } from "~/components/ui/status-message";
 import type { PopulationPhase } from "~/server/simulation/boids";
@@ -136,25 +137,23 @@ export default function RunAnalysisPage() {
 			</div>
 
 			{wasAutoStopped ? (
-				<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
+				<AnalysisCard>
 					<p>
 						This run was stopped automatically — server restarted before it
 						finished on its own.
 					</p>
-				</section>
+				</AnalysisCard>
 			) : null}
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Run suggestion</h2>
+			<AnalysisCard title="Run suggestion">
 				{runOptimizationSuggestion.status === "ok" ? (
 					<p>{runOptimizationSuggestion.rationale}</p>
 				) : (
 					<p>Not enough data in this run to suggest a change.</p>
 				)}
-			</section>
+			</AnalysisCard>
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Population over time</h2>
+			<AnalysisCard title="Population over time">
 				{chartData && chartData.length > 0 ? (
 					<ResponsiveContainer height={240} width="100%">
 						<LineChart data={chartData}>
@@ -188,10 +187,9 @@ export default function RunAnalysisPage() {
 				) : (
 					<p>No population data recorded for this run.</p>
 				)}
-			</section>
+			</AnalysisCard>
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Genetic diversity over time</h2>
+			<AnalysisCard title="Genetic diversity over time">
 				{diversityChartData && diversityChartData.length > 0 ? (
 					<ResponsiveContainer height={240} width="100%">
 						<LineChart data={diversityChartData}>
@@ -209,10 +207,9 @@ export default function RunAnalysisPage() {
 				) : (
 					<p>No genetic-diversity data recorded for this run.</p>
 				)}
-			</section>
+			</AnalysisCard>
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Time in each phase</h2>
+			<AnalysisCard title="Time in each phase">
 				{phaseTally && totalTicks > 0 ? (
 					<ul className="flex flex-col gap-1">
 						{Object.entries(phaseTally).map(([phase, count]) => (
@@ -233,10 +230,9 @@ export default function RunAnalysisPage() {
 				) : (
 					<p>No phase data recorded for this run.</p>
 				)}
-			</section>
+			</AnalysisCard>
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Completed resilience cycles</h2>
+			<AnalysisCard title="Completed resilience cycles">
 				{completedCycles.length > 0 ? (
 					<ul className="flex flex-col gap-1">
 						{completedCycles.map((cycle, index) => (
@@ -248,16 +244,15 @@ export default function RunAnalysisPage() {
 				) : (
 					<p>No completed crash→recovery cycles in this run.</p>
 				)}
-			</section>
+			</AnalysisCard>
 
-			<section className="bg-input text-foreground flex w-full max-w-2xl flex-col gap-2 rounded-2xl px-4 py-3">
-				<h2 className="font-semibold">Final genetic diversity</h2>
+			<AnalysisCard title="Final genetic diversity">
 				{history ? (
 					<p>{finalGeneticDiversity.toFixed(3)}</p>
 				) : (
 					<p>No final genetic-diversity value recorded for this run.</p>
 				)}
-			</section>
+			</AnalysisCard>
 		</div>
 	);
 }
