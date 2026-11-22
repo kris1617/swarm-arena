@@ -1,4 +1,15 @@
 swarmarena.fun {
+	# JSON access log, host-mounted (see docker-compose.yml) so fail2ban on
+	# the VPS host can watch it for scanning/probing/flood patterns. Caddy
+	# itself does not ship a rate-limiter; this is the evidence source for
+	# the VPS-side jail documented in context/foundation/infrastructure.md.
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+		format json
+	}
 	reverse_proxy app:3000
 }
 

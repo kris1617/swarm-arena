@@ -39,6 +39,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      # Host-mounted so the VPS's own fail2ban can tail it directly,
+      # without reaching into the container.
+      - /opt/swarm-arena/logs/caddy:/var/log/caddy
     depends_on:
       - app
 
